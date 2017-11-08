@@ -1,0 +1,130 @@
+﻿@{
+    ViewData["Title"] = "Planet Foundry";
+}
+
+<div id="webgl-alert" class="alert alert-danger hidden" role="alert">WebGL wasn't able to load correctly in your browser.</div>
+<div id="err-alert" class="alert alert-danger hidden" role="alert">A problem occurred. Try again, perhaps with a lower detail level.</div>
+<div id="loading-bar" class="progress invisible">
+    <div id="loading-msg" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">Loading...</div>
+</div>
+
+<div class="row">
+    <div class="col-md-2 control-container">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Planet Parameters</h3>
+            </div>
+            <div class="panel-body">
+                <span><small>Updating or generating a planet can take a long time, depending on the detail level.</small></span>
+                <div class="input-group">
+                    <input type="number" min="0" max="9300" step="0.001" id="pressure-num" value="101.325" />
+                    <label for="pressure-num">Atmospheric Pressure (kPa)</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="0" max="3.14" step="0.01" id="tilt-num" value="0.4" />
+                    <label for="tilt-num">Axial Tilt (rad)</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="473" max="9556" step="1" id="radius-num" value="6371" />
+                    <label for="radius-num">Radius (km)</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="0" step="1" id="revolution-num" value="8766" />
+                    <label for="revolution-num">Revolution Period (hr)</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="0" step="1" id="rotation-num" value="1440" />
+                    <label for="rotation-num">Rotational Period (min)</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="0" max="1" step="0.05" id="water-num" value="0.65" />
+                    <label for="water-num">Water Ratio</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="1" max="6" step="1" id="grid-num" value="4" />
+                    <label for="grid-num">Detail Level</label>
+                </div>
+                <div class="input-group">
+                    <button class="btn btn-info" type="button" id="param-button" disabled="disabled">Adjust Parameters</button>
+                    <span><small>Update Current</small></span>
+                </div>
+                <div class="input-group">
+                    <button class="btn btn-primary" type="button" id="planet-button">New Planet</button>
+                    <span><small>Generate New</small></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <canvas id="planet-canvas" width="600" height="600"></canvas>
+    </div>
+    <div class="col-md-2 control-container">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Seasons</h3>
+            </div>
+            <div class="panel-body">
+                <div class="input-group">
+                    <input type="number" min="1" max="256" step="1" id="season-total" value="12" />
+                    <label for="season-total">Total</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="1" max="256" step="1" id="season-num" value="1" />
+                    <label for="season-num">Current</label>
+                </div>
+                <div class="input-group">
+                    <input type="checkbox" id="autoseason-check" checked="checked" />
+                    <label for="autoseason-check">Auto-Advance?</label>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Color Mode</h3>
+            </div>
+            <div id="display-radios" class="panel-body">
+                <label for="vegetation-radio">
+                    <input type="radio" class="btn btn-default" name="color-radios" id="vegetation-radio" checked="checked" />Vegetation
+                </label>
+                <label for="elevation-radio">
+                    <input type="radio" class="btn btn-default" name="color-radios" id="elevation-radio" />Elevation
+                </label>
+                <label for="temperature-radio">
+                    <input type="radio" class="btn btn-default" name="color-radios" id="temperature-radio" />Temperature
+                </label>
+                <label for="wind-radio">
+                    <input type="radio" class="btn btn-default" name="color-radios" id="wind-radio" />Wind
+                </label>
+                <label for="precipitation-radio">
+                    <input type="radio" class="btn btn-default" name="color-radios" id="precipitation-radio" />Precipitation
+                </label>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">Display Mode</h3>
+            </div>
+            <div id="renderer-buttons" class="panel-body">
+                <button type="button" class="btn btn-default" id="cube-renderer-button" disabled="disabled" style="display: none">Cube</button>
+                <button type="button" class="btn btn-default" id="globe-renderer-button" disabled="disabled">Globe</button>
+                <button type="button" class="btn btn-default" id="hammer-renderer-button" disabled="disabled">Map</button>
+                <div class="input-group">
+                    <input type="checkbox" id="autorotate-check" checked="checked" />
+                    <label for="rotate-check">Auto-Rotate?</label>
+                </div>
+                <div class="input-group">
+                    <input type="number" min="0.1" max="10" step="0.1" id="scale-num" value="1" />
+                    <label for="scale-num">Zoom</label>
+                </div>
+                <div class="input-group">
+                    <input type="checkbox" id="smooth-check" />
+                    <label for="smooth-check">Smooth?</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/dist/planet.js" asp-append-version="true"></script>
+}
