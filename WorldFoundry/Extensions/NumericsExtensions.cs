@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Numerics;
-using WorldFoundry.Util;
+using WorldFoundry.Utilities;
 
 namespace WorldFoundry.Extensions
 {
@@ -37,11 +37,11 @@ namespace WorldFoundry.Extensions
                 }
                 else if (u.X > 0)
                 {
-                    h = new Quaternion(Vector3.UnitZ, -(float)MathUtil.HalfPI);
+                    h = new Quaternion(Vector3.UnitZ, -(float)Utilities.MathUtil.Constants.HalfPI);
                 }
                 else
                 {
-                    h = new Quaternion(Vector3.UnitZ, (float)MathUtil.HalfPI);
+                    h = new Quaternion(Vector3.UnitZ, (float)Utilities.MathUtil.Constants.HalfPI);
                 }
             }
             var x = Vector3.Transform(u, h);
@@ -51,11 +51,11 @@ namespace WorldFoundry.Extensions
             {
                 if (u.Z < 0)
                 {
-                    q = new Quaternion(Vector3.UnitX, -(float)MathUtil.HalfPI);
+                    q = new Quaternion(Vector3.UnitX, -(float)Utilities.MathUtil.Constants.HalfPI);
                 }
                 else
                 {
-                    q = new Quaternion(Vector3.UnitX, (float)MathUtil.HalfPI);
+                    q = new Quaternion(Vector3.UnitX, (float)Utilities.MathUtil.Constants.HalfPI);
                 }
             }
             else

@@ -1,7 +1,7 @@
 ﻿namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Describes the ecology of a <see cref="Grid.Tile"/>.
+    /// Describes the ecology of a <see cref="WorldGrid.Tile"/>.
     /// </summary>
     public enum EcologyType
     {

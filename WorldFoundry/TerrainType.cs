@@ -1,8 +1,8 @@
 ﻿namespace WorldFoundry
 {
     /// <summary>
-    /// Indicates the type of terrain on a <see cref="Grid.Tile"/>, <see cref="Grid.Corner"/>, or
-    /// <see cref="Grid.Edge"/>.
+    /// Indicates the type of terrain on a <see cref="WorldGrid.Tile"/>, <see cref="WorldGrid.Corner"/>, or
+    /// <see cref="WorldGrid.Edge"/>.
     /// </summary>
     public enum TerrainType
     {

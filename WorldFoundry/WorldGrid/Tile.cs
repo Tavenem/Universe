@@ -4,7 +4,7 @@ using System.Linq;
 using System.Numerics;
 using WorldFoundry.Climate;
 
-namespace WorldFoundry.Grid
+namespace WorldFoundry.WorldGrid
 {
     /// <summary>
     /// Represents a tile on the 3D grid.

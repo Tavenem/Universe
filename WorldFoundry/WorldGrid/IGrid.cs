@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace WorldFoundry.Grid
+namespace WorldFoundry.WorldGrid
 {
     internal interface IGrid
     {

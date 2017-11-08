@@ -5,8 +5,8 @@ using System.Numerics;
 using System.Security.Cryptography;
 using WorldFoundry.Climate;
 using WorldFoundry.Extensions;
-using WorldFoundry.Grid;
-using WorldFoundry.Util;
+using WorldFoundry.WorldGrid;
+using WorldFoundry.Utilities;
 
 namespace WorldFoundry
 {
@@ -62,7 +62,7 @@ namespace WorldFoundry
 
         private const float G = 6.67408e-11f;
         private const int density = 5514;
-        private const float FourThirdsPIGp = (float)MathUtil.FourThirdsPI * G * density;
+        private const float FourThirdsPIGp = (float)Utilities.MathUtil.Constants.FourThirdsPI * G * density;
         private const float M = 0.0289644f;
         private const float R = 8.3144598f;
         private const float MdivR = M / R;
@@ -436,7 +436,7 @@ namespace WorldFoundry
             {
                 _elapsedYearToDate -= 1;
             }
-            if (_elapsedYearToDate < MathUtil.NearlyZero)
+            if (_elapsedYearToDate < Utilities.MathUtil.Constants.NearlyZero)
             {
                 _elapsedYearToDate = 0;
             }
@@ -452,7 +452,7 @@ namespace WorldFoundry
             return (float)(Math.PI - Math.Atan2(v.Y, v.X));
         }
 
-        private float GetPlanetLatitude(Vector3 v) => (float)(MathUtil.HalfPI - Axis.GetAngle(v));
+        private float GetPlanetLatitude(Vector3 v) => (float)(Utilities.MathUtil.Constants.HalfPI - Axis.GetAngle(v));
 
         private float GetPlanetLongitude(Vector3 v)
         {
@@ -530,11 +530,7 @@ namespace WorldFoundry
 
         private void SetElevation(int size)
         {
-            int seed;
-            using (var md5 = MD5.Create())
-            {
-                seed = md5.GetHash(Seed).HexToInt();
-            }
+            int seed = Randomizer.GetSeed(Seed);
 
             var m = new FastNoise(seed);
             m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
@@ -706,7 +702,7 @@ namespace WorldFoundry
         public void SetRotationalPeriodBase(double seconds)
         {
             RotationalPeriod = Math.Max(0, seconds);
-            _angularVelocity = RotationalPeriod == 0 ? 0 : (float)(MathUtil.TwoPI / RotationalPeriod);
+            _angularVelocity = RotationalPeriod == 0 ? 0 : (float)(Utilities.MathUtil.Constants.TwoPI / RotationalPeriod);
         }
 
         /// <summary>

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Linq;
 
-namespace WorldFoundry.Grid
+namespace WorldFoundry.WorldGrid
 {
     /// <summary>
     /// Represents an edge between two tiles on the 3D grid.

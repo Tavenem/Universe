@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace WorldFoundry.Util
+namespace WorldFoundry.Utilities.MathUtil
 {
-    internal class MathUtil
+    internal class Constants
     {
         /// <summary>
         /// A floating-point value close to zero, intended to determine near-equivalence to 0.
@@ -28,5 +28,15 @@ namespace WorldFoundry.Util
         /// Four thirds Pi
         /// </summary>
         public const double FourThirdsPI = Math.PI * 4 / 3;
+
+        /// <summary>
+        /// Pi squared
+        /// </summary>
+        public const double PISquared = Math.PI * Math.PI;
+
+        /// <summary>
+        /// Double Pi squared
+        /// </summary>
+        public const double TwoPISquared = 2 * Math.PI * Math.PI;
     }
 }

@@ -1,7 +1,7 @@
 ﻿namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Describes the general biome of a <see cref="Grid.Tile"/> (a less specific grouping than a
+    /// Describes the general biome of a <see cref="WorldGrid.Tile"/> (a less specific grouping than a
     /// <see cref="ClimateType"/>-<see cref="EcologyType"/> combination).
     /// </summary>
     public enum BiomeType

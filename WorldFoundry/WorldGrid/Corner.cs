@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Numerics;
 
-namespace WorldFoundry.Grid
+namespace WorldFoundry.WorldGrid
 {
     /// <summary>
     /// Represents a corner between three tiles on the 3D grid.

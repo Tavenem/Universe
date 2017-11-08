@@ -1,5 +1,5 @@
 ﻿using System;
-using WorldFoundry.Grid;
+using WorldFoundry.WorldGrid;
 
 namespace WorldFoundry.Climate
 {

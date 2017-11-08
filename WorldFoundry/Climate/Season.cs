@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using WorldFoundry.Extensions;
-using WorldFoundry.Grid;
-using WorldFoundry.Util;
+using WorldFoundry.WorldGrid;
+using WorldFoundry.Utilities;
 
 namespace WorldFoundry.Climate
 {
@@ -31,13 +31,13 @@ namespace WorldFoundry.Climate
         private float _tropicalEquator = 0;
 
         /// <summary>
-        /// The level of river discharge along each <see cref="Grid.Edge"/> during this <see
+        /// The level of river discharge along each <see cref="WorldGrid.Edge"/> during this <see
         /// cref="Season"/>, in m³/s.
         /// </summary>
         public float[] EdgeRiverFlows { get; internal set; }
 
         /// <summary>
-        /// The climate of each <see cref="Grid.Tile"/> during this <see cref="Season"/>.
+        /// The climate of each <see cref="WorldGrid.Tile"/> during this <see cref="Season"/>.
         /// </summary>
         public TileClimate[] TileClimates { get; internal set; }
 
@@ -56,7 +56,7 @@ namespace WorldFoundry.Climate
                 TileClimates[j] = new TileClimate();
             }
 
-            _tropicalEquator = planet.AxialTilt * (float)Math.Sin(MathUtil.TwoPI * elapsedYearToDate) * 0.6666667f;
+            _tropicalEquator = planet.AxialTilt * (float)Math.Sin(Utilities.MathUtil.Constants.TwoPI * elapsedYearToDate) * 0.6666667f;
 
             SetTemperature(planet);
             SetWind(planet);
@@ -103,13 +103,13 @@ namespace WorldFoundry.Climate
             }
 
             tc.SnowFall = 0;
-            if (snowMixingRatios.Any(s => s > MathUtil.NearlyZero)) // snow
+            if (snowMixingRatios.Any(s => s > Utilities.MathUtil.Constants.NearlyZero)) // snow
             {
                 tc.SnowFall = snowMixingRatios.Select((s, i) => s * tc.AirCells[i].Density).Sum() * AirCell.LayerHeight * timeRatio;
             }
 
             tc.Precipitation = tc.SnowFall;
-            if (rainMixingRatios.Any(r => r > MathUtil.NearlyZero)) // rain
+            if (rainMixingRatios.Any(r => r > Utilities.MathUtil.Constants.NearlyZero)) // rain
             {
                 tc.Precipitation += rainMixingRatios.Select((r, i) => r * tc.AirCells[i].Density).Sum() * AirCell.LayerHeight * timeRatio;
             }
@@ -117,9 +117,9 @@ namespace WorldFoundry.Climate
 
         private static float GetHumidityChange(double first, double second)
         {
-            if (first < MathUtil.NearlyZero)
+            if (first < Utilities.MathUtil.Constants.NearlyZero)
             {
-                return second > MathUtil.NearlyZero ? 1 : 0;
+                return second > Utilities.MathUtil.Constants.NearlyZero ? 1 : 0;
             }
             else
             {
@@ -129,7 +129,7 @@ namespace WorldFoundry.Climate
 
         private static float GetPressureGradientForce(float latitude, float tropicalEquator, float halfITCZWidth)
         {
-            var c = MathUtil.ThreePI / (MathUtil.HalfPI + tropicalEquator * (latitude > tropicalEquator ? -1 : 1));
+            var c = Utilities.MathUtil.Constants.ThreePI / (Utilities.MathUtil.Constants.HalfPI + tropicalEquator * (latitude > tropicalEquator ? -1 : 1));
             var pressure_derivate = -0.001f * (float)Math.Sin(c * (latitude - tropicalEquator)) + 3.333333e-4f;
 
             if (latitude < tropicalEquator + halfITCZWidth
