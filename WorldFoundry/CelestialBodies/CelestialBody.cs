@@ -30,6 +30,28 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
+        /// Initializes a new instance of <see cref="CelestialBody"/>.
+        /// </summary>
+        public CelestialBody() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="CelestialBody"/> is located.
+        /// </param>
+        public CelestialBody(SpaceRegion parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="CelestialBody"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
+        public CelestialBody(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+
+        /// <summary>
         /// Adjusts incoming insolation based on conditions.
         /// </summary>
         /// <param name="insolation">The total incoming insolation.</param>

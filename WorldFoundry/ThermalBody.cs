@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Numerics;
 using WorldFoundry.Orbits;
+using WorldFoundry.Space;
 
 namespace WorldFoundry
 {
@@ -32,6 +34,28 @@ namespace WorldFoundry
             }
             set => _temperature = value;
         }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ThermalBody"/>.
+        /// </summary>
+        public ThermalBody() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ThermalBody"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="ThermalBody"/> is located.
+        /// </param>
+        public ThermalBody(SpaceRegion parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="ThermalBody"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="ThermalBody"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="ThermalBody"/>.</param>
+        public ThermalBody(SpaceRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Determines a temperature (in K) for this <see cref="ThermalBody"/>.

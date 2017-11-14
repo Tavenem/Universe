@@ -23,12 +23,6 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <remarks>Produces 0 in the base class; expected to be overridden in subclasses.</remarks>
-        private void GenerateMass() => Mass = 0;
-
-        /// <summary>
         /// The orbit occupied by this <see cref="Orbiter"/> (may be null).
         /// </summary>
         public Orbit Orbit { get; set; }
@@ -62,6 +56,34 @@ namespace WorldFoundry.Orbits
         /// Specifies the Z component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
         public float VelocityZ { get; set; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Orbiter"/>.
+        /// </summary>
+        public Orbiter() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="Orbiter"/> is located.
+        /// </param>
+        public Orbiter(SpaceRegion parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="Orbiter"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="Orbiter"/>.</param>
+        public Orbiter(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+
+        /// <summary>
+        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// </summary>
+        /// <remarks>Produces 0 in the base class; expected to be overridden in subclasses.</remarks>
+        private void GenerateMass() => Mass = 0;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.

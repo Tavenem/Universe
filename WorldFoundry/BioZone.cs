@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Numerics;
+using WorldFoundry.Space;
 
 namespace WorldFoundry
 {
@@ -24,6 +26,28 @@ namespace WorldFoundry
             get => _chanceOfLife ?? 1.0f;
             set => _chanceOfLife = value;
         }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="BioZone"/>.
+        /// </summary>
+        public BioZone() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="BioZone"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="BioZone"/> is located.
+        /// </param>
+        public BioZone(SpaceRegion parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="BioZone"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="BioZone"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="BioZone"/>.</param>
+        public BioZone(SpaceRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Determines the chance that this <see cref="CelestialBody"/> and its children will

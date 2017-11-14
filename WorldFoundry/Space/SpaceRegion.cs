@@ -84,6 +84,28 @@ namespace WorldFoundry.Space
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="SpaceRegion"/>.
+        /// </summary>
+        public SpaceRegion() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="SpaceRegion"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceRegion"/> is located.
+        /// </param>
+        public SpaceRegion(SpaceRegion parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="SpaceRegion"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceRegion"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="SpaceRegion"/>.</param>
+        public SpaceRegion(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+
         private void CalculateChildTotals()
         {
             IsChildTotalsGenerationComplete = true;
