@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -131,6 +132,22 @@ namespace WorldFoundry.Orbits
 
             return unit * scale;
         }
+
+        /// <summary>
+        /// Calculates the Roche limit for this <see cref="Orbiter"/> for objects of the given
+        /// density (in meters).
+        /// </summary>
+        /// <param name="orbitingDensity">The density of a hypothetical orbiting object.</param>
+        /// <returns>
+        /// The Roche limit for this <see cref="Orbiter"/> for an object of the given density, in meters.
+        /// </returns>
+        public double GetRocheLimit(float orbitingDensity) => 0.8947 * Math.Pow((Mass ?? 0) / orbitingDensity, 1.0 / 3.0);
+
+        /// <summary>
+        /// Calculates the average surface gravity of this <see cref="Orbiter"/> (in kg/m²).
+        /// </summary>
+        /// <returns>The average surface gravity of this <see cref="Orbiter"/> (in kg/m²).</returns>
+        public virtual double GetSurfaceGravity() => (float)((Utilities.Science.Constants.G * Mass) / Math.Pow(Radius ?? 1, 2));
 
         /// <summary>
         /// Calculates the total force of gravity (in Newtons) on this <see cref="Orbiter"/> as a vector.

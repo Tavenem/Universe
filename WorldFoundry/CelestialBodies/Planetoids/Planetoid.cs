@@ -39,7 +39,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Determines an angle between the Y-axis and the axis of rotation for this <see cref="Planetoid"/>.
         /// </summary>
-        protected virtual void GenerateAngleOfRotation()
+        protected void GenerateAngleOfRotation()
         {
             if (Randomizer.Static.NextDouble() <= 0.2) // low chance of an extreme tilt
             {
@@ -50,5 +50,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 _angleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.QuarterPI), 4);
             }
         }
+
+        /// <summary>
+        /// Calculates the escape velocity from this body (in m/s).
+        /// </summary>
+        /// <returns>The escape velocity from this body, in m/s.</returns>
+        public float GetEscapeVelocity() => (float)Math.Sqrt((Utilities.Science.Constants.TwoG * (Mass ?? 0)) / (Radius ?? 1));
     }
 }

@@ -548,10 +548,99 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
+        /// Calculates the radius of the orbiting body's Hill sphere (in meters).
+        /// </summary>
+        /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
+        public double GetHillSphereRadius()
+            => SemiMajorAxis * (1 - Eccentricity) * Math.Pow((OrbitingObject.Mass ?? 0) / (3 * (OrbitedObject.Mass ?? 1)), 1.0 / 3.0);
+
+        /// <summary>
+        /// Approximates the radius of the orbiting body's mutual Hill sphere with another
+        /// orbiting body in orbit around the same primary (in meters).
+        /// </summary>
+        /// <remarks>
+        /// Assumes the semimajor axis of both orbits is identical for the purposes of the
+        /// calculation, which obviously would not be the case, but generates reasonably close
+        /// estimates in the absence of actual values.
+        /// </remarks>
+        /// <param name="otherMass">
+        /// The mass of another celestial body presumed to be orbiting the same primary as this one.
+        /// </param>
+        /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
+        public double GetMutualHillSphereRadius(double otherMass)
+            => Math.Pow(((OrbitingObject.Mass ?? 0) + otherMass) / (3 * (OrbitedObject.Mass ?? 1)), (1.0 / 3.0)) * SemiMajorAxis;
+
+        /// <summary>
         /// Calculates the orbital period.
         /// </summary>
         /// <returns>The orbital period, in seconds.</returns>
-        public float GetPeriod() => (float)(Utilities.MathUtil.Constants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter));
+        public float GetPeriod()
+            => (float)(Utilities.MathUtil.Constants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter));
+
+        /// <summary>
+        /// Calculates the radius of the orbiting body's sphere of influence (in meters).
+        /// </summary>
+        /// <returns>The radius of the orbiting body's sphere of influence, in meters.</returns>
+        public double GetSphereOfInfluenceRadius()
+            => SemiMajorAxis * Math.Pow((OrbitingObject.Mass ?? 0) / (OrbitedObject.Mass ?? 1), 2.0 / 5.0);
+
+        private double GetUniversalVariableFormulaRatioFor(double x, double t, double sqrtSGP, float accel, double f)
+        {
+            var x2 = x * x;
+            double z = Alpha * x2;
+            var ssz = StumpffS(z);
+            var scz = StumpffC(z);
+            var x2scz = x2 * scz;
+
+            var n = ((accel / sqrtSGP) * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
+            var d = ((accel / sqrtSGP) * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
+            return n / d;
+        }
+
+        /// <summary>
+        /// Gets updated orbital position and velocity vectors.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the conditions when the orbit was defined were true.</param>
+        /// <returns>An array with 2 elements: the position vector (relative to the orbited object), and the velocity vector.</returns>
+        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(double t)
+        {
+            // Universal variable formulas; Newton's method
+
+            var sqrtSGP = Math.Sqrt(StandardGravitationalParameter);
+            var accel = Radius / V0.Length();
+            var f = 1.0 - (Alpha * Radius);
+
+            // Initial guess for x
+            double x = sqrtSGP * Math.Abs(Alpha) * t;
+
+            // Find acceptable x
+            double ratio = GetUniversalVariableFormulaRatioFor(x, t, sqrtSGP, accel, f);
+            while (Math.Abs(ratio) > tolerance)
+            {
+                x -= ratio;
+                ratio = GetUniversalVariableFormulaRatioFor(x, t, sqrtSGP, accel, f);
+            }
+
+            var x2 = x * x;
+            var x3 = Math.Pow(x, 3);
+            var ax2 = Alpha * x2;
+            var ssax2 = StumpffS(ax2);
+            var scax2 = StumpffC(ax2);
+            var ssax2x3 = ssax2 * x3;
+
+            var uvf = (float)(1.0 - ((x2 / Radius) * scax2));
+            var uvg = (float)(t - ((1.0 / sqrtSGP) * ssax2x3));
+
+            Vector3 r = (R0 * uvf) + (V0 * uvg);
+            var rLength = r.Length();
+
+            var uvfp = (float)((sqrtSGP / (rLength * Radius)) * ((Alpha * ssax2x3) - x));
+            var uvfgp = (float)(1.0 - ((x2 / rLength) * scax2));
+
+            Vector3 v = (R0 * uvfp) + (V0 * uvfgp);
+
+            return (r, v);
+        }
 
         private void SetGravitationalParameters()
         {
@@ -623,64 +712,6 @@ namespace WorldFoundry.Orbits
                 double rootNegX = Math.Sqrt(-x);
                 return (Math.Sinh(rootNegX) - rootNegX) / Math.Pow(rootNegX, 3);
             }
-        }
-
-        private double GetUniversalVariableFormulaRatioFor(double x, double t, double sqrtSGP, float accel, double f)
-        {
-            var x2 = x * x;
-            double z = Alpha * x2;
-            var ssz = StumpffS(z);
-            var scz = StumpffC(z);
-            var x2scz = x2 * scz;
-
-            var n = ((accel / sqrtSGP) * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
-            var d = ((accel / sqrtSGP) * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
-            return n / d;
-        }
-
-        /// <summary>
-        /// Gets updated orbital position and velocity vectors.
-        /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the conditions when the orbit was defined were true.</param>
-        /// <returns>An array with 2 elements: the position vector (relative to the orbited object), and the velocity vector.</returns>
-        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(double t)
-        {
-            // Universal variable formulas; Newton's method
-
-            var sqrtSGP = Math.Sqrt(StandardGravitationalParameter);
-            var accel = Radius / V0.Length();
-            var f = 1.0 - (Alpha * Radius);
-
-            // Initial guess for x
-            double x = sqrtSGP * Math.Abs(Alpha) * t;
-
-            // Find acceptable x
-            double ratio = GetUniversalVariableFormulaRatioFor(x, t, sqrtSGP, accel, f);
-            while (Math.Abs(ratio) > tolerance)
-            {
-                x -= ratio;
-                ratio = GetUniversalVariableFormulaRatioFor(x, t, sqrtSGP, accel, f);
-            }
-
-            var x2 = x * x;
-            var x3 = Math.Pow(x, 3);
-            var ax2 = Alpha * x2;
-            var ssax2 = StumpffS(ax2);
-            var scax2 = StumpffC(ax2);
-            var ssax2x3 = ssax2 * x3;
-
-            var uvf = (float)(1.0 - ((x2 / Radius) * scax2));
-            var uvg = (float)(t - ((1.0 / sqrtSGP) * ssax2x3));
-
-            Vector3 r = (R0 * uvf) + (V0 * uvg);
-            var rLength = r.Length();
-
-            var uvfp = (float)((sqrtSGP / (rLength * Radius)) * ((Alpha * ssax2x3) - x));
-            var uvfgp = (float)(1.0 - ((x2 / rLength) * scax2));
-
-            Vector3 v = (R0 * uvfp) + (V0 * uvfgp);
-
-            return (r, v);
         }
 
         /// <summary>
