@@ -64,6 +64,24 @@ namespace WorldFoundry.Orbits
             set => _eccentricity = value;
         }
 
+        private float? _inclination;
+        /// <summary>
+        /// The angle between the X-Z plane through the center of the object orbited, and the plane
+        /// of the orbit (in radians).
+        /// </summary>
+        public float Inclination
+        {
+            get
+            {
+                if (!_inclination.HasValue)
+                {
+                    SetGravitationalParameters();
+                }
+                return _inclination ?? 0;
+            }
+            set => _inclination = value;
+        }
+
         private Orbiter _orbitedObject;
         /// <summary>
         /// The object which is being orbited.
@@ -341,7 +359,7 @@ namespace WorldFoundry.Orbits
             orbit._periapsis = orbit._semiMajorAxis;
 
             Vector3 xz = new Vector3(orbit._r0X.Value, 0, orbit._r0Z.Value);
-            var inclination = Math.Acos(Math.Sqrt(r0x2 + r0z2) / orbit._semiMajorAxis.Value);
+            orbit._inclination = (float)Math.Acos(Math.Sqrt(r0x2 + r0z2) / orbit._semiMajorAxis.Value);
             var angleAscending = Vector3.UnitX.GetAngle(xz) - Utilities.MathUtil.Constants.HalfPI;
 
             Vector3 n = new Vector3((float)Math.Cos(angleAscending), (float)Math.Sin(angleAscending), 0);
@@ -356,8 +374,8 @@ namespace WorldFoundry.Orbits
             var sineAngleAscending = Math.Sin(angleAscending);
             var cosineArgPeriapsis = Math.Cos(argPeriapsis);
             var sineArgPeriapsis = Math.Sin(argPeriapsis);
-            var cosineInclination = Math.Cos(inclination);
-            var sineInclination = Math.Sin(inclination);
+            var cosineInclination = Math.Cos(orbit._inclination.Value);
+            var sineInclination = Math.Sin(orbit._inclination.Value);
 
             float qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
             float qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
@@ -459,6 +477,7 @@ namespace WorldFoundry.Orbits
             var orbit = new Orbit(orbitingObject, orbitedObject)
             {
                 _eccentricity = eccentricity,
+                _inclination = inclination,
                 _periapsis = periapsis,
                 _standardGravitationalParameter = Utilities.Science.Constants.G * ((orbitedObject.Mass ?? 0) + (orbitingObject.Mass ?? 0)),
                 _trueAnomaly = trueAnomaly,
@@ -514,6 +533,7 @@ namespace WorldFoundry.Orbits
             _alpha = null;
             _apoapsis = null;
             _eccentricity = null;
+            _inclination = null;
             _periapsis = null;
             _r0X = null;
             _r0Y = null;
@@ -546,7 +566,10 @@ namespace WorldFoundry.Orbits
 
             _alpha = _standardGravitationalParameter / _semiMajorAxis;
 
-            var ev = Vector3.Cross(V0, Vector3.Cross(R0, V0)) / (float)StandardGravitationalParameter - Vector3.Normalize(R0);
+            var h = Vector3.Cross(R0, V0);
+            _inclination = (float)Math.Acos(h.Z / h.Length());
+
+            var ev = Vector3.Cross(V0, h) / (float)StandardGravitationalParameter - Vector3.Normalize(R0);
             _eccentricity = ev.Length();
 
             float ta = (float)Math.Acos(Vector3.Dot(ev, R0) / (_eccentricity.Value * _radius.Value));

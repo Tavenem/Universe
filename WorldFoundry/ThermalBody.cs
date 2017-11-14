@@ -1,7 +1,7 @@
 ﻿using System;
 using WorldFoundry.Orbits;
 
-namespace WorldFoundry.Temperature
+namespace WorldFoundry
 {
     /// <summary>
     /// Describes an entity which can have temperature, including both physical bodies and regions of space.

@@ -5,9 +5,8 @@ using System.Linq;
 using System.Numerics;
 using System.Reflection;
 using Troschuetz.Random;
-using WorldFoundry.CelestialObjects;
+using WorldFoundry.CelestialBodies;
 using WorldFoundry.Orbits;
-using WorldFoundry.Temperature;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -16,7 +15,7 @@ namespace WorldFoundry.Space
     /// <summary>
     /// A discrete region of space bound together by gravity, such as a galaxy or star system.
     /// </summary>
-    public class SpaceRegion : ThermalBody
+    public class SpaceRegion : BioZone
     {
         /// <summary>
         /// The average number of children within the grid per m³.
