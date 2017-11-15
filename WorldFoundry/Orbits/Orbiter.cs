@@ -17,16 +17,23 @@ namespace WorldFoundry.Orbits
         /// The mass of the celestial object (in kg), including the mass of all children,
         /// whether explicitly modeled or merely potential.
         /// </summary>
-        public virtual double? Mass
+        public virtual double Mass
         {
-            get => GetProperty(ref _mass, GenerateMass);
-            set => _mass = value;
+            get => GetProperty(ref _mass, GenerateMass) ?? 0;
+            internal set => _mass = value;
         }
 
         /// <summary>
         /// The orbit occupied by this <see cref="Orbiter"/> (may be null).
         /// </summary>
         public Orbit Orbit { get; set; }
+
+        private double? _surfaceGravity;
+        /// <summary>
+        /// The mass of the celestial object (in kg), including the mass of all children,
+        /// whether explicitly modeled or merely potential.
+        /// </summary>
+        public double SurfaceGravity => GetProperty(ref _surfaceGravity, GenerateSurfaceGravity) ?? 0;
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbiter"/>.
@@ -101,6 +108,12 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
+        /// Calculates the average surface gravity of this <see cref="Orbiter"/> (in kg/m²).
+        /// </summary>
+        /// <returns>The average surface gravity of this <see cref="Orbiter"/> (in kg/m²).</returns>
+        private void GenerateSurfaceGravity() => _surfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
+
+        /// <summary>
         /// Calculates the force of gravity (in Newtons) on this <see cref="Orbiter"/> from another
         /// as a vector.
         /// </summary>
@@ -141,13 +154,7 @@ namespace WorldFoundry.Orbits
         /// <returns>
         /// The Roche limit for this <see cref="Orbiter"/> for an object of the given density, in meters.
         /// </returns>
-        public double GetRocheLimit(float orbitingDensity) => 0.8947 * Math.Pow((Mass ?? 0) / orbitingDensity, 1.0 / 3.0);
-
-        /// <summary>
-        /// Calculates the average surface gravity of this <see cref="Orbiter"/> (in kg/m²).
-        /// </summary>
-        /// <returns>The average surface gravity of this <see cref="Orbiter"/> (in kg/m²).</returns>
-        public virtual double GetSurfaceGravity() => (float)((Utilities.Science.Constants.G * Mass) / Math.Pow(Radius ?? 1, 2));
+        public double GetRocheLimit(float orbitingDensity) => 0.8947 * Math.Pow(Mass / orbitingDensity, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the total force of gravity (in Newtons) on this <see cref="Orbiter"/> as a vector.

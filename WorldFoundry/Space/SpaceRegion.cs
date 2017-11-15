@@ -62,7 +62,7 @@ namespace WorldFoundry.Space
         public override Shape Shape
         {
             get => base.Shape;
-            set
+            protected set
             {
                 base.Shape = value;
 
@@ -189,13 +189,11 @@ namespace WorldFoundry.Space
             // entirely beyond the bounds of the parent's local space.
             if (other == Parent)
             {
-                double radius = Radius ?? 0;
-                return Position.Length() - radius < localSpaceScale;
+                return Position.Length() - Radius < localSpaceScale;
             }
             else if (other.Parent == this)
             {
-                double radius = other.Radius ?? 0;
-                return other.Position.Length() - radius < localSpaceScale;
+                return other.Position.Length() - other.Radius < localSpaceScale;
             }
             else
             {
@@ -503,10 +501,7 @@ namespace WorldFoundry.Space
         /// grid space is the same size as the object.
         /// </summary>
         /// <returns>The size of 1 grid space within this object, in local space units.</returns>
-        private float GetGridSize()
-            => ChildDensity == 0
-            ? (Radius ?? 0)
-            : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
+        private float GetGridSize() => ChildDensity == 0 ? Radius : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
 
         private GridSpace GetGridSpace(Vector3 coordinates) => GridSpaces.Where(g => g.Coordinates == coordinates).FirstOrDefault();
 

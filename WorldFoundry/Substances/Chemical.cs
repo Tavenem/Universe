@@ -11,58 +11,58 @@ namespace WorldFoundry.Substances
         /// The first Antoine coefficient which can be used to determine the vapor
         /// pressure of this substance.
         /// </summary>
-        public float AntoineCoefficientA { get; set; }
+        public float AntoineCoefficientA { get; private set; }
 
         /// <summary>
         /// The second Antoine coefficient which can be used to determine the vapor
         /// pressure of this substance.
         /// </summary>
-        public float AntoineCoefficientB { get; set; }
+        public float AntoineCoefficientB { get; private set; }
 
         /// <summary>
         /// The third Antoine coefficient which can be used to determine the vapor
         /// pressure of this substance.
         /// </summary>
-        public float AntoineCoefficientC { get; set; }
+        public float AntoineCoefficientC { get; private set; }
 
         /// <summary>
         /// The upper limit of the Antoine coefficients' accuracy for this <see cref="Chemical"/>.
         /// It is presumed reasonable to assume that the <see cref="Chemical"/> always vaporizes
         /// above this temperature.
         /// </summary>
-        public float AntoineMaximumTemperature { get; set; }
+        public float AntoineMaximumTemperature { get; private set; }
 
         /// <summary>
         /// The lower limit of the Antoine coefficients' accuracy for this <see cref="Chemical"/>.
         /// It is presumed reasonable to assume that the <see cref="Chemical"/> always condenses
         /// below this temperature.
         /// </summary>
-        public float AntoineMinimumTemperature { get; set; }
+        public float AntoineMinimumTemperature { get; private set; }
 
         /// <summary>
         /// Indicates the greenhouse potential of this substance (only applies to gases).
         /// </summary>
-        public int GreenhousePotential { get; set; }
+        public int GreenhousePotential { get; private set; }
 
         /// <summary>
         /// Indicates whether this substance is able to burn.
         /// </summary>
-        public bool IsFlammable { get; set; }
+        public bool IsFlammable { get; private set; }
 
         /// <summary>
         /// Indicates whether this substance conducts electricity.
         /// </summary>
-        public bool IsConductive { get; set; }
+        public bool IsConductive { get; private set; }
 
         /// <summary>
         /// The melting point of this substance at 100 kPa (in K).
         /// </summary>
-        public float MeltingPoint { get; set; }
+        public float MeltingPoint { get; private set; }
 
         /// <summary>
         /// The name of this substance.
         /// </summary>
-        public string Name { get; set; }
+        public string Name { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Chemical"/>.

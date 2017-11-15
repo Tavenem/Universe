@@ -9,6 +9,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// The luminosity of this star, in Watts.
         /// </summary>
-        public float Luminosity { get; set; }
+        public float Luminosity { get; internal set; }
     }
 }

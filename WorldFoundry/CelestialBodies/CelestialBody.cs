@@ -26,7 +26,7 @@ namespace WorldFoundry.CelestialBodies
         public virtual float Albedo
         {
             get => GetProperty(ref _albedo, GenerateAlbedo) ?? 0;
-            set => _albedo = value;
+            internal set => _albedo = value;
         }
 
         /// <summary>

@@ -1,11 +1,14 @@
 ﻿namespace WorldFoundry.Substances
 {
+    /// <summary>
+    /// Represents a physical substance: a <see cref="Substances.Chemical"/> in a specific <see cref="Substances.Phase"/>.
+    /// </summary>
     public class Substance
     {
         /// <summary>
         /// The <see cref="Substances.Chemical"/> which defines this substance's properties.
         /// </summary>
-        public Chemical Chemical { get; set; }
+        public Chemical Chemical { get; private set; }
 
         /// <summary>
         /// The phase of this <see cref="Substance"/>.

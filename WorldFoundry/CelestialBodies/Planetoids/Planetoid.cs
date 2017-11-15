@@ -19,7 +19,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public float AngleOfRotation
         {
             get => GetProperty(ref _angleOfRotation, GenerateAngleOfRotation) ?? 0;
-            set => _angleOfRotation = value;
+            internal set => _angleOfRotation = value;
         }
 
         /// <summary>
@@ -33,7 +33,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public float AxialTilt
         {
             get => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
-            set => AngleOfRotation = (Orbit == null ? value : value + Orbit.Inclination);
+            internal set => AngleOfRotation = (Orbit == null ? value : value + Orbit.Inclination);
         }
 
         /// <summary>
@@ -55,6 +55,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Calculates the escape velocity from this body (in m/s).
         /// </summary>
         /// <returns>The escape velocity from this body, in m/s.</returns>
-        public float GetEscapeVelocity() => (float)Math.Sqrt((Utilities.Science.Constants.TwoG * (Mass ?? 0)) / (Radius ?? 1));
+        public float GetEscapeVelocity() => (float)Math.Sqrt((Utilities.Science.Constants.TwoG * Mass) / Radius);
     }
 }

@@ -27,7 +27,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _alpha ?? 0;
             }
-            set => _alpha = value;
         }
 
         private double? _apoapsis;
@@ -44,7 +43,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _apoapsis ?? 0;
             }
-            set => _apoapsis = value;
         }
 
         private float? _eccentricity;
@@ -61,7 +59,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _eccentricity ?? 0;
             }
-            set => _eccentricity = value;
         }
 
         private float? _inclination;
@@ -79,7 +76,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _inclination ?? 0;
             }
-            set => _inclination = value;
         }
 
         private Orbiter _orbitedObject;
@@ -125,7 +121,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _periapsis ?? 0;
             }
-            set => _periapsis = value;
         }
 
         /// <summary>
@@ -135,7 +130,7 @@ namespace WorldFoundry.Orbits
         public Vector3 R0
         {
             get => new Vector3(R0X, R0Y, R0Z);
-            set
+            private set
             {
                 R0X = value.X;
                 R0Y = value.Y;
@@ -157,7 +152,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _r0X ?? 0;
             }
-            set => _r0X = value;
+            private set => _r0X = value;
         }
 
         private float? _r0Y;
@@ -174,7 +169,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _r0Y ?? 0;
             }
-            set => _r0Y = value;
+            private set => _r0Y = value;
         }
 
         private float? _r0Z;
@@ -191,7 +186,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _r0Z ?? 0;
             }
-            set => _r0Z = value;
+            private set => _r0Z = value;
         }
 
         private float? _radius;
@@ -208,7 +203,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _radius ?? 0;
             }
-            set => _radius = value;
         }
 
         private double? _semiMajorAxis;
@@ -222,7 +216,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _semiMajorAxis ?? 0;
             }
-            set => _semiMajorAxis = value;
         }
 
         private double? _standardGravitationalParameter;
@@ -239,7 +232,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _standardGravitationalParameter ?? 0;
             }
-            set => _standardGravitationalParameter = value;
         }
 
         private float? _trueAnomaly;
@@ -256,7 +248,6 @@ namespace WorldFoundry.Orbits
                 }
                 return _trueAnomaly ?? 0;
             }
-            set => _trueAnomaly = value;
         }
 
         /// <summary>
@@ -266,7 +257,7 @@ namespace WorldFoundry.Orbits
         public Vector3 V0
         {
             get => new Vector3(V0X, V0Y, V0Z);
-            set
+            private set
             {
                 V0X = value.X;
                 V0Y = value.Y;
@@ -288,7 +279,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _v0X ?? 0;
             }
-            set => _v0X = value;
+            private set => _v0X = value;
         }
 
         private float? _v0Y;
@@ -305,7 +296,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _v0Y ?? 0;
             }
-            set => _v0Y = value;
+            private set => _v0Y = value;
         }
 
         private float? _v0Z;
@@ -322,7 +313,7 @@ namespace WorldFoundry.Orbits
                 }
                 return _v0Z ?? 0;
             }
-            set => _v0Z = value;
+            private set => _v0Z = value;
         }
 
         /// <summary>
@@ -344,7 +335,7 @@ namespace WorldFoundry.Orbits
             var orbit = new Orbit(orbitingObject, orbitedObject)
             {
                 _eccentricity = 0,
-                _standardGravitationalParameter = Utilities.Science.Constants.G * ((orbitedObject.Mass ?? 0) + (orbitingObject.Mass ?? 0)),
+                _standardGravitationalParameter = Utilities.Science.Constants.G * (orbitedObject.Mass + orbitingObject.Mass),
             };
 
             orbit.R0 = (orbitingObject.Position - orbitedObject.Position) * orbitingObject.Parent.LocalScale;
@@ -479,7 +470,7 @@ namespace WorldFoundry.Orbits
                 _eccentricity = eccentricity,
                 _inclination = inclination,
                 _periapsis = periapsis,
-                _standardGravitationalParameter = Utilities.Science.Constants.G * ((orbitedObject.Mass ?? 0) + (orbitingObject.Mass ?? 0)),
+                _standardGravitationalParameter = Utilities.Science.Constants.G * (orbitedObject.Mass + orbitingObject.Mass),
                 _trueAnomaly = trueAnomaly,
             };
 
@@ -552,7 +543,7 @@ namespace WorldFoundry.Orbits
         /// </summary>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
         public double GetHillSphereRadius()
-            => SemiMajorAxis * (1 - Eccentricity) * Math.Pow((OrbitingObject.Mass ?? 0) / (3 * (OrbitedObject.Mass ?? 1)), 1.0 / 3.0);
+            => SemiMajorAxis * (1 - Eccentricity) * Math.Pow(OrbitingObject.Mass / (3 * OrbitedObject.Mass), 1.0 / 3.0);
 
         /// <summary>
         /// Approximates the radius of the orbiting body's mutual Hill sphere with another
@@ -568,7 +559,7 @@ namespace WorldFoundry.Orbits
         /// </param>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
         public double GetMutualHillSphereRadius(double otherMass)
-            => Math.Pow(((OrbitingObject.Mass ?? 0) + otherMass) / (3 * (OrbitedObject.Mass ?? 1)), (1.0 / 3.0)) * SemiMajorAxis;
+            => Math.Pow((OrbitingObject.Mass + otherMass) / (3 * OrbitedObject.Mass), (1.0 / 3.0)) * SemiMajorAxis;
 
         /// <summary>
         /// Calculates the orbital period.
@@ -582,7 +573,7 @@ namespace WorldFoundry.Orbits
         /// </summary>
         /// <returns>The radius of the orbiting body's sphere of influence, in meters.</returns>
         public double GetSphereOfInfluenceRadius()
-            => SemiMajorAxis * Math.Pow((OrbitingObject.Mass ?? 0) / (OrbitedObject.Mass ?? 1), 2.0 / 5.0);
+            => SemiMajorAxis * Math.Pow(OrbitingObject.Mass / OrbitedObject.Mass, 2.0 / 5.0);
 
         private double GetUniversalVariableFormulaRatioFor(double x, double t, double sqrtSGP, float accel, double f)
         {
@@ -644,7 +635,7 @@ namespace WorldFoundry.Orbits
 
         private void SetGravitationalParameters()
         {
-            _standardGravitationalParameter = Utilities.Science.Constants.G * ((OrbitingObject.Mass ?? 0) + (OrbitedObject.Mass ?? 0));
+            _standardGravitationalParameter = Utilities.Science.Constants.G * (OrbitingObject.Mass + OrbitedObject.Mass);
 
             R0 = (OrbitingObject.Position - OrbitedObject.Position) * OrbitingObject.Parent.LocalScale;
             _radius = R0.Length();

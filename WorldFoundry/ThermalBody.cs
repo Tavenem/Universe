@@ -32,7 +32,7 @@ namespace WorldFoundry
                     return Math.Max(_temperature ?? 0, Parent.Temperature ?? 0);
                 }
             }
-            set => _temperature = value;
+            internal set => _temperature = value;
         }
 
         /// <summary>

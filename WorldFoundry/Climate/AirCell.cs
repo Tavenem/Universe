@@ -23,7 +23,7 @@ namespace WorldFoundry.Climate
             Temperature = layer == 0
                 ? tc.Temperature
                 : Season.GetTemperatureAtElevation(tc.Temperature, Elevation);
-            Pressure = GetAtmosphericPressure(planet, t.Latitude, Elevation, Temperature);
+            Pressure = GetAtmosphericPressure(planet, Elevation, Temperature);
             Density = GetAtmosphericDensity(Pressure, Temperature);
 
             // Saturation vapor pressure, and dependent properties, left at 0 above the tropopause.
@@ -41,7 +41,7 @@ namespace WorldFoundry.Climate
         private static float GetAtmosphericDensity(float pressure, float temperature)
             => pressure * 1000 / (287.058f * temperature);
 
-        private static float GetAtmosphericPressure(Planet planet, float latitude, float elevation, float temperature)
+        private static float GetAtmosphericPressure(Planet planet, float elevation, float temperature)
         {
             float pressure = 0, tb = 288.15f;
 

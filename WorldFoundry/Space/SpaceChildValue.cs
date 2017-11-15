@@ -11,12 +11,12 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The name of the of child to generate.
         /// </summary>
-        public string ChildType { get; set; }
+        public string ChildType { get; private set; }
 
         /// <summary>
         /// The value associated with this type of child.
         /// </summary>
-        public float Value { get; set; }
+        public float Value { get; internal set; }
 
         /// <summary>
         /// The type of child to generate.
@@ -35,7 +35,7 @@ namespace WorldFoundry.Space
                     return null;
                 }
             }
-            set => ChildType = value.FullName;
+            internal set => ChildType = value.FullName;
         }
     }
 }

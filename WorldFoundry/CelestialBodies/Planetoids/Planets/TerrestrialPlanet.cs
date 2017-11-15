@@ -11,6 +11,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <param name="gravity">The desired surface gravity (in kg/m²)</param>
         /// <returns>The mass required to produce the given surface gravity (in kg).</returns>
-        private double GetMassForSurfaceGravity(float gravity) => (gravity * Math.Pow(Radius ?? 1, 2)) / Utilities.Science.Constants.G;
+        private double GetMassForSurfaceGravity(float gravity) => (gravity * Math.Pow(Radius, 2)) / Utilities.Science.Constants.G;
     }
 }

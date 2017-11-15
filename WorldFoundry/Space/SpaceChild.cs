@@ -28,7 +28,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The primary key for this entity.
         /// </summary>
-        public Guid ID { get; set; }
+        public Guid ID { get; private set; }
 
         private string _designation;
         /// <summary>
@@ -69,7 +69,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The <see cref="SpaceRegion"/> which directly contains this entity.
         /// </summary>
-        public SpaceRegion Parent { get; set; }
+        public SpaceRegion Parent { get; private set; }
 
         /// <summary>
         /// Specifies the location of this entity's center in the local space of its
@@ -109,7 +109,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Gets a radius which fully contains this <see cref="SpaceRegion"/>, in meters.
         /// </summary>
-        public float? Radius
+        public float Radius
         {
             get
             {
@@ -117,9 +117,8 @@ namespace WorldFoundry.Space
                 {
                     _radius = Shape?.GetContainingRadius() ?? null;
                 }
-                return _radius;
+                return _radius ?? 0;
             }
-            set => _radius = value;
         }
 
         protected Shape _shape;
@@ -129,7 +128,7 @@ namespace WorldFoundry.Space
         public virtual Shape Shape
         {
             get => GetProperty(ref _shape, GenerateShape);
-            set
+            protected set
             {
                 if (_shape == value)
                 {
@@ -212,7 +211,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="SpaceRegion"/>, in meters.
         /// </summary>
-        private float? GetLocalScale() => Radius.HasValue ? (float?)(Radius.Value / localSpaceScale) : null;
+        private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / localSpaceScale) : null;
 
         /// <summary>
         /// Calculates the distance (in meters) between the given position in local space to the

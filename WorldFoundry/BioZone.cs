@@ -24,7 +24,7 @@ namespace WorldFoundry
         public float ChanceOfLife
         {
             get => _chanceOfLife ?? 1.0f;
-            set => _chanceOfLife = value;
+            private set => _chanceOfLife = value;
         }
 
         /// <summary>

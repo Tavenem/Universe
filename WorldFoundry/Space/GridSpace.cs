@@ -15,7 +15,7 @@ namespace WorldFoundry.Space
         public Vector3 Coordinates
         {
             get => new Vector3(CoordinatesX, CoordinatesY, CoordinatesZ);
-            set
+            private set
             {
                 CoordinatesX = value.X;
                 CoordinatesY = value.Y;
@@ -26,17 +26,17 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Specifies the X-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
         /// </summary>
-        public float CoordinatesX { get; set; }
+        public float CoordinatesX { get; private set; }
 
         /// <summary>
         /// Specifies the Y-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
         /// </summary>
-        public float CoordinatesY { get; set; }
+        public float CoordinatesY { get; private set; }
 
         /// <summary>
         /// Specifies the Z-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
         /// </summary>
-        public float CoordinatesZ { get; set; }
+        public float CoordinatesZ { get; private set; }
 
         /// <summary>
         /// Indicates whether or not this <see cref="GridSpace"/> has been populated with children.
@@ -46,6 +46,6 @@ namespace WorldFoundry.Space
         /// only that the population routine has completed, which may have indicated that no children
         /// are present.
         /// </remarks>
-        public bool Populated { get; set; }
+        public bool Populated { get; internal set; }
     }
 }
