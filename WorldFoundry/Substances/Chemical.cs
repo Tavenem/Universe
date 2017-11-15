@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Text;
 
 namespace WorldFoundry.Substances
 {
@@ -78,26 +75,48 @@ namespace WorldFoundry.Substances
         public Chemical(string name) => Name = name;
 
         /// <summary>
+        /// Calculates the <see cref="Phase"/> of this <see cref="Chemical"/> under the given
+        /// conditions of temperature and pressure.
+        /// </summary>
+        /// <param name="temperature">The temperature of the <see cref="Chemical"/>, in K.</param>
+        /// <param name="pressure">The pressure applied to the <see cref="Chemical"/>, in kPa.</param>
+        public Phase CalculatePhase(float temperature, float pressure)
+        {
+            if (temperature < MeltingPoint)
+            {
+                return Phase.Solid;
+            }
+            else if (pressure > CalculateVaporPressure(temperature))
+            {
+                return Phase.Gas;
+            }
+            else
+            {
+                return Phase.Liquid;
+            }
+        }
+
+        /// <summary>
         /// Calculates the vapor pressure of this <see cref="Chemical"/> (in kPa).
         /// </summary>
-        /// <param name="temp">The temperature of the <see cref="Chemical"/>, in K.</param>
+        /// <param name="temperature">The temperature of the <see cref="Chemical"/>, in K.</param>
         /// <remarks>
         /// Uses Antoine's equation. If Antoine coefficients have not been explicitly set for this
         /// <see cref="Chemical"/>, the return value will always be 100.
         /// </remarks>
-        public float CalculateVaporPressure(float temp)
+        public float CalculateVaporPressure(float temperature)
         {
-            if (temp > AntoineMaximumTemperature)
+            if (temperature > AntoineMaximumTemperature)
             {
                 return float.NegativeInfinity;
             }
-            else if (temp < AntoineMinimumTemperature)
+            else if (temperature < AntoineMinimumTemperature)
             {
                 return float.PositiveInfinity;
             }
             else
             {
-                return (float)(Math.Pow(10, AntoineCoefficientA - (AntoineCoefficientB / (AntoineCoefficientC + temp))) * 100);
+                return (float)(Math.Pow(10, AntoineCoefficientA - (AntoineCoefficientB / (AntoineCoefficientC + temperature))) * 100);
             }
         }
 
@@ -186,7 +205,7 @@ namespace WorldFoundry.Substances
             AntoineMaximumTemperature = 32.27f,
             AntoineMinimumTemperature = 21.01f,
         };
-        public static Chemical HydrogenMetallic = new Chemical("Metallic Hydrogen")
+        public static Chemical Hydrogen_Metallic = new Chemical("Metallic Hydrogen")
         {
             MeltingPoint = 14.01f,
             IsConductive = true,
@@ -199,156 +218,314 @@ namespace WorldFoundry.Substances
 
         public static Chemical HydrogenSulfide = new Chemical("Hydrogen Sulfide")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 191.15F,
+            MeltingPoint = 191.15f,
             IsFlammable = true,
-            AntoineCoefficients = new float[3] { 4.52887F, 958.587F, 272.611F },
-            AntoineMaximumTemperature = 349.5F,
-            AntoineMinimumTemperature = 212.8F
+            AntoineCoefficientA = 4.52887f,
+            AntoineCoefficientB = 958.587f,
+            AntoineCoefficientC = -0.539f,
+            AntoineMaximumTemperature = 349.5f,
+            AntoineMinimumTemperature = 212.8f,
         };
 
-        public static Chemical Krypton = new Chemical("Krypton") { Phase = Phase.Gas };
+        public static Chemical Krypton = new Chemical("Krypton")
+        {
+            MeltingPoint = 115.75f,
+            AntoineCoefficientA = 4.2064f,
+            AntoineCoefficientB = 539.004f,
+            AntoineCoefficientC = 8.855f,
+            AntoineMaximumTemperature = 208.0f,
+            AntoineMinimumTemperature = 126.68f,
+        };
 
         public static Chemical Methane = new Chemical("Methane")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 91.15F,
+            MeltingPoint = 91.15f,
             IsFlammable = true,
             GreenhousePotential = 34,
-            AntoineCoefficients = new float[3] { 3.7687F, 395.744F, 266.681F },
-            AntoineMaximumTemperature = 120.6F,
-            AntoineMinimumTemperature = 90.7F
+            AntoineCoefficientA = 3.7687f,
+            AntoineCoefficientB = 395.744f,
+            AntoineCoefficientC = -6.469f,
+            AntoineMaximumTemperature = 120.6f,
+            AntoineMinimumTemperature = 90.7f,
         };
-        public static Chemical MethaneLiquid = new Chemical("Liquid Methane") { Phase = Phase.Liquid, MeltingPoint = 91.15F, IsFlammable = true };
-        public static Chemical MethaneIce = new Chemical("Methane Ice") { Phase = Phase.Solid, MeltingPoint = 91.15F, IsFlammable = true };
 
-        public static Chemical Neon = new Chemical("Neon") { Phase = Phase.Gas };
+        public static Chemical Neon = new Chemical("Neon")
+        {
+            MeltingPoint = 24.55f,
+            AntoineCoefficientA = 3.75641f,
+            AntoineCoefficientB = 95.599f,
+            AntoineCoefficientC = -1.503f,
+            AntoineMaximumTemperature = 27.0f,
+            AntoineMinimumTemperature = 15.9f,
+        };
 
         public static Chemical Nitrogen = new Chemical("Nitrogen")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 63.15F,
-            AntoineCoefficients = new float[3] { 3.61947F, 255.68F, 266.55F },
-            AntoineMaximumTemperature = 83.7F,
-            AntoineMinimumTemperature = 63.2F
+            MeltingPoint = 63.15f,
+            AntoineCoefficientA = 3.61947f,
+            AntoineCoefficientB = 255.68f,
+            AntoineCoefficientC = -6.6f,
+            AntoineMaximumTemperature = 83.7f,
+            AntoineMinimumTemperature = 63.2f,
         };
-        public static Chemical NitrogenLiquid = new Chemical("Liquid Nitrogen") { Phase = Phase.Liquid, MeltingPoint = 63.15F };
-        public static Chemical NitrogenIce = new Chemical("Nitrogen Ice") { Phase = Phase.Solid, MeltingPoint = 63.15F };
 
         // Oxygen is not really flammable: it's an oxidizer; but the difference in practice is considered unimportant for this library's purposes.
         public static Chemical Oxygen = new Chemical("Oxygen")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 54.36F,
+            MeltingPoint = 54.36f,
             IsFlammable = true,
-            AntoineCoefficients = new float[3] { 3.81634F, 319.01F, 266.697F },
-            AntoineMaximumTemperature = 97.2F,
-            AntoineMinimumTemperature = 62.6F
+            AntoineCoefficientA = 3.81634f,
+            AntoineCoefficientB = 319.01f,
+            AntoineCoefficientC = -6.453f,
+            AntoineMaximumTemperature = 97.2f,
+            AntoineMinimumTemperature = 62.6f,
         };
-        public static Chemical OxygenLiquid = new Chemical("Liquid Oxygen") { Phase = Phase.Liquid, MeltingPoint = 54.36F, IsFlammable = true };
-        public static Chemical OxygenIce = new Chemical("Oxygen Ice") { Phase = Phase.Solid, MeltingPoint = 54.36F, IsFlammable = true };
 
         // Like oxygen, ozone is not really flammable, but it's an even stronger oxidizer.
         public static Chemical Ozone = new Chemical("Ozone")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 81.15F,
+            MeltingPoint = 81.15f,
             IsFlammable = true,
-            AntoineCoefficients = new float[3] { 4.23637F, 712.487F, 280.132F },
-            AntoineMaximumTemperature = 162,
-            AntoineMinimumTemperature = 92.8F
+            AntoineCoefficientA = 4.23637f,
+            AntoineCoefficientB = 712.487f,
+            AntoineCoefficientC = 6.982f,
+            AntoineMaximumTemperature = 162.0f,
+            AntoineMinimumTemperature = 92.8f,
         };
-        public static Chemical OzoneLiquid = new Chemical("Liquid Ozone") { Phase = Phase.Liquid, MeltingPoint = 81.15F, IsFlammable = true };
-        public static Chemical OzoneIce = new Chemical("Ozone Ice") { Phase = Phase.Solid, MeltingPoint = 81.15F, IsFlammable = true };
 
         public static Chemical Phosphine = new Chemical("Phosphine")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 140.35F,
+            MeltingPoint = 140.35f,
             IsFlammable = true,
-            AntoineCoefficients = new float[3] { 4.02591F, 702.651F, 262.085F },
-            AntoineMaximumTemperature = 185.7F,
-            AntoineMinimumTemperature = 143.8F
+            AntoineCoefficientA = 4.02591f,
+            AntoineCoefficientB = 702.651f,
+            AntoineCoefficientC = -11.065f,
+            AntoineMaximumTemperature = 185.7f,
+            AntoineMinimumTemperature = 143.8f,
         };
 
         public static Chemical SulphurDioxide = new Chemical("Sulphur Dioxide")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 202.15F,
-            AntoineCoefficients = new float[3] { 4.40718F, 999.90F, 237.19F },
-            AntoineMaximumTemperature = 279.5F,
-            AntoineMinimumTemperature = 210F
+            MeltingPoint = 202.15f,
+            AntoineCoefficientA = 4.40718f,
+            AntoineCoefficientB = 999.90f,
+            AntoineCoefficientC = -35.96f,
+            AntoineMaximumTemperature = 279.5f,
+            AntoineMinimumTemperature = 210.0f,
         };
-        public static Chemical SulphurDioxideLiquid = new Chemical("Liquid Sulphur Dioxide") { Phase = Phase.Liquid };
-        public static Chemical SulphurDioxideIce = new Chemical("Sulphur Dioxide Ice") { Phase = Phase.Solid };
 
-        public static Chemical Xenon = new Chemical("Xenon") { Phase = Phase.Gas };
+        public static Chemical Xenon = new Chemical("Xenon")
+        {
+            MeltingPoint = 161.35f,
+            AntoineCoefficientA = 3.80675f,
+            AntoineCoefficientB = 577.661f,
+            AntoineCoefficientC = -13.0f,
+            AntoineMaximumTemperature = 184.70f,
+            AntoineMinimumTemperature = 161.70f,
+        };
 
         #endregion // Atmospheric substances
 
-        public static Chemical Water = new Chemical("Water") { Phase = Phase.Liquid, MeltingPoint = 274.15F, IsConductive = true };
-        public static Chemical WaterSalt = new Chemical("Salt Water") { Phase = Phase.Liquid, MeltingPoint = 273.15F, IsConductive = true };
-        public static Chemical WaterIce = new Chemical("Ice") { Phase = Phase.Solid, MeltingPoint = 274.15F };
-        public static Chemical WaterVapor = new Chemical("Water Vapor")
+        public static Chemical Water = new Chemical("Water")
         {
-            Phase = Phase.Gas,
-            MeltingPoint = 274.15F,
+            MeltingPoint = 273.15f,
+            IsConductive = true,
             GreenhousePotential = 1,
-            AntoineCoefficients = new float[3] { 4.6543F, 1435.264F, 208.302F },
-            AntoineMaximumTemperature = 373,
-            AntoineMinimumTemperature = 255.9F
+            AntoineCoefficientA = 4.6543f,
+            AntoineCoefficientB = 1435.264f,
+            AntoineCoefficientC = -64.848f,
+            AntoineMaximumTemperature = 373.0f,
+            AntoineMinimumTemperature = 255.9f,
+        };
+        public static Chemical Water_Salt = new Chemical("Salt Water")
+        {
+            MeltingPoint = 271.15f,
+            IsConductive = true,
+            GreenhousePotential = 1,
+            AntoineCoefficientA = 4.6543f,
+            AntoineCoefficientB = 1435.264f,
+            AntoineCoefficientC = -62.848f,
+            AntoineMaximumTemperature = 373.0f,
+            AntoineMinimumTemperature = 255.9f,
         };
 
         #region Rock
 
-        public static Chemical Clay = new Chemical("Clay") { Phase = Phase.Solid };
-        public static Chemical Dirt = new Chemical("Dirt") { Phase = Phase.Solid };
-        public static Chemical Dust = new Chemical("Dust") { Phase = Phase.Solid };
-        public static Chemical Mud = new Chemical("Mud") { Phase = Phase.Liquid };
+        public static Chemical Clay = new Chemical("Clay")
+        {
+            MeltingPoint = 1523.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Dirt = new Chemical("Dirt")
+        {
+            MeltingPoint = 2033.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Dust = new Chemical("Dust")
+        {
+            MeltingPoint = 2033.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Mud = new Chemical("Mud")
+        {
+            MeltingPoint = 273.15f,
+            AntoineCoefficientA = 4.6543f,
+            AntoineCoefficientB = 1435.264f,
+            AntoineCoefficientC = -64.848f,
+            AntoineMaximumTemperature = 373.0f,
+            AntoineMinimumTemperature = 255.9f,
+        };
 
-        public static Chemical Rock = new Chemical("Rock") { Phase = Phase.Solid, MeltingPoint = 1200 };
-        public static Chemical MoltenRock = new Chemical("Molten Rock") { Phase = Phase.Liquid, MeltingPoint = 1200 };
+        public static Chemical Rock = new Chemical("Rock")
+        {
+            MeltingPoint = 1473.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
 
         #endregion // Rock
 
         #region Metals
 
-        public static Chemical Aluminum = new Chemical("Aluminum") { Phase = Phase.Solid, MeltingPoint = 933.45F, IsConductive = true };
-        public static Chemical AluminumMolten = new Chemical("Molten Aluminum") { Phase = Phase.Liquid, MeltingPoint = 933.45F, IsConductive = true };
+        public static Chemical Aluminum = new Chemical("Aluminum")
+        {
+            MeltingPoint = 933.45f,
+            IsConductive = true,
+            AntoineCoefficientA = 5.73623f,
+            AntoineCoefficientB = 13204.109f,
+            AntoineCoefficientC = -24.306f,
+            AntoineMaximumTemperature = 2329.0f,
+            AntoineMinimumTemperature = 1557.0f,
+        };
 
-        public static Chemical Copper = new Chemical("Copper") { Phase = Phase.Solid, MeltingPoint = 1358.15F, IsConductive = true };
-        public static Chemical CopperMolten = new Chemical("Molten Copper") { Phase = Phase.Liquid, MeltingPoint = 1358.15F, IsConductive = true };
+        public static Chemical Copper = new Chemical("Copper")
+        {
+            MeltingPoint = 1357.95f,
+            IsConductive = true,
+            // Antoine coefficient data unavailable.
+            // The coefficients of gold were substituted and C adjusted by an offset equal
+            // to the offset of their boiling points at STP.
+            AntoineCoefficientA = 5.46951f,
+            AntoineCoefficientB = 17292.476f,
+            AntoineCoefficientC = -206.128f,
+            AntoineMaximumTemperature = 3239.0f,
+            AntoineMinimumTemperature = 2142.0f,
+        };
 
-        public static Chemical Gold = new Chemical("Gold") { Phase = Phase.Solid, MeltingPoint = 1337.15F, IsConductive = true };
-        public static Chemical GoldMolten = new Chemical("Molten Gold") { Phase = Phase.Liquid, MeltingPoint = 1337.15F, IsConductive = true };
+        public static Chemical Gold = new Chemical("Gold")
+        {
+            MeltingPoint = 1337.15f,
+            IsConductive = true,
+            AntoineCoefficientA = 5.46951f,
+            AntoineCoefficientB = 17292.476f,
+            AntoineCoefficientC = -70.978f,
+            AntoineMaximumTemperature = 3239.0f,
+            AntoineMinimumTemperature = 2142.0f,
+        };
 
-        public static Chemical Iron = new Chemical("Iron") { Phase = Phase.Solid, MeltingPoint = 1811.15F, IsConductive = true };
-        public static Chemical IronMolten = new Chemical("Molten Iron") { Phase = Phase.Liquid, MeltingPoint = 1811.15F, IsConductive = true };
+        public static Chemical Iron = new Chemical("Iron")
+        {
+            MeltingPoint = 1811.15f,
+            IsConductive = true,
+            // Antoine coefficient data unavailable.
+            // The coefficients of nickel were substituted and C adjusted by an offset equal
+            // to the offset of their boiling points at STP.
+            AntoineCoefficientA = 5.98183f,
+            AntoineCoefficientB = 16808.435f,
+            AntoineCoefficientC = -137.717f,
+            AntoineMaximumTemperature = 3005.0f,
+            AntoineMinimumTemperature = 2083.0f,
+        };
 
-        public static Chemical Nickel = new Chemical("Nickel") { Phase = Phase.Solid, MeltingPoint = 1728.15F, IsConductive = true };
-        public static Chemical NickelMolten = new Chemical("Molten Nickel") { Phase = Phase.Liquid, MeltingPoint = 1728.15F, IsConductive = true };
+        public static Chemical Nickel = new Chemical("Nickel")
+        {
+            MeltingPoint = 1728.15f,
+            IsConductive = true,
+            AntoineCoefficientA = 5.98183f,
+            AntoineCoefficientB = 16808.435f,
+            AntoineCoefficientC = -188.717f,
+            AntoineMaximumTemperature = 3005.0f,
+            AntoineMinimumTemperature = 2083.0f,
+        };
 
-        public static Chemical Platinum = new Chemical("Platinum") { Phase = Phase.Solid, MeltingPoint = 2041.15F, IsConductive = true };
-        public static Chemical PlatinumMolten = new Chemical("Molten Platinum") { Phase = Phase.Liquid, MeltingPoint = 2041.15F, IsConductive = true };
+        public static Chemical Platinum = new Chemical("Platinum")
+        {
+            MeltingPoint = 2041.15f,
+            IsConductive = true,
+            AntoineCoefficientA = 4.80688f,
+            AntoineCoefficientB = 21519.696f,
+            AntoineCoefficientC = -200.689f,
+            AntoineMaximumTemperature = 4680.0f,
+            AntoineMinimumTemperature = 3003.0f,
+        };
 
-        public static Chemical Silver = new Chemical("Silver") { Phase = Phase.Solid, MeltingPoint = 1234.95F, IsConductive = true };
-        public static Chemical SilverMolten = new Chemical("Molten Silver") { Phase = Phase.Liquid, MeltingPoint = 1234.95F, IsConductive = true };
+        public static Chemical Silver = new Chemical("Silver")
+        {
+            MeltingPoint = 1234.95f,
+            IsConductive = true,
+            AntoineCoefficientA = 1.95303f,
+            AntoineCoefficientB = 2505.533f,
+            AntoineCoefficientC = -1194.947f,
+            AntoineMaximumTemperature = 2425.0f,
+            AntoineMinimumTemperature = 1823.0f,
+        };
 
-        public static Chemical Steel = new Chemical("Steel") { Phase = Phase.Solid, MeltingPoint = 1643.15F, IsConductive = true };
-        public static Chemical SteelMolten = new Chemical("Molten Steel") { Phase = Phase.Liquid, MeltingPoint = 1643.15F, IsConductive = true };
+        public static Chemical Steel = new Chemical("Steel")
+        {
+            MeltingPoint = 1643.15f,
+            IsConductive = true,
+            // Antoine coefficient data unavailable.
+            // The coefficients of nickel were substituted and C adjusted by an offset equal
+            // to the offset of their boiling points at STP.
+            AntoineCoefficientA = 5.98183f,
+            AntoineCoefficientB = 16808.435f,
+            AntoineCoefficientC = -137.717f,
+            AntoineMaximumTemperature = 3005.0f,
+            AntoineMinimumTemperature = 2083.0f,
+        };
 
-        public static Chemical Titanium = new Chemical("Titanium") { Phase = Phase.Solid, MeltingPoint = 1941.15F, IsConductive = true };
-        public static Chemical TitaniumMolten = new Chemical("Molten Titanium") { Phase = Phase.Liquid, MeltingPoint = 1941.15F, IsConductive = true };
+        public static Chemical Titanium = new Chemical("Titanium")
+        {
+            MeltingPoint = 1941.15f,
+            IsConductive = true,
+            // Antoine coefficient data unavailable.
+            // The coefficients of nickel were substituted and C adjusted by an offset equal
+            // to the offset of their boiling points at STP.
+            AntoineCoefficientA = 5.98183f,
+            AntoineCoefficientB = 16808.435f,
+            AntoineCoefficientC = -562.717f,
+            AntoineMaximumTemperature = 3005.0f,
+            AntoineMinimumTemperature = 2083.0f,
+        };
 
         #endregion // Metals
 
         #region Gems
 
-        public static Chemical Diamond = new Chemical("Diamond") { Phase = Phase.Solid };
-        public static Chemical Emerald = new Chemical("Emerald") { Phase = Phase.Solid };
-        public static Chemical Ruby = new Chemical("Ruby") { Phase = Phase.Solid };
-        public static Chemical Sapphire = new Chemical("Sapphire") { Phase = Phase.Solid };
-        public static Chemical Topaz = new Chemical("Topaz") { Phase = Phase.Solid };
+        public static Chemical Diamond = new Chemical("Diamond")
+        {
+            MeltingPoint = 3915.0f,
+            AntoineMinimumTemperature = float.NegativeInfinity, // sublimates
+        };
+        public static Chemical Emerald = new Chemical("Emerald")
+        {
+            MeltingPoint = 2570.0f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Ruby = new Chemical("Ruby")
+        {
+            MeltingPoint = 2323.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Sapphire = new Chemical("Sapphire")
+        {
+            MeltingPoint = 2313.15f,
+            AntoineMinimumTemperature = float.PositiveInfinity,
+        };
+        public static Chemical Topaz = new Chemical("Topaz")
+        {
+            MeltingPoint = 688.45f,
+            AntoineMinimumTemperature = float.NegativeInfinity, // sublimates
+        };
 
         #endregion // Gems
 
