@@ -8,7 +8,7 @@
         /// <summary>
         /// The <see cref="Substances.Substance"/>.
         /// </summary>
-        public Substance Substance { get; private set; }
+        public Substance Substance { get; internal set; }
 
         /// <summary>
         /// The proportion of this substance in the overall mixture (mass fraction).

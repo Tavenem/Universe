@@ -170,14 +170,14 @@ namespace WorldFoundry
             int elevationSize,
             string seed = null)
         {
-            SetAtmosphericPressure(atmosphericPressure);
-            SetAxialTiltBase(axialTilt);
+            Seed = string.IsNullOrEmpty(seed) ? GenerateSeed() : seed;
             SetRadiusBase(radius);
+            SetAxialTiltBase(axialTilt);
             SetRevolutionPeriodBase(revolutionPeriod);
             SetRotationalPeriodBase(rotationalPeriod);
             WaterRatio = Math.Max(0, Math.Min(1, waterRatio));
             _elevationSize = Math.Max(0, elevationSize);
-            Seed = string.IsNullOrEmpty(seed) ? GenerateSeed() : seed;
+            SetAtmosphericPressure(atmosphericPressure);
 
             ChangeGridSize(gridSize);
         }
@@ -491,7 +491,20 @@ namespace WorldFoundry
             }
         }
 
-        private void SetAtmosphericPressure(float pressure) => AtmosphericPressure = (float)Math.Max(0, Math.Min(3774.3562, pressure));
+        internal float _equatorialTemp;
+        internal float _polarTemp;
+        private void SetAtmosphericPressure(float pressure)
+        {
+            AtmosphericPressure = (float)Math.Max(0, Math.Min(3774.3562, pressure));
+            SetGreenhouseEffect();
+            SetAtmosphericScaleHeight();
+            _equatorialTemp = Season.GetTemperature_Calculated(this) + _greenhouseEffect;
+            _polarTemp = Season.GetTemperature_Calculated(this, true) + _greenhouseEffect;
+        }
+
+        internal float _atmosphericScaleHeight;
+        private void SetAtmosphericScaleHeight()
+            => _atmosphericScaleHeight = (AtmosphericPressure * 1000) / (G0 * Atmosphere.GetAtmosphericDensity(AtmosphericPressure, Season.GetTemperature_Calculated(this) + _greenhouseEffect));
 
         private void SetAxialTiltBase(float axialTilt)
         {
@@ -560,6 +573,21 @@ namespace WorldFoundry
             }
 
             SetWaterRatio(WaterRatio);
+        }
+
+        internal float _greenhouseEffect;
+        internal void SetGreenhouseEffect()
+        {
+            var co2 = 0.000407f;
+            var ch4 = 0.0000018f;
+            var h2o = 0.004f;
+            var greenhouseFactor = 0.36 * Math.Exp(co2 * AtmosphericPressure);
+            greenhouseFactor += 0.36 * Math.Exp(34 * ch4 * AtmosphericPressure);
+            greenhouseFactor += 0.36 * Math.Exp(h2o * AtmosphericPressure);
+
+            var surfaceTemp = Season.GetTemperature_Calculated(this);
+
+            _greenhouseEffect = (surfaceTemp * (float)Math.Pow(1 / (1 - 0.5 * greenhouseFactor), 0.25)) - surfaceTemp;
         }
 
         private void SetGridSize0()

@@ -14,8 +14,8 @@ namespace WorldFoundry.Orbits
     {
         private double? _mass;
         /// <summary>
-        /// The mass of the celestial object (in kg), including the mass of all children,
-        /// whether explicitly modeled or merely potential.
+        /// The mass of the celestial object, including the mass of all children,
+        /// whether explicitly modeled or merely potential, in kg.
         /// </summary>
         public virtual double Mass
         {
@@ -30,8 +30,7 @@ namespace WorldFoundry.Orbits
 
         private double? _surfaceGravity;
         /// <summary>
-        /// The mass of the celestial object (in kg), including the mass of all children,
-        /// whether explicitly modeled or merely potential.
+        /// The average force of gravity at the surface of this celestial object, in N.
         /// </summary>
         public double SurfaceGravity => GetProperty(ref _surfaceGravity, GenerateSurfaceGravity) ?? 0;
 
@@ -108,18 +107,18 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Calculates the average surface gravity of this <see cref="Orbiter"/> (in kg/m²).
+        /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
         /// </summary>
-        /// <returns>The average surface gravity of this <see cref="Orbiter"/> (in kg/m²).</returns>
+        /// <returns>The average surface gravity of this <see cref="Orbiter"/>, in N.</returns>
         private void GenerateSurfaceGravity() => _surfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
 
         /// <summary>
-        /// Calculates the force of gravity (in Newtons) on this <see cref="Orbiter"/> from another
-        /// as a vector.
+        /// Calculates the force of gravity on this <see cref="Orbiter"/> from another
+        /// as a vector, in N.
         /// </summary>
         /// <param name="other">An <see cref="Orbiter"/> from which the force gravity will be calculated.</param>
         /// <returns>
-        /// The force of gravity (in Newtons) from this <see cref="Orbiter"/> to the other, as a vector.
+        /// The force of gravity from this <see cref="Orbiter"/> to the other, in N, as a vector.
         /// </returns>
         /// <remarks>
         /// Newton's law is used. General relativity would be more accurate in certain circumstances,
@@ -148,7 +147,7 @@ namespace WorldFoundry.Orbits
 
         /// <summary>
         /// Calculates the Roche limit for this <see cref="Orbiter"/> for objects of the given
-        /// density (in meters).
+        /// density, in meters.
         /// </summary>
         /// <param name="orbitingDensity">The density of a hypothetical orbiting object.</param>
         /// <returns>
@@ -157,9 +156,9 @@ namespace WorldFoundry.Orbits
         public double GetRocheLimit(float orbitingDensity) => 0.8947 * Math.Pow(Mass / orbitingDensity, 1.0 / 3.0);
 
         /// <summary>
-        /// Calculates the total force of gravity (in Newtons) on this <see cref="Orbiter"/> as a vector.
+        /// Calculates the total force of gravity on this <see cref="Orbiter"/>, in N, as a vector.
         /// </summary>
-        /// <returns>The total force of gravity on this <see cref="Orbiter"/>, as a vector.</returns>
+        /// <returns>The total force of gravity on this <see cref="Orbiter"/>, in N, as a vector.</returns>
         /// <remarks>
         /// Newton's law is used. Children of sibling objects are not counted individually; instead
         /// the entire sibling is treated as a single entity, with total mass including all its

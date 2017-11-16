@@ -55,7 +55,7 @@ namespace WorldFoundry.Substances
         public bool IsConductive { get; private set; }
 
         /// <summary>
-        /// The melting point of this substance at 100 kPa (in K).
+        /// The melting point of this substance at 100 kPa, in K.
         /// </summary>
         public float MeltingPoint { get; private set; }
 
@@ -97,7 +97,7 @@ namespace WorldFoundry.Substances
         }
 
         /// <summary>
-        /// Calculates the vapor pressure of this <see cref="Chemical"/> (in kPa).
+        /// Calculates the vapor pressure of this <see cref="Chemical"/>, in kPa.
         /// </summary>
         /// <param name="temperature">The temperature of the <see cref="Chemical"/>, in K.</param>
         /// <remarks>

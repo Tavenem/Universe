@@ -134,8 +134,6 @@ namespace WorldFoundry.Space
                 {
                     return;
                 }
-
-                _radius = null;
                 _shape = value;
 
                 if (value != null)
@@ -214,16 +212,16 @@ namespace WorldFoundry.Space
         private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / localSpaceScale) : null;
 
         /// <summary>
-        /// Calculates the distance (in meters) between the given position in local space to the
-        /// center of the specified <see cref="SpaceChild"/>.
+        /// Calculates the distance between the given position in local space to the
+        /// center of the specified <see cref="SpaceChild"/>, in meters.
         /// </summary>
         /// <param name="position">The position from which to calculate the distance.</param>
         /// <param name="other">
         /// The <see cref="SpaceChild"/> whose distance from this one is to be determined.
         /// </param>
         /// <returns>
-        /// The distance (in local space units) between this <see cref="SpaceChild"/> and the
-        /// specified one.
+        /// The distance between this <see cref="SpaceChild"/> and the
+        /// specified one, in meters.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <exception cref="Exception">
@@ -262,15 +260,15 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Calculates the distance (in meters) between the centers of this <see
-        /// cref="SpaceChild"/> and the specified one.
+        /// Calculates the distance between the centers of this <see
+        /// cref="SpaceChild"/> and the specified one, in meters.
         /// </summary>
         /// <param name="other">
         /// The <see cref="SpaceChild"/> whose distance from this one is to be determined.
         /// </param>
         /// <returns>
-        /// The distance (in local space units) between this <see cref="SpaceChild"/> and the
-        /// specified one.
+        /// The distance between this <see cref="SpaceChild"/> and the
+        /// specified one, in meters.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <exception cref="Exception">
@@ -279,6 +277,19 @@ namespace WorldFoundry.Space
         /// </exception>
         internal float GetDistanceToTarget(SpaceChild other) => GetDistanceFromPositionToTarget(Position, other);
 
+        /// <summary>
+        /// Provides safe retrieval, and optional automatic generation, of a backing store.
+        /// </summary>
+        /// <typeparam name="T">The type of the backing store.</typeparam>
+        /// <param name="storage">The backing storage field being retrieved or generated.</param>
+        /// <param name="generator">
+        /// An optional generation method which will be invoked when the backing store is first initialized.
+        /// </param>
+        /// <param name="condition">
+        /// An optional condition which will be evaluated when the backing store is null, which determines
+        /// whether to provide automatic initialization, or to allow the null return.
+        /// </param>
+        /// <returns></returns>
         protected T GetProperty<T>(ref T storage, Action generator = null, Func<bool> condition = null)
         {
             if ((storage == null || (storage is string s && string.IsNullOrEmpty(s)))

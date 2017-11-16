@@ -35,6 +35,11 @@
         public const float SpecificGasConstant_DryAir = 287;
 
         /// <summary>
+        /// The specific gas constant divided by the specific heat of dry air at constant pressure, in SI base units.
+        /// </summary>
+        public const float SpecificGasConstantDivSpecificHeat_DryAir = SpecificGasConstant_DryAir / SpecificHeat_DryAir;
+
+        /// <summary>
         /// The ratio of the specific gas constants of dry air to water, in SI base units.
         /// </summary>
         public const float SpecificGasConstant_Ratio_DryAirToWater = 0.622f;

@@ -12,7 +12,7 @@ namespace WorldFoundry
     {
         private float? _temperature;
         /// <summary>
-        /// The average temperature of this <see cref="ThermalBody"/> (in K).
+        /// The average temperature of this <see cref="ThermalBody"/>, in K.
         /// </summary>
         public virtual float? Temperature
         {
@@ -58,7 +58,7 @@ namespace WorldFoundry
         public ThermalBody(SpaceRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Determines a temperature (in K) for this <see cref="ThermalBody"/>.
+        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
         protected virtual void GenerateTemperature() => Temperature = 0;
     }

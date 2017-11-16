@@ -64,7 +64,7 @@ namespace WorldFoundry.Orbits
         private float? _inclination;
         /// <summary>
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
-        /// of the orbit (in radians).
+        /// of the orbit, in radians.
         /// </summary>
         public float Inclination
         {
@@ -420,7 +420,7 @@ namespace WorldFoundry.Orbits
         /// <param name="eccentricity">The degree to which the orbit is non-circular.</param>
         /// <param name="inclination">
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
-        /// of the orbit (in radians).
+        /// of the orbit, in radians.
         /// </param>
         /// <param name="angleAscending">
         /// The angle between the X-axis and the plane of the orbit (at the intersection where the
@@ -428,11 +428,11 @@ namespace WorldFoundry.Orbits
         /// </param>
         /// <param name="argPeriapsis">
         /// The angle between the intersection of the X-Z plane through the center of the object
-        /// orbited and the orbital plane, and the periapsis (in radians).
+        /// orbited and the orbital plane, and the periapsis, in radians.
         /// </param>
         /// <param name="trueAnomaly">
         /// The angle between periapsis and the current position of this object, from the center of
-        /// the object orbited (in radians).
+        /// the object orbited, in radians.
         /// </param>
         public static void SetOrbit(
             Orbiter orbitingObject,
@@ -539,7 +539,7 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Calculates the radius of the orbiting body's Hill sphere (in meters).
+        /// Calculates the radius of the orbiting body's Hill sphere, in meters.
         /// </summary>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
         public double GetHillSphereRadius()
@@ -547,7 +547,7 @@ namespace WorldFoundry.Orbits
 
         /// <summary>
         /// Approximates the radius of the orbiting body's mutual Hill sphere with another
-        /// orbiting body in orbit around the same primary (in meters).
+        /// orbiting body in orbit around the same primary, in meters.
         /// </summary>
         /// <remarks>
         /// Assumes the semimajor axis of both orbits is identical for the purposes of the
@@ -569,7 +569,7 @@ namespace WorldFoundry.Orbits
             => (float)(Utilities.MathUtil.Constants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter));
 
         /// <summary>
-        /// Calculates the radius of the orbiting body's sphere of influence (in meters).
+        /// Calculates the radius of the orbiting body's sphere of influence, in meters.
         /// </summary>
         /// <returns>The radius of the orbiting body's sphere of influence, in meters.</returns>
         public double GetSphereOfInfluenceRadius()

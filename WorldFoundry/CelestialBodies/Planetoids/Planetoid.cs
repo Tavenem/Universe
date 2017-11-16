@@ -1,5 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
+using WorldFoundry.Climate;
 using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
@@ -20,6 +22,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         {
             get => GetProperty(ref _angleOfRotation, GenerateAngleOfRotation) ?? 0;
             internal set => _angleOfRotation = value;
+        }
+
+        private Atmosphere _atmosphere;
+        /// <summary>
+        /// The atmosphere possessed by this <see cref="Planetoid"/>.
+        /// </summary>
+        public Atmosphere Atmosphere
+        {
+            get => GetProperty(ref _atmosphere, GenerateAtmosphere);
+            protected set => _atmosphere = value;
         }
 
         /// <summary>
@@ -52,7 +64,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
-        /// Calculates the escape velocity from this body (in m/s).
+        /// Generates an atmosphere for this <see cref="Planetoid"/>.
+        /// Provides no functionality in the base class; subclasses are expected override.
+        /// </summary>
+        protected virtual void GenerateAtmosphere() { }
+
+        /// <summary>
+        /// Calculates the escape velocity from this body, in m/s.
         /// </summary>
         /// <returns>The escape velocity from this body, in m/s.</returns>
         public float GetEscapeVelocity() => (float)Math.Sqrt((Utilities.Science.Constants.TwoG * Mass) / Radius);

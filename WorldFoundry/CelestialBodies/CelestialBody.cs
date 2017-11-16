@@ -12,8 +12,8 @@ namespace WorldFoundry.CelestialBodies
     /// </summary>
     public class CelestialBody : BioZone
     {
-        private const double polarLatitude = 1.5277247828211;
-        private const double cosPolarLatitude = 0.04305822778985774;
+        internal const double polarLatitude = 1.5277247828211;
+        internal const double cosPolarLatitude = 0.04305822778985774;
 
         private float? _albedo;
         /// <summary>
@@ -52,19 +52,6 @@ namespace WorldFoundry.CelestialBodies
         public CelestialBody(SpaceRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Adjusts incoming insolation based on conditions.
-        /// </summary>
-        /// <param name="insolation">The total incoming insolation.</param>
-        /// <param name="polar">Indicates whether the adjustment is to be made for polar incidence.</param>
-        protected virtual void AdjustSolarInsolation(ref double insolation, bool polar)
-        {
-            if (polar)
-            {
-                insolation *= cosPolarLatitude;
-            }
-        }
-
-        /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
         /// <remarks>
@@ -73,87 +60,71 @@ namespace WorldFoundry.CelestialBodies
         protected virtual void GenerateAlbedo() => Albedo = 0;
 
         /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> at its poles (in K),
-        /// including ambient heat of its parent and radiated heat from all sibling objects.
+        /// Calculates the temperature of the <see cref="CelestialBody"/>, in K.
         /// </summary>
-        /// <returns>The total average temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        internal float GetTotalPolarTemperature() => GetTotalTemperatureFromPosition(Position, true);
+        /// <returns>The temperature of the <see cref="CelestialBody"/>, in K.</returns>
+        public float GetTotalTemperature() => GetTotalTemperatureFromPosition(Position);
 
         /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> (in K),
-        /// including ambient heat of its parent and radiated heat from all sibling objects.
+        /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
+        /// object was at the apoapsis of its orbit, in K.
         /// </summary>
-        /// <returns>The total average temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        public float GetTotalTemperature() => GetTotalTemperatureFromPosition(Position, false);
-
-        /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> (in K),
-        /// including ambient heat of its parent and radiated heat from all sibling objects, if this
-        /// object was at the apoapsis of its orbit.
-        /// </summary>
-        /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
-        /// </param>
         /// <remarks>
         /// Uses current position if this object is not in an orbit, or if its apoapsis is infinite.
         /// </remarks>
-        /// <returns>The total average temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        public float GetTotalTemperatureAtApoapsis(bool polar)
+        /// <returns>The total average temperature of the <see cref="CelestialBody"/> at apoapsis, in K.</returns>
+        public float GetTotalTemperatureAtApoapsis()
         {
             if (Orbit == null)
             {
-                return GetTotalTemperatureFromPosition(Position, polar);
+                return GetTotalTemperatureFromPosition(Position);
             }
 
             var apoapsis = Orbit.Apoapsis;
             if (double.IsInfinity(apoapsis))
             {
-                return GetTotalTemperatureFromPosition(Position, polar);
+                return GetTotalTemperatureFromPosition(Position);
             }
 
             // Actual position doesn't matter for temperature, only distance.
             Vector3 apoapsisVector = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(apoapsis / Parent.LocalScale));
-            return GetTotalTemperatureFromPosition(apoapsisVector, polar);
+            return GetTotalTemperatureFromPosition(apoapsisVector);
         }
 
         /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> (in K),
-        /// including ambient heat of its parent and radiated heat from all sibling objects, if this
-        /// object was at the periapsis of its orbit.
+        /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
+        /// object was at the periapsis of its orbit, in K.
         /// </summary>
-        /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
-        /// </param>
         /// <remarks>
         /// Uses current position if this object is not in an orbit.
         /// </remarks>
-        /// <returns>The total average temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        public float GetTotalTemperatureAtPeriapsis(bool polar)
+        /// <returns>The total average temperature of the <see cref="CelestialBody"/> at periapsis, in K.</returns>
+        public float GetTotalTemperatureAtPeriapsis()
         {
             if (Orbit == null)
             {
-                return GetTotalTemperatureFromPosition(Position, polar);
+                return GetTotalTemperatureFromPosition(Position);
             }
 
             // Actual position doesn't matter for temperature, only distance.
             Vector3 periapsis = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(Orbit.Periapsis / Parent.LocalScale));
-            return GetTotalTemperatureFromPosition(periapsis, polar);
+            return GetTotalTemperatureFromPosition(periapsis);
         }
 
         /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> (in K),
-        /// including ambient heat of its parent and radiated heat from all sibling objects, if this
-        /// object was at the specified position.
+        /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
+        /// object was at the specified position, including ambient heat of its parent and radiated
+        /// heat from all sibling objects, in K.
         /// </summary>
         /// <param name="position">
         /// A hypothetical position for this <see cref="CelestialBody"/> at which its temperature
         /// will be calculated.
         /// </param>
-        /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
-        /// </param>
-        /// <returns>The total average temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        internal virtual float GetTotalTemperatureFromPosition(Vector3 position, bool polar = false)
+        /// <returns>
+        /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
+        /// in K.
+        /// </returns>
+        internal virtual float GetTotalTemperatureFromPosition(Vector3 position)
         {
             float temp = Temperature ?? 0;
 
@@ -176,9 +147,10 @@ namespace WorldFoundry.CelestialBodies
             {
                 totalInsolation += star.Luminosity / (Utilities.MathUtil.Constants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
             }
-            AdjustSolarInsolation(ref totalInsolation, polar);
 
-            temp += (float)Math.Pow((totalInsolation * (1 - Albedo)) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
+            var heat = (float)Math.Pow((totalInsolation * (1 - Albedo)) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
+
+            temp += heat;
 
             return temp;
         }

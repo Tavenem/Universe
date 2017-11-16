@@ -180,9 +180,6 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private static float GetTemperatureAtLatitude(float latitude)
-            => (float)(freezingPoint - 80 + 115 * Math.Cos(Math.Abs(latitude * 0.8)));
-
         private void CalculateAdvection(
             Planet planet,
             float timeRatio,
@@ -468,6 +465,31 @@ namespace WorldFoundry.Climate
             }
         }
 
+        private static float GetAirMass(Planet planet, float latitude)
+        {
+            if (Troschuetz.Random.TMath.IsZero(latitude))
+            {
+                return 1.0f;
+            }
+            else
+            {
+                var r = planet.Radius / planet._atmosphericScaleHeight;
+                var cosLat = Math.Cos(latitude);
+                var rCosLat = r * cosLat;
+                return (float)(Math.Sqrt(rCosLat * rCosLat + 2 * r + 1) - rCosLat);
+            }
+        }
+
+        internal static float GetTemperatureAtLatitude(Planet planet, float latitude)
+            => (float)(planet._polarTemp + (planet._equatorialTemp - planet._polarTemp) * Math.Cos(latitude * 0.8));
+
+        internal static float GetTemperature_Calculated(Planet planet, bool polar = false)
+        {
+            var insolation = 1367.0 * 1.1 * Math.Pow(0.7, Math.Pow(GetAirMass(planet, (float)(polar ? Utilities.MathUtil.Constants.HalfPI : 0.0) * 0.99f), 0.678));
+
+            return (float)Math.Pow((insolation * 0.7) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
+        }
+
         private void SetTemperature(Planet planet)
         {
             var temperatures = new Dictionary<float, float>();
@@ -475,10 +497,14 @@ namespace WorldFoundry.Climate
             {
                 var t = planet.Tiles[i];
                 var tc = TileClimates[i];
-                var lat = _tropicalEquator - t.Latitude;
+                var lat = Math.Abs(t.Latitude - _tropicalEquator);
+                if (lat > Utilities.MathUtil.Constants.HalfPI)
+                {
+                    lat -= (float)Utilities.MathUtil.Constants.HalfPI;
+                }
                 if (!temperatures.TryGetValue(lat, out var temperature))
                 {
-                    temperature = GetTemperatureAtLatitude(lat);
+                    temperature = GetTemperatureAtLatitude(planet, lat);
                     temperatures.Add(lat, temperature);
                 }
                 tc.Temperature = GetTemperatureAtElevation(temperature, t.Elevation);

@@ -526,7 +526,7 @@ namespace WorldFoundry.ConsoleApp
 
             //AddElevationString(sb);
 
-            AddClimateString(sb);
+            //AddClimateString(sb);
 
             return sb.ToString();
         }
@@ -571,7 +571,7 @@ namespace WorldFoundry.ConsoleApp
 
             var sb = new StringBuilder();
 
-            //AddTempString(sb, seasons);
+            AddTempString(sb, seasons);
 
             //AddWindString(sb, seasons);
 
