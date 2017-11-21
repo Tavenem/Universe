@@ -10,12 +10,13 @@ namespace WorldFoundry.Orbits
     /// <summary>
     /// Describes an object which observes the laws of gravity.
     /// </summary>
-    public class Orbiter : SpaceChild
+    public class Orbiter : CelestialEntity
     {
         private double? _mass;
+
         /// <summary>
-        /// The mass of the celestial object, including the mass of all children,
-        /// whether explicitly modeled or merely potential, in kg.
+        /// The mass of the celestial object, including the mass of all children, whether explicitly
+        /// modeled or merely potential, in kg.
         /// </summary>
         public virtual double Mass
         {
@@ -29,6 +30,7 @@ namespace WorldFoundry.Orbits
         public Orbit Orbit { get; set; }
 
         private double? _surfaceGravity;
+
         /// <summary>
         /// The average force of gravity at the surface of this celestial object, in N.
         /// </summary>
@@ -73,18 +75,18 @@ namespace WorldFoundry.Orbits
         /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="Orbiter"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="Orbiter"/> is located.
         /// </param>
-        public Orbiter(SpaceRegion parent) : base(parent) { }
+        public Orbiter(CelestialObject parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="Orbiter"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="Orbiter"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Orbiter"/>.</param>
-        public Orbiter(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+        public Orbiter(CelestialObject parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
@@ -101,6 +103,11 @@ namespace WorldFoundry.Orbits
         /// </remarks>
         public virtual void GenerateOrbit(Orbiter orbitedObject)
         {
+            if (orbitedObject == null)
+            {
+                return;
+            }
+
             Orbit = Orbit.GetCircularOrbit(this, orbitedObject);
 
             Velocity = Orbit.V0 / orbitedObject.Parent.LocalScale;
@@ -113,8 +120,8 @@ namespace WorldFoundry.Orbits
         private void GenerateSurfaceGravity() => _surfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
 
         /// <summary>
-        /// Calculates the force of gravity on this <see cref="Orbiter"/> from another
-        /// as a vector, in N.
+        /// Calculates the force of gravity on this <see cref="Orbiter"/> from another as a vector,
+        /// in N.
         /// </summary>
         /// <param name="other">An <see cref="Orbiter"/> from which the force gravity will be calculated.</param>
         /// <returns>
@@ -130,8 +137,8 @@ namespace WorldFoundry.Orbits
         /// <paramref name="other"/> may not be null.
         /// </exception>
         /// <exception cref="System.Exception">
-        /// An exception will be thrown if the two <see cref="Orbiter"/>s do not share a <see
-        /// cref="Space.SpaceRegion"/> parent at some point.
+        /// An exception will be thrown if the two <see cref="Orbiter"/> s do not share a <see
+        /// cref="Space.CelestialObject"/> parent at some point.
         /// </exception>
         public Vector3 GetGravityFromObject(Orbiter other)
         {
@@ -177,10 +184,9 @@ namespace WorldFoundry.Orbits
                 return totalGravity;
             }
 
-            // Only the gravity from nearby siblings is considered.
-            // This may discount significant effects from more distant but extremely massive objects,
-            // but the alternative is to consider every object, which could potentially be a much too
-            // large amount (trillions, perhaps).
+            // Only the gravity from nearby siblings is considered. This may discount significant
+            // effects from more distant but extremely massive objects, but the alternative is to
+            // consider every object, which could potentially be a much too large amount (trillions, perhaps).
             foreach (var sibling in Parent.GetNearbyChildren(Position)
                 .Where(c => c.GetType().IsSubclassOf(typeof(Orbiter))).Cast<Orbiter>())
             {

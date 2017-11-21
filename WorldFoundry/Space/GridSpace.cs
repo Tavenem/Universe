@@ -9,7 +9,7 @@ namespace WorldFoundry.Space
     public class GridSpace
     {
         /// <summary>
-        /// Specifies the coordinates of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
+        /// Specifies the coordinates of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
         /// </summary>
         [NotMapped]
         public Vector3 Coordinates
@@ -24,17 +24,17 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Specifies the X-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
+        /// Specifies the X-coordinate of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
         /// </summary>
         public float CoordinatesX { get; private set; }
 
         /// <summary>
-        /// Specifies the Y-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
+        /// Specifies the Y-coordinate of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
         /// </summary>
         public float CoordinatesY { get; private set; }
 
         /// <summary>
-        /// Specifies the Z-coordinate of the <see cref="GridSpace"/> in its containing <see cref="SpaceRegion"/>.
+        /// Specifies the Z-coordinate of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
         /// </summary>
         public float CoordinatesZ { get; private set; }
 

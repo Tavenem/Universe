@@ -49,13 +49,21 @@ namespace WorldFoundry.Substances
 
             if (children)
             {
-                foreach (var mixture in Mixtures)
+                if (Mixtures != null)
                 {
-                    mixture.AddComponent(substance, proportion);
+                    foreach (var mixture in Mixtures)
+                    {
+                        mixture.AddComponent(substance, proportion);
+                    }
                 }
             }
             else
             {
+                if (Components == null)
+                {
+                    Components = new HashSet<MixtureComponent>();
+                }
+
                 if (proportion <= 0)
                 {
                     return;
@@ -89,7 +97,13 @@ namespace WorldFoundry.Substances
             {
                 return;
             }
-            else if (mixture.Proportion >= 1)
+
+            if (Mixtures == null)
+            {
+                Mixtures = new HashSet<Mixture>();
+            }
+
+            if (mixture.Proportion >= 1)
             {
                 mixture.Proportion = Math.Min(1, mixture.Proportion);
                 Mixtures.Clear();
@@ -113,7 +127,7 @@ namespace WorldFoundry.Substances
         /// </param>
         internal void BalanceProportionsForValue(float total = 1, bool children = false)
         {
-            var currentTotal = children ? Mixtures.Sum(m => m.Proportion) : Components.Sum(c => c.Proportion);
+            var currentTotal = children ? (Mixtures?.Sum(m => m.Proportion) ?? 0) : (Components?.Sum(c => c.Proportion) ?? 0);
             if (currentTotal == total)
             {
                 return;
@@ -122,12 +136,15 @@ namespace WorldFoundry.Substances
             var ratio = total / currentTotal;
             if (children)
             {
-                foreach (var mixture in Mixtures)
+                if (Mixtures != null)
                 {
-                    mixture.Proportion *= ratio;
+                    foreach (var mixture in Mixtures)
+                    {
+                        mixture.Proportion *= ratio;
+                    }
                 }
             }
-            else
+            else if (Components != null)
             {
                 foreach (var component in Components)
                 {
@@ -144,8 +161,8 @@ namespace WorldFoundry.Substances
         /// <param name="phase">The <see cref="Phase"/> to match.</param>
         /// <returns>true if a <see cref="Substance"/> is matched; false otherwise.</returns>
         public bool ContainsSubstance(Chemical chemical, Phase phase)
-            => Components.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase) != null
-            || Mixtures.Any(m => m.ContainsSubstance(chemical, phase));
+            => Components?.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase) != null
+            || (Mixtures?.Any(m => m.ContainsSubstance(chemical, phase)) ?? false);
 
         /// <summary>
         /// Copies the child <see cref="Mixture"/> at the specified layer and adds it as a new child
@@ -168,11 +185,16 @@ namespace WorldFoundry.Substances
                 return;
             }
 
+            if (Mixtures == null)
+            {
+                Mixtures = new HashSet<Mixture>();
+            }
+
             var newLayer = new Mixture()
             {
-                Components = new Collection<MixtureComponent>(original.Components.ToList()),
+                Components = new HashSet<MixtureComponent>(original.Components),
                 Layer = Mixtures.Max(m => m.Layer) + 1,
-                Mixtures = new Collection<Mixture>(original.Mixtures.ToList()),
+                Mixtures = new HashSet<Mixture>(original.Mixtures),
                 Proportion = Math.Min(1, proportion),
             };
 
@@ -190,7 +212,7 @@ namespace WorldFoundry.Substances
         /// If more than one child exists with the given <see cref="Layer"/> value, the first one
         /// found is returned.
         /// </remarks>
-        public Mixture GetChildAtLayer(int layer) => Mixtures.FirstOrDefault(m => m.Layer == layer);
+        public Mixture GetChildAtLayer(int layer) => Mixtures?.FirstOrDefault(m => m.Layer == layer);
 
         /// <summary>
         /// Determines if this mixture meets a set of <see cref="SubstanceRequirement"/> s.
@@ -224,7 +246,7 @@ namespace WorldFoundry.Substances
         /// The matched <see cref="Substance"/>, or null if none of the components are present.
         /// </returns>
         public MixtureComponent GetSubstance(Chemical chemical, Phase phase)
-            => Components.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase);
+            => Components?.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase);
 
         /// <summary>
         /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
@@ -259,12 +281,15 @@ namespace WorldFoundry.Substances
         public float GetSubstanceProportionInAllChildren(Chemical chemical, Phase phase)
         {
             float proportion = 0;
-            foreach (var mixture in Mixtures)
+            if (Mixtures != null)
             {
-                var match = mixture.GetSubstance(chemical, phase);
-                if (match != null)
+                foreach (var mixture in Mixtures)
                 {
-                    proportion += match.Proportion * mixture.Proportion;
+                    var match = mixture.GetSubstance(chemical, phase);
+                    if (match != null)
+                    {
+                        proportion += match.Proportion * mixture.Proportion;
+                    }
                 }
             }
 
@@ -323,12 +348,15 @@ namespace WorldFoundry.Substances
         {
             if (children)
             {
-                foreach (var mixture in Mixtures)
+                if (Mixtures != null)
                 {
-                    mixture.RemoveComponent(substance);
+                    foreach (var mixture in Mixtures)
+                    {
+                        mixture.RemoveComponent(substance);
+                    }
                 }
             }
-            else
+            else if (Components != null)
             {
                 var match = GetSubstance(substance);
                 if (match != null)

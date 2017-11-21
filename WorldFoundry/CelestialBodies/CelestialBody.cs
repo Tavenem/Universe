@@ -8,7 +8,7 @@ using WorldFoundry.Space;
 namespace WorldFoundry.CelestialBodies
 {
     /// <summary>
-    /// Represents any discrete physical object in space, such as a star or planet.
+    /// Represents any contiguous physical object in space, such as a star or planet.
     /// </summary>
     public class CelestialBody : BioZone
     {
@@ -38,18 +38,18 @@ namespace WorldFoundry.CelestialBodies
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="CelestialBody"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
-        public CelestialBody(SpaceRegion parent) : base(parent) { }
+        public CelestialBody(CelestialObject parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="CelestialBody"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
-        public CelestialBody(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+        public CelestialBody(CelestialObject parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -58,6 +58,43 @@ namespace WorldFoundry.CelestialBodies
         /// Sets 0 in the base class; subclasses which are not black-bodies are expected to override.
         /// </remarks>
         protected virtual void GenerateAlbedo() => Albedo = 0;
+
+        /// <summary>
+        /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
+        /// position, in K.
+        /// </summary>
+        /// <param name="position">
+        /// A hypothetical position for this <see cref="CelestialBody"/> at which the heat of
+        /// insolation will be calculated.
+        /// </param>
+        /// <returns>
+        /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
+        /// in K.
+        /// </returns>
+        protected virtual float GetInsolationHeat(Vector3 position)
+        {
+            // Nearby stars within the same parent may provide heat.
+            // Other stars are ignored, presumed to be far enough away that
+            // their heating effects are negligible.
+            // Within a star system, all stars are counted.
+            IEnumerable<Star> stellarSiblings = null;
+            if (Parent is StarSystem)
+            {
+                stellarSiblings = Parent.Children?.Where(o => o is Star && o != this).Cast<Star>();
+            }
+            else
+            {
+                stellarSiblings = Parent.GetNearbyChildren(position).Where(o => o is Star && o != this).Cast<Star>();
+            }
+
+            var totalInsolation = 0.0;
+            foreach (var star in stellarSiblings)
+            {
+                totalInsolation += star.Luminosity / (Utilities.MathUtil.Constants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
+            }
+
+            return (float)Math.Pow((totalInsolation * (1 - Albedo)) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
+        }
 
         /// <summary>
         /// Calculates the temperature of the <see cref="CelestialBody"/>, in K.
@@ -124,35 +161,6 @@ namespace WorldFoundry.CelestialBodies
         /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
         /// in K.
         /// </returns>
-        internal virtual float GetTotalTemperatureFromPosition(Vector3 position)
-        {
-            float temp = Temperature ?? 0;
-
-            // Nearby stars within the same parent may provide heat.
-            // Other stars are ignored, presumed to be far enough away that
-            // their heating effects are negligible.
-            // Within a star system, all stars are counted.
-            IEnumerable<Star> stellarSiblings = null;
-            if (Parent is StarSystem)
-            {
-                stellarSiblings = Parent.Children.Where(o => o is Star && o != this).Cast<Star>();
-            }
-            else
-            {
-                stellarSiblings = Parent.GetNearbyChildren(Position).Where(o => o is Star && o != this).Cast<Star>();
-            }
-
-            var totalInsolation = 0.0;
-            foreach (var star in stellarSiblings)
-            {
-                totalInsolation += star.Luminosity / (Utilities.MathUtil.Constants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
-            }
-
-            var heat = (float)Math.Pow((totalInsolation * (1 - Albedo)) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
-
-            temp += heat;
-
-            return temp;
-        }
+        internal float GetTotalTemperatureFromPosition(Vector3 position) => (Temperature ?? 0) + GetInsolationHeat(position);
     }
 }

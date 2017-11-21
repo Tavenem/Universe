@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace WorldFoundry.Space
 {
     /// <summary>
-    /// Represents a child of a <see cref="SpaceRegion"/>.
+    /// Represents a child of a <see cref="CelestialObject"/>.
     /// </summary>
-    public class SpaceChildValue
+    public class ChildValue
     {
         /// <summary>
         /// The name of the of child to generate.

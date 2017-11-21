@@ -123,6 +123,22 @@ namespace WorldFoundry.Orbits
             }
         }
 
+        private double? _period;
+        /// <summary>
+        /// The period of this orbit.
+        /// </summary>
+        public double Period
+        {
+            get
+            {
+                if (!_period.HasValue)
+                {
+                    SetGravitationalParameters();
+                }
+                return _period ?? 0;
+            }
+        }
+
         /// <summary>
         /// The initial position of the orbiting object relative to the orbited one.
         /// </summary>
@@ -465,28 +481,33 @@ namespace WorldFoundry.Orbits
                 throw new ArgumentOutOfRangeException("trueAnomaly must be >= 0 and < 2π");
             }
 
-            var orbit = new Orbit(orbitingObject, orbitedObject)
+            if (orbitingObject.Orbit == null)
             {
-                _eccentricity = eccentricity,
-                _inclination = inclination,
-                _periapsis = periapsis,
-                _standardGravitationalParameter = Utilities.Science.Constants.G * (orbitedObject.Mass + orbitingObject.Mass),
-                _trueAnomaly = trueAnomaly,
-            };
+                orbitingObject.Orbit = new Orbit(orbitingObject, orbitedObject);
+            }
+            else
+            {
+                orbitingObject.Orbit.OrbitedObject = orbitedObject;
+            }
+            orbitingObject.Orbit._eccentricity = eccentricity;
+            orbitingObject.Orbit._inclination = inclination;
+            orbitingObject.Orbit._periapsis = periapsis;
+            orbitingObject.Orbit._standardGravitationalParameter = Utilities.Science.Constants.G * (orbitedObject.Mass + orbitingObject.Mass);
+            orbitingObject.Orbit._trueAnomaly = trueAnomaly;
 
             var semiLatusRectum = periapsis * (1 + eccentricity);
 
             // For parabolic orbits, semi-major axis is undefined, and is set to the periapsis instead.
             if (eccentricity == 1)
             {
-                orbit._semiMajorAxis = periapsis;
+                orbitingObject.Orbit._semiMajorAxis = periapsis;
             }
             else
             {
-                orbit._semiMajorAxis = semiLatusRectum / (1 - Math.Pow(eccentricity, 2));
+                orbitingObject.Orbit._semiMajorAxis = semiLatusRectum / (1 - Math.Pow(eccentricity, 2));
             }
 
-            orbit._alpha = orbit._standardGravitationalParameter / orbit._semiMajorAxis;
+            orbitingObject.Orbit._alpha = orbitingObject.Orbit._standardGravitationalParameter / orbitingObject.Orbit._semiMajorAxis;
 
             // Calculate the perifocal vectors
             var cosineAngleAscending = Math.Cos(angleAscending);
@@ -511,12 +532,12 @@ namespace WorldFoundry.Orbits
             float sineTrueAnomaly = (float)Math.Sin(trueAnomaly);
             double radius = semiLatusRectum / (1 + (eccentricity * cosineTrueAnomaly));
 
-            orbit.R0 = ((float)(radius * cosineTrueAnomaly) * perifocalP) + ((float)(radius * sineTrueAnomaly) * perifocalQ);
-            orbit.V0 = (float)Math.Sqrt(orbit._standardGravitationalParameter.Value / semiLatusRectum) *
+            orbitingObject.Orbit.R0 = ((float)(radius * cosineTrueAnomaly) * perifocalP) + ((float)(radius * sineTrueAnomaly) * perifocalQ);
+            orbitingObject.Orbit.V0 = (float)Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum) *
                 ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
-            orbitingObject.Position = orbitedObject.Position + (orbit.R0 / orbitedObject.Parent.LocalScale);
-            orbitingObject.Velocity = orbit.V0 / orbitedObject.Parent.LocalScale;
+            orbitingObject.Position = orbitedObject.Position + (orbitingObject.Orbit.R0 / orbitedObject.Parent.LocalScale);
+            orbitingObject.Velocity = orbitingObject.Orbit.V0 / orbitedObject.Parent.LocalScale;
         }
 
         private void ClearParameters()
@@ -526,6 +547,7 @@ namespace WorldFoundry.Orbits
             _eccentricity = null;
             _inclination = null;
             _periapsis = null;
+            _period = null;
             _r0X = null;
             _r0Y = null;
             _r0Z = null;
@@ -560,13 +582,6 @@ namespace WorldFoundry.Orbits
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
         public double GetMutualHillSphereRadius(double otherMass)
             => Math.Pow((OrbitingObject.Mass + otherMass) / (3 * OrbitedObject.Mass), (1.0 / 3.0)) * SemiMajorAxis;
-
-        /// <summary>
-        /// Calculates the orbital period.
-        /// </summary>
-        /// <returns>The orbital period, in seconds.</returns>
-        public float GetPeriod()
-            => (float)(Utilities.MathUtil.Constants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter));
 
         /// <summary>
         /// Calculates the radius of the orbiting body's sphere of influence, in meters.
@@ -645,6 +660,8 @@ namespace WorldFoundry.Orbits
             _semiMajorAxis = -(_standardGravitationalParameter.Value / 2.0) * Math.Pow((Math.Pow(V0.Length(), 2) / 2.0) - (_standardGravitationalParameter.Value / _radius.Value), -1);
 
             _alpha = _standardGravitationalParameter / _semiMajorAxis;
+
+            _period = Utilities.MathUtil.Constants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter);
 
             var h = Vector3.Cross(R0, V0);
             _inclination = (float)Math.Acos(h.Z / h.Length());

@@ -304,11 +304,14 @@ namespace WorldFoundry.Climate
         public float GetCloudCover()
         {
             float clouds = 0;
-            foreach (var mixture in Mixtures)
+            if (Mixtures != null)
             {
-                clouds = Math.Max(clouds, mixture.Components
-                    .Where(c => c.Substance.Phase == Phase.Liquid || c.Substance.Phase == Phase.Solid)
-                    .Sum(c => c.Proportion));
+                foreach (var mixture in Mixtures)
+                {
+                    clouds = Math.Max(clouds, mixture.Components?
+                        .Where(c => c.Substance.Phase == Phase.Liquid || c.Substance.Phase == Phase.Solid)
+                        .Sum(c => c.Proportion) ?? 0);
+                }
             }
             return clouds;
         }
@@ -320,11 +323,14 @@ namespace WorldFoundry.Climate
         private float GetGreenhouseFactor()
         {
             var total = 0.0;
-            foreach (var mixture in Mixtures)
+            if (Mixtures != null)
             {
-                total += mixture.Components
-                    .Where(c => c.Substance.Chemical.GreenhousePotential > 0)
-                    .Sum(c => c.Substance.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure));
+                foreach (var mixture in Mixtures)
+                {
+                    total += mixture.Components?
+                        .Where(c => c.Substance.Chemical.GreenhousePotential > 0)
+                        .Sum(c => c.Substance.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0;
+                }
             }
             if (TMath.IsZero(total))
             {

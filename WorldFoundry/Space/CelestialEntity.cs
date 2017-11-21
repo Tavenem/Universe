@@ -9,10 +9,10 @@ using WorldFoundry.Utilities.MathUtil.Shapes;
 namespace WorldFoundry.Space
 {
     /// <summary>
-    /// Indicates an entity which may be contained within a <see cref="SpaceRegion"/>, whether that is
-    /// a <see cref="SpaceRegion"/> or a <see cref="CelestialObjects.CelestialBody"/>.
+    /// Indicates an entity which may be contained within a <see cref="CelestialObject"/>, whether that is
+    /// a <see cref="CelestialObject"/> or a <see cref="CelestialObjects.CelestialBody"/>.
     /// </summary>
-    public class SpaceChild
+    public class CelestialEntity
     {
         /// <summary>
         /// Local space is a coordinate system with a range of -1000000 to 1000000.
@@ -43,7 +43,7 @@ namespace WorldFoundry.Space
 
         private float? _localScale;
         /// <summary>
-        /// The size of 1 unit of local space within this <see cref="SpaceRegion"/>, in meters.
+        /// The size of 1 unit of local space within this <see cref="CelestialObject"/>, in meters.
         /// </summary>
         public float LocalScale
         {
@@ -67,9 +67,9 @@ namespace WorldFoundry.Space
         public virtual string Name { get; set; }
 
         /// <summary>
-        /// The <see cref="SpaceRegion"/> which directly contains this entity.
+        /// The <see cref="CelestialObject"/> which directly contains this entity.
         /// </summary>
-        public SpaceRegion Parent { get; private set; }
+        public CelestialObject Parent { get; private set; }
 
         /// <summary>
         /// Specifies the location of this entity's center in the local space of its
@@ -107,7 +107,7 @@ namespace WorldFoundry.Space
 
         protected float? _radius;
         /// <summary>
-        /// Gets a radius which fully contains this <see cref="SpaceRegion"/>, in meters.
+        /// Gets a radius which fully contains this <see cref="CelestialObject"/>, in meters.
         /// </summary>
         public float Radius
         {
@@ -123,7 +123,7 @@ namespace WorldFoundry.Space
 
         protected Shape _shape;
         /// <summary>
-        /// The shape of the <see cref="SpaceChild"/>.
+        /// The shape of the <see cref="CelestialEntity"/>.
         /// </summary>
         public virtual Shape Shape
         {
@@ -152,47 +152,50 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The name for this type of celestial object.
         /// </summary>
-        /// <remarks>Intended to be overridden by subclasses.</remarks>
-        public virtual string TypeName => "Celestial Object";
+        public virtual string TypeName => BaseTypeName;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceChild"/>.
+        /// Initializes a new instance of <see cref="CelestialEntity"/>.
         /// </summary>
-        public SpaceChild() { }
+        public CelestialEntity() { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceChild"/> with the given parameters.
+        /// Initializes a new instance of <see cref="CelestialEntity"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceChild"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialEntity"/> is located.
         /// </param>
-        public SpaceChild(SpaceRegion parent)
+        public CelestialEntity(CelestialObject parent)
         {
             Parent = parent;
+            if (Parent.Children == null)
+            {
+                Parent.Children = new HashSet<CelestialEntity>();
+            }
             Parent.Children.Add(this);
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceChild"/> with the given parameters.
+        /// Initializes a new instance of <see cref="CelestialEntity"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceChild"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialEntity"/> is located.
         /// </param>
-        /// <param name="position">The initial position of this <see cref="SpaceChild"/>.</param>
-        public SpaceChild(SpaceRegion parent, Vector3 position) : this(parent) => Position = position;
+        /// <param name="position">The initial position of this <see cref="CelestialEntity"/>.</param>
+        public CelestialEntity(CelestialObject parent, Vector3 position) : this(parent) => Position = position;
 
         /// <summary>
-        /// Finds a common <see cref="SpaceRegion"/> parent with the specified one.
+        /// Finds a common <see cref="CelestialObject"/> parent with the specified one.
         /// </summary>
-        /// <param name="other">A <see cref="SpaceRegion"/> with which to find a common parent.</param>
+        /// <param name="other">A <see cref="CelestialObject"/> with which to find a common parent.</param>
         /// <returns>
-        /// The <see cref="SpaceRegion"/> which is the common parent of this one and the specified
+        /// The <see cref="CelestialObject"/> which is the common parent of this one and the specified
         /// one. Null if none exists.
         /// </returns>
-        public SpaceRegion FindCommonParent(SpaceChild other)
+        public CelestialObject FindCommonParent(CelestialEntity other)
         {
             var otherPath = other.GetTreePathToSpaceGrid().ToList();
-            return GetTreePathToSpaceGrid().TakeWhile((o, i) => otherPath.Count > i && o == otherPath[i]).LastOrDefault() as SpaceRegion;
+            return GetTreePathToSpaceGrid().TakeWhile((o, i) => otherPath.Count > i && o == otherPath[i]).LastOrDefault() as CelestialObject;
         }
 
         protected void GenerateDesgination()
@@ -201,34 +204,34 @@ namespace WorldFoundry.Space
                 : $"{DesignatorPrefix} {ID.ToString("B")}";
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="SpaceChild"/>.
+        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Generates an empty sphere in the base class; expected to be overridden in subclasses.</remarks>
-        protected void GenerateShape() => Shape = new Sphere();
+        protected virtual void GenerateShape() => Shape = new Sphere();
 
         /// <summary>
-        /// Returns the size of 1 unit of local space within this <see cref="SpaceRegion"/>, in meters.
+        /// Returns the size of 1 unit of local space within this <see cref="CelestialObject"/>, in meters.
         /// </summary>
         private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / localSpaceScale) : null;
 
         /// <summary>
         /// Calculates the distance between the given position in local space to the
-        /// center of the specified <see cref="SpaceChild"/>, in meters.
+        /// center of the specified <see cref="CelestialEntity"/>, in meters.
         /// </summary>
         /// <param name="position">The position from which to calculate the distance.</param>
         /// <param name="other">
-        /// The <see cref="SpaceChild"/> whose distance from this one is to be determined.
+        /// The <see cref="CelestialEntity"/> whose distance from this one is to be determined.
         /// </param>
         /// <returns>
-        /// The distance between this <see cref="SpaceChild"/> and the
+        /// The distance between this <see cref="CelestialEntity"/> and the
         /// specified one, in meters.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <exception cref="Exception">
-        /// The two <see cref="SpaceChild"/> objects must be part of the same hierarchy (i.e.
+        /// The two <see cref="CelestialEntity"/> objects must be part of the same hierarchy (i.e.
         /// share a common parent).
         /// </exception>
-        internal float GetDistanceFromPositionToTarget(Vector3 position, SpaceChild other)
+        internal float GetDistanceFromPositionToTarget(Vector3 position, CelestialEntity other)
         {
             if (other == null)
             {
@@ -237,7 +240,7 @@ namespace WorldFoundry.Space
 
             if (other == Parent)
             {
-                return Position.Length() * (other as SpaceRegion).LocalScale;
+                return Position.Length() * (other as CelestialObject).LocalScale;
             }
             else if (other.Parent == this)
             {
@@ -261,21 +264,21 @@ namespace WorldFoundry.Space
 
         /// <summary>
         /// Calculates the distance between the centers of this <see
-        /// cref="SpaceChild"/> and the specified one, in meters.
+        /// cref="CelestialEntity"/> and the specified one, in meters.
         /// </summary>
         /// <param name="other">
-        /// The <see cref="SpaceChild"/> whose distance from this one is to be determined.
+        /// The <see cref="CelestialEntity"/> whose distance from this one is to be determined.
         /// </param>
         /// <returns>
-        /// The distance between this <see cref="SpaceChild"/> and the
+        /// The distance between this <see cref="CelestialEntity"/> and the
         /// specified one, in meters.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <exception cref="Exception">
-        /// The two <see cref="SpaceChild"/> objects must be part of the same hierarchy (i.e.
+        /// The two <see cref="CelestialEntity"/> objects must be part of the same hierarchy (i.e.
         /// share a common parent).
         /// </exception>
-        internal float GetDistanceToTarget(SpaceChild other) => GetDistanceFromPositionToTarget(Position, other);
+        internal float GetDistanceToTarget(CelestialEntity other) => GetDistanceFromPositionToTarget(Position, other);
 
         /// <summary>
         /// Provides safe retrieval, and optional automatic generation, of a backing store.
@@ -308,37 +311,37 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Recursively builds an ordered list of <see cref="SpaceRegion"/><see cref="Parent"/>s from
+        /// Recursively builds an ordered list of <see cref="CelestialObject"/><see cref="Parent"/>s from
         /// the topmost to this child.
         /// </summary>
         /// <param name="path">
-        /// An ordered stack of one branch of <see cref="SpaceChild"/> objects.
+        /// An ordered stack of one branch of <see cref="CelestialEntity"/> objects.
         /// </param>
         /// <returns>
-        /// An ordered stack of <see cref="SpaceRegion"/> parents and a <see cref="SpaceChild"/>
-        /// child, from the topmost to a particular <see cref="SpaceChild"/>.
+        /// An ordered stack of <see cref="CelestialObject"/> parents and a <see cref="CelestialEntity"/>
+        /// child, from the topmost to a particular <see cref="CelestialEntity"/>.
         /// </returns>
-        internal Stack<SpaceChild> GetTreePathToSpaceGrid(Stack<SpaceChild> path = null)
+        internal Stack<CelestialEntity> GetTreePathToSpaceGrid(Stack<CelestialEntity> path = null)
         {
             if (path == null)
             {
-                path = new Stack<SpaceChild>();
+                path = new Stack<CelestialEntity>();
             }
             path.Push(this);
             return Parent != null ? Parent.GetTreePathToSpaceGrid(path) : path;
         }
 
         /// <summary>
-        /// Performs the behind-the-scenes work necessary to transfer a <see cref="SpaceChild"/>
+        /// Performs the behind-the-scenes work necessary to transfer a <see cref="CelestialEntity"/>
         /// to a new <see cref="Parent"/> in the hierarchy.
         /// </summary>
         /// <remarks>
-        /// If the new parent is part of this <see cref="SpaceChild"/> object's current parent
+        /// If the new parent is part of this <see cref="CelestialEntity"/> object's current parent
         /// hierarchy, the current coordinates will be preserved, and translated into the correct
         /// local space. Otherwise, they will be reset to 0,0,0.
         /// </remarks>
-        /// <param name="newParent">The <see cref="SpaceRegion"/> which will be this one's new parent.</param>
-        internal void SetNewParent(SpaceRegion newParent)
+        /// <param name="newParent">The <see cref="CelestialObject"/> which will be this one's new parent.</param>
+        internal void SetNewParent(CelestialObject newParent)
         {
             Position = GetTreePathToSpaceGrid().Contains(newParent)
                 ? TranslateToLocalCoordinates(newParent)
@@ -370,7 +373,7 @@ namespace WorldFoundry.Space
         /// If this grid has no <see cref="Parent"/>, an exception will be thrown.
         /// </exception>
         /// <exception cref="Exception"><paramref name="other"/> must be in the same hierarchy as this object.</exception>
-        internal Vector3 TranslateToLocalCoordinates(SpaceRegion other, Vector3 position)
+        internal Vector3 TranslateToLocalCoordinates(CelestialObject other, Vector3 position)
         {
             if (other == null)
             {
@@ -428,7 +431,7 @@ namespace WorldFoundry.Space
         /// If this grid has no <see cref="Parent"/>, an exception will be thrown.
         /// </exception>
         /// <exception cref="Exception"><paramref name="other"/> must be in the same hierarchy as this object.</exception>
-        internal Vector3 TranslateToLocalCoordinates(SpaceRegion other) => TranslateToLocalCoordinates(other, Position);
+        internal Vector3 TranslateToLocalCoordinates(CelestialObject other) => TranslateToLocalCoordinates(other, Position);
 
         /// <summary>
         /// Translates the specified coordinates in local space into the local space of <see cref="Parent"/>.

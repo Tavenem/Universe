@@ -13,9 +13,9 @@ using WorldFoundry.Utilities.MathUtil.Shapes;
 namespace WorldFoundry.Space
 {
     /// <summary>
-    /// A discrete region of space bound together by gravity, such as a galaxy or star system.
+    /// A discrete region of space bound together by gravity, but not a single body; such as a galaxy or star system.
     /// </summary>
-    public class SpaceRegion : BioZone
+    public class CelestialObject : BioZone
     {
         /// <summary>
         /// The average number of children within the grid per m³.
@@ -25,24 +25,29 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public virtual ICollection<SpaceChildValue> ChildPossibilities { get; private set; }
+        public virtual ICollection<ChildValue> ChildPossibilities { get; private set; }
 
         /// <summary>
-        /// Indicates any children this <see cref="SpaceRegion"/> may have which will be manually
+        /// Indicates any children this <see cref="CelestialObject"/> may have which will be manually
         /// assigned, rather than generated.
         /// </summary>
-        public ICollection<SpaceChildValue> ChildPresets { get; set; }
+        public ICollection<ChildValue> ChildPresets { get; set; }
 
         /// <summary>
-        /// The <see cref="SpaceRegion"/> children contained within this one.
+        /// The <see cref="CelestialObject"/> children contained within this one.
         /// </summary>
-        public ICollection<SpaceChild> Children { get; set; }
+        public ICollection<CelestialEntity> Children { get; set; }
 
+        private ICollection<ChildValue> _childTotals;
         /// <summary>
-        /// Get the total number of children within this <see cref="SpaceRegion"/>, based on its
+        /// Get the total number of children within this <see cref="CelestialObject"/>, based on its
         /// child density.
         /// </summary>
-        public ICollection<SpaceChildValue> ChildTotals { get; private set; }
+        public ICollection<ChildValue> ChildTotals
+        {
+            get => GetProperty(ref _childTotals, CalculateChildTotals, () => !IsChildTotalsGenerationComplete);
+            private set => _childTotals = value;
+        }
 
         /// <summary>
         /// A collection of grid spaces within this space, which either have or have not yet been
@@ -56,7 +61,7 @@ namespace WorldFoundry.Space
         public bool IsChildTotalsGenerationComplete { get; set; }
 
         /// <summary>
-        /// The shape of the <see cref="SpaceRegion"/>.
+        /// The shape of the <see cref="CelestialObject"/>.
         /// </summary>
         [NotMapped]
         public override Shape Shape
@@ -85,32 +90,36 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceRegion"/>.
+        /// Initializes a new instance of <see cref="CelestialObject"/>.
         /// </summary>
-        public SpaceRegion() { }
+        public CelestialObject() { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceRegion"/> with the given parameters.
+        /// Initializes a new instance of <see cref="CelestialObject"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceRegion"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialObject"/> is located.
         /// </param>
-        public SpaceRegion(SpaceRegion parent) : base(parent) { }
+        public CelestialObject(CelestialObject parent) : base(parent) { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="SpaceRegion"/> with the given parameters.
+        /// Initializes a new instance of <see cref="CelestialObject"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="SpaceRegion"/> in which this <see cref="SpaceRegion"/> is located.
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialObject"/> is located.
         /// </param>
-        /// <param name="position">The initial position of this <see cref="SpaceRegion"/>.</param>
-        public SpaceRegion(SpaceRegion parent, Vector3 position) : base(parent, position) { }
+        /// <param name="position">The initial position of this <see cref="CelestialObject"/>.</param>
+        public CelestialObject(CelestialObject parent, Vector3 position) : base(parent, position) { }
 
         private void CalculateChildTotals()
         {
+            if (ChildTotals == null)
+            {
+                ChildTotals = new HashSet<ChildValue>();
+            }
             IsChildTotalsGenerationComplete = true;
 
-            if (!ChildPossibilities.Any())
+            if (!(ChildPossibilities?.Any() ?? false))
             {
                 return;
             }
@@ -134,22 +143,25 @@ namespace WorldFoundry.Space
                 }
 
                 // Any existing children establish a minimum for the totals.
-                amount = Math.Max(amount, Children.Where(c => c.GetType() == possibility.Type).Count());
+                amount = Math.Max(amount, Children?.Where(c => c.GetType() == possibility.Type).Count() ?? 0);
 
-                ChildTotals.Add(new SpaceChildValue { Type = possibility.Type, Value = amount });
+                ChildTotals.Add(new ChildValue { Type = possibility.Type, Value = amount });
             }
 
             // Add any presets not already accounted for in the general amounts.
-            foreach (var preset in ChildPresets)
+            if (ChildPresets != null)
             {
-                var match = ChildTotals.FirstOrDefault(c => c.Type == preset.Type);
-                if (match != null)
+                foreach (var preset in ChildPresets)
                 {
-                    match.Value = Math.Max(match.Value, preset.Value);
-                }
-                else
-                {
-                    ChildTotals.Add(new SpaceChildValue { Type = preset.Type, Value = preset.Value });
+                    var match = ChildTotals.FirstOrDefault(c => c.Type == preset.Type);
+                    if (match != null)
+                    {
+                        match.Value = Math.Max(match.Value, preset.Value);
+                    }
+                    else
+                    {
+                        ChildTotals.Add(new ChildValue { Type = preset.Type, Value = preset.Value });
+                    }
                 }
             }
 
@@ -159,17 +171,17 @@ namespace WorldFoundry.Space
                 // Pick the most common type (at random, if multiple types tie for the maximum probability).
                 var max = ChildPossibilities.Max(p => p.Value);
                 var common = Randomizer.Static.Generator.Choice(ChildPossibilities.Where(c => c.Value == max).ToList());
-                ChildTotals.Add(new SpaceChildValue { Type = common.Type, Value = max });
+                ChildTotals.Add(new ChildValue { Type = common.Type, Value = max });
             }
         }
 
         /// <summary>
-        /// Determines whether this <see cref="SpaceRegion"/> contains the <see cref="Position"/> of
-        /// the specified <see cref="SpaceRegion"/>.
+        /// Determines whether this <see cref="CelestialObject"/> contains the <see cref="Position"/> of
+        /// the specified <see cref="CelestialObject"/>.
         /// </summary>
-        /// <param name="other">The <see cref="SpaceRegion"/> to test for inclusion within this one.</param>
+        /// <param name="other">The <see cref="CelestialObject"/> to test for inclusion within this one.</param>
         /// <returns>
-        /// True if this <see cref="SpaceRegion"/> contains the <see cref="Position"/> of the specified one.
+        /// True if this <see cref="CelestialObject"/> contains the <see cref="Position"/> of the specified one.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <remarks>
@@ -178,7 +190,7 @@ namespace WorldFoundry.Space
         /// partially overlap this one's space yet still return false from this method, if its center
         /// position lies outside this object's bounds.
         /// </remarks>
-        internal virtual bool ContainsSpaceGrid(SpaceRegion other)
+        internal virtual bool ContainsSpaceGrid(CelestialObject other)
         {
             if (other == null)
             {
@@ -271,7 +283,7 @@ namespace WorldFoundry.Space
         {
             // If this object already has its full allotment of children, do nothing.
             // (Has the side effect of making sure totals have been generated.)
-            if (GetChildTotals().All(t => t.Value >= GetTotalChildren(t.Type)))
+            if (ChildTotals.All(t => t.Value >= GetTotalChildren(t.Type)))
             {
                 return;
             }
@@ -287,19 +299,22 @@ namespace WorldFoundry.Space
 
             // Adjust type probabilities based on existing counts.
             List<float> effectiveProbabilities = new List<float>();
-            foreach (var possibility in ChildPossibilities)
+            if (ChildPossibilities != null)
             {
-                // Some child possibilities are not realized at all, due to
-                // small size and low child density eliminating children with
-                // low probabilities entirely.
-                float total = ChildTotals.FirstOrDefault(t => t.Type == possibility.Type)?.Value ?? 0;
-                if (total == 0)
+                foreach (var possibility in ChildPossibilities)
                 {
-                    effectiveProbabilities.Add(0);
-                }
-                else
-                {
-                    effectiveProbabilities.Add(possibility.Value * (1 - GetTotalChildren(possibility.Type) / total));
+                    // Some child possibilities are not realized at all, due to
+                    // small size and low child density eliminating children with
+                    // low probabilities entirely.
+                    float total = ChildTotals.FirstOrDefault(t => t.Type == possibility.Type)?.Value ?? 0;
+                    if (total == 0)
+                    {
+                        effectiveProbabilities.Add(0);
+                    }
+                    else
+                    {
+                        effectiveProbabilities.Add(possibility.Value * (1 - GetTotalChildren(possibility.Type) / total));
+                    }
                 }
             }
             float totalProbability = effectiveProbabilities.Sum();
@@ -337,11 +352,11 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Generates a child of the specified type within this <see cref="SpaceRegion"/>.
+        /// Generates a child of the specified type within this <see cref="CelestialObject"/>.
         /// </summary>
         /// <param name="type">
         /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="SpaceRegion"/> or <see cref="CelestialBody"/>.
+        /// types, but must be a subclass of <see cref="CelestialObject"/> or <see cref="CelestialBody"/>.
         /// </param>
         /// <param name="position">
         /// The location at which to generate the child. If null, a randomly-selected free space will
@@ -369,9 +384,9 @@ namespace WorldFoundry.Space
             var parameters = new object[] { this, position };
 
             Orbiter child = null;
-            if (type.IsSubclassOf(typeof(SpaceRegion)))
+            if (type.IsSubclassOf(typeof(CelestialObject)))
             {
-                child = (SpaceRegion)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters);
+                child = (CelestialObject)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters);
             }
             else if (type.IsSubclassOf(typeof(CelestialBody)))
             {
@@ -388,7 +403,7 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Retrieves the position within this <see cref="SpaceRegion"/>'s local space at the center of
+        /// Retrieves the position within this <see cref="CelestialObject"/>'s local space at the center of
         /// the given grid space.
         /// </summary>
         /// <param name="coordinates">The 1-based grid coordinates.</param>
@@ -404,40 +419,27 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Gets the total number of children in this <see cref="SpaceRegion"/>, by type.
-        /// </summary>
-        /// <returns>The total number of children in this <see cref="SpaceRegion"/>, by type.</returns>
-        public ICollection<SpaceChildValue> GetChildTotals()
-        {
-            if (!IsChildTotalsGenerationComplete)
-            {
-                CalculateChildTotals();
-            }
-            return ChildTotals;
-        }
-
-        /// <summary>
-        /// Finds the child <see cref="SpaceRegion"/> within local space whose own <see cref="Radius"/>
+        /// Finds the child <see cref="CelestialObject"/> within local space whose own <see cref="Radius"/>
         /// contains the specified position.
         /// </summary>
         /// <param name="position">The position to locate within a child.</param>
         /// <returns>
-        /// The child <see cref="SpaceRegion"/> which contains the given position within its <see
+        /// The child <see cref="CelestialObject"/> which contains the given position within its <see
         /// cref="Radius"/>, or null if no child does.
         /// </returns>
-        internal virtual SpaceRegion GetContainingChild(Vector3 position)
-            => Children.FirstOrDefault(c => c.GetType().IsSubclassOf(typeof(SpaceRegion)) && c.Shape.IsPointWithin(c.Position, position)) as SpaceRegion;
+        internal virtual CelestialObject GetContainingChild(Vector3 position)
+            => Children?.FirstOrDefault(c => c.GetType().IsSubclassOf(typeof(CelestialObject)) && c.Shape.IsPointWithin(c.Position, position)) as CelestialObject;
 
         /// <summary>
-        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="SpaceRegion"/>
+        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="CelestialObject"/>
         /// for which it is contained (even partially) within that <see cref="Parent"/>'s local space.
         /// </summary>
         /// <returns>
-        /// The nearest containing <see cref="Parent"/> of this <see cref="SpaceRegion"/> which
+        /// The nearest containing <see cref="Parent"/> of this <see cref="CelestialObject"/> which
         /// contains it within its local space (even partially); null if the object is outside the
         /// bounds of the hierarchy completely.
         /// </returns>
-        internal SpaceRegion GetContainingParent()
+        internal CelestialObject GetContainingParent()
         {
             var currentReference = Parent;
             while (currentReference != null)
@@ -453,16 +455,16 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="SpaceRegion"/>
+        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="CelestialObject"/>
         /// which contains the specified position within that <see cref="Parent"/>'s own local space
         /// (possibly this object itself if the position is not out of bounds).
         /// </summary>
         /// <returns>
-        /// The nearest containing <see cref="Parent"/> of this <see cref="SpaceRegion"/> which
+        /// The nearest containing <see cref="Parent"/> of this <see cref="CelestialObject"/> which
         /// contains the position within its local space; null if the object is outside the bounds of
         /// the hierarchy completely.
         /// </returns>
-        internal SpaceRegion GetContainingParent(Vector3 position)
+        internal CelestialObject GetContainingParent(Vector3 position)
         {
             var currentReference = this;
             while (currentReference != null)
@@ -503,31 +505,34 @@ namespace WorldFoundry.Space
         /// <returns>The size of 1 grid space within this object, in local space units.</returns>
         private float GetGridSize() => ChildDensity == 0 ? Radius : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
 
-        private GridSpace GetGridSpace(Vector3 coordinates) => GridSpaces.Where(g => g.Coordinates == coordinates).FirstOrDefault();
+        private GridSpace GetGridSpace(Vector3 coordinates) => GridSpaces?.Where(g => g.Coordinates == coordinates).FirstOrDefault();
 
         /// <summary>
         /// Finds all children in a 3x3 box of grid spaces around the given position in local space.
         /// </summary>
         /// <param name="position">The location around which to locate children.</param>
-        internal IEnumerable<SpaceChild> GetNearbyChildren(Vector3 position)
+        internal IEnumerable<CelestialEntity> GetNearbyChildren(Vector3 position)
         {
             Vector3 coordinates = PositionToGridCoords(position);
-            foreach (var child in Children)
+            if (Children != null)
             {
-                var childCoordinates = PositionToGridCoords(child.Position);
-                if (childCoordinates.X < coordinates.X - 1 || childCoordinates.X > coordinates.X + 1 ||
-                    childCoordinates.Y < coordinates.Y - 1 || childCoordinates.Y > coordinates.Y + 1 ||
-                    childCoordinates.Z < coordinates.Z - 1 || childCoordinates.Z > coordinates.Z + 1)
+                foreach (var child in Children)
                 {
-                    continue;
-                }
+                    var childCoordinates = PositionToGridCoords(child.Position);
+                    if (childCoordinates.X < coordinates.X - 1 || childCoordinates.X > coordinates.X + 1 ||
+                        childCoordinates.Y < coordinates.Y - 1 || childCoordinates.Y > coordinates.Y + 1 ||
+                        childCoordinates.Z < coordinates.Z - 1 || childCoordinates.Z > coordinates.Z + 1)
+                    {
+                        continue;
+                    }
 
-                yield return child;
+                    yield return child;
+                }
             }
         }
 
         private float GetTotalChildren(Type type)
-            => ChildPresets.Where(p => p.Type == type).Sum(p => p.Value) + Children.Count(c => c.GetType() == type);
+            => (ChildPresets?.Where(p => p.Type == type).Sum(p => p.Value) ?? 0) + (Children?.Count(c => c.GetType() == type) ?? 0);
 
         /// <summary>
         /// Converts set of grid coordinates to a collection of corner positions.
