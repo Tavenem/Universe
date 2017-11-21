@@ -34,7 +34,11 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// The average force of gravity at the surface of this celestial object, in N.
         /// </summary>
-        public double SurfaceGravity => GetProperty(ref _surfaceGravity, GenerateSurfaceGravity) ?? 0;
+        public double SurfaceGravity
+        {
+            get => GetProperty(ref _surfaceGravity, GenerateSurfaceGravity) ?? 0;
+            protected set => _surfaceGravity = value;
+        }
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbiter"/>.
@@ -117,7 +121,7 @@ namespace WorldFoundry.Orbits
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
         /// </summary>
         /// <returns>The average surface gravity of this <see cref="Orbiter"/>, in N.</returns>
-        private void GenerateSurfaceGravity() => _surfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
+        protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
 
         /// <summary>
         /// Calculates the force of gravity on this <see cref="Orbiter"/> from another as a vector,
