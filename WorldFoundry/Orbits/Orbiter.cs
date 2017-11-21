@@ -92,7 +92,7 @@ namespace WorldFoundry.Orbits
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
         /// <remarks>Produces 0 in the base class; expected to be overridden in subclasses.</remarks>
-        private void GenerateMass() => Mass = 0;
+        protected virtual void GenerateMass() => Mass = 0;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.

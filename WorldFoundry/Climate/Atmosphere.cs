@@ -130,6 +130,13 @@ namespace WorldFoundry.Climate
         public Atmosphere(CelestialBody body) => CelestialBody = body;
 
         /// <summary>
+        /// Initializes a new instance of <see cref="Atmosphere"/> with the given parameters.
+        /// </summary>
+        /// <param name="body">The <see cref="CelestialBodies.CelestialBody"/> this <see cref="Atmosphere"/> surrounds.</param>
+        /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
+        public Atmosphere(CelestialBody body, float pressure) : this(body) => AtmosphericPressure = pressure;
+
+        /// <summary>
         /// Calculates the atmospheric density for the given conditions, in kg/m³.
         /// </summary>
         /// <param name="pressure">A pressure, in kPa.</param>

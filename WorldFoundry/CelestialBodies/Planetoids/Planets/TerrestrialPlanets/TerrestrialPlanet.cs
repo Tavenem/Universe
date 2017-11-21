@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets
+namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
+    /// <summary>
+    /// A primarily rocky planet, relatively small in comparison to gas and ice giants.
+    /// </summary>
     public class TerrestrialPlanet : Planemo
     {
         /// <summary>

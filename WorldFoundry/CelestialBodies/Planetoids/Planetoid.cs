@@ -61,18 +61,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public Mixture Composition
         {
             get => GetProperty(ref _composition, GenerateComposition);
-            private set => _composition = value;
+            protected set => _composition = value;
         }
 
         private double? _density;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
         protected virtual double TypeDensity => 0;
         /// <summary>
         /// The average density of this <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
         [NotMapped]
-        public virtual double Density
+        public double Density
         {
-            get => _density ?? TypeDensity;
+            get => GetProperty(ref _density, GenerateDensity) ?? TypeDensity;
             set
             {
                 if (_density == value || value == TypeDensity)
@@ -158,10 +161,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
         protected virtual double? MinMass_Type => null;
 
+        private double? _minSatellitePeriapsis;
         /// <summary>
         /// The minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
         /// </summary>
-        protected double? MinSatellitePeriapsis { get; set; }
+        protected double MinSatellitePeriapsis
+        {
+            get => GetProperty(ref _minSatellitePeriapsis, GenerateMinSatellitePeriapsis) ?? 0;
+            set => _minSatellitePeriapsis = value;
+        }
 
         /// <summary>
         /// The approximate rigidity of this <see cref="Planetoid"/>.
@@ -206,8 +214,31 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="Planetoid"/> is located.
         /// </param>
+        /// <param name="maxMass">
+        /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
+        /// </param>
+        public Planetoid(CelestialObject parent, double maxMass) : base(parent) => MaxMass = maxMass;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planetoid"/> is located.
+        /// </param>
         /// <param name="position">The initial position of this <see cref="Planetoid"/>.</param>
         public Planetoid(CelestialObject parent, Vector3 position) : base(parent, position) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planetoid"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="Planetoid"/>.</param>
+        /// <param name="maxMass">
+        /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
+        /// </param>
+        public Planetoid(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
 
         /// <summary>
         /// Determines an angle between the Y-axis and the axis of rotation for this <see cref="Planetoid"/>.
@@ -226,15 +257,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
-        /// Provides no functionality in the base class; subclasses are expected override.
         /// </summary>
+        /// <remarks>
+        /// Provides no functionality in the base class; subclasses are expected override.
+        /// </remarks>
         protected virtual void GenerateAtmosphere() { }
 
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
-        /// Provides no functionality in the base class except initialization; subclasses are expected override.
         /// </summary>
-        private void GenerateComposition() => Composition = new Mixture();
+        /// <remarks>
+        /// Provides no functionality in the base class except initialization; subclasses are expected override.
+        /// </remarks>
+        protected virtual void GenerateComposition() => Composition = new Mixture();
+
+        /// <summary>
+        /// Generates an appropriate density for this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <remarks>
+        /// Does nothing in the base class (allowing <see cref="TypeDensity"/> to be used);
+        /// subclasses may override if necessary.
+        /// </remarks>
+        private void GenerateDensity() { }
 
         /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
@@ -246,6 +290,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// seconds in an Earth year, which simplifies to multiplying mass by 2.88e-19.
         /// </remarks>
         private void GenerateMagnetosphere() => HasMagnetosphere = Randomizer.Static.NextDouble() <= ((Mass * 2.88e-19) / RotationalPeriod) * MagnetosphereChanceFactor;
+
+        /// <summary>
+        /// Generates an appropriate minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
+        /// </summary>
+        protected virtual void GenerateMinSatellitePeriapsis() => _minSatellitePeriapsis = 0;
 
         /// <summary>
         /// Determines a rotational period for this <see cref="Planetoid"/>.
@@ -295,7 +344,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 Satellites = new HashSet<Planetoid>();
             }
 
-            double minPeriapsis = MinSatellitePeriapsis ?? 0;
+            if (MaxSatellites <= 0)
+            {
+                return;
+            }
+
+            double minPeriapsis = MinSatellitePeriapsis;
             double maxApoapsis = Orbit == null ? Radius * 100 : Orbit.GetHillSphereRadius() / 3.0;
 
             while (minPeriapsis <= maxApoapsis && Satellites.Count < MaxSatellites && (!max.HasValue || Satellites.Count < max.Value))

@@ -18,14 +18,14 @@ namespace WorldFoundry.Space
     public class CelestialObject : BioZone
     {
         /// <summary>
+        /// The types of children this region of space might have.
+        /// </summary>
+        public static IDictionary<Type, float> ChildPossibilities { get; }
+
+        /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
         public virtual double ChildDensity => 0;
-
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public virtual ICollection<ChildValue> ChildPossibilities { get; private set; }
 
         /// <summary>
         /// Indicates any children this <see cref="CelestialObject"/> may have which will be manually
@@ -143,9 +143,9 @@ namespace WorldFoundry.Space
                 }
 
                 // Any existing children establish a minimum for the totals.
-                amount = Math.Max(amount, Children?.Where(c => c.GetType() == possibility.Type).Count() ?? 0);
+                amount = Math.Max(amount, Children?.Where(c => c.GetType() == possibility.Key).Count() ?? 0);
 
-                ChildTotals.Add(new ChildValue { Type = possibility.Type, Value = amount });
+                ChildTotals.Add(new ChildValue { Type = possibility.Key, Value = amount });
             }
 
             // Add any presets not already accounted for in the general amounts.
@@ -171,7 +171,7 @@ namespace WorldFoundry.Space
                 // Pick the most common type (at random, if multiple types tie for the maximum probability).
                 var max = ChildPossibilities.Max(p => p.Value);
                 var common = Randomizer.Static.Generator.Choice(ChildPossibilities.Where(c => c.Value == max).ToList());
-                ChildTotals.Add(new ChildValue { Type = common.Type, Value = max });
+                ChildTotals.Add(new ChildValue { Type = common.Key, Value = max });
             }
         }
 
@@ -298,7 +298,8 @@ namespace WorldFoundry.Space
             }
 
             // Adjust type probabilities based on existing counts.
-            List<float> effectiveProbabilities = new List<float>();
+            List<Type> effectiveProbabilityTypes = new List<Type>();
+            Dictionary<Type, float> effectiveProbabilities = new Dictionary<Type, float>();
             if (ChildPossibilities != null)
             {
                 foreach (var possibility in ChildPossibilities)
@@ -306,18 +307,15 @@ namespace WorldFoundry.Space
                     // Some child possibilities are not realized at all, due to
                     // small size and low child density eliminating children with
                     // low probabilities entirely.
-                    float total = ChildTotals.FirstOrDefault(t => t.Type == possibility.Type)?.Value ?? 0;
-                    if (total == 0)
+                    float total = ChildTotals.FirstOrDefault(t => t.Type == possibility.Key)?.Value ?? 0;
+                    if (total > 0)
                     {
-                        effectiveProbabilities.Add(0);
-                    }
-                    else
-                    {
-                        effectiveProbabilities.Add(possibility.Value * (1 - GetTotalChildren(possibility.Type) / total));
+                        effectiveProbabilityTypes.Add(possibility.Key);
+                        effectiveProbabilities.Add(possibility.Key, possibility.Value * (1 - GetTotalChildren(possibility.Key) / total));
                     }
                 }
             }
-            float totalProbability = effectiveProbabilities.Sum();
+            float totalProbability = effectiveProbabilities.Sum(p => p.Value);
             // If no children are indicated after adjusting, there is nothing left to do.
             if (totalProbability == 0)
             {
@@ -325,18 +323,18 @@ namespace WorldFoundry.Space
             }
 
             float ratio = 1 / totalProbability;
-            for (int i = 0; i < effectiveProbabilities.Count; i++)
+            foreach (var type in effectiveProbabilityTypes)
             {
-                effectiveProbabilities[i] = effectiveProbabilities[i] / ratio;
+                effectiveProbabilities[type] /= ratio;
             }
 
             // Select a child type and create it.
             double chance = Randomizer.Static.NextDouble();
-            for (int i = 0; i < effectiveProbabilities.Count; i++)
+            foreach (var probability in effectiveProbabilities)
             {
-                if (chance <= effectiveProbabilities[i])
+                if (chance <= probability.Value)
                 {
-                    var type = ChildPossibilities.ElementAt(i).Type;
+                    var type = probability.Key;
                     var position = new Vector3(
                         (float)Math.Round((coordinates.X - 1 + Randomizer.Static.NextDouble() * Math.Sign(coordinates.X)) * GridSize, 4),
                         (float)Math.Round((coordinates.Y - 1 + Randomizer.Static.NextDouble() * Math.Sign(coordinates.Y)) * GridSize, 4),
@@ -346,7 +344,7 @@ namespace WorldFoundry.Space
                 }
                 else
                 {
-                    chance -= effectiveProbabilities[i];
+                    chance -= probability.Value;
                 }
             }
         }
@@ -365,9 +363,8 @@ namespace WorldFoundry.Space
         /// <param name="orbitParameters">
         /// An optional list of parameters which describe the child's orbit. May be null.
         /// </param>
-        public virtual object GenerateChildOfType(Type type, Vector3? position, List<object> orbitParameters = null)
+        public virtual BioZone GenerateChildOfType(Type type, Vector3? position, List<object> orbitParameters = null)
         {
-
             // If position is null, find free space.
             if (!position.HasValue)
             {
@@ -383,7 +380,7 @@ namespace WorldFoundry.Space
             // Include this as the parent parameter
             var parameters = new object[] { this, position };
 
-            Orbiter child = null;
+            BioZone child = null;
             if (type.IsSubclassOf(typeof(CelestialObject)))
             {
                 child = (CelestialObject)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters);

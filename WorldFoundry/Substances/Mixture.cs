@@ -13,7 +13,7 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// The <see cref="MixtureComponent"/>s included in this mixture.
         /// </summary>
-        public ICollection<MixtureComponent> Components { get; private set; }
+        public ICollection<MixtureComponent> Components { get; internal set; }
 
         /// <summary>
         /// When this <see cref="Mixture"/> is part of a larger overall <see cref="Mixture"/> which
@@ -25,12 +25,27 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// The child <see cref="Mixture"/>s included in this overall mixture.
         /// </summary>
-        public ICollection<Mixture> Mixtures { get; private set; }
+        public ICollection<Mixture> Mixtures { get; internal set; }
 
         /// <summary>
         /// The proportion of this mixture in a larger overall mixture (mass fraction).
         /// </summary>
         public float Proportion { get; internal set; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Mixture"/>.
+        /// </summary>
+        public Mixture() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Mixture"/> with the given properties.
+        /// </summary>
+        public Mixture(IEnumerable<MixtureComponent> components) => Components = new HashSet<MixtureComponent>(components);
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Mixture"/> with the given properties.
+        /// </summary>
+        public Mixture(int layer, IEnumerable<MixtureComponent> components) : this(components) => Layer = layer;
 
         /// <summary>
         /// Introduce a new <see cref="Substance"/> into the <see cref="Mixture"/> at the specified
@@ -200,6 +215,19 @@ namespace WorldFoundry.Substances
 
             AddMixture(newLayer);
         }
+
+        /// <summary>
+        /// Retrieves the child <see cref="Mixture"/> at the last layer.
+        /// </summary>
+        /// <param name="layer">The 0-based layer at which to retrieve a child <see cref="Mixture"/>.</param>
+        /// <returns>
+        /// The child <see cref="Mixture"/> at the last layer, or null if no children exist.
+        /// </returns>
+        /// <remarks>
+        /// If more than one child exists with the given <see cref="Layer"/> value, the first one
+        /// found is returned.
+        /// </remarks>
+        public Mixture GetChildAtLastLayer() => Mixtures?.FirstOrDefault(m => m.Layer == Mixtures.Max(x => x.Layer));
 
         /// <summary>
         /// Retrieves the child <see cref="Mixture"/> at the given layer.

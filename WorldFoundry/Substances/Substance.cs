@@ -16,6 +16,20 @@
         public Phase Phase { get; set; }
 
         /// <summary>
+        /// Initializes a new instance of <see cref="Substance"/>.
+        /// </summary>
+        public Substance() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Substance"/> with the given properties.
+        /// </summary>
+        public Substance(Chemical chemical, Phase phase)
+        {
+            Chemical = chemical;
+            Phase = phase;
+        }
+
+        /// <summary>
         /// Returns a string that represents the current <see cref="Substance"/>.
         /// </summary>
         /// <returns>A string that represents the current <see cref="Substance"/>.</returns>

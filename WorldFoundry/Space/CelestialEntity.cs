@@ -20,30 +20,30 @@ namespace WorldFoundry.Space
         internal const int localSpaceScale = 1000000;
 
         /// <summary>
-        /// The base name for this type of celestial object.
+        /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Intended to be hidden by subclasses.</remarks>
         public static string BaseTypeName => "Celestial Object";
 
         /// <summary>
-        /// The primary key for this entity.
+        /// The primary key for this <see cref="CelestialEntity"/>.
         /// </summary>
         public Guid ID { get; private set; }
 
         private string _designation;
         /// <summary>
-        /// A string that uniquely identifies this celestial object.
+        /// A string that uniquely identifies this <see cref="CelestialEntity"/>.
         /// </summary>
         public string Designation => GetProperty(ref _designation, GenerateDesgination);
 
         /// <summary>
-        /// An optional string which is placed before a celestial object's <see cref="Designation"/>.
+        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
         /// </summary>
         protected virtual string DesignatorPrefix => string.Empty;
 
         private float? _localScale;
         /// <summary>
-        /// The size of 1 unit of local space within this <see cref="CelestialObject"/>, in meters.
+        /// The size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
         public float LocalScale
         {
@@ -58,21 +58,21 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// An optional name for this celestial object.
+        /// An optional name for this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
-        /// Not every celestial object must have a name. They may be uniquely identified by their
-        /// <see cref="Designation"/>, instead.
+        /// Not every <see cref="CelestialEntity"/> must have a name. They may be uniquely identified
+        /// by their <see cref="Designation"/>, instead.
         /// </remarks>
         public virtual string Name { get; set; }
 
         /// <summary>
-        /// The <see cref="CelestialObject"/> which directly contains this entity.
+        /// The <see cref="CelestialObject"/> which directly contains this <see cref="CelestialEntity"/>.
         /// </summary>
         public CelestialObject Parent { get; private set; }
 
         /// <summary>
-        /// Specifies the location of this entity's center in the local space of its
+        /// Specifies the location of this <see cref="CelestialEntity"/>'s center in the local space of its
         /// containing <see cref="Parent"/>.
         /// </summary>
         [NotMapped]
@@ -88,26 +88,26 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Specifies the X-coordinate of this entity's center in the local space of its containing
+        /// Specifies the X-coordinate of this <see cref="CelestialEntity"/>'s center in the local space of its containing
         /// <see cref="Parent"/>.
         /// </summary>
         public float PositionX { get; set; }
 
         /// <summary>
-        /// Specifies the Y-coordinate of this entity's center in the local space of its containing
+        /// Specifies the Y-coordinate of this <see cref="CelestialEntity"/>'s center in the local space of its containing
         /// <see cref="Parent"/>.
         /// </summary>
         public float PositionY { get; set; }
 
         /// <summary>
-        /// Specifies the Z-coordinate of this entity's center in the local space of its containing
+        /// Specifies the Z-coordinate of this <see cref="CelestialEntity"/>'s center in the local space of its containing
         /// <see cref="Parent"/>.
         /// </summary>
         public float PositionZ { get; set; }
 
         protected float? _radius;
         /// <summary>
-        /// Gets a radius which fully contains this <see cref="CelestialObject"/>, in meters.
+        /// Gets a radius which fully contains this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
         public float Radius
         {
@@ -144,13 +144,13 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// The celestial object's <see cref="Name"/>, if it has one; otherwise its <see cref="Designation"/>.
+        /// The <see cref="CelestialEntity"/>'s <see cref="Name"/>, if it has one; otherwise its <see cref="Designation"/>.
         /// </summary>
         [NotMapped]
         public string Title => string.IsNullOrEmpty(Name) ? Designation : Name;
 
         /// <summary>
-        /// The name for this type of celestial object.
+        /// The name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public virtual string TypeName => BaseTypeName;
 
@@ -210,7 +210,7 @@ namespace WorldFoundry.Space
         protected virtual void GenerateShape() => Shape = new Sphere();
 
         /// <summary>
-        /// Returns the size of 1 unit of local space within this <see cref="CelestialObject"/>, in meters.
+        /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
         private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / localSpaceScale) : null;
 

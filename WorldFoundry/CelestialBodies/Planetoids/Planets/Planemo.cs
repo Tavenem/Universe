@@ -67,7 +67,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         /// <summary>
-        /// The name for this type of celestial object.
+        /// The name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string TypeName
         {
@@ -115,6 +115,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
         /// </param>
+        /// <param name="maxMass">
+        /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
+        /// </param>
+        public Planemo(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
+        /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
         public Planemo(CelestialObject parent, Vector3 position) : base(parent, position) { }
 
@@ -124,11 +135,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
         /// </param>
+        /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        public Planemo(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
+        public Planemo(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Randomly determines an eccentricity for this <see cref="Planemo"/>.
