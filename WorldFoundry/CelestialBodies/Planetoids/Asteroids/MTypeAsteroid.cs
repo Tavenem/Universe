@@ -17,14 +17,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         public new static string BaseTypeName => "M-Type Asteroid";
 
         /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal new static double TypeDensity => 5320;
+
+        /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
         protected override string DesignatorPrefix => "m";
-
-        /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        protected override double TypeDensity => 5320;
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/>.

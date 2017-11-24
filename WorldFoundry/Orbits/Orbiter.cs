@@ -164,7 +164,7 @@ namespace WorldFoundry.Orbits
         /// <returns>
         /// The Roche limit for this <see cref="Orbiter"/> for an object of the given density, in meters.
         /// </returns>
-        public double GetRocheLimit(float orbitingDensity) => 0.8947 * Math.Pow(Mass / orbitingDensity, 1.0 / 3.0);
+        public double GetRocheLimit(double orbitingDensity) => 0.8947 * Math.Pow(Mass / orbitingDensity, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the total force of gravity on this <see cref="Orbiter"/>, in N, as a vector.

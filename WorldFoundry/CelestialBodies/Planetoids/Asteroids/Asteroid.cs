@@ -20,14 +20,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
         /// rather than an asteroid.
         /// </remarks>
-        protected override double? MaxMass_Type => 3.4e20;
+        protected new static double? MaxMass_Type => 3.4e20;
 
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
         /// </summary>
         /// <remarks>Below this a body is considered a meteoroid, rather than an asteroid.</remarks>
-        protected override double? MinMass_Type => 5.9e8;
+        protected new static double? MinMass_Type => 5.9e8;
 
         /// <summary>
         /// The name for this type of <see cref="CelestialEntity"/>.

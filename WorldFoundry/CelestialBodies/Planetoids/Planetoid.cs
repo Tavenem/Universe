@@ -14,6 +14,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Planetoid : CelestialBody
     {
+        /// <summary>
+        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates no maximum.
+        /// </summary>
+        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
+        internal static double? MaxMass_Type => null;
+
+        /// <summary>
+        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates a minimum of 0.
+        /// </summary>
+        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
+        internal static double? MinMass_Type => null;
+
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal static double TypeDensity => 0;
+
         private float? _angleOfRotation;
         /// <summary>
         /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
@@ -66,10 +85,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double? _density;
         /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        protected virtual double TypeDensity => 0;
-        /// <summary>
         /// The average density of this <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
         [NotMapped]
@@ -120,12 +135,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 _maxMass = value;
             }
         }
-        /// <summary>
-        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates no maximum.
-        /// </summary>
-        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
-        protected virtual double? MaxMass_Type => null;
 
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
@@ -154,12 +163,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 _minMass = value;
             }
         }
-        /// <summary>
-        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates a minimum of 0.
-        /// </summary>
-        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
-        protected virtual double? MinMass_Type => null;
 
         private double? _minSatellitePeriapsis;
         /// <summary>
@@ -278,7 +281,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Does nothing in the base class (allowing <see cref="TypeDensity"/> to be used);
         /// subclasses may override if necessary.
         /// </remarks>
-        private void GenerateDensity() { }
+        protected virtual void GenerateDensity() { }
 
         /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.

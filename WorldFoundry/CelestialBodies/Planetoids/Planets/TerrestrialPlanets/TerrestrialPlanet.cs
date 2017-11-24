@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Numerics;
+using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -9,6 +9,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class TerrestrialPlanet : Planemo
     {
+        internal const float maxDensity = 6000;
+
+        /// <summary>
+        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates a minimum of 0.
+        /// </summary>
+        /// <remarks>
+        /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
+        /// systems, a calculated value for clearing the neighborhood is used instead.
+        /// </remarks>
+        internal new static double? MinMass_Type => 2.0e22;
+
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
@@ -16,7 +28,52 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// There is a low chance of most planets having substantial rings; 10 for <see
         /// cref="TerrestrialPlanet"/>s.
         /// </remarks>
-        protected override float RingChance => 10;
+        protected new static float RingChance => 10;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        public TerrestrialPlanet() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
+        /// </param>
+        public TerrestrialPlanet(CelestialObject parent) : base(parent) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
+        /// </param>
+        /// <param name="maxMass">
+        /// The maximum mass allowed for this <see cref="TerrestrialPlanet"/> during random generation, in kg.
+        /// </param>
+        public TerrestrialPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
+        public TerrestrialPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
+        /// <param name="maxMass">
+        /// The maximum mass allowed for this <see cref="TerrestrialPlanet"/> during random generation, in kg.
+        /// </param>
+        public TerrestrialPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Calculates the mass required to produce the given surface gravity.

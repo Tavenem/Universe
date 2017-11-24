@@ -19,6 +19,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private const float ringDensity_Icy = 300.0f;
         private const float ringDensity_Rocky = 1380.0f;
 
+        /// <summary>
+        /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
+        /// actual number is determined by the orbital characteristics of the satellites it actually has.
+        /// </summary>
+        /// <remarks>
+        /// Set to 5 for <see cref="Planemo"/>. For reference, Pluto has 5 moons, the most of any
+        /// planemo in the Solar System apart from the giants. No others are known to have more than 2.
+        /// </remarks>
+        public new static int MaxSatellites => 5;
+
+        /// <summary>
+        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
+        /// </summary>
+        /// <remarks>
+        /// Null in the base class; subclasses may hide when appropriate.
+        /// </remarks>
+        public static string PlanemoClassPrefix => null;
+
+        /// <summary>
+        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
+        /// </summary>
+        /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
+        protected static float RingChance => 0;
+
         private float? _eccentricity;
         /// <summary>
         /// The eccentricity of this <see cref="Planemo"/>'s orbit.
@@ -34,30 +58,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Indicates that ring generation has completed, whether or not any rings were actually generated.
         /// </summary>
         protected bool IsRingGenerationComplete { get; set; }
-
-        /// <summary>
-        /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
-        /// actual number is determined by the orbital characteristics of the satellites it actually has.
-        /// </summary>
-        /// <remarks>
-        /// Set to 5 for <see cref="Planemo"/>. For reference, Pluto has 5 moons, the most of any
-        /// planemo in the Solar System apart from the giants. No others are known to have more than 2.
-        /// </remarks>
-        public override int MaxSatellites => 5;
-
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        /// <remarks>
-        /// Null in the base class; subclasses may override when appropriate.
-        /// </remarks>
-        public virtual string PlanemoClassPrefix => null;
-
-        /// <summary>
-        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
-        /// </summary>
-        /// <remarks>Zero on the base class; subclasses may override when appropriate.</remarks>
-        protected virtual float RingChance => 0;
 
         private ICollection<PlanetaryRing> _rings;
         public ICollection<PlanetaryRing> Rings

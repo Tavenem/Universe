@@ -30,7 +30,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        protected override double? MaxMass_Type => 2.0e22;
+        internal new static double? MaxMass_Type => 2.0e22;
 
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
@@ -39,7 +39,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <remarks>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </remarks>
-        protected override double? MinMass_Type => 3.4e20f;
+        internal new static double? MinMass_Type => 3.4e20f;
 
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
@@ -48,12 +48,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// There is a low chance of most planets having substantial rings; 10 for <see
         /// cref="DwarfPlanet"/>s.
         /// </remarks>
-        protected override float RingChance => 10;
+        protected new static float RingChance => 10;
 
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        protected override double TypeDensity => 2000;
+        internal new static double TypeDensity => 2000;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.
@@ -248,7 +248,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             };
             var firstLayer = new Mixture
             {
-                Components = new HashSet<MixtureComponent>()
+                Components = new HashSet<MixtureComponent>(),
+                Proportion = 1,
             };
 
             if (water > 0)

@@ -204,7 +204,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
-        private void GenerateDensity() => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
+        protected override void GenerateDensity() => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
