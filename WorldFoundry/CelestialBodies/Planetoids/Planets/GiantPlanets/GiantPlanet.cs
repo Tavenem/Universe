@@ -11,8 +11,15 @@ using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
+    /// <summary>
+    /// A gas giant planet (excluding ice giants, which have their own subclass).
+    /// </summary>
     public class GiantPlanet : Planemo
     {
+        protected const int density_MinExtreme = 600;
+        protected const int density_Min = 1100;
+        protected const int density_Max = 1650;
+
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
@@ -420,11 +427,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         {
             if (Randomizer.Static.NextDouble() <= 0.2)
             {
-                Density = Math.Round(Randomizer.Static.NextDouble(600, 1100));
+                Density = Math.Round(Randomizer.Static.NextDouble(density_MinExtreme, density_Min));
             }
             else
             {
-                Density = Math.Round(Randomizer.Static.NextDouble(1100, 1650));
+                Density = Math.Round(Randomizer.Static.NextDouble(density_Min, density_Max));
             }
         }
 
