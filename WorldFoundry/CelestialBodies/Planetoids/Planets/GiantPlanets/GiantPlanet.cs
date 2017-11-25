@@ -16,9 +16,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class GiantPlanet : Planemo
     {
-        protected const int density_MinExtreme = 600;
-        protected const int density_Min = 1100;
-        protected const int density_Max = 1650;
+        internal const int density_MinExtreme = 600;
+        internal const int density_Min = 1100;
+        internal const int density_Max = 1650;
 
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -461,7 +461,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 // The maximum mass and density are used to calculate an outer
                 // Roche limit (may not be the actual Roche limit for the body
                 // which gets generated).
-                if (periapsis < GetRocheLimit(TerrestrialPlanet.maxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(TerrestrialPlanet.density_Max) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(Parent, maxMass);
                 }

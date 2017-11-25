@@ -429,8 +429,17 @@ namespace WorldFoundry.Climate
         /// Calculates the greenhouse effect of this <see cref="Atmosphere"/> and returns the
         /// effective surface temperature, in K.
         /// </summary>
+        /// <param name="polar">
+        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        internal float GetSurfaceTemperature() => CelestialBody.GetTotalTemperature() * GreenhouseFactor;
+        internal float GetSurfaceTemperature(bool polar = false)
+        {
+            var baseTemp = CelestialBody.GetTotalTemperature();
+            var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
+            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
+
+        }
 
         /// <summary>
         /// Calculates the greenhouse effect of the atmosphere and returns the effective surface
@@ -444,7 +453,7 @@ namespace WorldFoundry.Climate
         {
             var baseTemp = CelestialBody.GetTotalTemperatureAtApoapsis();
             var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
-            return (polar ? CelestialBody.GetTotalTemperatureAtApoapsis() * PolarInsolationFactor : baseTemp) + greenhouseEffect;
+            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
         }
 
         /// <summary>
@@ -459,7 +468,7 @@ namespace WorldFoundry.Climate
         {
             var baseTemp = CelestialBody.GetTotalTemperatureAtPeriapsis();
             var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
-            return (polar ? CelestialBody.GetTotalTemperatureAtPeriapsis() * PolarInsolationFactor : baseTemp) + greenhouseEffect;
+            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
         }
 
         /// <summary>
@@ -467,17 +476,20 @@ namespace WorldFoundry.Climate
         /// effective surface temperature, averaged between periapsis
         /// and apoapsis, in K.
         /// </summary>
+        /// <param name="polar">
+        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// </param>
         /// <returns>The average effective surface temperature.</returns>
-        internal float GetSurfaceTemperatureAverageOrbital()
+        internal float GetSurfaceTemperatureAverageOrbital(bool polar = false)
         {
             // Only bother calculating twice if the body is actually in orbit.
             if (CelestialBody.Orbit == null)
             {
-                return GetSurfaceTemperature();
+                return GetSurfaceTemperature(polar);
             }
             else
             {
-                return (GetSurfaceTemperatureAtPeriapsis() + GetSurfaceTemperatureAtApoapsis()) / 2.0f;
+                return (GetSurfaceTemperatureAtPeriapsis(polar) + GetSurfaceTemperatureAtApoapsis(polar)) / 2.0f;
             }
         }
 

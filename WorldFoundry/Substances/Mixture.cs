@@ -176,7 +176,7 @@ namespace WorldFoundry.Substances
         /// <param name="phase">The <see cref="Phase"/> to match.</param>
         /// <returns>true if a <see cref="Substance"/> is matched; false otherwise.</returns>
         public bool ContainsSubstance(Chemical chemical, Phase phase)
-            => Components?.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase) != null
+            => Components?.FirstOrDefault(c => c.Substance.Chemical == chemical && (phase == Phase.Any || c.Substance.Phase == phase)) != null
             || (Mixtures?.Any(m => m.ContainsSubstance(chemical, phase)) ?? false);
 
         /// <summary>
@@ -219,12 +219,23 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// Retrieves the child <see cref="Mixture"/> at the last layer.
         /// </summary>
-        /// <param name="layer">The 0-based layer at which to retrieve a child <see cref="Mixture"/>.</param>
+        /// <returns>
+        /// The child <see cref="Mixture"/> at the first layer, or null if no children exist.
+        /// </returns>
+        /// <remarks>
+        /// If more than one child exists with the lowest <see cref="Layer"/> value, the first one
+        /// found is returned.
+        /// </remarks>
+        public Mixture GetChildAtFirstLayer() => Mixtures?.FirstOrDefault(m => m.Layer == Mixtures.Min(x => x.Layer));
+
+        /// <summary>
+        /// Retrieves the child <see cref="Mixture"/> at the last layer.
+        /// </summary>
         /// <returns>
         /// The child <see cref="Mixture"/> at the last layer, or null if no children exist.
         /// </returns>
         /// <remarks>
-        /// If more than one child exists with the given <see cref="Layer"/> value, the first one
+        /// If more than one child exists with the highest <see cref="Layer"/> value, the first one
         /// found is returned.
         /// </remarks>
         public Mixture GetChildAtLastLayer() => Mixtures?.FirstOrDefault(m => m.Layer == Mixtures.Max(x => x.Layer));
@@ -275,16 +286,6 @@ namespace WorldFoundry.Substances
         /// </returns>
         public MixtureComponent GetSubstance(Chemical chemical, Phase phase)
             => Components?.FirstOrDefault(c => c.Substance.Chemical == chemical && c.Substance.Phase == phase);
-
-        /// <summary>
-        /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
-        /// the given <see cref="Substance"/>.
-        /// </summary>
-        /// <param name="substance">The <see cref="Substance"/> to match.</param>
-        /// <returns>
-        /// The matched <see cref="Substance"/>, or null if none of the components are present.
-        /// </returns>
-        public MixtureComponent GetSubstance(Substance substance) => GetSubstance(substance.Chemical, substance.Phase);
 
         /// <summary>
         /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
@@ -372,7 +373,7 @@ namespace WorldFoundry.Substances
         /// If true, removes the <see cref="Substance"/> from all child <see cref="Mixture"/> s, not
         /// from this overall <see cref="Mixture"/>.
         /// </param>
-        public void RemoveComponent(Substance substance, bool children = false)
+        public void RemoveComponent(Chemical chemical, Phase phase, bool children = false)
         {
             if (children)
             {
@@ -380,13 +381,13 @@ namespace WorldFoundry.Substances
                 {
                     foreach (var mixture in Mixtures)
                     {
-                        mixture.RemoveComponent(substance);
+                        mixture.RemoveComponent(chemical, phase);
                     }
                 }
             }
             else if (Components != null)
             {
-                var match = GetSubstance(substance);
+                var match = GetSubstance(chemical, phase);
                 if (match != null)
                 {
                     Components.Remove(match);
