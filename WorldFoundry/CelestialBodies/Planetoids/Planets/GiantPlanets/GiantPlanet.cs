@@ -186,17 +186,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Hydrogen, Phase.Gas),
+                    Chemical = Chemical.Hydrogen,
+                    Phase = Phase.Gas,
                     Proportion = h,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Helium, Phase.Gas),
+                    Chemical = Chemical.Helium,
+                    Phase = Phase.Gas,
                     Proportion = he,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Gas),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Gas,
                     Proportion = ch4,
                 },
             })
@@ -207,7 +210,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ethane, Phase.Gas),
+                    Chemical = Chemical.Ethane,
+                    Phase = Phase.Gas,
                     Proportion = c2h6,
                 });
             }
@@ -215,7 +219,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Gas),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Gas,
                     Proportion = nh3,
                 });
             }
@@ -223,7 +228,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Gas),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Gas,
                     Proportion = waterVapor,
                 });
             }
@@ -231,7 +237,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Liquid),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Liquid,
                     Proportion = water,
                 });
             }
@@ -239,7 +246,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Solid),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Solid,
                     Proportion = ice,
                 });
             }
@@ -247,7 +255,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Liquid),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Liquid,
                     Proportion = ch4Liquid,
                 });
             }
@@ -255,7 +264,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Solid),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Solid,
                     Proportion = ch4Ice,
                 });
             }
@@ -263,7 +273,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Liquid),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Liquid,
                     Proportion = nh3Liquid,
                 });
             }
@@ -271,7 +282,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Solid),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Solid,
                     Proportion = nh3Ice,
                 });
             }
@@ -279,7 +291,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 firstLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.AmmoniumHydrosulfide, Phase.Solid),
+                    Chemical = Chemical.AmmoniumHydrosulfide,
+                    Phase = Phase.Solid,
                     Proportion = nh4sh,
                 });
             }
@@ -301,12 +314,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Iron, Phase.Solid),
+                    Chemical = Chemical.Iron,
+                    Phase = Phase.Solid,
                     Proportion = 1 - coreNickel,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Nickel, Phase.Solid),
+                    Chemical = Chemical.Nickel,
+                    Phase = Phase.Solid,
                     Proportion = coreNickel,
                 },
             })
@@ -319,7 +334,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Liquid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Liquid,
                     Proportion = 1,
                 },
             })
@@ -336,7 +352,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 {
                     new MixtureComponent
                     {
-                        Substance = new Substance(Chemical.Hydrogen_Metallic, Phase.Liquid),
+                        Chemical = Chemical.Hydrogen_Metallic,
+                        Phase = Phase.Liquid,
                         Proportion = 1,
                     },
                 })
@@ -365,17 +382,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Hydrogen, Phase.Liquid),
+                    Chemical = Chemical.Hydrogen,
+                    Phase = Phase.Liquid,
                     Proportion = 0.71f,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Helium, Phase.Liquid),
+                    Chemical = Chemical.Helium,
+                    Phase = Phase.Liquid,
                     Proportion = 0.24f,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Neon, Phase.Liquid),
+                    Chemical = Chemical.Neon,
+                    Phase = Phase.Liquid,
                     Proportion = ne,
                 },
             })
@@ -386,7 +406,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 upperLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Liquid),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Liquid,
                     Proportion = ch4,
                 });
             }
@@ -394,7 +415,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 upperLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Liquid),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Liquid,
                     Proportion = nh4,
                 });
             }
@@ -402,7 +424,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 upperLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ethane, Phase.Liquid),
+                    Chemical = Chemical.Ethane,
+                    Phase = Phase.Liquid,
                     Proportion = c2h6,
                 });
             }
@@ -410,7 +433,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             {
                 upperLayer.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Liquid),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Liquid,
                     Proportion = water,
                 });
             }

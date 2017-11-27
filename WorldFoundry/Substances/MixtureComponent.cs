@@ -1,18 +1,45 @@
 ﻿namespace WorldFoundry.Substances
 {
     /// <summary>
-    /// Describes a <see cref="Substance"/> in a <see cref="Mixture"/> in a particular proportion.
+    /// Describes a particular <see cref="Substances.Phase"/> of a <see cref="Substances.Chemical"/>
+    /// in a <see cref="Mixture"/> in a particular proportion.
     /// </summary>
     public class MixtureComponent
     {
         /// <summary>
-        /// The <see cref="Substances.Substance"/>.
+        /// The <see cref="Substances.Chemical"/>.
         /// </summary>
-        public Substance Substance { get; internal set; }
+        public Chemical Chemical { get; internal set; }
 
         /// <summary>
-        /// The proportion of this substance in the overall mixture (mass fraction).
+        /// The <see cref="Substances.Phase"/>.
+        /// </summary>
+        public Phase Phase { get; internal set; }
+
+        /// <summary>
+        /// The proportion of this component in the overall mixture (mass fraction).
         /// </summary>
         public float Proportion { get; set; }
+
+        /// <summary>
+        /// Returns a string that represents the current <see cref="MixtureComponent"/>.
+        /// </summary>
+        /// <returns>A string that represents the current <see cref="MixtureComponent"/>.</returns>
+        public override string ToString()
+        {
+            switch (Phase)
+            {
+                case Phase.Solid:
+                    return $"{Chemical.Name} Ice";
+                case Phase.Liquid:
+                    return $"Liquid {Chemical.Name}";
+                case Phase.Gas:
+                    return $"{Chemical.Name} Vapor";
+                case Phase.Plasma:
+                    return $"{Chemical.Name} Plasma";
+                default:
+                    return Chemical.Name;
+            }
+        }
     }
 }

@@ -3,10 +3,10 @@
 namespace WorldFoundry.Substances
 {
     /// <summary>
-    /// Indicates the reason(s) a <see cref="SubstanceRequirement"/> failed.
+    /// Indicates the reason(s) a <see cref="ComponentRequirement"/> failed.
     /// </summary>
     [Flags]
-    public enum SubstanceRequirementFailureType
+    public enum ComponentRequirementFailureType
     {
 #pragma warning disable CS1591
         None = 0,

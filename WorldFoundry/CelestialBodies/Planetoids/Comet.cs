@@ -94,42 +94,50 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Gas),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Gas,
                     Proportion = water,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Dust, Phase.Solid),
+                    Chemical = Chemical.Dust,
+                    Phase = Phase.Solid,
                     Proportion = dust,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.CarbonMonoxide, Phase.Gas),
+                    Chemical = Chemical.CarbonMonoxide,
+                    Phase = Phase.Gas,
                     Proportion = co,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.CarbonDioxide, Phase.Gas),
+                    Chemical = Chemical.CarbonDioxide,
+                    Phase = Phase.Gas,
                     Proportion = co2,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Gas),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Gas,
                     Proportion = nh3,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Gas),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Gas,
                     Proportion = ch4,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.HydrogenSulfide, Phase.Gas),
+                    Chemical = Chemical.HydrogenSulfide,
+                    Phase = Phase.Gas,
                     Proportion = h2s,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.SulphurDioxide, Phase.Gas),
+                    Chemical = Chemical.SulphurDioxide,
+                    Phase = Phase.Gas,
                     Proportion = so2,
                 },
             }));
@@ -170,32 +178,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Water, Phase.Solid),
+                    Chemical = Chemical.Water,
+                    Phase = Phase.Solid,
                     Proportion = water,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Dust, Phase.Solid),
+                    Chemical = Chemical.Dust,
+                    Phase = Phase.Solid,
                     Proportion = dust,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.CarbonMonoxide, Phase.Solid),
+                    Chemical = Chemical.CarbonMonoxide,
+                    Phase = Phase.Solid,
                     Proportion = co,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.CarbonDioxide, Phase.Solid),
+                    Chemical = Chemical.CarbonDioxide,
+                    Phase = Phase.Solid,
                     Proportion = co2,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Ammonia, Phase.Solid),
+                    Chemical = Chemical.Ammonia,
+                    Phase = Phase.Solid,
                     Proportion = nh3,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Methane, Phase.Solid),
+                    Chemical = Chemical.Methane,
+                    Phase = Phase.Solid,
                     Proportion = ch4,
                 },
             });

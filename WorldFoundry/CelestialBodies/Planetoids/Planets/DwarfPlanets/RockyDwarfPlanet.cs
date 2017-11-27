@@ -79,7 +79,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Solid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Solid,
                     Proportion = 1,
                 },
             })

@@ -44,10 +44,15 @@ namespace WorldFoundry.Climate
             }
         }
 
+        private float _atmosphericPressure;
         /// <summary>
         /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
         /// </summary>
-        public float AtmosphericPressure { get; internal set; }
+        public float AtmosphericPressure
+        {
+            get => Mixtures.All(x => x.Components.Count == 0) ? 0 : _atmosphericPressure;
+            set => _atmosphericPressure = value;
+        }
 
         private float? _atmosphericScaleHeight;
         /// <summary>
@@ -185,18 +190,18 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Standard pressure of 101.325 kPa is presumed for a <see cref="SubstanceRequirement"/>.
+        /// Standard pressure of 101.325 kPa is presumed for a <see cref="ComponentRequirement"/>.
         /// This method converts the proportional values to reflect <see cref="AtmosphericPressure"/>.
         /// </summary>
-        /// <param name="requirement">The <see cref="SubstanceRequirement"/> to convert.</param>
+        /// <param name="requirement">The <see cref="ComponentRequirement"/> to convert.</param>
         /// <returns>
-        /// A new <see cref="SubstanceRequirement"/> with proportions adjusted for <see cref="AtmosphericPressure"/>.
+        /// A new <see cref="ComponentRequirement"/> with proportions adjusted for <see cref="AtmosphericPressure"/>.
         /// </returns>
-        public SubstanceRequirement ConvertRequirementForPressure(SubstanceRequirement requirement)
+        public ComponentRequirement ConvertRequirementForPressure(ComponentRequirement requirement)
         {
             float minActual = requirement.MinimumProportion * Utilities.Science.Constants.StandardAtmosphericPressure;
             float? maxActual = requirement.MaximumProportion.HasValue ? requirement.MaximumProportion * Utilities.Science.Constants.StandardAtmosphericPressure : null;
-            return new SubstanceRequirement
+            return new ComponentRequirement
             {
                 Chemical = requirement.Chemical,
                 MaximumProportion = maxActual.HasValue ? maxActual / AtmosphericPressure : null,
@@ -206,15 +211,15 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Standard pressure of 101.325 kPa is presumed for <see cref="SubstanceRequirement"/>s.
+        /// Standard pressure of 101.325 kPa is presumed for <see cref="ComponentRequirement"/>s.
         /// This method converts the proportional values to reflect <see cref="AtmosphericPressure"/>.
         /// </summary>
-        /// <param name="requirements">The <see cref="SubstanceRequirement"/>s to convert.</param>
+        /// <param name="requirements">The <see cref="ComponentRequirement"/>s to convert.</param>
         /// <returns>
-        /// An <see cref="IEnumerable{T}"/> of <see cref="SubstanceRequirement"/>s with proportions
+        /// An <see cref="IEnumerable{T}"/> of <see cref="ComponentRequirement"/>s with proportions
         /// adjusted for <see cref="AtmosphericPressure"/>.
         /// </returns>
-        public IEnumerable<SubstanceRequirement> ConvertRequirementsForPressure(IEnumerable<SubstanceRequirement> requirements)
+        public IEnumerable<ComponentRequirement> ConvertRequirementsForPressure(IEnumerable<ComponentRequirement> requirements)
         {
             foreach (var requirement in requirements)
             {
@@ -255,7 +260,7 @@ namespace WorldFoundry.Climate
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
         private float GetAtmosphericHeight()
-            => (float)((Math.Log(1.0e-5) * Utilities.Science.Constants.R * GetSurfaceTemperatureAverageOrbital()) / (-CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMass_Air));
+            => (float)((Math.Log(1.0e-5) * Utilities.Science.Constants.R * GetSurfaceTemperatureAverageOrbital()) / (AtmosphericPressure * -CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMass_Air));
 
         /// <summary>
         /// Calculates the total mass of this <see cref="Atmosphere"/>, in kg.
@@ -316,7 +321,7 @@ namespace WorldFoundry.Climate
                 foreach (var mixture in Mixtures)
                 {
                     clouds = Math.Max(clouds, mixture.Components?
-                        .Where(c => c.Substance.Phase == Phase.Liquid || c.Substance.Phase == Phase.Solid)
+                        .Where(c => c.Phase == Phase.Liquid || c.Phase == Phase.Solid)
                         .Sum(c => c.Proportion) ?? 0);
                 }
             }
@@ -335,8 +340,8 @@ namespace WorldFoundry.Climate
                 foreach (var mixture in Mixtures)
                 {
                     total += mixture.Components?
-                        .Where(c => c.Substance.Chemical.GreenhousePotential > 0)
-                        .Sum(c => c.Substance.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0;
+                        .Where(c => c.Chemical.GreenhousePotential > 0)
+                        .Sum(c => c.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0;
                 }
             }
             if (TMath.IsZero(total))
@@ -384,7 +389,7 @@ namespace WorldFoundry.Climate
             var surfaceTemp2 = surfaceTemp * surfaceTemp;
             var gasConstantSurfaceTemp2 = Utilities.Science.Constants.SpecificGasConstant_DryAir * surfaceTemp2;
 
-            var waterRatio = GetSubstanceProportionInAllChildren(Chemical.Water, Phase.Gas);
+            var waterRatio = GetProportion(Chemical.Water, Phase.Gas, true);
 
             var numerator = gasConstantSurfaceTemp2 + Utilities.Science.Constants.HeatOfVaporization_Water * waterRatio * surfaceTemp;
             var denominator = Utilities.Science.Constants.SpecificHeatTimesSpecificGasConstant_DryAir * surfaceTemp2
@@ -525,22 +530,31 @@ namespace WorldFoundry.Climate
             }
         }
 
+        internal void ResetPressureDependentProperties()
+        {
+            _atmosphericHeight = null;
+            _atmosphericMass = null;
+            _atmosphericScaleHeight = null;
+            _greenhouseFactor = null;
+            _polarInsolationFactor = null;
+        }
+
         /// <summary>
         /// A range of acceptable amounts of O2, and list of maximum limits of common
         /// atmospheric gases for acceptable human breathability.
         /// </summary>
-        public static List<SubstanceRequirement> HumanBreathabilityRequirements = new List<SubstanceRequirement>()
+        public static List<ComponentRequirement> HumanBreathabilityRequirements = new List<ComponentRequirement>()
         {
-            new SubstanceRequirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07f, MaximumProportion = 0.53f, Phase = Phase.Gas },
-            new SubstanceRequirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005f },
-            new SubstanceRequirement { Chemical = Chemical.AmmoniumHydrosulfide, MaximumProportion = 0.000001f },
-            new SubstanceRequirement { Chemical = Chemical.CarbonMonoxide, MaximumProportion = 0.00005f },
-            new SubstanceRequirement { Chemical = Chemical.CarbonDioxide, MaximumProportion = 0.005f },
-            new SubstanceRequirement { Chemical = Chemical.HydrogenSulfide, MaximumProportion = 0.0f },
-            new SubstanceRequirement { Chemical = Chemical.Methane, MaximumProportion = 0.001f },
-            new SubstanceRequirement { Chemical = Chemical.Ozone, MaximumProportion = 0.0000001f },
-            new SubstanceRequirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003f },
-            new SubstanceRequirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002f },
+            new ComponentRequirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07f, MaximumProportion = 0.53f, Phase = Phase.Gas },
+            new ComponentRequirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005f },
+            new ComponentRequirement { Chemical = Chemical.AmmoniumHydrosulfide, MaximumProportion = 0.000001f },
+            new ComponentRequirement { Chemical = Chemical.CarbonMonoxide, MaximumProportion = 0.00005f },
+            new ComponentRequirement { Chemical = Chemical.CarbonDioxide, MaximumProportion = 0.005f },
+            new ComponentRequirement { Chemical = Chemical.HydrogenSulfide, MaximumProportion = 0.0f },
+            new ComponentRequirement { Chemical = Chemical.Methane, MaximumProportion = 0.001f },
+            new ComponentRequirement { Chemical = Chemical.Ozone, MaximumProportion = 0.0000001f },
+            new ComponentRequirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003f },
+            new ComponentRequirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002f },
         };
     }
 }

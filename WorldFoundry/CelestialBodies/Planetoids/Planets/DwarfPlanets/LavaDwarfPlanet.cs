@@ -90,7 +90,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Solid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Solid,
                     Proportion = 1,
                 },
             })
@@ -106,7 +107,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Liquid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Liquid,
                     Proportion = 1,
                 },
             })
@@ -121,7 +123,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Solid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Solid,
                     Proportion = 1.0f - dust,
                 },
             })
@@ -132,7 +135,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 crust.Components.Add(new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Dust, Phase.Solid),
+                    Chemical = Chemical.Dust,
+                    Phase = Phase.Solid,
                     Proportion = dust,
                 });
             }

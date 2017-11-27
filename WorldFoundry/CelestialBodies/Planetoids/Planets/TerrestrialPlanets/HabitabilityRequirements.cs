@@ -9,7 +9,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public struct HabitabilityRequirements
     {
-        public List<SubstanceRequirement> AtmosphericRequirements { get; set; }
+        public List<ComponentRequirement> AtmosphericRequirements { get; set; }
         public float? MinimumSurfaceTemperature { get; set; }
         public float? MaximumSurfaceTemperature { get; set; }
         public float? MinimumSurfacePressure { get; set; }
@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public float? MaximumSurfaceGravity { get; set; }
 
         public HabitabilityRequirements(
-            List<SubstanceRequirement> atmosphericRequirements,
+            List<ComponentRequirement> atmosphericRequirements,
             float? minimumSurfaceTemperature, float? maximumSurfaceTemperature,
             float? minimumSurfacePressure, float? maximumSurfacePressure,
             float? minimumSurfaceGravity, float? maximumSurfaceGravity)

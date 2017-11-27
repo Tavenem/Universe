@@ -149,6 +149,27 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
+        /// Calculates the temperature of the <see cref="CelestialBody"/>, averaged between periapsis
+        /// and apoapsis, in K.
+        /// </summary>
+        /// <param name="polar">
+        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// </param>
+        /// <returns>The average temperature of the <see cref="CelestialBody"/>.</returns>
+        internal float GetTotalTemperatureAverageOrbital()
+        {
+            // Only bother calculating twice if the body is actually in orbit.
+            if (Orbit == null)
+            {
+                return GetTotalTemperature();
+            }
+            else
+            {
+                return (GetTotalTemperatureAtPeriapsis() + GetTotalTemperatureAtApoapsis()) / 2.0f;
+            }
+        }
+
+        /// <summary>
         /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
         /// object was at the specified position, including ambient heat of its parent and radiated
         /// heat from all sibling objects, in K.

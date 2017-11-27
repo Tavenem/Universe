@@ -94,27 +94,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             {
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Rock, Phase.Solid),
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Solid,
                     Proportion = 0.427f,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Iron, Phase.Solid),
+                    Chemical = Chemical.Iron,
+                    Phase = Phase.Solid,
                     Proportion = iron,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Nickel, Phase.Solid),
+                    Chemical = Chemical.Nickel,
+                    Phase = Phase.Solid,
                     Proportion = nickel,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Gold, Phase.Solid),
+                    Chemical = Chemical.Gold,
+                    Phase = Phase.Solid,
                     Proportion = gold,
                 },
                 new MixtureComponent
                 {
-                    Substance = new Substance(Chemical.Platinum, Phase.Solid),
+                    Chemical = Chemical.Platinum,
+                    Phase = Phase.Solid,
                     Proportion = platinum,
                 },
             });
