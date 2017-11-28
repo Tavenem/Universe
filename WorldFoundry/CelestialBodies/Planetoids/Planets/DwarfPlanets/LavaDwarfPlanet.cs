@@ -11,6 +11,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class LavaDwarfPlanet : DwarfPlanet
     {
+        internal new const int maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -19,18 +20,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Lava planets have no satellites; whatever forces have caused their surface trauma should
         /// also inhibit stable satellite orbits.
         /// </remarks>
-        public new static int MaxSatellites => 0;
+        public override int MaxSatellites => maxSatellites;
 
+        private const string planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public new static string PlanemoClassPrefix => "Lava";
+        public override string PlanemoClassPrefix => planemoClassPrefix;
 
+        internal new const double typeDensity = 4000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        /// <remarks>Higher than usual for a dwarf planet due to lack of water-ice mantle.</remarks>
-        internal new static double TypeDensity => 4000;
+        internal override double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/>.

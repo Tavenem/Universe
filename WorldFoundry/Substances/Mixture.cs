@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Troschuetz.Random;
 
 namespace WorldFoundry.Substances
 {
@@ -47,6 +48,48 @@ namespace WorldFoundry.Substances
         public Mixture(int layer, IEnumerable<MixtureComponent> components) : this(components) => Layer = layer;
 
         /// <summary>
+        /// Mixes all child layers according to their proportions, then combines them with this <see
+        /// cref="Mixture"/>'s own <see cref="Components"/>, so that it no longer has child <see cref="Mixtures"/>.
+        /// </summary>
+        public void AbsorbLayers()
+        {
+            while (Mixtures.Count > 1)
+            {
+                CombineLayers(GetChildAtFirstLayer(), GetChildAtLastLayer());
+            }
+            if (Components == null)
+            {
+                Components = new HashSet<MixtureComponent>();
+            }
+            var source = GetChildAtFirstLayer();
+            foreach (var component in source.Components)
+            {
+                var newProportion = GetProportion(component.Chemical, component.Phase) + component.Proportion;
+
+                var oldComponent = GetComponent(component.Chemical, component.Phase);
+                if (TMath.AreEqual(newProportion, oldComponent?.Proportion ?? 0))
+                {
+                    continue;
+                }
+                else if (oldComponent == null)
+                {
+                    Components.Add(new MixtureComponent
+                    {
+                        Chemical = component.Chemical,
+                        Phase = component.Phase,
+                        Proportion = newProportion,
+                    });
+                }
+                else
+                {
+                    oldComponent.Proportion = newProportion;
+                }
+            }
+            BalanceProportions();
+            Mixtures.Remove(source);
+        }
+
+        /// <summary>
         /// Introduce a new <see cref="Chemical"/> into the <see cref="Mixture"/> in the specified
         /// <see cref="Phase"/>, at the specified proportion. The proportions of the existing <see
         /// cref="Components"/> are reduced proportionately in order to "make room" for the specified
@@ -90,7 +133,7 @@ namespace WorldFoundry.Substances
                 }
                 else
                 {
-                    BalanceProportionsForValue(1 - proportion);
+                    BalanceProportions(1 - proportion);
                 }
 
                 Components.Add(new MixtureComponent
@@ -131,7 +174,7 @@ namespace WorldFoundry.Substances
             }
             else
             {
-                BalanceProportionsForValue(1 - mixture.Proportion, true);
+                BalanceProportions(1 - mixture.Proportion, true);
             }
 
             Mixtures.Add(mixture);
@@ -146,7 +189,7 @@ namespace WorldFoundry.Substances
         /// If true, balances the proportions of the child <see cref="Mixtures"/> rather than the
         /// direct components.
         /// </param>
-        internal void BalanceProportionsForValue(float total = 1, bool children = false)
+        internal void BalanceProportions(float total = 1, bool children = false)
         {
             var currentTotal = children ? (Mixtures?.Sum(m => m.Proportion) ?? 0) : (Components?.Sum(c => c.Proportion) ?? 0);
             if (currentTotal == total)
@@ -172,6 +215,51 @@ namespace WorldFoundry.Substances
                     component.Proportion *= ratio;
                 }
             }
+        }
+
+        /// <summary>
+        /// Combines two layers, according to their proportions. Leaves the <paramref
+        /// name="destination"/> layer and removes the <paramref name="source"/> layer when the
+        /// operation is complete.
+        /// </summary>
+        /// <param name="destination">The layer into which <paramref name="source"/> will be mixed.</param>
+        /// <param name="source">The layer which will be mixed into <paramref name="destination"/>.</param>
+        internal void CombineLayers(Mixture destination, Mixture source)
+        {
+            var ratio = source.Proportion / destination.Proportion;
+            if (destination.Components == null)
+            {
+                destination.Components = new HashSet<MixtureComponent>();
+            }
+            foreach (var component in source.Components)
+            {
+                var newProportion = destination.GetProportion(component.Chemical, component.Phase) + component.Proportion * ratio;
+
+                var oldComponent = destination.GetComponent(component.Chemical, component.Phase);
+                if (TMath.AreEqual(newProportion, oldComponent?.Proportion ?? 0))
+                {
+                    continue;
+                }
+                else if (oldComponent == null)
+                {
+                    destination.Components.Add(new MixtureComponent
+                    {
+                        Chemical = component.Chemical,
+                        Phase = component.Phase,
+                        Proportion = newProportion,
+                    });
+                }
+                else
+                {
+                    oldComponent.Proportion = newProportion;
+                }
+            }
+            destination.BalanceProportions();
+            foreach (var mixture in Mixtures.Where(x => x.Layer > source.Layer))
+            {
+                mixture.Layer--;
+            }
+            Mixtures.Remove(source);
         }
 
         /// <summary>
@@ -259,6 +347,37 @@ namespace WorldFoundry.Substances
         public Mixture GetChildAtLayer(int layer) => Mixtures?.FirstOrDefault(m => m.Layer == layer);
 
         /// <summary>
+        /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
+        /// the given properties.
+        /// </summary>
+        /// <param name="chemical">The <see cref="Chemical"/> to match.</param>
+        /// <param name="phase">The <see cref="Phase"/> to match.</param>
+        /// <returns>The matched component, or null if no components match the criteria.</returns>
+        public MixtureComponent GetComponent(Chemical chemical, Phase phase)
+            => Components?.FirstOrDefault(c => c.Chemical == chemical && c.Phase == phase);
+
+        /// <summary>
+        /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
+        /// the given <see cref="ComponentRequirement"/>.
+        /// </summary>
+        /// <param name="requirement">The <see cref="ComponentRequirement"/> to match.</param>
+        /// <returns>
+        /// The matched component, or null if no components match the <see cref="ComponentRequirement"/>.
+        /// </returns>
+        public MixtureComponent GetComponent(ComponentRequirement requirement) => GetComponent(requirement.Chemical, requirement.Phase);
+
+        /// <summary>
+        /// Gets all <see cref="MixtureComponent"/>s in this <see cref="Mixture"/> that match any
+        /// <see cref="Phase"/> of the given <see cref="Chemical"/>.
+        /// </summary>
+        /// <param name="chemical">The <see cref="Chemical"/> to match.</param>
+        /// <returns>
+        /// An enumeration of the matched components, or null if the <see cref="Chemical"/> is not present.
+        /// </returns>
+        public IEnumerable<MixtureComponent> GetComponentPhases(Chemical chemical)
+            => Components?.Where(c => c.Chemical == chemical);
+
+        /// <summary>
         /// Determines if this mixture meets a set of <see cref="ComponentRequirement"/> s.
         /// </summary>
         /// <param name="requirements">
@@ -298,44 +417,13 @@ namespace WorldFoundry.Substances
             }
             else if (phase == Phase.Any)
             {
-                return GetSubstancePhases(chemical).Sum(x => x.Proportion);
+                return GetComponentPhases(chemical).Sum(x => x.Proportion);
             }
             else
             {
-                return GetSubstance(chemical, phase)?.Proportion ?? 0;
+                return GetComponent(chemical, phase)?.Proportion ?? 0;
             }
         }
-
-        /// <summary>
-        /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
-        /// the given properties.
-        /// </summary>
-        /// <param name="chemical">The <see cref="Chemical"/> to match.</param>
-        /// <param name="phase">The <see cref="Phase"/> to match.</param>
-        /// <returns>The matched component, or null if no components match the criteria.</returns>
-        public MixtureComponent GetSubstance(Chemical chemical, Phase phase)
-            => Components?.FirstOrDefault(c => c.Chemical == chemical && c.Phase == phase);
-
-        /// <summary>
-        /// Gets the first <see cref="MixtureComponent"/> in this <see cref="Mixture"/> that matches
-        /// the given <see cref="ComponentRequirement"/>.
-        /// </summary>
-        /// <param name="requirement">The <see cref="ComponentRequirement"/> to match.</param>
-        /// <returns>
-        /// The matched component, or null if no components match the <see cref="ComponentRequirement"/>.
-        /// </returns>
-        public MixtureComponent GetSubstance(ComponentRequirement requirement) => GetSubstance(requirement.Chemical, requirement.Phase);
-
-        /// <summary>
-        /// Gets all <see cref="MixtureComponent"/>s in this <see cref="Mixture"/> that match any
-        /// <see cref="Phase"/> of the given <see cref="Chemical"/>.
-        /// </summary>
-        /// <param name="chemical">The <see cref="Chemical"/> to match.</param>
-        /// <returns>
-        /// An enumeration of the matched components, or null if the <see cref="Chemical"/> is not present.
-        /// </returns>
-        public IEnumerable<MixtureComponent> GetSubstancePhases(Chemical chemical)
-            => Components?.Where(c => c.Chemical == chemical);
 
         /// <summary>
         /// Determines if this <see cref="Mixture"/> meets the given <see cref="ComponentRequirement"/>.
@@ -347,7 +435,7 @@ namespace WorldFoundry.Substances
         /// </returns>
         public ComponentRequirementFailureType MeetsRequirement(ComponentRequirement requirement)
         {
-            var match = GetSubstance(requirement);
+            var match = GetComponent(requirement);
             if (match == null)
             {
                 return requirement.MinimumProportion > 0
@@ -403,14 +491,14 @@ namespace WorldFoundry.Substances
             {
                 if (phase == Phase.Any)
                 {
-                    foreach (var match in GetSubstancePhases(chemical))
+                    foreach (var match in GetComponentPhases(chemical))
                     {
                         Components.Remove(match);
                     }
                 }
                 else
                 {
-                    var match = GetSubstance(chemical, phase);
+                    var match = GetComponent(chemical, phase);
                     if (match != null)
                     {
                         Components.Remove(match);
@@ -429,21 +517,21 @@ namespace WorldFoundry.Substances
             foreach (var empty in empties)
             {
                 Mixtures.Remove(empty);
-                BalanceProportionsForValue(1, true);
+                BalanceProportions(1, true);
             }
         }
 
         /// <summary>
         /// Adjusts the proportion of a component in the <see cref="Mixture"/> to the specified
-        /// value. The proportions of the existing components are reduced proportionately in order to
-        /// "make room" for the specified proportion. If the component was not already present, it is
-        /// added to the <see cref="Mixture"/>.
+        /// value. The proportions of the existing components are adjusted proportionately in order
+        /// to accommodate for the specified proportion. If the component was not already present, it
+        /// is added to the <see cref="Mixture"/>.
         /// </summary>
         /// <param name="chemical">The <see cref="Chemical"/> to adjust.</param>
         /// <param name="phase">The <see cref="Phase"/> of chemical to adjust.</param>
         /// <param name="proportion">The proportion at which to add the new component.</param>
         /// <param name="children">
-        /// If true, adjusts the proportion of the component in all child <see cref="Mixture"/>s,
+        /// If true, adjusts the proportion of the component in all child <see cref="Mixture"/> s,
         /// not in this overall <see cref="Mixture"/>.
         /// </param>
         public void SetProportion(Chemical chemical, Phase phase, float proportion, bool children = false)
@@ -469,8 +557,8 @@ namespace WorldFoundry.Substances
                     Components = new HashSet<MixtureComponent>();
                 }
 
-                var substance = GetSubstance(chemical, phase);
-                if (proportion == (substance?.Proportion ?? 0))
+                var substance = GetComponent(chemical, phase);
+                if (TMath.AreEqual(proportion, (substance?.Proportion ?? 0)))
                 {
                     return;
                 }

@@ -12,6 +12,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class Asteroid : Planetoid
     {
+        private const double maxMass_Type = 3.4e20;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -20,14 +21,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
         /// rather than an asteroid.
         /// </remarks>
-        protected new static double? MaxMass_Type => 3.4e20;
+        internal override double? MaxMass_Type => maxMass_Type;
 
+        private const double minMass_Type = 5.9e8;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
         /// </summary>
         /// <remarks>Below this a body is considered a meteoroid, rather than an asteroid.</remarks>
-        protected new static double? MinMass_Type => 5.9e8;
+        internal override double? MinMass_Type => minMass_Type;
 
         /// <summary>
         /// The name for this type of <see cref="CelestialEntity"/>.

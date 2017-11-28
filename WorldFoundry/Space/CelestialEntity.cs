@@ -19,16 +19,12 @@ namespace WorldFoundry.Space
         /// </summary>
         internal const int localSpaceScale = 1000000;
 
+        internal const string baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Intended to be hidden by subclasses.</remarks>
-        public static string BaseTypeName => "Celestial Object";
-
-        /// <summary>
-        /// The primary key for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        public Guid ID { get; private set; }
+        public virtual string BaseTypeName => baseTypeName;
 
         private string _designation;
         /// <summary>
@@ -40,6 +36,11 @@ namespace WorldFoundry.Space
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
         /// </summary>
         protected virtual string DesignatorPrefix => string.Empty;
+
+        /// <summary>
+        /// The primary key for this <see cref="CelestialEntity"/>.
+        /// </summary>
+        public Guid ID { get; private set; }
 
         private float? _localScale;
         /// <summary>

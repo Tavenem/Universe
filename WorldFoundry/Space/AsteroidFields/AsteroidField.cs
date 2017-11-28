@@ -25,15 +25,13 @@ namespace WorldFoundry.Space.AsteroidFields
     {
         public static string AsteroidBeltTypeName => "Asteroid Belt";
 
+        internal new const string baseTypeName = "Asteroid Field";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Asteroid Field";
+        public override string BaseTypeName => baseTypeName;
 
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public new static IDictionary<Type, float> ChildPossibilities => new Dictionary<Type, float>
+        internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
         {
             { typeof(CTypeAsteroid), 0.74f },
             { typeof(STypeAsteroid), 0.14f },
@@ -42,6 +40,10 @@ namespace WorldFoundry.Space.AsteroidFields
             { typeof(DwarfPlanet), 3.0e-10f },
             { typeof(RockyDwarfPlanet), 1.0e-10f },
         };
+        /// <summary>
+        /// The types of children this region of space might have.
+        /// </summary>
+        public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// The average number of children within the grid per m³.

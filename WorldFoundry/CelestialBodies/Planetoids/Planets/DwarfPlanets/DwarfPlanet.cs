@@ -17,11 +17,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class DwarfPlanet : Planemo
     {
+        internal new const string baseTypeName = "Dwarf Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Dwarf Planet";
+        public override string BaseTypeName => baseTypeName;
 
+        internal const double maxMass_Type = 2.0e22;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -30,8 +32,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        internal new static double? MaxMass_Type => 2.0e22;
+        internal override double? MaxMass_Type => maxMass_Type;
 
+        internal const double minMass_Type = 3.4e20;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -39,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <remarks>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </remarks>
-        internal new static double? MinMass_Type => 3.4e20f;
+        internal override double? MinMass_Type => minMass_Type;
 
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
@@ -50,10 +53,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </remarks>
         protected new static float RingChance => 10;
 
+        internal const double typeDensity = 2000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal new static double TypeDensity => 2000;
+        internal override double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.
@@ -226,22 +230,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             var crust = Composition.GetChildAtLastLayer();
 
-            var water = crust.GetSubstance(Chemical.Water, Phase.Solid).Proportion;
+            var water = crust.GetComponent(Chemical.Water, Phase.Solid).Proportion;
             bool anyIces = water > 0;
 
-            var n2 = crust.GetSubstance(Chemical.Nitrogen, Phase.Solid).Proportion;
+            var n2 = crust.GetComponent(Chemical.Nitrogen, Phase.Solid).Proportion;
             anyIces &= n2 > 0;
 
-            var ch4 = crust.GetSubstance(Chemical.Methane, Phase.Solid).Proportion;
+            var ch4 = crust.GetComponent(Chemical.Methane, Phase.Solid).Proportion;
             anyIces &= ch4 > 0;
 
-            var co = crust.GetSubstance(Chemical.CarbonMonoxide, Phase.Solid).Proportion;
+            var co = crust.GetComponent(Chemical.CarbonMonoxide, Phase.Solid).Proportion;
             anyIces &= co > 0;
 
-            var co2 = crust.GetSubstance(Chemical.CarbonDioxide, Phase.Solid).Proportion;
+            var co2 = crust.GetComponent(Chemical.CarbonDioxide, Phase.Solid).Proportion;
             anyIces &= co2 > 0;
 
-            var nh3 = crust.GetSubstance(Chemical.Ammonia, Phase.Solid).Proportion;
+            var nh3 = crust.GetComponent(Chemical.Ammonia, Phase.Solid).Proportion;
             anyIces &= nh3 > 0;
 
             if (!anyIces)

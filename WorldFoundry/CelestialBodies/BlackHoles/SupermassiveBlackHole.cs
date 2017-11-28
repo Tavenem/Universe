@@ -1,20 +1,19 @@
-﻿using System;
-using System.Numerics;
+﻿using System.Numerics;
 using WorldFoundry.Space;
 using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.BlackHoles
 {
     /// <summary>
-    /// A massive gravitational sigularity, found at the center of large galaxies.
+    /// A massive gravitational singularity, found at the center of large galaxies.
     /// </summary>
     public class SupermassiveBlackHole : BlackHole
     {
+        internal new const string baseTypeName = "Supermassive Black Hole";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Supermassive Black Hole";
+        public override string BaseTypeName => baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="SupermassiveBlackHole"/>.

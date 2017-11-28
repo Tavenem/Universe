@@ -11,20 +11,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class CTypeAsteroid : Asteroid
     {
+        internal new const string baseTypeName = "C-Type Asteroid";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "C-Type Asteroid";
-
-        /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        internal new static double TypeDensity => 1380;
+        public override string BaseTypeName => baseTypeName;
 
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
         protected override string DesignatorPrefix => "c";
+
+        private const double typeDensity = 1380;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal override double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/>.

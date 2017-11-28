@@ -14,25 +14,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Planetoid : CelestialBody
     {
-        /// <summary>
-        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates no maximum.
-        /// </summary>
-        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
-        internal static double? MaxMass_Type => null;
-
-        /// <summary>
-        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates a minimum of 0.
-        /// </summary>
-        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
-        internal static double? MinMass_Type => null;
-
-        /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        internal static double TypeDensity => 0;
-
         private float? _angleOfRotation;
         /// <summary>
         /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
@@ -93,7 +74,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             get => GetProperty(ref _density, GenerateDensity) ?? TypeDensity;
             set
             {
-                if (_density == value || value == TypeDensity)
+                if (_density == value || (!_density.HasValue && value == TypeDensity))
                 {
                     return;
                 }
@@ -122,7 +103,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in
         /// kg.
         /// </summary>
-        public virtual double MaxMass
+        public double MaxMass
         {
             get => (_maxMass ?? MaxMass_Type) ?? 0;
             protected set
@@ -137,20 +118,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates no maximum.
+        /// </summary>
+        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
+        internal virtual double? MaxMass_Type => null;
+
+        internal const int maxSatellites = 1;
+        /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
         /// </summary>
         /// <remarks>
         /// Set to 1 on the base class; subclasses are expected to set a higher value when appropriate.
         /// </remarks>
-        public virtual int MaxSatellites => 1;
+        public virtual int MaxSatellites => maxSatellites;
 
         private double? _minMass;
         /// <summary>
         /// The minimum mass allowed for this <see cref="Planetoid"/> during random generation, in
         /// kg.
         /// </summary>
-        public virtual double MinMass
+        public double MinMass
         {
             get => (_minMass ?? MinMass_Type) ?? 0;
             protected set
@@ -163,6 +152,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 _minMass = value;
             }
         }
+
+        /// <summary>
+        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates a minimum of 0.
+        /// </summary>
+        /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
+        internal virtual double? MinMass_Type => null;
 
         private double? _minSatellitePeriapsis;
         /// <summary>
@@ -189,6 +185,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             set => _rotationalPeriod = value;
         }
 
+        private const int rotationalPeriod_Min = 8000;
+        protected virtual int RotationalPeriod_Min => rotationalPeriod_Min;
+        private const int rotationalPeriod_Max = 100000;
+        protected virtual int RotationalPeriod_Max => rotationalPeriod_Max;
+        private const int rotationalPeriod_MaxExtreme = 1100000;
+        protected virtual int RotationalPeriod_MaxExtreme => rotationalPeriod_MaxExtreme;
+
         /// <summary>
         /// The collection of natural satellites around this <see cref="Planetoid"/>.
         /// </summary>
@@ -197,6 +200,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// in the local <see cref="CelestialObject"/> hierarchy, which merely share an orbital relationship.
         /// </remarks>
         public ICollection<Planetoid> Satellites { get; private set; }
+
+        private const double typeDensity = 0;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal virtual double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -302,15 +311,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Determines a rotational period for this <see cref="Planetoid"/>.
         /// </summary>
-        protected virtual void GenerateRotationalPeriod()
+        private void GenerateRotationalPeriod()
         {
             // Check for tidal locking.
             if (Orbit != null)
             {
-                // Invent an orbit age.
-                // Precision isn't important here, and some inaccuracy and
-                // inconsistency between satellites is desirable.
-                // The age of the Solar system is used as an arbitrary norm.
+                // Invent an orbit age. Precision isn't important here, and some inaccuracy and
+                // inconsistency between satellites is desirable. The age of the Solar system is used
+                // as an arbitrary norm.
                 float years = (float)Randomizer.Static.Lognormal(0, 4.6e9);
                 if (GetIsTidallyLockedAfter(years))
                 {
@@ -321,11 +329,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             if (Randomizer.Static.NextDouble() <= 0.05) // low chance of an extreme period
             {
-                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(100000, 1100000));
+                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Max, RotationalPeriod_MaxExtreme));
             }
             else
             {
-                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(8000, 100000));
+                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Min, RotationalPeriod_Max));
             }
         }
 

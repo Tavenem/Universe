@@ -13,21 +13,23 @@ namespace WorldFoundry.Space.AsteroidFields
     /// </summary>
     public class OortCloud : AsteroidField
     {
+        internal new const string baseTypeName = "Oort Cloud";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Oort Cloud";
+        public override string BaseTypeName => baseTypeName;
 
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public new static IDictionary<Type, float> ChildPossibilities => new Dictionary<Type, float>
+        internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
         {
             { typeof(Comet), 0.85f },
             { typeof(CTypeAsteroid), 0.11f },
             { typeof(STypeAsteroid), 0.025f },
             { typeof(MTypeAsteroid), 0.015f },
         };
+        public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// The average number of children within the grid per m³.

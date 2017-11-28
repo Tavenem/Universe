@@ -11,11 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class IceGiant : GiantPlanet
     {
+        internal new const string baseTypeName = "Ice Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Ice Giant";
+        public override string BaseTypeName => baseTypeName;
 
+        internal new const int maxSatellites = 40;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -24,7 +26,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// Set to 40 for <see cref="IceGiant"/>. For reference, Uranus has 27 moons, and Neptune has
         /// 14 moons.
         /// </remarks>
-        public new static int MaxSatellites => 40;
+        public override int MaxSatellites => maxSatellites;
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/>.
@@ -173,7 +175,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                     Proportion = nh4,
                 });
             }
-            upperLayer.BalanceProportionsForValue();
+            upperLayer.BalanceProportions();
             Composition.Mixtures.Add(upperLayer);
         }
 
@@ -183,6 +185,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// No "puffy" ice giants.
         /// </remarks>
-        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(density_Min, density_Max));
+        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(Density_Min, Density_Max));
     }
 }

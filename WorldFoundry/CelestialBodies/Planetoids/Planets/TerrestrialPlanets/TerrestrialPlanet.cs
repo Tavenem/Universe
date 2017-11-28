@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Troschuetz.Random;
+using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
@@ -15,12 +16,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class TerrestrialPlanet : Planemo
     {
-        internal const float density_Max = 6000;
-
+        internal new const string baseTypeName = "Terrestrial Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public new static string BaseTypeName => "Terrestrial Planet";
+        public override string BaseTypeName => baseTypeName;
 
         /// <summary>
         /// Used to allow or prevent oxygen in the atmosphere of a terrestrial planet.
@@ -40,39 +40,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected static bool CanHaveWater => true;
 
-        /// <summary>
-        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates no maximum.
-        /// </summary>
-        /// <remarks>
-        /// At around this limit the planet will have sufficient mass to retain hydrogen, and become
-        /// a giant.
-        /// </remarks>
-        internal new static double? MaxMass_Type => 6.0e25;
-
-        /// <summary>
-        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates a minimum of 0.
-        /// </summary>
-        /// <remarks>
-        /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
-        /// systems, a calculated value for clearing the neighborhood is used instead.
-        /// </remarks>
-        internal new static double? MinMass_Type => 2.0e22;
-
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        public new static string PlanemoClassPrefix => "Terrestrial";
-
-        /// <summary>
-        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
-        /// </summary>
-        /// <remarks>
-        /// There is a low chance of most planets having substantial rings; 10 for <see
-        /// cref="TerrestrialPlanet"/>s.
-        /// </remarks>
-        protected new static float RingChance => 10;
+        internal const float density_Max = 6000;
+        protected virtual float Density_Max => density_Max;
+        internal const float density_Min = 3750;
+        protected virtual float Density_Min => density_Min;
 
         /// <summary>
         /// The <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified during this <see
@@ -105,9 +76,59 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Gets the top layer of the <see cref="Hydrosphere"/>, whether that is the <see
+        /// cref="Hydrosphere"/> itself (if it is non-layered), or the uppermost layer (if it is).
+        /// </summary>
+        public Mixture HydrosphereSurface => Hydrosphere.Mixtures.Count > 0 ? Hydrosphere.GetChildAtLastLayer() : Hydrosphere;
+
+        internal const double maxMass_Type = 6.0e25;
+        /// <summary>
+        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates no maximum.
+        /// </summary>
+        /// <remarks>
+        /// At around this limit the planet will have sufficient mass to retain hydrogen, and become
+        /// a giant.
+        /// </remarks>
+        internal override double? MaxMass_Type => maxMass_Type;
+
+        /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
         protected virtual float MetalProportion => 0.05f;
+
+        internal const double minMass_Type = 2.0e22;
+        /// <summary>
+        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
+        /// generation, in kg. Null indicates a minimum of 0.
+        /// </summary>
+        /// <remarks>
+        /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
+        /// systems, a calculated value for clearing the neighborhood is used instead.
+        /// </remarks>
+        internal override double? MinMass_Type => minMass_Type;
+
+        /// <summary>
+        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
+        /// </summary>
+        public new static string PlanemoClassPrefix => "Terrestrial";
+
+        internal new const float ringChance = 10;
+        /// <summary>
+        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
+        /// </summary>
+        /// <remarks>
+        /// There is a low chance of most planets having substantial rings; 10 for <see
+        /// cref="TerrestrialPlanet"/>s.
+        /// </remarks>
+        protected override float RingChance => ringChance;
+
+        private const int rotationalPeriod_Min = 40000;
+        protected override int RotationalPeriod_Min => rotationalPeriod_Min;
+        private const int rotationalPeriod_Max = 6500000;
+        protected override int RotationalPeriod_Max => rotationalPeriod_Max;
+        private const int rotationalPeriod_MaxExtreme = 22000000;
+        protected override int RotationalPeriod_MaxExtreme => rotationalPeriod_MaxExtreme;
 
         private float? _surfaceAlbedo;
         /// <summary>
@@ -175,7 +196,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 float gasProportion = Hydrosphere.GetProportion(chemical, Phase.Any);
                 if (!TMath.IsZero(gasProportion))
                 {
-                    Hydrosphere.RemoveComponent(chemical, Phase.Any);
+                    SetHydrosphereProportion(chemical, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
                     Hydrosphere.Proportion -= Hydrosphere.Proportion * gasProportion;
                     hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
                     Atmosphere.SetProportion(chemical, Phase.Gas, gasProportion * hydrosphereAtmosphereRatio, true);
@@ -231,13 +252,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var oldAlbedo = Albedo;
 
             // Ices significantly impact albedo.
-            if (Hydrosphere.Components.Count > 0)
-            {
-                var iceAmount = Math.Min(1, Hydrosphere.Components
-                    .Where(x => x.Phase == Phase.Solid)
-                    .Sum(x => x.Proportion));
-                Albedo = (SurfaceAlbedo * (1.0f - iceAmount)) + (0.9f * iceAmount);
-            }
+            var iceAmount = Math.Min(1, HydrosphereSurface.Components
+                .Where(x => x.Phase == Phase.Solid)
+                .Sum(x => x.Proportion));
+            Albedo = (SurfaceAlbedo * (1.0f - iceAmount)) + (0.9f * iceAmount);
 
             // Clouds also impact albedo.
             float cloudCover = Math.Min(1, Atmosphere.AtmosphericPressure
@@ -258,8 +276,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void CalculateWaterPhaseMix(float surfaceTemp, float polarTemp, float hydrosphereAtmosphereRatio)
         {
-            var water = Hydrosphere.GetSubstance(Chemical.Water, Phase.Liquid)?.Proportion ?? 0;
-            var saltWater = Hydrosphere.GetSubstance(Chemical.Water_Salt, Phase.Liquid)?.Proportion ?? 0;
+            var water = Hydrosphere.GetProportion(Chemical.Water, Phase.Any, Hydrosphere.Mixtures.Count > 0);
+            var saltWater = Hydrosphere.GetProportion(Chemical.Water_Salt, Phase.Any, Hydrosphere.Mixtures.Count > 0);
             var totalWater = water + saltWater;
 
             var waterVapor = Atmosphere.GetProportion(Chemical.Water, Phase.Gas, true);
@@ -276,14 +294,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // it is presumed that photodissociation will eventually reduce the amount
             // of water vapor to a trace gas (the H2 will be lost due to atmospheric
             // escape, and the oxygen will be lost to surface oxidation).
-            else if (totalWater > 0 || Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Any))
+            else if (totalWater > 0)
             {
                 EvaporateWater(ref hydrosphereAtmosphereRatio);
             }
 
             // At least 1% humidity leads to a reduction of CO2 to a trace gas,
             // by a presumed carbon-silicate cycle.
-            var humidity = (Atmosphere.GetChildAtFirstLayer().GetSubstance(Chemical.Water, Phase.Gas)?.Proportion ?? 0 *
+            var humidity = (Atmosphere.GetChildAtFirstLayer().GetComponent(Chemical.Water, Phase.Gas)?.Proportion ?? 0 *
                 Atmosphere.AtmosphericPressure) / vaporPressure;
             if (humidity >= 0.01)
             {
@@ -325,12 +343,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     }
                 }
 
-                var troposphere = Atmosphere.GetChildAtFirstLayer();
-                // Separate troposphere from upper atmosphere if undifferentiated.
-                if (Atmosphere.Mixtures.Count == 1)
-                {
-                    Atmosphere.CopyLayer(0, 0.2f);
-                }
+                var troposphere = GetTroposphere();
 
                 // Generate clouds.
                 var cloudProportion = gasProportion * 0.2f;
@@ -389,16 +402,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Add clouds.
-            var troposphere = Atmosphere.GetChildAtFirstLayer();
             var clouds = waterVapor * 0.2f;
             if (!TMath.IsZero(clouds))
             {
-                // Separate troposphere from upper atmosphere if undifferentiated.
-                if (Atmosphere.Mixtures.Count == 1)
-                {
-                    Atmosphere.CopyLayer(0, 0.2f);
-                }
-
+                var troposphere = GetTroposphere();
                 if (surfaceTemp <= Chemical.Water.MeltingPoint)
                 {
                     troposphere.SetProportion(Chemical.Water, Phase.Solid, clouds);
@@ -439,30 +446,37 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 return;
             }
 
-            if (TMath.IsZero(totalWater)) // Change existing water in hydrosphere to ice.
+            if (!TMath.IsZero(totalWater)) // Change existing water in hydrosphere to ice.
             {
                 if (ice < totalWater) // A subsurface ocean is indicated.
                 {
-                    SetHydrosphereProportion(Chemical.Water, Phase.Solid, ice, ref hydrosphereAtmosphereRatio);
-                }
-                else // No subsurface ocean indicated; entire hydrosphere will be ice.
-                {
-                    // Remove any existing water from the hydrosphere.
-                    Hydrosphere.RemoveComponent(Chemical.Water, Phase.Liquid);
-                    Hydrosphere.RemoveComponent(Chemical.Water_Salt, Phase.Liquid);
-
-                    // Nothing but water in the former hydrosphere.
-                    if (Hydrosphere.Components.Count == 0)
+                    if (Hydrosphere.Mixtures.Count == 0)
                     {
-                        Hydrosphere.AddComponent(Chemical.Water, Phase.Solid, 1);
+                        Hydrosphere.CopyLayer(0, ice);
                     }
-                    // Something besides water left in the hydrosphere (other deposited liquids and ices).
                     else
                     {
-                        Hydrosphere.AddComponent(Chemical.Water, Phase.Solid, ice);
+                        Hydrosphere.GetChildAtFirstLayer().Proportion = 1 - ice;
+                        Hydrosphere.GetChildAtLastLayer().Proportion = ice;
                     }
-                    hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
                 }
+
+                // Convert entire hydrosphere surface to ice.
+                // Remove any existing water from the hydrosphere.
+                HydrosphereSurface.RemoveComponent(Chemical.Water, Phase.Liquid);
+                HydrosphereSurface.RemoveComponent(Chemical.Water_Salt, Phase.Liquid);
+
+                // Nothing but water in the former hydrosphere.
+                if (HydrosphereSurface.Components.Count == 0)
+                {
+                    HydrosphereSurface.AddComponent(Chemical.Water, Phase.Solid, 1);
+                }
+                // Something besides water left in the hydrosphere (other deposited liquids and ices).
+                else
+                {
+                    HydrosphereSurface.AddComponent(Chemical.Water, Phase.Solid, ice);
+                }
+                hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
             }
             // No existing water in hydrosphere.
             else
@@ -473,35 +487,36 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void CondenseWaterLiquid(float polarTemp, ref float totalWater, float waterVapor, float hydrosphereAtmosphereRatio)
         {
+            // If the hydrosphere was a surface of ice with a subsurface ocean, melt the surface and
+            // return to a single layer.
+            if (Hydrosphere.Mixtures.Count > 0)
+            {
+                var ice = HydrosphereSurface.GetProportion(Chemical.Water, Phase.Solid);
+                HydrosphereSurface.RemoveComponent(Chemical.Water, Phase.Solid);
+                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, ice, ref hydrosphereAtmosphereRatio);
+
+                var saltIce = HydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Solid);
+                HydrosphereSurface.RemoveComponent(Chemical.Water_Salt, Phase.Solid);
+                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, saltIce, ref hydrosphereAtmosphereRatio);
+
+                Hydrosphere.AbsorbLayers();
+            }
+
+            var saltWaterProportion = (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
+            var liquidWater = totalWater;
+
             // Create icecaps.
-            var surfaceIce = Hydrosphere.GetProportion(Chemical.Water, Phase.Solid)
-                + Hydrosphere.GetProportion(Chemical.Water_Salt, Phase.Solid);
             float iceCaps = 0;
-            var meltingIce = surfaceIce;
             if (polarTemp <= Chemical.Water.MeltingPoint)
             {
                 iceCaps = totalWater * 0.28f;
-                meltingIce = Math.Max(0, surfaceIce - iceCaps);
-                if (iceCaps > surfaceIce)
-                {
-                    totalWater -= iceCaps - surfaceIce;
-                }
-            }
-            var saltWaterProportion = (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
-            SetHydrosphereProportion(Chemical.Water, Phase.Solid, iceCaps * (1 - saltWaterProportion), ref hydrosphereAtmosphereRatio);
-            SetHydrosphereProportion(Chemical.Water_Salt, Phase.Solid, iceCaps * saltWaterProportion, ref hydrosphereAtmosphereRatio);
-
-            // Since the entire surface isn't below freezing, melt surface ice (aside from icecaps).
-            if (!TMath.IsZero(meltingIce))
-            {
-                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, meltingIce * saltWaterProportion, ref hydrosphereAtmosphereRatio);
-                SetHydrosphereProportion(Chemical.Water, Phase.Liquid, meltingIce * (1 - saltWaterProportion), ref hydrosphereAtmosphereRatio);
-
-                totalWater += meltingIce;
+                SetHydrosphereProportion(Chemical.Water, Phase.Solid, iceCaps * (1 - saltWaterProportion), ref hydrosphereAtmosphereRatio);
+                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Solid, iceCaps * saltWaterProportion, ref hydrosphereAtmosphereRatio);
+                liquidWater -= iceCaps;
             }
 
-            // If liquid water is indicated but the hydrosphere doesn't have any, add it.
-            if (TMath.IsZero(totalWater))
+            // If there is no liquid water on the surface, condense from the atmosphere.
+            if (TMath.IsZero(liquidWater))
             {
                 var addedWater = waterVapor / hydrosphereAtmosphereRatio;
                 if (!TMath.IsZero(addedWater))
@@ -514,6 +529,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void EvaporateWater(ref float hydrosphereAtmosphereRatio)
         {
+            Hydrosphere.AbsorbLayers();
             SetHydrosphereProportion(Chemical.Water, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
             SetHydrosphereProportion(Chemical.Water_Salt, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
 
@@ -1013,6 +1029,148 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
+        /// <summary>
+        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected override void GenerateComposition()
+        {
+            Composition = new Mixture();
+
+            // Iron-nickel core.
+            var coreProportion = GetCoreProportion();
+            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
+            {
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Iron,
+                    Phase = Phase.Solid,
+                    Proportion = 1 - coreNickel,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Nickel,
+                    Phase = Phase.Solid,
+                    Proportion = coreNickel,
+                },
+            })
+            {
+                Proportion = coreProportion,
+            });
+
+            var crustProportion = GetCrustProportion();
+
+            // Molten rock mantle
+            var mantleProportion = 1 - coreProportion - crustProportion;
+            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
+            {
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Liquid,
+                    Proportion = 1,
+                },
+            })
+            {
+                Proportion = mantleProportion,
+            });
+
+            // Rocky crust with trace elements
+            // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
+            var metals = (float)Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+
+            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = (float)Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
+
+            var titanium = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
+
+            var iron = metals - nickel - aluminum - titanium;
+
+            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            titanium -= copper;
+
+            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            titanium -= silver;
+
+            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            titanium -= gold;
+
+            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            titanium -= platinum;
+
+            var rock = 1 - metals;
+
+            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
+            {
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Aluminum,
+                    Phase = Phase.Solid,
+                    Proportion = aluminum,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Copper,
+                    Phase = Phase.Solid,
+                    Proportion = copper,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Gold,
+                    Phase = Phase.Solid,
+                    Proportion = gold,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Iron,
+                    Phase = Phase.Solid,
+                    Proportion = iron,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Nickel,
+                    Phase = Phase.Solid,
+                    Proportion = nickel,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Platinum,
+                    Phase = Phase.Solid,
+                    Proportion = platinum,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Rock,
+                    Phase = Phase.Solid,
+                    Proportion = rock,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Silver,
+                    Phase = Phase.Solid,
+                    Proportion = silver,
+                },
+                new MixtureComponent
+                {
+                    Chemical = Chemical.Titanium,
+                    Phase = Phase.Solid,
+                    Proportion = titanium,
+                },
+            })
+            {
+                Proportion = crustProportion,
+            });
+        }
+
+        /// <summary>
+        /// Generates an appropriate density for this <see cref="Planetoid"/>.
+        /// </summary>
+        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(Density_Min, Density_Max));
+
+        /// <summary>
+        /// Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
+        /// icecaps, etc.). This might be removed later, depending on the planet's conditions.
+        /// </summary>
         private void GenerateHydrosphere()
         {
             if (CanHaveWater)
@@ -1054,6 +1212,96 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
+        /// <summary>
+        /// Determines whether this planet is capable of sustaining life, and whether or not it
+        /// actually does. If so, the atmosphere may be adjusted.
+        /// </summary>
+        private void GenerateLife()
+        {
+            if (!IsHabitable() || Randomizer.Static.NextDouble() > GetChanceOfLife())
+            {
+                HasBiosphere = false;
+                return;
+            }
+
+            // If the planet already has a biosphere, there is nothing left to do.
+            if (HasBiosphere)
+            {
+                return;
+            }
+
+            HasBiosphere = true;
+
+            if (!HydrosphereSurface.ContainsSubstance(Chemical.Water, Phase.Liquid) &&
+                !HydrosphereSurface.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid))
+            {
+                return;
+            }
+
+            // If there is a habitable surface layer (as opposed to a subsurface ocean), it is
+            // presumed that an initial population of a cyanobacteria analogue will produce a
+            // significant amount of free oxygen, which in turn will transform most CH4 to CO2 and
+            // H2O, and also produce an ozone layer.
+            var o2 = (float)Randomizer.Static.NextDouble(0.20, 0.25);
+            Atmosphere.AddComponent(Chemical.Oxygen, Phase.Gas, o2, true);
+
+            // Calculate ozone based on level of free oxygen.
+            var o3 = Atmosphere.GetProportion(Chemical.Oxygen, Phase.Gas, true) * 4.5e-5f;
+            if (Atmosphere.Mixtures.Count < 3)
+            {
+                GetTroposphere(); // First ensure troposphere is differentiated.
+                Atmosphere.CopyLayer(1, 0.01f);
+            }
+            Atmosphere.GetChildAtLastLayer().SetProportion(Chemical.Ozone, Phase.Gas, o3);
+
+            // Convert most methane to CO2 and H2O.
+            var ch4 = Atmosphere.GetProportion(Chemical.Methane, Phase.Gas, true);
+            if (!TMath.IsZero(ch4))
+            {
+                // The levels of CO2 and H2O are not adjusted; it is presumed that the levels already
+                // determined for them take the amounts derived from CH4 into account. If either gas
+                // is entirely missing, however, it is added.
+                var co2 = Atmosphere.GetProportion(Chemical.CarbonDioxide, Phase.Gas, true);
+                if (TMath.IsZero(co2))
+                {
+                    Atmosphere.AddComponent(Chemical.CarbonDioxide, Phase.Gas, ch4 / 3);
+                }
+
+                var waterVapor = Atmosphere.GetProportion(Chemical.Water, Phase.Gas, true);
+                if (TMath.IsZero(waterVapor))
+                {
+                    Atmosphere.AddComponent(Chemical.Water, Phase.Gas, ch4 * 2 / 3);
+                }
+
+                Atmosphere.SetProportion(Chemical.Methane, Phase.Gas, ch4 * 0.001f);
+            }
+        }
+
+        /// <summary>
+        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// </summary>
+        protected override void GenerateMass()
+        {
+            var minMass = MinMass;
+            double? maxMass = TMath.IsZero(MaxMass) ? null : (double?)MaxMass;
+
+            if (Parent != null && Parent is StarSystem && (Orbit == null || Orbit.OrbitedObject is Star))
+            {
+                // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass at which
+                // the planet would be able to do so at this orbital distance. We set the maximum at two
+                // orders of magnitude more than this (planets in our solar system all have masses above
+                // 5 orders of magnitude more). Note that since lambda is proportional to the square of mass,
+                // it is multiplied by 10 to obtain a difference of 2 orders of magnitude, rather than by 100.
+                minMass = Math.Max(minMass, GetSternLevisonLambdaMass() * 10);
+                if (minMass > maxMass && maxMass.HasValue)
+                {
+                    minMass = maxMass.Value; // sanity check; may result in a "planet" which *can't* clear its neighborhood
+                }
+            }
+
+            Mass = Math.Round(Randomizer.Static.NextDouble(minMass, maxMass ?? minMass));
+        }
+
         private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
 
         /// <summary>
@@ -1069,6 +1317,36 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="gravity">The desired surface gravity, in kg/m².</param>
         /// <returns>The radius required to produce the given surface gravity, in meters.</returns>
         public float GetRadiusForSurfaceGravity(float gravity) => (float)((gravity * Utilities.MathUtil.Constants.FourThirdsPI) / (Utilities.Science.Constants.G * Density));
+
+        /// <summary>
+        /// Gets the troposphere of this <see cref="TerrestrialPlanet"/>'s <see cref="Atmosphere"/>.
+        /// </summary>
+        /// <returns>The troposphere of this <see cref="TerrestrialPlanet"/>'s <see cref="Atmosphere"/>.</returns>
+        /// <remarks>
+        /// If the <see cref="Atmosphere"/> doesn't yet have differentiated layers, they are first
+        /// separated before returning the lowest layer as the troposphere.
+        /// </remarks>
+        private Mixture GetTroposphere()
+        {
+            var troposphere = Atmosphere.GetChildAtFirstLayer();
+
+            // Separate troposphere from upper atmosphere if undifferentiated.
+            if (Atmosphere.Mixtures.Count == 1)
+            {
+                Atmosphere.CopyLayer(0, 0.2f);
+            }
+
+            return troposphere;
+        }
+
+        /// <summary>
+        /// Determines if this <see cref="TerrestrialPlanet"/> is "habitable," defined as possessing
+        /// liquid water. Does not rule out exotic lifeforms which subsist in non-aqueous
+        /// environments. Also does not imply habitability by any particular creatures (e.g. humans),
+        /// which may also depend on stricter criteria (e.g. atmospheric conditions).
+        /// </summary>
+        /// <returns>true if this planet fits this minimal definition of "habitable;" false otherwise.</returns>
+        public bool IsHabitable() => Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Any) || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid);
 
         private void ReduceCO2()
         {
@@ -1120,8 +1398,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void SetHydrosphereProportion(Chemical chemical, Phase phase, float proportion, ref float hydrosphereAtmosphereRatio)
         {
-            Hydrosphere.Proportion += Hydrosphere.Proportion * (proportion - Hydrosphere.GetProportion(chemical, phase));
-            Hydrosphere.SetProportion(chemical, phase, proportion);
+            var newTotalProportion = Hydrosphere.Mixtures.Count > 0 ? HydrosphereSurface.Proportion * proportion : proportion;
+            Hydrosphere.Proportion += Hydrosphere.Proportion * (newTotalProportion - Hydrosphere.GetProportion(chemical, phase, Hydrosphere.Mixtures.Count > 0));
+            HydrosphereSurface.SetProportion(chemical, phase, proportion);
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
         }
     }

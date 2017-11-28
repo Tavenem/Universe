@@ -19,6 +19,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private const float ringDensity_Icy = 300.0f;
         private const float ringDensity_Rocky = 1380.0f;
 
+        internal new const int maxSatellites = 5;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -27,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Set to 5 for <see cref="Planemo"/>. For reference, Pluto has 5 moons, the most of any
         /// planemo in the Solar System apart from the giants. No others are known to have more than 2.
         /// </remarks>
-        public new static int MaxSatellites => 5;
+        public override int MaxSatellites => maxSatellites;
 
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
@@ -35,13 +36,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <remarks>
         /// Null in the base class; subclasses may hide when appropriate.
         /// </remarks>
-        public static string PlanemoClassPrefix => null;
+        public virtual string PlanemoClassPrefix => null;
 
+        internal const float ringChance = 0;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
         /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
-        protected static float RingChance => 0;
+        protected virtual float RingChance => ringChance;
 
         private float? _eccentricity;
         /// <summary>
