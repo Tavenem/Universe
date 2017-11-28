@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Troschuetz.Random;
+using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
@@ -22,6 +24,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
+        internal const bool canHaveOxygen = true;
         /// <summary>
         /// Used to allow or prevent oxygen in the atmosphere of a terrestrial planet.
         /// </summary>
@@ -29,8 +32,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// True by default, but subclasses may hide this with false when their particular natures
         /// make the presence of significant amounts of oxygen impossible.
         /// </remarks>
-        protected static bool CanHaveOxygen => true;
+        protected virtual bool CanHaveOxygen => canHaveOxygen;
 
+        internal const bool canHaveWater = true;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -38,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// True by default, but subclasses may hide this with false when their particular natures
         /// make the presence of significant amounts of water impossible.
         /// </remarks>
-        protected static bool CanHaveWater => true;
+        protected virtual bool CanHaveWater => canHaveWater;
 
         internal const float density_Max = 6000;
         protected virtual float Density_Max => density_Max;
@@ -92,10 +96,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         internal override double? MaxMass_Type => maxMass_Type;
 
+        internal const float metalProportion = 0.05f;
         /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
-        protected virtual float MetalProportion => 0.05f;
+        protected virtual float MetalProportion => metalProportion;
 
         internal const double minMass_Type = 2.0e22;
         /// <summary>
@@ -108,10 +113,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         internal override double? MinMass_Type => minMass_Type;
 
+        private const string planemoClassPrefix = "Terrestrial";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public new static string PlanemoClassPrefix => "Terrestrial";
+        public override string PlanemoClassPrefix => planemoClassPrefix;
 
         internal new const float ringChance = 10;
         /// <summary>
@@ -1100,7 +1106,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var rock = 1 - metals;
 
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
+            Composition.Mixtures.Add(new Mixture(2, new MixtureComponent[]
             {
                 new MixtureComponent
                 {
@@ -1168,10 +1174,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(Density_Min, Density_Max));
 
         /// <summary>
+        /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        /// <remarks>
         /// Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
         /// icecaps, etc.). This might be removed later, depending on the planet's conditions.
-        /// </summary>
-        private void GenerateHydrosphere()
+        /// </remarks>
+        protected virtual void GenerateHydrosphere()
         {
             if (CanHaveWater)
             {
@@ -1302,6 +1311,90 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             Mass = Math.Round(Randomizer.Static.NextDouble(minMass, maxMass ?? minMass));
         }
 
+        /// <summary>
+        /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
+        /// </summary>
+        /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
+        protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        {
+            Planetoid satellite = null;
+            var chance = Randomizer.Static.NextDouble();
+
+            // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
+            if (maxMass > minMass_Type && Randomizer.Static.NextBoolean())
+            {
+                // Select from the standard distribution of types.
+
+                // Planets with very low orbits are lava planets due to tidal stress (plus a small
+                // percentage of others due to impact trauma).
+
+                // The maximum mass and density are used to calculate an outer Roche limit (may not
+                // be the actual Roche limit for the body which gets generated).
+                if (periapsis < GetRocheLimit(density_Max) * 1.05 || chance <= 0.01)
+                {
+                    satellite = new LavaPlanet(Parent, maxMass);
+                }
+                else if (chance <= 0.77) // Most will be standard terrestrial.
+                {
+                    satellite = new TerrestrialPlanet(Parent, maxMass);
+                }
+                else
+                {
+                    satellite = new OceanPlanet(Parent, maxMass);
+                }
+            }
+
+            // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
+            else if (maxMass > DwarfPlanet.minMass_Type && Randomizer.Static.NextBoolean())
+            {
+                // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
+                if (periapsis < GetRocheLimit(DwarfPlanet.typeDensity) * 1.05 || chance <= 0.01)
+                {
+                    satellite = new LavaDwarfPlanet(Parent, maxMass);
+                }
+                else if (chance <= 0.75) // Most will be standard.
+                {
+                    satellite = new DwarfPlanet(Parent, maxMass);
+                }
+                else
+                {
+                    satellite = new RockyDwarfPlanet(Parent, maxMass);
+                }
+            }
+
+            // Otherwise, it is an asteroid, selected from the standard distribution of types.
+            else if (maxMass > 0)
+            {
+                if (chance <= 0.75)
+                {
+                    satellite = new CTypeAsteroid(Parent, maxMass);
+                }
+                else if (chance <= 0.9)
+                {
+                    satellite = new STypeAsteroid(Parent, maxMass);
+                }
+                else
+                {
+                    satellite = new MTypeAsteroid(Parent, maxMass);
+                }
+            }
+
+            if (satellite != null)
+            {
+                Orbits.Orbit.SetOrbit(
+                    satellite,
+                    this,
+                    periapsis,
+                    eccentricity,
+                    (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4));
+            }
+
+            return satellite;
+        }
+
         private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
 
         /// <summary>
@@ -1347,6 +1440,79 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <returns>true if this planet fits this minimal definition of "habitable;" false otherwise.</returns>
         public bool IsHabitable() => Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Any) || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid);
+
+        /// <summary>
+        /// Determines if the planet is habitable by a species with the given requirements. Does not
+        /// imply that the planet could sustain a large-scale population in the long-term, only that
+        /// a member of the species can survive on the surface without artificial aid.
+        /// </summary>
+        /// <param name="habitabilityRequirements">The collection of <see cref="HabitabilityRequirements"/>.</param>
+        /// <param name="reason">
+        /// Set to an <see cref="UninhabitabilityReason"/> indicating the reason(s) the planet is uninhabitable.
+        /// </param>
+        /// <returns>
+        /// true if this planet is habitable by a species with the given requirements; false otherwise.
+        /// </returns>
+        public bool IsHabitable(HabitabilityRequirements habitabilityRequirements, out UninhabitabilityReason reason)
+        {
+            reason = UninhabitabilityReason.None;
+
+            if (TMath.IsZero(GetChanceOfLife()))
+            {
+                reason = UninhabitabilityReason.Other;
+            }
+
+            if (!IsHabitable())
+            {
+                reason |= UninhabitabilityReason.NoWater;
+            }
+
+            if (habitabilityRequirements.AtmosphericRequirements != null
+                && !Atmosphere.MeetsRequirements(habitabilityRequirements.AtmosphericRequirements))
+            {
+                reason |= UninhabitabilityReason.UnbreathableAtmosphere;
+            }
+
+            // The coldest temp will usually occur at apoapsis for bodies which directly orbit stars
+            // (even in multi-star systems, the body would rarely be closer to a companion star even
+            // at apoapsis given the orbital selection criteria used in this library). For a moon,
+            // the coldest temperature should occur at its parent's own apoapsis, but this is
+            // unrelated to the moon's own apses and is effectively impossible to calculate due to
+            // the complexities of the potential orbital dynamics, so this special case is ignored.
+            if (Atmosphere.GetSurfaceTemperatureAtApoapsis() < (habitabilityRequirements.MinimumSurfaceTemperature ?? 0))
+            {
+                reason |= UninhabitabilityReason.TooCold;
+            }
+
+            // To determine if a planet is too hot, the polar temperature at periapsis is used, since
+            // this should be the coldest region at its hottest time.
+            if (Atmosphere.GetSurfaceTemperatureAtPeriapsis(true) > (habitabilityRequirements.MaximumSurfaceTemperature ?? float.PositiveInfinity))
+            {
+                reason |= UninhabitabilityReason.TooHot;
+            }
+
+            if (Atmosphere.AtmosphericPressure < (habitabilityRequirements.MinimumSurfacePressure ?? 0))
+            {
+                reason |= UninhabitabilityReason.LowPressure;
+            }
+
+            if (Atmosphere.AtmosphericPressure > (habitabilityRequirements.MaximumSurfacePressure ?? float.PositiveInfinity))
+            {
+                reason |= UninhabitabilityReason.HighPressure;
+            }
+
+            if (SurfaceGravity < (habitabilityRequirements.MinimumSurfaceGravity ?? 0))
+            {
+                reason |= UninhabitabilityReason.LowGravity;
+            }
+
+            if (SurfaceGravity > (habitabilityRequirements.MaximumSurfaceGravity ?? float.PositiveInfinity))
+            {
+                reason |= UninhabitabilityReason.HighGravity;
+            }
+
+            return (reason == UninhabitabilityReason.None);
+        }
 
         private void ReduceCO2()
         {
@@ -1403,5 +1569,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             HydrosphereSurface.SetProportion(chemical, phase, proportion);
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
         }
+
+        /// <summary>
+        /// The <see cref="HabitabilityRequirements"/> for humans.
+        /// </summary>
+        /// <remarks>
+        /// 236 K (-34 F) used as a minimum temperature: the average low of Yakutsk, a city with a
+        /// permanent human population.
+        ///
+        /// 6.18 kPa is the Armstrong limit, where water boils at human body temperature.
+        ///
+        /// 4980 kPa is the critical point of oxygen, at which oxygen becomes a supercritical fluid.
+        /// </remarks>
+        public static HabitabilityRequirements HumanHabitabilityRequirements =
+            new HabitabilityRequirements(
+                Atmosphere.HumanBreathabilityRequirements,
+                minimumSurfaceTemperature: 236,
+                maximumSurfaceTemperature: 308,
+                minimumSurfacePressure: 6.18f,
+                maximumSurfacePressure: 4980,
+                minimumSurfaceGravity: 0,
+                maximumSurfaceGravity: 14.7f);
     }
 }

@@ -15,7 +15,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
     /// </summary>
     public class Planemo : Planetoid
     {
-        private const float defaultCoreProportion = 0.15f;
+        private const float coreProportion = 0.15f;
         private const float ringDensity_Icy = 300.0f;
         private const float ringDensity_Rocky = 1380.0f;
 
@@ -264,7 +264,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        public virtual float GetCoreProportion() => defaultCoreProportion;
+        public virtual float GetCoreProportion() => coreProportion;
 
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the crust of a <see cref="Planemo"/>.

@@ -11,10 +11,9 @@ namespace WorldFoundry.Substances
 #pragma warning disable CS1591
         None = 0,
         Other = 1,
-        Missing = 2,
-        TooLittle = 4,
-        TooMuch = 8,
-        WrongPhase = 16,
+        TooLittle = 2,
+        TooMuch = 4,
+        WrongPhase = 8,
 #pragma warning restore CS1591
     }
 }

@@ -235,6 +235,24 @@ namespace WorldFoundry.Climate
         internal float Exner(float pressure) => (float)Math.Pow(pressure / AtmosphericPressure, Utilities.Science.Constants.SpecificGasConstantDivSpecificHeat_DryAir);
 
         /// <summary>
+        /// Calculates the air mass coefficient at the given latitude and elevation.
+        /// </summary>
+        /// <param name="latitude">A latitude, in radians.</param>
+        /// <param name="elevation">An elevation, in meters.</param>
+        /// <param name="cosLatitude">
+        /// Optionally, the cosine of the given latitude. If omitted, it will be calculated.
+        /// </param>
+        /// <returns>The air mass coefficient at the given latitude.</returns>
+        private float GetAirMass(double latitude, float elevation, double? cosLatitude = null)
+        {
+            var r = CelestialBody.Radius / AtmosphericScaleHeight;
+            var cosLat = cosLatitude ?? Math.Cos(latitude);
+            var c = elevation / AtmosphericScaleHeight;
+            var rPlusCcosLat = (r + c) * cosLat;
+            return (float)(Math.Sqrt(rPlusCcosLat * rPlusCcosLat + (2 * r + 1 + c) * (1 - c)) - rPlusCcosLat);
+        }
+
+        /// <summary>
         /// Calculates the atmospheric drag on a spherical object within this <see
         /// cref="Atmosphere"/> under given conditions, in N.
         /// </summary>
@@ -355,6 +373,14 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
+        /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
+        /// </summary>
+        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/>s.</param>
+        /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
+        public bool MeetsRequirements(IEnumerable<ComponentRequirement> requirements)
+            => GetRequirementFailures(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+
+        /// <summary>
         /// Calculates the adiabatic lapse rate for this <see cref="Atmosphere"/>, after determining
         /// whether to use the dry or moist based on the presence of water vapor, in K/m.
         /// </summary>
@@ -399,24 +425,6 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Calculates the air mass coefficient at the given latitude and elevation.
-        /// </summary>
-        /// <param name="latitude">A latitude, in radians.</param>
-        /// <param name="elevation">An elevation, in meters.</param>
-        /// <param name="cosLatitude">
-        /// Optionally, the cosine of the given latitude. If omitted, it will be calculated.
-        /// </param>
-        /// <returns>The air mass coefficient at the given latitude.</returns>
-        private float GetAirMass(double latitude, float elevation, double? cosLatitude = null)
-        {
-            var r = CelestialBody.Radius / AtmosphericScaleHeight;
-            var cosLat = cosLatitude ?? Math.Cos(latitude);
-            var c = elevation / AtmosphericScaleHeight;
-            var rPlusCcosLat = (r + c) * cosLat;
-            return (float)(Math.Sqrt(rPlusCcosLat * rPlusCcosLat + (2 * r + 1 + c) * (1 - c)) - rPlusCcosLat);
-        }
-
-        /// <summary>
         /// Calculates the insolation factor to be used at the predetermined latitude for checking polar temperatures.
         /// </summary>
         /// <returns>
@@ -428,6 +436,56 @@ namespace WorldFoundry.Climate
 
             var atmMassRatio = AtmosphericMass / CelestialBody.Mass;
             return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
+        }
+
+        /// <summary>
+        /// Accepts an enumeration of <see cref="ComponentRequirement"/>s, and yields them back
+        /// along with the reason(s) each one has failed, if any.
+        /// </summary>
+        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/> s.</param>
+        /// <returns>
+        /// The enumeration of <see cref="ComponentRequirement"/> s, along with the reason(s) each one
+        /// has failed, if any.
+        /// </returns>
+        public IEnumerable<(ComponentRequirement, ComponentRequirementFailureType)> GetRequirementFailures(IEnumerable<ComponentRequirement> requirements)
+        {
+            var failureType = ComponentRequirementFailureType.None;
+
+            var surfaceLayer = Mixtures.Count > 0 ? GetChildAtFirstLayer() : this;
+            foreach (var requirement in ConvertRequirementsForPressure(requirements))
+            {
+                float proportion = 0;
+                var matches = surfaceLayer.GetComponentPhases(requirement.Chemical);
+                if (requirement.Phase == Phase.Any)
+                {
+                    if (matches.Any())
+                    {
+                        proportion = matches.Sum(x => x.Proportion);
+                    }
+                }
+                else
+                {
+                    var match = surfaceLayer.GetComponent(requirement.Chemical, requirement.Phase);
+                    if (match != null)
+                    {
+                        proportion = match.Proportion;
+                    }
+                    else if (matches.Any())
+                    {
+                        failureType |= ComponentRequirementFailureType.WrongPhase;
+                    }
+                }
+                if (proportion < requirement.MinimumProportion)
+                {
+                    failureType |= ComponentRequirementFailureType.TooLittle;
+                }
+                else if (proportion > requirement.MaximumProportion)
+                {
+                    failureType |= ComponentRequirementFailureType.TooMuch;
+                }
+
+                yield return (requirement, failureType);
+            }
         }
 
         /// <summary>
