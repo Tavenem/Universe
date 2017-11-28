@@ -1395,6 +1395,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return satellite;
         }
 
+        /// <summary>
+        /// Calculates the distance (in meters) this <see cref="TerrestrialPlanet"/> would have to be
+        /// from a <see cref="Star"/> in order to have the given effective temperature.
+        /// </summary>
+        /// <remarks>
+        /// It is assumed that this <see cref="TerrestrialPlanet"/> has no internal temperature of
+        /// its own. The effects of other nearby stars are ignored.
+        /// </remarks>
+        /// <param name="star">The <see cref="Star"/> for which the calculation is to be made.</param>
+        /// <param name="temperature">The desired temperature (in K).</param>
+        public float GetDistanceForTemperature(Star star, float temperature)
+        {
+            var areaRatio = 1;
+            if (RotationalPeriod > 2500)
+            {
+                if (RotationalPeriod <= 75000)
+                {
+                    areaRatio = 4;
+                }
+                else if (RotationalPeriod <= 150000)
+                {
+                    areaRatio = 3;
+                }
+                else if (RotationalPeriod <= 300000)
+                {
+                    areaRatio = 2;
+                }
+            }
+
+            return (float)(Math.Sqrt((star.Luminosity * (1 - Albedo))) / (Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio));
+        }
+
         private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
 
         /// <summary>
