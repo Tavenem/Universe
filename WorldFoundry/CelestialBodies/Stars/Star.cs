@@ -26,11 +26,11 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         protected override string DesignatorPrefix => GetProperty(ref _designatorPrefix, GenerateDesignatorPrefix);
 
-        private float? _luminosity;
+        private double? _luminosity;
         /// <summary>
         /// The luminosity of this <see cref="Star"/>, in Watts.
         /// </summary>
-        public float Luminosity
+        public double Luminosity
         {
             get => GetProperty(ref _luminosity, GenerateLuminosityClass) ?? 0;
             set => _luminosity = value;
@@ -154,18 +154,18 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </remarks>
         protected virtual void GenerateLuminosity()
         {
-            Luminosity = (float)Math.Round(Math.Pow((Temperature ?? 0) / 5778, 5.6) * 3.846e26);
+            Luminosity = Math.Pow((Temperature ?? 0) / 5778, 5.6) * 3.846e26;
 
             // If a special luminosity class had been assigned, take it into account.
             if (LuminosityClass == LuminosityClass.sd)
             {
                 // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
-                Luminosity = (float)Math.Round(Luminosity / Randomizer.Static.NextDouble(55, 100));
+                Luminosity = Luminosity / Randomizer.Static.NextDouble(55, 100);
             }
             else if (LuminosityClass == LuminosityClass.IV)
             {
                 // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
-                Luminosity = (float)Math.Round(Luminosity * Randomizer.Static.NextDouble(55, 100));
+                Luminosity = Luminosity * Randomizer.Static.NextDouble(55, 100);
             }
         }
 
@@ -199,7 +199,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>A <see cref="Star"/>'s radius has a direct relationship to <see cref="Luminosity"/>.</remarks>
+        /// <remarks>
+        /// A main sequence <see cref="Star"/>'s radius has a direct relationship to <see cref="Luminosity"/>.
+        /// </remarks>
         protected override void GenerateShape()
         {
             var d = Utilities.MathUtil.Constants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
@@ -296,6 +298,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         }
 
         /// <summary>
+        /// Determines <see cref="Luminosity"/> based on this <see cref="Star"/>'s <see cref="CelestialEntity.Radius"/>.
+        /// </summary>
+        protected double GetLuminosityFromRadius()
+            => Utilities.MathUtil.Constants.FourPI * Radius * Radius * Utilities.Science.Constants.StefanBoltzmannConstant * Math.Pow(Temperature ?? 0, 4);
+
+        /// <summary>
         /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.
         /// The final number may be affected by other factors.
         /// </summary>
@@ -356,6 +364,61 @@ namespace WorldFoundry.CelestialBodies.Stars
             return (numGiants, numIceGiants, numTerrestrial);
         }
 
+        /// <summary>
+        /// Determines <see cref="SpectralClass"/> from <see cref="ThermalBody.Temperature"/>.
+        /// </summary>
+        /// <remarks>
+        /// Only applies to the standard classes (excludes W).
+        /// </remarks>
+        protected SpectralClass GetSpectralClassFromTemperature(float temperature)
+        {
+            if (temperature < 500)
+            {
+                return SpectralClass.Y;
+            }
+            else if (temperature < 1300)
+            {
+                return SpectralClass.T;
+            }
+            else if (temperature < 2400)
+            {
+                return SpectralClass.L;
+            }
+            else if (temperature < 3700)
+            {
+                return SpectralClass.M;
+            }
+            else if (temperature < 5200)
+            {
+                return SpectralClass.K;
+            }
+            else if (temperature < 6000)
+            {
+                return SpectralClass.G;
+            }
+            else if (temperature < 7500)
+            {
+                return SpectralClass.F;
+            }
+            else if (temperature < 10000)
+            {
+                return SpectralClass.A;
+            }
+            else if (temperature < 30000)
+            {
+                return SpectralClass.B;
+            }
+            else
+            {
+                return SpectralClass.O;
+            }
+        }
+
+        /// <summary>
+        /// Pseudo-randomly determines whether this <see cref="Star"/> will have giant planets, based
+        /// on its characteristics.
+        /// </summary>
+        /// <returns>true if this <see cref="Star"/> will have giant planets; false otherwise.</returns>
         protected virtual bool GetWillHaveGiantPlanets()
         {
             // O-type stars and brown dwarfs do not have giant planets
@@ -406,6 +469,11 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
+        /// <summary>
+        /// Pseudo-randomly determines whether this <see cref="Star"/> will have ice giant planets,
+        /// based on its characteristics.
+        /// </summary>
+        /// <returns>true if this <see cref="Star"/> will have ice giant planets; false otherwise.</returns>
         protected virtual bool GetWillHaveIceGiants()
         {
             // O-type stars and brown dwarfs do not have ice giants
@@ -456,6 +524,11 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
+        /// <summary>
+        /// Pseudo-randomly determines whether this <see cref="Star"/> will have terrestrial planets,
+        /// based on its characteristics.
+        /// </summary>
+        /// <returns>true if this <see cref="Star"/> will have terrestrial planets; false otherwise.</returns>
         protected virtual bool GetWillHaveTerrestrialPlanets()
         {
             // O-type stars do not have planets
