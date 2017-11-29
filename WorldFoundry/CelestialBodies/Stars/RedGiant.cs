@@ -44,7 +44,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             CelestialObject parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
-            bool? populationII = null) : base(parent, position, luminosityClass, populationII) { }
+            bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.

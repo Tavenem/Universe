@@ -51,7 +51,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="position">The initial position of this <see cref="WhiteDwarf"/>.</param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="WhiteDwarf"/>.</param>
-        public WhiteDwarf(CelestialObject parent, Vector3 position, bool? populationII = null) : base(parent, position, null, null, populationII) { }
+        public WhiteDwarf(CelestialObject parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
 
         /// <summary>
         /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.

@@ -378,7 +378,25 @@ namespace WorldFoundry.Climate
         /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/>s.</param>
         /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
         public bool MeetsRequirements(IEnumerable<ComponentRequirement> requirements)
-            => GetRequirementFailures(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+            => GetFailedRequirements(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+
+        /// <summary>
+        /// Accepts an enumeration of <see cref="ComponentRequirement"/>s, and yields them back
+        /// along with the reason(s) each one has failed, if any.
+        /// </summary>
+        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/> s.</param>
+        /// <returns>
+        /// The enumeration of <see cref="ComponentRequirement"/> s, along with the reason(s) each one
+        /// has failed, if any.
+        /// </returns>
+        public override IEnumerable<(ComponentRequirement, ComponentRequirementFailureType)> GetFailedRequirements(IEnumerable<ComponentRequirement> requirements)
+        {
+            var surfaceLayer = Mixtures.Count > 0 ? GetChildAtFirstLayer() : this;
+            foreach (var requirement in ConvertRequirementsForPressure(requirements))
+            {
+                yield return (requirement, surfaceLayer.MeetsRequirement(requirement));
+            }
+        }
 
         /// <summary>
         /// Calculates the adiabatic lapse rate for this <see cref="Atmosphere"/>, after determining
@@ -436,56 +454,6 @@ namespace WorldFoundry.Climate
 
             var atmMassRatio = AtmosphericMass / CelestialBody.Mass;
             return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
-        }
-
-        /// <summary>
-        /// Accepts an enumeration of <see cref="ComponentRequirement"/>s, and yields them back
-        /// along with the reason(s) each one has failed, if any.
-        /// </summary>
-        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/> s.</param>
-        /// <returns>
-        /// The enumeration of <see cref="ComponentRequirement"/> s, along with the reason(s) each one
-        /// has failed, if any.
-        /// </returns>
-        public IEnumerable<(ComponentRequirement, ComponentRequirementFailureType)> GetRequirementFailures(IEnumerable<ComponentRequirement> requirements)
-        {
-            var failureType = ComponentRequirementFailureType.None;
-
-            var surfaceLayer = Mixtures.Count > 0 ? GetChildAtFirstLayer() : this;
-            foreach (var requirement in ConvertRequirementsForPressure(requirements))
-            {
-                float proportion = 0;
-                var matches = surfaceLayer.GetComponentPhases(requirement.Chemical);
-                if (requirement.Phase == Phase.Any)
-                {
-                    if (matches.Any())
-                    {
-                        proportion = matches.Sum(x => x.Proportion);
-                    }
-                }
-                else
-                {
-                    var match = surfaceLayer.GetComponent(requirement.Chemical, requirement.Phase);
-                    if (match != null)
-                    {
-                        proportion = match.Proportion;
-                    }
-                    else if (matches.Any())
-                    {
-                        failureType |= ComponentRequirementFailureType.WrongPhase;
-                    }
-                }
-                if (proportion < requirement.MinimumProportion)
-                {
-                    failureType |= ComponentRequirementFailureType.TooLittle;
-                }
-                else if (proportion > requirement.MaximumProportion)
-                {
-                    failureType |= ComponentRequirementFailureType.TooMuch;
-                }
-
-                yield return (requirement, failureType);
-            }
         }
 
         /// <summary>

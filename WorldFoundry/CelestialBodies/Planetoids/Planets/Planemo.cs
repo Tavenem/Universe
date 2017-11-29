@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
+using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 

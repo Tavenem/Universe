@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             CelestialObject parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
-            bool? populationII = null) : base(parent, position, null, luminosityClass, populationII) { }
+            bool populationII = false) : base(parent, position, null, luminosityClass, populationII) { }
 
         /// <summary>
         /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.

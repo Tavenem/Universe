@@ -387,7 +387,7 @@ namespace WorldFoundry.Substances
         /// An enumeration of all the <see cref="ComponentRequirement"/> s which failed, along with
         /// the reason(s) for each failure.
         /// </returns>
-        public IEnumerable<(ComponentRequirement, ComponentRequirementFailureType)> GetFailedRequirements(IEnumerable<ComponentRequirement> requirements)
+        public virtual IEnumerable<(ComponentRequirement, ComponentRequirementFailureType)> GetFailedRequirements(IEnumerable<ComponentRequirement> requirements)
         {
             foreach (var requirement in requirements)
             {
@@ -435,33 +435,39 @@ namespace WorldFoundry.Substances
         /// </returns>
         public ComponentRequirementFailureType MeetsRequirement(ComponentRequirement requirement)
         {
-            var match = GetComponent(requirement);
-            if (match == null)
+            var failureType = ComponentRequirementFailureType.None;
+
+            float proportion = 0;
+            var matches = GetComponentPhases(requirement.Chemical);
+            if (requirement.Phase == Phase.Any)
             {
-                return requirement.MinimumProportion > 0
-                    ? ComponentRequirementFailureType.Missing
-                    : ComponentRequirementFailureType.Other;
+                if (matches.Any())
+                {
+                    proportion = matches.Sum(x => x.Proportion);
+                }
+            }
+            else
+            {
+                var match = GetComponent(requirement.Chemical, requirement.Phase);
+                if (match != null)
+                {
+                    proportion = match.Proportion;
+                }
+                else if (matches.Any())
+                {
+                    failureType |= ComponentRequirementFailureType.WrongPhase;
+                }
+            }
+            if (proportion < requirement.MinimumProportion)
+            {
+                failureType |= ComponentRequirementFailureType.TooLittle;
+            }
+            else if (proportion > requirement.MaximumProportion)
+            {
+                failureType |= ComponentRequirementFailureType.TooMuch;
             }
 
-            var failureReason = ComponentRequirementFailureType.None;
-
-            if (match.Phase != requirement.Phase && requirement.Phase != Phase.Any && match.Phase != Phase.Any)
-            {
-                failureReason = ComponentRequirementFailureType.WrongPhase;
-            }
-
-            if (match.Proportion < requirement.MinimumProportion)
-            {
-                failureReason = failureReason | ComponentRequirementFailureType.TooLittle;
-            }
-
-            if (requirement.MaximumProportion.HasValue
-                && match.Proportion > requirement.MaximumProportion)
-            {
-                failureReason = failureReason | ComponentRequirementFailureType.TooMuch;
-            }
-
-            return failureReason;
+            return failureType;
         }
 
         /// <summary>

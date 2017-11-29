@@ -38,7 +38,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
+        internal static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
         {
             { typeof(CTypeAsteroid), 0.74f },
             { typeof(STypeAsteroid), 0.14f },

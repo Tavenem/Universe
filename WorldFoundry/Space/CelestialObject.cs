@@ -17,11 +17,10 @@ namespace WorldFoundry.Space
     /// </summary>
     public class CelestialObject : BioZone
     {
-        internal static IDictionary<Type, float> childPossibilities;
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public virtual IDictionary<Type, float> ChildPossibilities => childPossibilities;
+        public virtual IDictionary<Type, float> ChildPossibilities => null;
 
         private const double childDensity = 0;
         /// <summary>

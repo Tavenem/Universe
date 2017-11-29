@@ -24,7 +24,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
+        internal static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
         {
             { typeof(MainSequenceBSystem), 0.9998f },
             { typeof(MainSequenceOSystem), 0.0002f },
