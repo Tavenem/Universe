@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
+using Troschuetz.Random;
 
 namespace WorldFoundry.Space
 {
@@ -12,16 +13,7 @@ namespace WorldFoundry.Space
         /// Specifies the coordinates of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
         /// </summary>
         [NotMapped]
-        public Vector3 Coordinates
-        {
-            get => new Vector3(CoordinatesX, CoordinatesY, CoordinatesZ);
-            private set
-            {
-                CoordinatesX = value.X;
-                CoordinatesY = value.Y;
-                CoordinatesZ = value.Z;
-            }
-        }
+        public Vector3 Coordinates => new Vector3(CoordinatesX, CoordinatesY, CoordinatesZ);
 
         /// <summary>
         /// Specifies the X-coordinate of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.
@@ -47,5 +39,33 @@ namespace WorldFoundry.Space
         /// are present.
         /// </remarks>
         public bool Populated { get; internal set; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="GridSpace"/>.
+        /// </summary>
+        public GridSpace() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="GridSpace"/> with the given values.
+        /// </summary>
+        public GridSpace(Vector3 coordinates)
+        {
+            CoordinatesX = coordinates.X;
+            CoordinatesY = coordinates.Y;
+            CoordinatesZ = coordinates.Z;
+        }
+
+        /// <summary>
+        /// Returns true if the given coordinates match the <see cref="Coordinates"/> of this <see cref="GridSpace"/>.
+        /// </summary>
+        /// <param name="coordinates">A set of coordinates to match.</param>
+        /// <returns>
+        /// true if the given coordinates match the <see cref="Coordinates"/> of this <see
+        /// cref="GridSpace"/>; otherwise false.
+        /// </returns>
+        public bool CoordinatesMatch(Vector3 coordinates)
+            => TMath.AreEqual(CoordinatesX, coordinates.X)
+            && TMath.AreEqual(CoordinatesY, coordinates.Y)
+            && TMath.AreEqual(CoordinatesZ, coordinates.Z);
     }
 }

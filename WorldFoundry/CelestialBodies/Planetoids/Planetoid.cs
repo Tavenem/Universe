@@ -360,15 +360,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return;
             }
 
-            double minPeriapsis = MinSatellitePeriapsis;
-            double maxApoapsis = Orbit == null ? Radius * 100 : Orbit.GetHillSphereRadius() / 3.0;
+            var minPeriapsis = MinSatellitePeriapsis;
+            var maxApoapsis = Orbit == null ? Radius * 100 : Orbit.GetHillSphereRadius() / 3.0;
 
             while (minPeriapsis <= maxApoapsis && Satellites.Count < MaxSatellites && (!max.HasValue || Satellites.Count < max.Value))
             {
-                double periapsis = Math.Round(Randomizer.Static.NextDouble(minPeriapsis, maxApoapsis));
+                var periapsis = Math.Round(Randomizer.Static.NextDouble(minPeriapsis, maxApoapsis));
 
-                float maxEccentricity = (float)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
-                float eccentricity = (float)Math.Round(Math.Min(Math.Abs(Randomizer.Static.Normal(0, 0.05)), maxEccentricity), 4);
+                var maxEccentricity = (float)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
+                var eccentricity = (float)Math.Round(Math.Min(Math.Abs(Randomizer.Static.Normal(0, 0.05)), maxEccentricity), 4);
 
                 var semiLatusRectum = periapsis * (1 + eccentricity);
                 var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -449,6 +449,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public bool GetIsTidallyLockedAfter(float years)
             => Orbit == null
             ? false
-            : (float)Math.Pow(((years / 6.0e11) * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2)) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
+            : Math.Pow(((years / 6.0e11) * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2)) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
     }
 }

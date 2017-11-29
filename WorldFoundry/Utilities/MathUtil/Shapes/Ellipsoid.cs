@@ -11,17 +11,17 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// <summary>
         /// The length of the first axis of the <see cref="Ellipsoid"/>.
         /// </summary>
-        public float AxisA { get; set; }
+        public double AxisA { get; set; }
 
         /// <summary>
         /// The length of the second axis of the <see cref="Ellipsoid"/>.
         /// </summary>
-        public float AxisB { get; set; }
+        public double AxisB { get; set; }
 
         /// <summary>
         /// The length of the third axis of the <see cref="Ellipsoid"/>.
         /// </summary>
-        public float AxisC { get; set; }
+        public double AxisC { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Ellipsoid"/>.
@@ -34,11 +34,35 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// <param name="axisA">The length of the first radius of the <see cref="Ellipsoid"/>.</param>
         /// <param name="axisB">The length of the second radius of the <see cref="Ellipsoid"/>.</param>
         /// <param name="axisC">The length of the third radius of the <see cref="Ellipsoid"/>.</param>
-        public Ellipsoid(float axisA, float axisB, float axisC)
+        public Ellipsoid(double axisA, double axisB, double axisC)
         {
             AxisA = axisA;
             AxisB = axisB;
             AxisC = axisC;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Ellipsoid"/> as an irregular spheroid with the given parameters.
+        /// </summary>
+        /// <param name="axis">The length of the primary axis of the irregular spheroid.</param>
+        /// <param name="irregularity">The irregularity of the irregular spheroid.</param>
+        public Ellipsoid(double axis, float irregularity)
+        {
+            AxisA = axis;
+            AxisB = axis * irregularity;
+            AxisC = axis / irregularity;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Ellipsoid"/> as an oblate spheroid with the given parameters.
+        /// </summary>
+        /// <param name="radius">The radius of the oblate spheroid.</param>
+        /// <param name="axis">The length of the primary axis of the oblate spheroid.</param>
+        public Ellipsoid(double radius, double axis)
+        {
+            AxisA = radius;
+            AxisB = axis;
+            AxisC = radius;
         }
 
         /// <summary>
@@ -51,7 +75,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Determines a circular radius which fully contains the shape.
         /// </summary>
         /// <returns>A circular radius which fully contains the shape.</returns>
-        public override float GetContainingRadius() => Math.Max(AxisA, Math.Max(AxisB, AxisC));
+        public override double GetContainingRadius() => Math.Max(AxisA, Math.Max(AxisB, AxisC));
 
         /// <summary>
         /// Determines if a given point lies within this shape.

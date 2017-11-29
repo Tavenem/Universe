@@ -266,7 +266,7 @@ namespace WorldFoundry.Climate
         /// accurately is not desired in this library.
         /// </remarks>
         public float GetAtmosphericDrag(float density, float speed) =>
-            0.5f * density * speed * speed * 0.47f * CelestialBody.Radius;
+            (float)(0.235 * density * speed * speed * CelestialBody.Radius);
 
         /// <summary>
         /// Calculates the total height of the <see cref="Atmosphere"/>, defined as the point at
@@ -285,7 +285,7 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <returns>The total mass of this <see cref="Atmosphere"/>, in kg.</returns>
         private double GetAtmosphericMass()
-            => (Utilities.MathUtil.Constants.FourPI * Math.Pow(CelestialBody.Radius, 2) * AtmosphericPressure * 1000) / CelestialBody.SurfaceGravity;
+            => (Utilities.MathUtil.Constants.FourPI * CelestialBody.RadiusSquared * AtmosphericPressure * 1000) / CelestialBody.SurfaceGravity;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.

@@ -96,7 +96,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 position,
             SpectralClass? spectralClass = null,
             LuminosityClass? luminosityClass = null,
-            bool? populationII = null) : base(parent, position)
+            bool populationII = false) : base(parent, position)
         {
             if (spectralClass.HasValue)
             {
@@ -205,11 +205,11 @@ namespace WorldFoundry.CelestialBodies.Stars
         protected override void GenerateShape()
         {
             var d = Utilities.MathUtil.Constants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
-            var radius = (float)Math.Round(Math.Sqrt(Luminosity / d));
+            var radius = Math.Round(Math.Sqrt(Luminosity / d));
 
-            var flattening = (float)Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
+            var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
 
-            Shape = new Ellipsoid(radius, (float)Math.Round(radius * (1 - flattening)), radius);
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>
@@ -301,7 +301,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Determines <see cref="Luminosity"/> based on this <see cref="Star"/>'s <see cref="CelestialEntity.Radius"/>.
         /// </summary>
         protected double GetLuminosityFromRadius()
-            => Utilities.MathUtil.Constants.FourPI * Radius * Radius * Utilities.Science.Constants.StefanBoltzmannConstant * Math.Pow(Temperature ?? 0, 4);
+            => Utilities.MathUtil.Constants.FourPI * RadiusSquared * Utilities.Science.Constants.StefanBoltzmannConstant * Math.Pow(Temperature ?? 0, 4);
 
         /// <summary>
         /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.

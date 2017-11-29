@@ -64,7 +64,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="OortCloud"/> is located.
         /// </param>
-        public OortCloud(CelestialObject parent, Star star, float starSystemRadius) : base(parent)
+        public OortCloud(CelestialObject parent, Star star, double starSystemRadius) : base(parent)
         {
             Star = star;
             GenerateShape(starSystemRadius);
@@ -101,7 +101,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         protected override void GenerateMass() => Mass = 3.0e25;
 
-        private void GenerateShape(float? starSystemRadius) => Shape = new HollowSphere(3.0e15f + (starSystemRadius ?? 0), 7.5e15f + (starSystemRadius ?? 0));
+        private void GenerateShape(double? starSystemRadius) => Shape = new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0));
 
         /// <summary>
         /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.

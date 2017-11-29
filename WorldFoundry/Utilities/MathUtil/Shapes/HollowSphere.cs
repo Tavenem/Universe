@@ -11,12 +11,12 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// <summary>
         /// The inner radius of the <see cref="Sphere"/>.
         /// </summary>
-        public float InnerRadius { get; set; }
+        public double InnerRadius { get; set; }
 
         /// <summary>
         /// The outer radius of the <see cref="Sphere"/>.
         /// </summary>
-        public float OuterRadius { get; set; }
+        public double OuterRadius { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HollowSphere"/>.
@@ -28,7 +28,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// </summary>
         /// <param name="innerRadius">The inner radius of the <see cref="HollowSphere"/>.</param>
         /// <param name="innerRadius">The outer radius of the <see cref="HollowSphere"/>.</param>
-        public HollowSphere(float innerRadius, float outerRadius)
+        public HollowSphere(double innerRadius, double outerRadius)
         {
             InnerRadius = innerRadius;
             OuterRadius = outerRadius;
@@ -45,7 +45,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Determines a circular radius which fully contains the shape.
         /// </summary>
         /// <returns>A circular radius which fully contains the shape.</returns>
-        public override float GetContainingRadius() => OuterRadius;
+        public override double GetContainingRadius() => OuterRadius;
 
         /// <summary>
         /// Determines if a given point lies within this shape.

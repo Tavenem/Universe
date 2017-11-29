@@ -202,11 +202,11 @@ namespace WorldFoundry.Space
             // entirely beyond the bounds of the parent's local space.
             if (other == Parent)
             {
-                return Position.Length() - Radius < localSpaceScale;
+                return Position.Length() - (Radius / LocalScale) < localSpaceScale;
             }
             else if (other.Parent == this)
             {
-                return other.Position.Length() - other.Radius < localSpaceScale;
+                return other.Position.Length() - (other.Radius / LocalScale) < localSpaceScale;
             }
             else
             {
@@ -231,10 +231,18 @@ namespace WorldFoundry.Space
         {
             var unpopulatedSpaces = new List<Vector3>();
             int gridRange = GetGridRange();
-            for (int x = 1; x <= gridRange; x++)
+            for (int x = -gridRange; x <= gridRange; x++)
             {
-                for (int y = 1; y <= gridRange; y++)
+                if (x == 0)
                 {
+                    continue;
+                }
+                for (int y = -gridRange; y <= gridRange; y++)
+                {
+                    if (y == 0)
+                    {
+                        continue;
+                    }
                     // Avoid over-representing a single slice of X by moving to
                     // the next X value after enough unpopulated spaces have
                     // been found here.
@@ -243,8 +251,12 @@ namespace WorldFoundry.Space
                         break;
                     }
 
-                    for (int z = 1; z <= gridRange; z++)
+                    for (int z = -gridRange; z <= gridRange; z++)
                     {
+                        if (z == 0)
+                        {
+                            continue;
+                        }
                         // Avoid over-representing a single slice of Y by moving to
                         // the next Y value after enough unpopulated spaces have
                         // been found here.
@@ -487,7 +499,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public int GetGridRange()
         {
-            if (float.IsInfinity(GridSize) || float.IsNaN(GridSize))
+            if (double.IsInfinity(GridSize) || double.IsNaN(GridSize))
             {
                 return 1;
             }
@@ -501,9 +513,25 @@ namespace WorldFoundry.Space
         /// grid space is the same size as the object.
         /// </summary>
         /// <returns>The size of 1 grid space within this object, in local space units.</returns>
-        private float GetGridSize() => ChildDensity == 0 ? Radius : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
+        private float GetGridSize() => ChildDensity == 0 ? (float)(Radius / LocalScale) : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
 
-        private GridSpace GetGridSpace(Vector3 coordinates) => GridSpaces?.Where(g => g.Coordinates == coordinates).FirstOrDefault();
+        protected GridSpace GetGridSpace(Vector3 coordinates, bool withCreation = false)
+        {
+            if (GridSpaces == null)
+            {
+                if (withCreation)
+                {
+                    GridSpaces = new HashSet<GridSpace>();
+                }
+            }
+            var space = GridSpaces.Where(g => g.CoordinatesMatch(coordinates)).FirstOrDefault();
+            if (space == null && withCreation)
+            {
+                space = new GridSpace(coordinates);
+                GridSpaces.Add(space);
+            }
+            return space;
+        }
 
         /// <summary>
         /// Finds all children in a 3x3 box of grid spaces around the given position in local space.
@@ -585,7 +613,7 @@ namespace WorldFoundry.Space
         /// true if the specified grid coordinates have already been populated with child objects;
         /// false otherwise.
         /// </returns>
-        private bool IsGridSpacePopulated(Vector3 coordinates) => GetGridSpace(coordinates)?.Populated ?? false;
+        protected bool IsGridSpacePopulated(Vector3 coordinates) => GetGridSpace(coordinates)?.Populated ?? false;
 
         /// <summary>
         /// Generates an appropriate population of children within a 3x3 box of grid spaces around
@@ -649,7 +677,7 @@ namespace WorldFoundry.Space
             }
 
             // Mark the grid space as populated.
-            GetGridSpace(coordinates).Populated = true;
+            GetGridSpace(coordinates, true).Populated = true;
 
             // Only generate a child if this grid space is actually part of the region's Shape. It is
             // allowed to be marked populated above in any case in order to avoid this expensive
@@ -665,13 +693,13 @@ namespace WorldFoundry.Space
         /// Generates an appropriate population of child objects in local space, in an area around
         /// the given position.
         /// </summary>
+        /// <param name="position">The location around which to generate child objects.</param>
         /// <remarks>
         /// Will generate approximately 25–30 children in a box around the given position. Will not
         /// re-generate or over-populate regions which have already been populated (uses an
         /// internally-managed grid system).
         /// </remarks>
-        /// <param name="position">The location around which to generate child objects.</param>
-        public void PopulateRegion(Vector3 position) => Populate3x3GridRegion(PositionToGridCoords(position));
+        public virtual void PopulateRegion(Vector3 position) => Populate3x3GridRegion(PositionToGridCoords(position));
 
         /// <summary>
         /// Converts a position to a set of grid coordinates.
@@ -728,7 +756,7 @@ namespace WorldFoundry.Space
         internal void SetRegionPopulated(Vector3 position, Shape shape)
         {
             Vector3 home = PositionToGridCoords(position);
-            GetGridSpace(home).Populated = true;
+            GetGridSpace(home, true).Populated = true;
 
             // If the shape is null or empty, only the grid containing the position is marked.
             if (shape == null || shape.GetVolume() == 0)
@@ -766,7 +794,7 @@ namespace WorldFoundry.Space
                             if (GridCoordsToCornerPositions(coordinates)
                                 .Any(p => shape.IsPointWithin(position * LocalScale, p * LocalScale)))
                             {
-                                GetGridSpace(coordinates).Populated = true;
+                                GetGridSpace(coordinates, true).Populated = true;
                             }
                         }
                     }

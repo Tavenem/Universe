@@ -11,12 +11,12 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// <summary>
         /// The distance from the center of the tube to the center of the torus.
         /// </summary>
-        public float MajorRadius { get; set; }
+        public double MajorRadius { get; set; }
 
         /// <summary>
         /// The radius of the tube, in meters.
         /// </summary>
-        public float MinorRadius { get; set; }
+        public double MinorRadius { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Torus"/>.
@@ -28,7 +28,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// </summary>
         /// <param name="majorRadius">The length of the major radius of the <see cref="Torus"/>.</param>
         /// <param name="minorRadius">The length of the minor radius of the <see cref="Torus"/>.</param>
-        public Torus(float majorRadius, float minorRadius)
+        public Torus(double majorRadius, double minorRadius)
         {
             if (majorRadius < minorRadius)
             {
@@ -48,7 +48,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Determines a circular radius which fully contains the shape.
         /// </summary>
         /// <returns>A circular radius which fully contains the shape.</returns>
-        public override float GetContainingRadius() => MajorRadius + MinorRadius;
+        public override double GetContainingRadius() => MajorRadius + MinorRadius;
 
         /// <summary>
         /// Determines if a given point lies within this shape.

@@ -54,7 +54,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// Black holes are strange objects with zero volume and infinite density. The shape given is
         /// presumed to refer to the shape of the event horizon.
         /// </remarks>
-        protected override void GenerateShape() => Shape = new Sphere((float)Math.Round(1.48e-27 * Mass));
+        protected override void GenerateShape() => Shape = new Sphere(Math.Round(1.48e-27 * Mass));
 
         /// <summary>
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.

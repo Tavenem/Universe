@@ -4,6 +4,7 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using WorldFoundry.Utilities;
+using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -141,9 +142,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </summary>
         protected override void GenerateShape()
         {
-            var axisA = (float)Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
+            var axis = Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
-            Shape = new Utilities.MathUtil.Shapes.Ellipsoid(axisA, axisA * irregularity, axisA / irregularity);
+            Shape = new Ellipsoid(axis, irregularity);
         }
 
         /// <summary>

@@ -574,7 +574,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var surfaceTemp = GetTotalTemperatureAverageOrbital();
 
             // If the planet is not massive enough or too hot to hold onto carbon dioxide gas, it is
-            // presumed that it will have a minimal atmosphere of outgassed volatiles (comparable to Mercury).
+            // presumed that it will have a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
             var escapeVelocity = Math.Sqrt((Utilities.Science.Constants.TwoG * Mass) / Radius);
             if (Math.Sqrt(566.6137 * surfaceTemp) >= 0.2 * escapeVelocity)
             {
@@ -640,7 +640,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
 
                 var mass = Math.Max(factor, Randomizer.Static.Lognormal(0, factor * 4));
-                pressure = (float)((mass * SurfaceGravity) / (1000 * Utilities.MathUtil.Constants.FourPI * Math.Pow(Radius, 2)));
+                pressure = (float)((mass * SurfaceGravity) / (1000 * Utilities.MathUtil.Constants.FourPI * RadiusSquared));
             }
 
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
@@ -1434,14 +1434,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in kg/m².</param>
         /// <returns>The mass required to produce the given surface gravity, in kg.</returns>
-        private double GetMassForSurfaceGravity(float gravity) => (gravity * Math.Pow(Radius, 2)) / Utilities.Science.Constants.G;
+        private double GetMassForSurfaceGravity(float gravity) => (gravity * RadiusSquared) / Utilities.Science.Constants.G;
 
         /// <summary>
         /// Calculates the radius required to produce the given surface gravity.
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in kg/m².</param>
         /// <returns>The radius required to produce the given surface gravity, in meters.</returns>
-        public float GetRadiusForSurfaceGravity(float gravity) => (float)((gravity * Utilities.MathUtil.Constants.FourThirdsPI) / (Utilities.Science.Constants.G * Density));
+        public double GetRadiusForSurfaceGravity(float gravity) => (gravity * Utilities.MathUtil.Constants.FourThirdsPI) / (Utilities.Science.Constants.G * Density);
 
         /// <summary>
         /// Gets the troposphere of this <see cref="TerrestrialPlanet"/>'s <see cref="Atmosphere"/>.

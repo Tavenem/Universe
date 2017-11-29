@@ -221,6 +221,9 @@ namespace WorldFoundry.Orbits
             }
         }
 
+        /// <summary>
+        /// The semi-major axis of this <see cref="Orbit"/>.
+        /// </summary>
         private double? _semiMajorAxis;
         public double SemiMajorAxis
         {
@@ -540,6 +543,17 @@ namespace WorldFoundry.Orbits
             orbitingObject.Velocity = orbitingObject.Orbit.V0 / orbitedObject.Parent.LocalScale;
         }
 
+        /// <summary>
+        /// Calculates the radius of the orbiting body's Hill sphere, in meters.
+        /// </summary>
+        /// <param name="orbitingObject">The object which is orbiting.</param>
+        /// <param name="orbitedObject">The object which is being orbited.</param>
+        /// <param name="semiMajorAxis">The semi-major axis of the orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the orbit.</param>
+        /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
+        public static double GetHillSphereRadius(Orbiter orbitingObject, Orbiter orbitedObject, double semiMajorAxis, float eccentricity)
+            => semiMajorAxis * (1 - eccentricity) * Math.Pow(orbitingObject.Mass / (3 * orbitedObject.Mass), 1.0 / 3.0);
+
         private void ClearParameters()
         {
             _alpha = null;
@@ -564,8 +578,7 @@ namespace WorldFoundry.Orbits
         /// Calculates the radius of the orbiting body's Hill sphere, in meters.
         /// </summary>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
-        public double GetHillSphereRadius()
-            => SemiMajorAxis * (1 - Eccentricity) * Math.Pow(OrbitingObject.Mass / (3 * OrbitedObject.Mass), 1.0 / 3.0);
+        public double GetHillSphereRadius() => GetHillSphereRadius(OrbitingObject, OrbitedObject, SemiMajorAxis, Eccentricity);
 
         /// <summary>
         /// Approximates the radius of the orbiting body's mutual Hill sphere with another

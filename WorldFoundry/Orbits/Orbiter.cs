@@ -121,7 +121,7 @@ namespace WorldFoundry.Orbits
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
         /// </summary>
         /// <returns>The average surface gravity of this <see cref="Orbiter"/>, in N.</returns>
-        protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / Math.Pow(Radius, 2);
+        protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / RadiusSquared;
 
         /// <summary>
         /// Calculates the force of gravity on this <see cref="Orbiter"/> from another as a vector,

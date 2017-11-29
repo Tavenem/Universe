@@ -22,11 +22,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const int density_MinExtreme = 600;
+        internal const int density_MinExtreme = 600;
         protected int Density_MinExtreme => density_MinExtreme;
-        private const int density_Min = 1100;
+        internal const int density_Min = 1100;
         protected int Density_Min => density_Min;
-        private const int density_Max = 1650;
+        internal const int density_Max = 1650;
         protected int Density_Max => density_Max;
 
         /// <summary>

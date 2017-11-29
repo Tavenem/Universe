@@ -249,9 +249,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? (float)Math.Round(Math.Max(600000, Math.Pow((Mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0)));
+            var radius = knownRadius ?? Math.Round(Math.Max(600000, Math.Pow((Mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0)));
             var flattening = Randomizer.Static.NextDouble(0.1);
-            Shape = new Ellipsoid(radius, (float)Math.Round(radius * (1 - flattening)), radius);
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>

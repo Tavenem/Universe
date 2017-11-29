@@ -17,7 +17,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Determines a circular radius which fully contains the shape.
         /// </summary>
         /// <returns>A circular radius which fully contains the shape.</returns>
-        public virtual float GetContainingRadius() => 0;
+        public virtual double GetContainingRadius() => 0;
 
         /// <summary>
         /// Determines if a given point lies within this shape.

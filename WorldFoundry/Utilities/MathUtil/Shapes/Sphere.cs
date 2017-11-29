@@ -11,7 +11,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// <summary>
         /// The radius of the <see cref="Sphere"/>.
         /// </summary>
-        public float Radius { get; set; }
+        public double Radius { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Sphere"/>.
@@ -22,7 +22,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Initializes a new instance of <see cref="Sphere"/> with the given parameters.
         /// </summary>
         /// <param name="radius">The radius of the <see cref="Sphere"/>.</param>
-        public Sphere(float radius) => Radius = radius;
+        public Sphere(double radius) => Radius = radius;
 
         /// <summary>
         /// Gets the total volume of the shape.
@@ -34,7 +34,7 @@ namespace WorldFoundry.Utilities.MathUtil.Shapes
         /// Determines a circular radius which fully contains the shape.
         /// </summary>
         /// <returns>A circular radius which fully contains the shape.</returns>
-        public override float GetContainingRadius() => Radius;
+        public override double GetContainingRadius() => Radius;
 
         /// <summary>
         /// Determines if a given point lies within this shape.

@@ -106,11 +106,11 @@ namespace WorldFoundry.Space
         /// </summary>
         public float PositionZ { get; set; }
 
-        protected float? _radius;
+        protected double? _radius;
         /// <summary>
         /// Gets a radius which fully contains this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
-        public float Radius
+        public double Radius
         {
             get
             {
@@ -119,6 +119,22 @@ namespace WorldFoundry.Space
                     _radius = Shape?.GetContainingRadius() ?? null;
                 }
                 return _radius ?? 0;
+            }
+        }
+
+        protected double? _radiusSquared;
+        /// <summary>
+        /// Gets the <see cref="Radius"/>, squared, in meters.
+        /// </summary>
+        public double RadiusSquared
+        {
+            get
+            {
+                if (!_radiusSquared.HasValue)
+                {
+                    _radiusSquared = Radius * Radius;
+                }
+                return _radiusSquared ?? 0;
             }
         }
 

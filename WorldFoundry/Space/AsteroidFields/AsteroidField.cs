@@ -88,7 +88,17 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="AsteroidField"/> is located.
         /// </param>
-        public AsteroidField(CelestialObject parent, Star star, float majorRadius, float minorRadius) : base(parent)
+        /// <param name="position">The initial position of this <see cref="AsteroidField"/>.</param>
+        /// <param name="majorRadius">
+        /// The length of the major radius of this <see cref="AsteroidField"/>, in meters.
+        /// </param>
+        /// <param name="minorRadius">
+        /// The length of the minor radius of this <see cref="AsteroidField"/>, in meters.
+        /// </param>
+        /// <param name="star">
+        /// The star around which this <see cref="AsteroidField"/> orbits, if any.
+        /// </param>
+        public AsteroidField(CelestialObject parent, Vector3 position, Star star, double majorRadius, double? minorRadius = null) : base(parent, position)
         {
             Star = star;
             GenerateShape(majorRadius, minorRadius);
@@ -134,12 +144,12 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         protected override void GenerateMass() => Mass = Shape.GetVolume() * 7.0e-8;
 
-        private void GenerateShape(float? majorRadius, float? minorRadius)
+        private void GenerateShape(double? majorRadius, double? minorRadius)
         {
             if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
             {
-                float axisA = majorRadius ?? (float)Randomizer.Static.NextDouble(1.5e11, 3.15e12);
-                Shape = new Ellipsoid(axisA, (float)(Randomizer.Static.NextDouble(0.5, 1.5) * axisA), (float)(Randomizer.Static.NextDouble(0.5, 1.5) * axisA));
+                var axis = majorRadius ?? Randomizer.Static.NextDouble(1.5e11, 3.15e12);
+                Shape = new Ellipsoid(axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis);
             }
             else
             {

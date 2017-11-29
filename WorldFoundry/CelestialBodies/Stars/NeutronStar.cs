@@ -80,9 +80,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         protected override void GenerateShape()
         {
-            var radius = (float)Math.Round(Randomizer.Static.NextDouble(1000, 2000));
-            var flattening = (float)Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
-            Shape = new Ellipsoid(radius, (float)Math.Round(radius * (1 - flattening)), radius);
+            var radius = Math.Round(Randomizer.Static.NextDouble(1000, 2000));
+            var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>
