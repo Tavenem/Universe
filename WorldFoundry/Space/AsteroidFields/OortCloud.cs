@@ -31,10 +31,11 @@ namespace WorldFoundry.Space.AsteroidFields
         };
         public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
 
+        public new const double childDensity = 8.31e-38;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => 8.31e-38;
+        public override double ChildDensity => childDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="OortCloud"/>.

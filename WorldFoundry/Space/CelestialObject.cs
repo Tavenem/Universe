@@ -23,10 +23,11 @@ namespace WorldFoundry.Space
         /// </summary>
         public virtual IDictionary<Type, float> ChildPossibilities => childPossibilities;
 
+        private const double childDensity = 0;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public virtual double ChildDensity => 0;
+        public virtual double ChildDensity => childDensity;
 
         /// <summary>
         /// The <see cref="CelestialObject"/> children contained within this one.

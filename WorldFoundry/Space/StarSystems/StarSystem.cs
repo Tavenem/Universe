@@ -13,7 +13,7 @@ using WorldFoundry.Space.AsteroidFields;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
-namespace WorldFoundry.Space
+namespace WorldFoundry.Space.StarSystems
 {
     /// <summary>
     /// A region of space containing a system of stars, and the bodies which orbit that system.
@@ -96,10 +96,6 @@ namespace WorldFoundry.Space
         /// <param name="populationII">
         /// Set to true if the <see cref="Star"/> to include in this <see cref="StarSystem"/> is to
         /// be a Population II <see cref="Star"/>.
-        /// </param>
-        /// <param name="numCompanions">
-        /// The number of additional <see cref="Star"/>s to include in this <see cref="StarSystem"/>
-        /// (if null, will be pseudo-randomly determined).
         /// </param>
         public StarSystem(
             CelestialObject parent,

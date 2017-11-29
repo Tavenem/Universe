@@ -8,6 +8,7 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
+using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Substances;
 using WorldFoundry.Utilities;
 

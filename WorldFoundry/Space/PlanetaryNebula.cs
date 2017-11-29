@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
+using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 

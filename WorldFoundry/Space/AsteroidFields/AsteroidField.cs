@@ -5,6 +5,7 @@ using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
+using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -31,6 +32,12 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
+        public const double childDensity = 5.8e-26;
+        /// <summary>
+        /// The average number of children within the grid per m³.
+        /// </summary>
+        public override double ChildDensity => childDensity;
+
         internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
         {
             { typeof(CTypeAsteroid), 0.74f },
@@ -44,11 +51,6 @@ namespace WorldFoundry.Space.AsteroidFields
         /// The types of children this region of space might have.
         /// </summary>
         public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
-
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => 5.8e-26;
 
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
