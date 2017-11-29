@@ -29,12 +29,6 @@ namespace WorldFoundry.Space
         public virtual double ChildDensity => 0;
 
         /// <summary>
-        /// Indicates any children this <see cref="CelestialObject"/> may have which will be manually
-        /// assigned, rather than generated.
-        /// </summary>
-        public ICollection<ChildValue> ChildPresets { get; set; }
-
-        /// <summary>
         /// The <see cref="CelestialObject"/> children contained within this one.
         /// </summary>
         public ICollection<CelestialEntity> Children { get; set; }
@@ -46,7 +40,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public ICollection<ChildValue> ChildTotals
         {
-            get => GetProperty(ref _childTotals, CalculateChildTotals, () => !IsChildTotalsGenerationComplete);
+            get => GetProperty(ref _childTotals, CalculateChildTotals);
             private set => _childTotals = value;
         }
 
@@ -55,11 +49,6 @@ namespace WorldFoundry.Space
         /// populated with children.
         /// </summary>
         private ICollection<GridSpace> GridSpaces { get; set; }
-
-        /// <summary>
-        /// Indicates that <see cref="ChildTotals"/> has been calculated.
-        /// </summary>
-        public bool IsChildTotalsGenerationComplete { get; set; }
 
         /// <summary>
         /// The shape of the <see cref="CelestialObject"/>.
@@ -114,11 +103,10 @@ namespace WorldFoundry.Space
 
         private void CalculateChildTotals()
         {
-            if (ChildTotals == null)
+            if (_childTotals == null)
             {
-                ChildTotals = new HashSet<ChildValue>();
+                _childTotals = new HashSet<ChildValue>();
             }
-            IsChildTotalsGenerationComplete = true;
 
             if (!(ChildPossibilities?.Any() ?? false))
             {
@@ -126,13 +114,13 @@ namespace WorldFoundry.Space
             }
 
             // Find the total number of children.
-            double volume = Shape.GetVolume();
-            double totalNumChildren = Math.Max(1, volume * ChildDensity);
+            var volume = Shape.GetVolume();
+            var totalNumChildren = Math.Max(1, volume * ChildDensity);
 
             // Find the amount of each child type.
             foreach (var possibility in ChildPossibilities)
             {
-                float amount = (float)Math.Round(totalNumChildren * possibility.Value);
+                var amount = (float)Math.Round(totalNumChildren * possibility.Value);
                 if (amount == 0)
                 {
                     continue;
@@ -149,21 +137,16 @@ namespace WorldFoundry.Space
                 ChildTotals.Add(new ChildValue { Type = possibility.Key, Value = amount });
             }
 
-            // Add any presets not already accounted for in the general amounts.
-            if (ChildPresets != null)
+            // Add any existing children not included in the possibilities.
+            foreach (var childType in Children.Select(x => x.GetType()).Distinct().Where(x => !ChildPossibilities.ContainsKey(x)))
             {
-                foreach (var preset in ChildPresets)
+                var amount = Children.Count(x => x.GetType() == childType);
+                if (amount == 0)
                 {
-                    var match = ChildTotals.FirstOrDefault(c => c.Type == preset.Type);
-                    if (match != null)
-                    {
-                        match.Value = Math.Max(match.Value, preset.Value);
-                    }
-                    else
-                    {
-                        ChildTotals.Add(new ChildValue { Type = preset.Type, Value = preset.Value });
-                    }
+                    continue;
                 }
+
+                ChildTotals.Add(new ChildValue { Type = childType, Value = amount });
             }
 
             // Always at least 1 child if children are indicated.
@@ -557,8 +540,7 @@ namespace WorldFoundry.Space
             }
         }
 
-        private float GetTotalChildren(Type type)
-            => (ChildPresets?.Where(p => p.Type == type).Sum(p => p.Value) ?? 0) + (Children?.Count(c => c.GetType() == type) ?? 0);
+        private float GetTotalChildren(Type type) => Children?.Count(c => c.GetType() == type) ?? 0;
 
         /// <summary>
         /// Converts set of grid coordinates to a collection of corner positions.

@@ -56,15 +56,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             set => _eccentricity = value;
         }
 
-        /// <summary>
-        /// Indicates that ring generation has completed, whether or not any rings were actually generated.
-        /// </summary>
-        protected bool IsRingGenerationComplete { get; set; }
-
         private ICollection<PlanetaryRing> _rings;
         public ICollection<PlanetaryRing> Rings
         {
-            get => GetProperty(ref _rings, GenerateRings, () => !IsRingGenerationComplete);
+            get => GetProperty(ref _rings, GenerateRings);
             private set => _rings = value;
         }
 
@@ -185,8 +180,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             {
                 _rings = new HashSet<PlanetaryRing>();
             }
-
-            IsRingGenerationComplete = true;
 
             var innerLimit = Atmosphere == null ? 0 : Atmosphere.AtmosphericHeight;
 

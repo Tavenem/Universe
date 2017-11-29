@@ -310,10 +310,9 @@ namespace WorldFoundry.Space
         /// whether to provide automatic initialization, or to allow the null return.
         /// </param>
         /// <returns></returns>
-        protected T GetProperty<T>(ref T storage, Action generator = null, Func<bool> condition = null)
+        protected T GetProperty<T>(ref T storage, Action generator = null)
         {
-            if ((storage == null || (storage is string s && string.IsNullOrEmpty(s)))
-                && (condition == null || condition.Invoke()))
+            if (storage == null || (storage is string s && string.IsNullOrEmpty(s)))
             {
                 if (storage == null && typeof(T) != typeof(string))
                 {

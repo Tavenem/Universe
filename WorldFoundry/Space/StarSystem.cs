@@ -333,6 +333,42 @@ namespace WorldFoundry.Space
             return companions;
         }
 
+        private Planemo CapturePregenPlanet(
+            List<Planemo> pregenPlanets,
+            out double? periapsis,
+            ref int numTerrestrials, ref int numGiants, ref int numIceGiants,
+            ref int totalTerrestrials)
+        {
+            periapsis = null;
+
+            if ((pregenPlanets?.Count ?? 0) < 1)
+            {
+                return null;
+            }
+
+            var planet = pregenPlanets[0];
+
+            periapsis = planet.Orbit?.Periapsis ?? 0;
+
+            if (planet is IceGiant)
+            {
+                numIceGiants--;
+            }
+            else if (planet is GiantPlanet)
+            {
+                numGiants--;
+            }
+            else
+            {
+                numTerrestrials--;
+                totalTerrestrials++;
+            }
+
+            pregenPlanets.RemoveAt(0);
+
+            return planet;
+        }
+
         /// <summary>
         /// Single-planet orbital distance may follow a log-normal distribution, with the peak at 0.3
         /// AU (this does not conform to current observations exactly, but extreme biases in current
@@ -457,6 +493,37 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
+        /// Generates the planetary systems of this star system, along with all small star system bodies.
+        /// </summary>
+        /// <remarks>
+        /// This is called automatically the first time PopulateRegion is called. Any planets already
+        /// added to the star system manually will be taken into account by the automatic generation
+        /// procedures when filling in the rest of the system.
+        /// </remarks>
+        private void GenerateChildren()
+        {
+            if ((Stars?.Count ?? 0) == 0)
+            {
+                return;
+            }
+
+            var outerApoapsis = Stars.Max(x => x.Orbit?.Apoapsis ?? 0);
+
+            // All single and close-binary systems are presumed to have Oort clouds. Systems with
+            // higher multiplicity are presumed to disrupt any Oort clouds.
+            if (Stars.Count == 1 || (Stars.Count == 2 && outerApoapsis < 1.5e13))
+            {
+                var primary = Stars.FirstOrDefault(x => x.Orbit == null);
+                new OortCloud(this, primary, outerApoapsis);
+            }
+
+            foreach (var star in Stars)
+            {
+                GeneratePlanetsForStar(star);
+            }
+        }
+
+        /// <summary>
         /// Systems with terrestrial planets are also likely to have debris disks (Kuiper belts)
         /// outside the orbit of the most distant planet.
         /// </summary>
@@ -487,42 +554,6 @@ namespace WorldFoundry.Space
         /// as a close-enough approximation, plus a bit of extra.
         /// </remarks>
         protected override void GenerateMass() => Mass = (Stars?.Sum(s => s.Mass) ?? 0) * 1.001;
-
-        private Planemo CapturePregenPlanet(
-            List<Planemo> pregenPlanets,
-            out double? periapsis,
-            ref int numTerrestrials, ref int numGiants, ref int numIceGiants,
-            ref int totalTerrestrials)
-        {
-            periapsis = null;
-
-            if ((pregenPlanets?.Count ?? 0) < 1)
-            {
-                return null;
-            }
-
-            var planet = pregenPlanets[0];
-
-            periapsis = planet.Orbit?.Periapsis ?? 0;
-
-            if (planet is IceGiant)
-            {
-                numIceGiants--;
-            }
-            else if (planet is GiantPlanet)
-            {
-                numGiants--;
-            }
-            else
-            {
-                numTerrestrials--;
-                totalTerrestrials++;
-            }
-
-            pregenPlanets.RemoveAt(0);
-
-            return planet;
-        }
 
         private void GeneratePlanet(
             Star star,
@@ -699,37 +730,6 @@ namespace WorldFoundry.Space
                     (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
 
                 Stars.Add(c.star);
-            }
-        }
-
-        /// <summary>
-        /// Generates the planetary systems of this star system, along with all small star system bodies.
-        /// </summary>
-        /// <remarks>
-        /// This is called automatically the first time PopulateRegion is called. Any planets already
-        /// added to the star system manually will be taken into account by the automatic generation
-        /// procedures when filling in the rest of the system.
-        /// </remarks>
-        private void GenerateSystemObjects()
-        {
-            if ((Stars?.Count ?? 0) == 0)
-            {
-                return;
-            }
-
-            var outerApoapsis = Stars.Max(x => x.Orbit?.Apoapsis ?? 0);
-
-            // All single and close-binary systems are presumed to have Oort clouds. Systems with
-            // higher multiplicity are presumed to disrupt any Oort clouds.
-            if (Stars.Count == 1 || (Stars.Count == 2 && outerApoapsis < 1.5e13))
-            {
-                var primary = Stars.FirstOrDefault(x => x.Orbit == null);
-                new OortCloud(this, primary, outerApoapsis);
-            }
-
-            foreach (var star in Stars)
-            {
-                GeneratePlanetsForStar(star);
             }
         }
 
@@ -1085,7 +1085,7 @@ namespace WorldFoundry.Space
             if (!IsGridSpacePopulated(Vector3.Zero))
             {
                 GetGridSpace(Vector3.Zero, true).Populated = true;
-                GenerateSystemObjects();
+                GenerateChildren();
             }
         }
 
