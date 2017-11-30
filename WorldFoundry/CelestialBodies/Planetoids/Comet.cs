@@ -254,7 +254,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         protected override void GenerateShape()
         {

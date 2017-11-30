@@ -69,7 +69,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         protected override void GenerateMass() => Mass = Randomizer.Static.Normal(1.194e30, 9.95e28);
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Proportional to the mass/radius ratio of Jupiter.

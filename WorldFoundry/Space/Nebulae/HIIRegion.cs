@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
-using WorldFoundry.Space.StarSystems;
+using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -24,15 +25,17 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
-        {
-            { typeof(MainSequenceBSystem), 0.9998f },
-            { typeof(MainSequenceOSystem), 0.0002f },
-        };
+        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
+            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+            {
+                { typeof(StarSystem), (0.9998f, new object[]{ typeof(Star), SpectralClass.B, LuminosityClass.V }) },
+                { typeof(StarSystem), (0.0002f, new object[]{ typeof(Star), SpectralClass.O, LuminosityClass.V }) },
+            };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
+        [NotMapped]
+        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
@@ -57,7 +60,7 @@ namespace WorldFoundry.Space
         public HIIRegion(CelestialObject parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Actual nebulae are irregularly shaped; this is presumed to be a containing shape within

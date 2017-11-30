@@ -13,7 +13,6 @@ namespace WorldFoundry.Orbits
     public class Orbiter : CelestialEntity
     {
         private double? _mass;
-
         /// <summary>
         /// The mass of the celestial object, including the mass of all children, whether explicitly
         /// modeled or merely potential, in kg.
@@ -30,7 +29,6 @@ namespace WorldFoundry.Orbits
         public Orbit Orbit { get; set; }
 
         private double? _surfaceGravity;
-
         /// <summary>
         /// The average force of gravity at the surface of this celestial object, in N.
         /// </summary>
@@ -44,31 +42,46 @@ namespace WorldFoundry.Orbits
         /// Specifies the velocity of the <see cref="Orbiter"/>.
         /// </summary>
         [NotMapped]
-        public Vector3 Velocity
+        public virtual Vector3 Velocity
         {
             get => new Vector3(VelocityX, VelocityY, VelocityZ);
             set
             {
-                VelocityX = value.X;
-                VelocityY = value.Y;
-                VelocityZ = value.Z;
+                _velocityX = value.X;
+                _velocityY = value.Y;
+                _velocityZ = value.Z;
             }
         }
 
+        private float _velocityX;
         /// <summary>
         /// Specifies the X component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        public float VelocityX { get; set; }
+        protected float VelocityX
+        {
+            get => _velocityX;
+            private set => _velocityX = value;
+        }
 
+        private float _velocityY;
         /// <summary>
         /// Specifies the Y component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        public float VelocityY { get; set; }
+        protected float VelocityY
+        {
+            get => _velocityY;
+            private set => _velocityY = value;
+        }
 
+        private float _velocityZ;
         /// <summary>
         /// Specifies the Z component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        public float VelocityZ { get; set; }
+        protected float VelocityZ
+        {
+            get => _velocityZ;
+            private set => _velocityZ = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/>.
@@ -120,7 +133,6 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
         /// </summary>
-        /// <returns>The average surface gravity of this <see cref="Orbiter"/>, in N.</returns>
         protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / RadiusSquared;
 
         /// <summary>
@@ -131,12 +143,6 @@ namespace WorldFoundry.Orbits
         /// <returns>
         /// The force of gravity from this <see cref="Orbiter"/> to the other, in N, as a vector.
         /// </returns>
-        /// <remarks>
-        /// Newton's law is used. General relativity would be more accurate in certain circumstances,
-        /// but is considered unnecessarily intensive work for the simple simulations expected to
-        /// make use of this library. If you are an astronomer performing scientifically rigorous
-        /// calculations or simulations, this is not the library for you ;)
-        /// </remarks>
         /// <exception cref="System.ArgumentNullException">
         /// <paramref name="other"/> may not be null.
         /// </exception>
@@ -144,6 +150,12 @@ namespace WorldFoundry.Orbits
         /// An exception will be thrown if the two <see cref="Orbiter"/> s do not share a <see
         /// cref="Space.CelestialObject"/> parent at some point.
         /// </exception>
+        /// <remarks>
+        /// Newton's law is used. General relativity would be more accurate in certain circumstances,
+        /// but is considered unnecessarily intensive work for the simple simulations expected to
+        /// make use of this library. If you are an astronomer performing scientifically rigorous
+        /// calculations or simulations, this is not the library for you ;)
+        /// </remarks>
         public Vector3 GetGravityFromObject(Orbiter other)
         {
             float distance = GetDistanceToTarget(other);

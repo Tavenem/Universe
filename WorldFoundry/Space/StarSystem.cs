@@ -13,7 +13,7 @@ using WorldFoundry.Space.AsteroidFields;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
-namespace WorldFoundry.Space.StarSystems
+namespace WorldFoundry.Space
 {
     /// <summary>
     /// A region of space containing a system of stars, and the bodies which orbit that system.
@@ -543,6 +543,84 @@ namespace WorldFoundry.Space.StarSystems
         }
 
         /// <summary>
+        /// Determines the number of companion <see cref="Star"/>s this <see cref="StarSystem"/>
+        /// will have, based on its primary star.
+        /// </summary>
+        /// <returns>
+        /// The number of companion <see cref="Star"/>s this <see cref="StarSystem"/> will have.
+        /// </returns>
+        private int GenerateNumCompanions()
+        {
+            var primary = Stars.FirstOrDefault();
+            var chance = Randomizer.Static.NextDouble();
+            if (primary is BrownDwarf)
+            {
+                return 0;
+            }
+            else if (primary is WhiteDwarf)
+            {
+                if (chance <= 4.0 / 9.0)
+                {
+                    return 1;
+                }
+            }
+            else if (primary is GiantStar || primary is NeutronStar)
+            {
+                if (chance <= 0.0625)
+                {
+                    return 2;
+                }
+                else if (chance <= 0.4375)
+                {
+                    return 1;
+                }
+            }
+            else
+            {
+                switch (primary?.SpectralClass ?? SpectralClass.None)
+                {
+                    case SpectralClass.A:
+                        if (chance <= 0.065)
+                        {
+                            return 2;
+                        }
+                        else if (chance <= 0.435)
+                        {
+                            return 1;
+                        }
+                        break;
+                    case SpectralClass.B:
+                        if (chance <= 0.8)
+                        {
+                            return 1;
+                        }
+                        break;
+                    case SpectralClass.O:
+                        if (chance <= 2.0 / 3.0)
+                        {
+                            return 1;
+                        }
+                        break;
+                    default:
+                        if (chance <= 0.01)
+                        {
+                            return 3;
+                        }
+                        else if (chance <= 0.03)
+                        {
+                            return 2;
+                        }
+                        else if (chance <= 0.3)
+                        {
+                            return 1;
+                        }
+                        break;
+                }
+            }
+            return 0;
+        }
+
+        /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
         /// <remarks>
@@ -685,20 +763,7 @@ namespace WorldFoundry.Space.StarSystems
                     new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII }));
             }
 
-            var numCompanions = 0;
-            var chance = Randomizer.Static.NextDouble();
-            if (chance <= 0.01)
-            {
-                numCompanions = 3;
-            }
-            else if (chance <= 0.03)
-            {
-                numCompanions = 2;
-            }
-            else if (chance <= 0.3)
-            {
-                numCompanions = 1;
-            }
+            var numCompanions = GenerateNumCompanions();
 
             var companions = AddCompanionStars(numCompanions);
             // The Shape must be set before adding orbiting Stars, since it will be accessed during

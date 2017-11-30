@@ -44,10 +44,10 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~10e3–10e7 solar masses.
         /// </remarks>
-        protected override void GenerateMass() => Math.Round(Randomizer.Static.NextDouble(1.99e33, 1.99e37));
+        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37);
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Actual nebulae are irregularly shaped; this is presumed to be a containing shape within

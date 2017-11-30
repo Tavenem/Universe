@@ -1,30 +1,54 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 
-namespace WorldFoundry.WorldGrid
+namespace WorldFoundry.WorldGrids
 {
     /// <summary>
-    /// Represents a corner between three tiles on the 3D grid.
+    /// Represents a corner between three tiles on an <see cref="WorldGrid"/>.
     /// </summary>
-    public class Corner : IEquatable<Corner>
+    public class Corner
     {
         /// <summary>
-        /// The three <see cref="Corner"/>s to which this one is connected.
+        /// The index of the first <see cref="Corner"/> to which this one is connected.
         /// </summary>
-        public int[] Corners { get; } = new int[] { -1, -1, -1 };
+        public int Corner0 { get; private set; } = -1;
 
         /// <summary>
-        /// The three <see cref="Edge"/>s to which this <see cref="Corner"/> is connected.
+        /// The index of the second <see cref="Corner"/> to which this one is connected.
         /// </summary>
-        public int[] Edges { get; } = new int[] { -1, -1, -1 };
+        public int Corner1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Corner"/> to which this one is connected.
+        /// </summary>
+        public int Corner2 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the first <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge0 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the second <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge2 { get; private set; } = -1;
 
         /// <summary>
         /// The elevation above sea level of this <see cref="Corner"/>, in meters.
         /// </summary>
         public float Elevation { get; internal set; }
 
-        internal int Id { get; }
+        /// <summary>
+        /// The index of this <see cref="Corner"/>.
+        /// </summary>
+        internal int Index { get; }
 
         /// <summary>
         /// The depth of the lake on this <see cref="Corner"/> (if any).
@@ -47,53 +71,156 @@ namespace WorldFoundry.WorldGrid
         public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
 
         /// <summary>
-        /// The three <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.
+        /// The index of the first <see cref="Tile"/> to which this <see cref="Corner"/> is connected.
         /// </summary>
-        public int[] Tiles { get; set; } = new int[] { -1, -1, -1 };
+        public int Tile0 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the second <see cref="Tile"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Tile1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Tile"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Tile2 { get; private set; } = -1;
 
         /// <summary>
         /// The <see cref="Vector3"/> which defines the position of this <see cref="Corner"/>.
         /// </summary>
-        public Vector3 Vector { get; internal set; }
+        [NotMapped]
+        public Vector3 Vector
+        {
+            get => new Vector3(VectorX, VectorY, VectorZ);
+            set
+            {
+                VectorX = value.X;
+                VectorY = value.Y;
+                VectorZ = value.Z;
+            }
+        }
+
+        /// <summary>
+        /// The X component of the vector which defines the position of this <see cref="Corner"/>.
+        /// </summary>
+        protected float VectorX { get; private set; }
+
+        /// <summary>
+        /// The Y component of the vector which defines the position of this <see cref="Corner"/>.
+        /// </summary>
+        protected float VectorY { get; private set; }
+
+        /// <summary>
+        /// The Z component of the vector which defines the position of this <see cref="Corner"/>.
+        /// </summary>
+        protected float VectorZ { get; private set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
         public Corner() { }
 
-        internal Corner(int id) => Id = id;
-
-        public static bool operator ==(Corner c, object o) => ReferenceEquals(c, null) ? o == null : c.Equals(o);
-
-        public static bool operator !=(Corner c, object o) => ReferenceEquals(c, null) ? o != null : !c.Equals(o);
+        /// <summary>
+        /// Creates a new instance of <see cref="Corner"/>.
+        /// </summary>
+        internal Corner(int id) => Index = id;
 
         /// <summary>
-        /// Returns true if this <see cref="Corner"/> is the same as the given object.
+        /// Gets the index of the <see cref="Corner"/> at the given index in this <see
+        /// cref="Corner"/>'s collection.
         /// </summary>
-        public override bool Equals(object obj)
+        /// <param name="index">
+        /// An index to this <see cref="Corner"/>'s collection of <see cref="Corner"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Corner"/> at the given index.</returns>
+        public int GetCorner(int index)
         {
-            if (ReferenceEquals(obj, null))
+            if (index == 0)
             {
-                return false;
+                return Corner0;
             }
-            if (obj is Corner c)
+            if (index == 1)
             {
-                return Equals(c);
+                return Corner1;
             }
-            return false;
+            if (index == 2)
+            {
+                return Corner2;
+            }
+            return -1;
         }
 
         /// <summary>
-        /// Returns true if this <see cref="Corner"/> is the same as the given <see cref="Corner"/>.
+        /// Enumerates all three <see cref="Corner"/>s to which this one is connected.
         /// </summary>
-        public bool Equals(Corner other) => other.Vector == Vector;
+        public IEnumerable<int> GetCorners() => (new int[] { Corner0, Corner1, Corner2 }).AsEnumerable();
 
-        internal Corner GetLowestCorner(IGrid grid, bool riverSources = false)
+        /// <summary>
+        /// Gets the index of the <see cref="Edge"/> at the given index in this <see
+        /// cref="Corner"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// An index to this <see cref="Corner"/>'s collection of <see cref="Edge"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Edge"/> at the given index.</returns>
+        public int GetEdge(int index)
         {
-            var corners = Corners.Select(i => grid.Corners[i]);
+            if (index == 0)
+            {
+                return Edge0;
+            }
+            if (index == 1)
+            {
+                return Edge1;
+            }
+            if (index == 2)
+            {
+                return Edge2;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Enumerates all three <see cref="Edge"/>s to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public IEnumerable<int> GetEdges() => (new int[] { Edge0, Edge1, Edge2 }).AsEnumerable();
+
+        /// <summary>
+        /// Gets the index of the <see cref="Tile"/> at the given index in this <see
+        /// cref="Corner"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// An index to this <see cref="Corner"/>'s collection of <see cref="Tile"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Tile"/> at the given index.</returns>
+        public int GetTile(int index)
+        {
+            if (index == 0)
+            {
+                return Tile0;
+            }
+            if (index == 1)
+            {
+                return Tile1;
+            }
+            if (index == 2)
+            {
+                return Tile2;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Enumerates all three <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public IEnumerable<int> GetTiles() => (new int[] { Tile0, Tile1, Tile2 }).AsEnumerable();
+
+        internal Corner GetLowestCorner(WorldGrid grid, bool riverSources = false)
+        {
+            var corners = GetCorners().Select(i => grid.GetCorner(i));
             if (riverSources)
             {
-                var riverSourceCorners = corners.Where(c => c.Edges.Any(e => grid.Edges[e].RiverSource == c.Id));
+                var riverSourceCorners = corners.Where(c => c.GetEdges().Any(e => grid.GetEdge(e).RiverSource == c.Index));
                 if (riverSourceCorners.Any())
                 {
                     corners = riverSourceCorners;
@@ -102,11 +229,93 @@ namespace WorldFoundry.WorldGrid
             return corners.OrderBy(c => c.Elevation).First();
         }
 
-        /// <summary>
-        /// Returns the hash code for this instance.
-        /// </summary>
-        public override int GetHashCode() => Vector.GetHashCode();
+        internal int IndexOfCorner(int cornerIndex)
+        {
+            if (Corner0 == cornerIndex)
+            {
+                return Corner0;
+            }
+            if (Corner1 == cornerIndex)
+            {
+                return Corner1;
+            }
+            if (Corner2 == cornerIndex)
+            {
+                return Corner2;
+            }
+            return -1;
+        }
 
-        internal int IndexOf(int cornerIndex) => Array.IndexOf(Corners, cornerIndex);
+        /// <summary>
+        /// Sets the value of the <see cref="Corner"/> index at the given index to this <see
+        /// cref="Corner"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Corner"/>'s collection of <see cref="Corner"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetCorner(int index, int value)
+        {
+            if (index == 0)
+            {
+                Corner0 = value;
+            }
+            if (index == 1)
+            {
+                Corner1 = value;
+            }
+            if (index == 2)
+            {
+                Corner2 = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the value of the <see cref="Edge"/> index at the given index to this <see
+        /// cref="Corner"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Corner"/>'s collection of <see cref="Edge"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetEdge(int index, int value)
+        {
+            if (index == 0)
+            {
+                Edge0 = value;
+            }
+            if (index == 1)
+            {
+                Edge1 = value;
+            }
+            if (index == 2)
+            {
+                Edge2 = value;
+            }
+        }
+
+        /// <summary>
+        /// Sets the value of the <see cref="Tile"/> index at the given index to this <see
+        /// cref="Corner"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Corner"/>'s collection of <see cref="Tile"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetTile(int index, int value)
+        {
+            if (index == 0)
+            {
+                Tile0 = value;
+            }
+            if (index == 1)
+            {
+                Tile1 = value;
+            }
+            if (index == 2)
+            {
+                Tile2 = value;
+            }
+        }
     }
 }

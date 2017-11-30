@@ -48,7 +48,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(6.0e30, 4.0e31);
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Black holes are strange objects with zero volume and infinite density. The shape given is

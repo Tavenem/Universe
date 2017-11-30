@@ -428,6 +428,104 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
+        /// Sets the orbit of the given <see cref="Orbiter"/> based on the orbiting object's current
+        /// position and the given <paramref name="eccentricity"/>, and adjusts its velocity as necessary.
+        /// </summary>
+        /// <param name="orbited">The celestial object to be orbited.</param>
+        /// <param name="orbiter">The celestial object which will be in orbit.</param>
+        /// <param name="eccentricity">The degree to which the orbit is non-circular.</param>
+        /// <remarks>
+        /// The orbiting object's current position will be assumed to be on the desired orbit. An
+        /// inclination will be calculated from the current position, and presumed to be the maximum inclination.
+        /// </remarks>
+        public static void SetOrbit(
+            Orbiter orbitingObject,
+            Orbiter orbitedObject,
+            float eccentricity)
+        {
+            if (eccentricity < 0)
+            {
+                throw new ArgumentOutOfRangeException("eccentricity must be >= 0");
+            }
+
+            if (orbitingObject.Orbit == null)
+            {
+                orbitingObject.Orbit = new Orbit(orbitingObject, orbitedObject);
+            }
+            else
+            {
+                orbitingObject.Orbit.OrbitedObject = orbitedObject;
+            }
+            orbitingObject.Orbit._eccentricity = eccentricity;
+            orbitingObject.Orbit._standardGravitationalParameter = Utilities.Science.Constants.G * (orbitedObject.Mass + orbitingObject.Mass);
+
+            orbitingObject.Orbit.R0 = (orbitingObject.Position - orbitedObject.Position) * orbitingObject.Parent.LocalScale;
+
+            // Calculate magnitudes manually to avoid low-precision implementation resulting in infinity.
+            orbitingObject.Orbit.R0.Length();
+            var distance = (float)Math.Sqrt(Math.Pow(orbitingObject.Orbit._r0X.Value, 2) + Math.Pow(orbitingObject.Orbit._r0Y.Value, 2) + Math.Pow(orbitingObject.Orbit._r0Z.Value, 2));
+
+            var xz = new Vector3(orbitingObject.Orbit._r0X.Value, 0, orbitingObject.Orbit._r0Z.Value);
+            orbitingObject.Orbit._inclination = (float)Math.Acos(Math.Sqrt(Math.Pow(xz.X, 2) + Math.Pow(xz.Z, 2)) / distance);
+            var angleAscending = (float)(Vector3.UnitX.GetAngle(xz) - Utilities.MathUtil.Constants.HalfPI);
+
+            orbitingObject.Orbit._trueAnomaly = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
+
+            var semiLatusRectum = distance * (1 + (eccentricity * Math.Cos(orbitingObject.Orbit._trueAnomaly.Value)));
+            orbitingObject.Orbit._semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
+
+            // The current position must be either the apoapsis or the periapsis,
+            // since it was chosen as the reference point for the inclination.
+            // Therefore, it is the apoapsis if its distance from the orbited
+            // body is less than the semi-major axis, and the periapsis if not.
+            var e = distance < orbitingObject.Orbit._semiMajorAxis
+                ? orbitingObject.Orbit.R0
+                : Vector3.Normalize(new Vector3(-orbitingObject.Orbit._r0X.Value, -orbitingObject.Orbit._r0Y.Value, -orbitingObject.Orbit._r0Z.Value)) * (float)(semiLatusRectum / (1 + eccentricity));
+            // For parabolic orbits, semi-major axis is undefined, and is set to the periapsis instead.
+            if (eccentricity == 1)
+            {
+                orbitingObject.Orbit._semiMajorAxis = e.Length();
+            }
+
+            var n = new Vector3((float)Math.Cos(angleAscending), (float)Math.Sin(angleAscending), 0);
+
+            var argPeriapsis = (float)Math.Acos((Vector3.Dot(n, e)) / (n.Length() * e.Length()));
+            if (e.Z < 0)
+            {
+                argPeriapsis = (float)(Utilities.MathUtil.Constants.TwoPI - argPeriapsis);
+            }
+
+            orbitingObject.Orbit._alpha = orbitingObject.Orbit._standardGravitationalParameter / orbitingObject.Orbit._semiMajorAxis;
+
+            // Calculate the perifocal vectors
+            var cosineAngleAscending = Math.Cos(angleAscending);
+            var sineAngleAscending = Math.Sin(angleAscending);
+            var cosineArgPeriapsis = Math.Cos(argPeriapsis);
+            var sineArgPeriapsis = Math.Sin(argPeriapsis);
+            var cosineInclination = Math.Cos(orbitingObject.Orbit._inclination.Value);
+            var sineInclination = Math.Sin(orbitingObject.Orbit._inclination.Value);
+
+            float pi = (float)((cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis));
+            float pj = (float)((sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis));
+            float pk = (float)(sineInclination * sineArgPeriapsis);
+
+            float qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
+            float qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
+            float qk = (float)(sineInclination * cosineArgPeriapsis);
+
+            Vector3 perifocalP = (pi * Vector3.UnitX) + (pj * Vector3.UnitY) + (pk * Vector3.UnitZ);
+            Vector3 perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
+
+            float cosineTrueAnomaly = (float)Math.Cos(orbitingObject.Orbit._trueAnomaly.Value);
+            float sineTrueAnomaly = (float)Math.Sin(orbitingObject.Orbit._trueAnomaly.Value);
+
+            orbitingObject.Orbit.V0 = (float)Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum) *
+                ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
+
+            orbitingObject.Velocity = orbitingObject.Orbit.V0 / orbitedObject.Parent.LocalScale;
+        }
+
+        /// <summary>
         /// Sets the orbit of the given <see cref="Orbiter"/> according to the given orbital
         /// parameters, and adjusts its position and velocity as necessary.
         /// </summary>
@@ -507,7 +605,7 @@ namespace WorldFoundry.Orbits
             }
             else
             {
-                orbitingObject.Orbit._semiMajorAxis = semiLatusRectum / (1 - Math.Pow(eccentricity, 2));
+                orbitingObject.Orbit._semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
             }
 
             orbitingObject.Orbit._alpha = orbitingObject.Orbit._standardGravitationalParameter / orbitingObject.Orbit._semiMajorAxis;

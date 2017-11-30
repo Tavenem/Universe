@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -38,19 +38,21 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
-        {
-            { typeof(CTypeAsteroid), 0.74f },
-            { typeof(STypeAsteroid), 0.14f },
-            { typeof(MTypeAsteroid), 0.1f },
-            { typeof(Comet), 0.0199999996f },
-            { typeof(DwarfPlanet), 3.0e-10f },
-            { typeof(RockyDwarfPlanet), 1.0e-10f },
-        };
+        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
+            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+            {
+                { typeof(CTypeAsteroid), (0.74f, null) },
+                { typeof(STypeAsteroid), (0.14f, null) },
+                { typeof(MTypeAsteroid), (0.1f, null) },
+                { typeof(Comet), (0.0199999996f, null) },
+                { typeof(DwarfPlanet), (3.0e-10f, null) },
+                { typeof(RockyDwarfPlanet), (1.0e-10f, null) },
+            };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
+        [NotMapped]
+        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
@@ -120,9 +122,9 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <param name="orbitParameters">
         /// An optional list of parameters which describe the child's orbit. May be null.
         /// </param>
-        public override BioZone GenerateChildOfType(Type type, Vector3? position, List<object> orbitParameters = null)
+        public override BioZone GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {
-            var child = base.GenerateChildOfType(type, position, orbitParameters);
+            var child = base.GenerateChildOfType(type, position, constructorParameters);
 
             if (Orbit != null)
             {
@@ -160,7 +162,7 @@ namespace WorldFoundry.Space.AsteroidFields
         }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         protected override void GenerateShape() => GenerateShape(null, null);
     }

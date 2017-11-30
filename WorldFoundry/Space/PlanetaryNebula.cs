@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -53,7 +52,7 @@ namespace WorldFoundry.Space
         protected override void GenerateMass() => Math.Round(Randomizer.Static.NextDouble(1.99e29, 1.99e30));
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular

@@ -25,7 +25,7 @@ namespace WorldFoundry.Web.Controllers
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
-                    seed) = ParsePlanetKey(key);
+                    id) = ParsePlanetKey(key);
                 return Planet.FromParams(
                     atmosphericPressure,
                     axialTilt,
@@ -34,7 +34,7 @@ namespace WorldFoundry.Web.Controllers
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
-                    seed: seed);
+                    id: id);
             });
 
         private string GetPlanetKey(
@@ -45,8 +45,8 @@ namespace WorldFoundry.Web.Controllers
             double rotationalPeriod,
             float waterRatio,
             int gridSize,
-            string seed)
-            => $"{atmosphericPressure.ToString("G9")};{axialTilt.ToString("G9")};{radius.ToString("X")};{revolutionPeriod.ToString("G17")};{rotationalPeriod.ToString("G17")};{waterRatio.ToString("G9")};{gridSize.ToString("X")};{seed}";
+            Guid id)
+            => $"{atmosphericPressure.ToString("G9")};{axialTilt.ToString("G9")};{radius.ToString("X")};{revolutionPeriod.ToString("G17")};{rotationalPeriod.ToString("G17")};{waterRatio.ToString("G9")};{gridSize.ToString("X")};{id.ToString()}";
 
         public PlanetData GetPlanet(
             float atmosphericPressure = Planet.defaultAtmosphericPressure,
@@ -57,11 +57,11 @@ namespace WorldFoundry.Web.Controllers
             float waterRatio = Planet.defaultWaterRatio,
             int gridSize = 4,
             int seasonCount = 4,
-            string seed = null)
+            string id = null)
         {
-            if (string.IsNullOrEmpty(seed))
+            if (string.IsNullOrEmpty(id) || !Guid.TryParse(id, out var guid))
             {
-                seed = Planet.GenerateSeed();
+                guid = Guid.NewGuid();
             }
             var key = GetPlanetKey(
                 atmosphericPressure,
@@ -71,7 +71,7 @@ namespace WorldFoundry.Web.Controllers
                 rotationalPeriod,
                 waterRatio,
                 gridSize,
-                seed);
+                guid);
             var planet = _cache.GetOrCreate(key, entry =>
             {
                 entry.SlidingExpiration = TimeSpan.FromMinutes(10);
@@ -83,7 +83,7 @@ namespace WorldFoundry.Web.Controllers
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
-                    seed: seed);
+                    id: guid);
                 p.SetClimate();
                 return p;
             });
@@ -101,7 +101,7 @@ namespace WorldFoundry.Web.Controllers
             double rotationalPeriod,
             float waterRatio,
             int gridSize,
-            string seed) ParsePlanetKey(string key)
+            Guid? id) ParsePlanetKey(string key)
         {
             var tokens = string.IsNullOrEmpty(key) ? new string[]{ } : key.Split(';');
             if (tokens.Length == 0 || !float.TryParse(tokens[0], out var atmosphericPressure))
@@ -132,6 +132,11 @@ namespace WorldFoundry.Web.Controllers
             {
                 gridSize = Planet.defaultGridSize;
             }
+            Guid? id = null;
+            if (tokens.Length >= 8 && Guid.TryParse(tokens[7], out var parsedId))
+            {
+                id = parsedId;
+            }
             return (
                 atmosphericPressure,
                 axialTilt,
@@ -140,7 +145,7 @@ namespace WorldFoundry.Web.Controllers
                 rotationalPeriod,
                 waterRatio,
                 gridSize,
-                tokens.Length < 8 ? null : tokens[7]);
+                id);
         }
     }
 }

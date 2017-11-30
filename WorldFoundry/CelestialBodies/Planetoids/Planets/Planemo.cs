@@ -5,7 +5,6 @@ using System.Numerics;
 using System.Text;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
-using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -233,7 +232,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <param name="knownRadius">
         /// A predetermined radius for the <see cref="Planemo"/>. May be left null to randomly
@@ -249,7 +248,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         protected override void GenerateShape() => GenerateShape(null);
 

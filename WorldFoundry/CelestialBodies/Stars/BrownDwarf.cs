@@ -71,7 +71,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Brown dwarfs are all approximately the same radius as Jupiter, within about a 15% tolerance.

@@ -1,15 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 using WorldFoundry.Climate;
+using WorldFoundry.Extensions;
 
-namespace WorldFoundry.WorldGrid
+namespace WorldFoundry.WorldGrids
 {
     /// <summary>
-    /// Represents a tile on the 3D grid.
+    /// Represents a tile on a <see cref="WorldGrids.WorldGrid"/>.
     /// </summary>
-    public class Tile : IEquatable<Tile>
+    public class Tile
     {
         /// <summary>
         /// The area of this <see cref="Tile"/>, in square meters.
@@ -27,9 +28,34 @@ namespace WorldFoundry.WorldGrid
         public ClimateType ClimateType { get; internal set; }
 
         /// <summary>
-        /// The <see cref="Corner"/>s of this <see cref="Tile"/>.
+        /// The index of the first <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
         /// </summary>
-        public int[] Corners { get; }
+        public int Corner0 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the second <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
+        /// </summary>
+        public int Corner1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
+        /// </summary>
+        public int Corner2 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fourth <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
+        /// </summary>
+        public int Corner3 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fifth <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
+        /// </summary>
+        public int Corner4 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the sixth <see cref="Corner"/> to which this <see cref="Tile"/> is connected (if it has six sides).
+        /// </summary>
+        public int Corner5 { get; private set; } = -1;
 
         /// <summary>
         /// The <see cref="Climate.EcologyType"/> of this <see cref="Tile"/>.
@@ -37,9 +63,39 @@ namespace WorldFoundry.WorldGrid
         public EcologyType EcologyType { get; internal set; }
 
         /// <summary>
-        /// The <see cref="Edge"/> of this <see cref="Tile"/>.
+        /// The number of sides possessed by this <see cref="Tile"/>.
         /// </summary>
-        public int[] Edges { get; }
+        public int EdgeCount { get; }
+
+        /// <summary>
+        /// The index of the first <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge0 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the second <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge2 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fourth <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge3 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fifth <see cref="Edge"/> to which this <see cref="Corner"/> is connected.
+        /// </summary>
+        public int Edge4 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the sixth <see cref="Edge"/> to which this <see cref="Corner"/> is connected (if it has six sides).
+        /// </summary>
+        public int Edge5 { get; private set; } = -1;
 
         /// <summary>
         /// The elevation above sea level of this <see cref="Tile"/>, in meters.
@@ -49,9 +105,19 @@ namespace WorldFoundry.WorldGrid
         internal float FrictionCoefficient { get; private set; }
 
         /// <summary>
+        /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
+        /// </summary>
+        internal WorldGrid WorldGrid { get; set; }
+
+        /// <summary>
         /// The <see cref="Climate.HumidityType"/> of this <see cref="Tile"/>.
         /// </summary>
         public HumidityType HumidityType { get; internal set; }
+
+        /// <summary>
+        /// The index of this <see cref="Tile"/>.
+        /// </summary>
+        internal int Index { get; }
 
         /// <summary>
         /// The latitude of this <see cref="Tile"/>, as an angle in radians from the equator.
@@ -63,7 +129,20 @@ namespace WorldFoundry.WorldGrid
         /// </summary>
         public float Longitude { get; internal set; }
 
-        internal List<Vector2> Polygon { get; set; }
+        private List<Vector2> _polygon;
+        [NotMapped]
+        internal List<Vector2> Polygon
+        {
+            get
+            {
+                if (_polygon == null)
+                {
+                    SetPolygon();
+                }
+                return _polygon;
+            }
+            set => _polygon = value;
+        }
 
         internal float North { get; set; }
 
@@ -73,74 +152,305 @@ namespace WorldFoundry.WorldGrid
         public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
 
         /// <summary>
-        /// The neighboring <see cref="Tile"/>s to this one.
+        /// The index of the first <see cref="Tile"/> to which this one is connected.
         /// </summary>
-        public int[] Tiles { get; }
+        public int Tile0 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the second <see cref="Tile"/> to which this one is connected.
+        /// </summary>
+        public int Tile1 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the third <see cref="Tile"/> to which this one is connected.
+        /// </summary>
+        public int Tile2 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fourth <see cref="Tile"/> to which this one is connected.
+        /// </summary>
+        public int Tile3 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the fifth <see cref="Tile"/> to which this one is connected.
+        /// </summary>
+        public int Tile4 { get; private set; } = -1;
+
+        /// <summary>
+        /// The index of the sixth <see cref="Tile"/> to which this one is connected (if it has six sides).
+        /// </summary>
+        public int Tile5 { get; private set; } = -1;
 
         /// <summary>
         /// The <see cref="Vector3"/> which defines the position of this <see cref="Tile"/>.
         /// </summary>
-        public Vector3 Vector { get; internal set; }
+        [NotMapped]
+        public Vector3 Vector
+        {
+            get => new Vector3(VectorX, VectorY, VectorZ);
+            set
+            {
+                VectorX = value.X;
+                VectorY = value.Y;
+                VectorZ = value.Z;
+            }
+        }
+
+        /// <summary>
+        /// The X component of the vector which defines the position of this <see cref="Tile"/>.
+        /// </summary>
+        protected float VectorX { get; private set; }
+
+        /// <summary>
+        /// The Y component of the vector which defines the position of this <see cref="Tile"/>.
+        /// </summary>
+        protected float VectorY { get; private set; }
+
+        /// <summary>
+        /// The Z component of the vector which defines the position of this <see cref="Tile"/>.
+        /// </summary>
+        protected float VectorZ { get; private set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
         /// </summary>
-        public Tile() { }
-
-        internal Tile(int edges)
-        {
-            Corners = Enumerable.Repeat(-1, edges).ToArray();
-            Edges = Enumerable.Repeat(-1, edges).ToArray();
-            Tiles = Enumerable.Repeat(-1, edges).ToArray();
-        }
-
-        public static bool operator ==(Tile t, object o) => ReferenceEquals(t, null) ? o == null : t.Equals(o);
-
-        public static bool operator !=(Tile t, object o) => ReferenceEquals(t, null) ? o != null : !t.Equals(o);
+        private Tile() { }
 
         /// <summary>
-        /// Returns true if this <see cref="Tile"/> is the same as the given object.
+        /// Creates a new instance of <see cref="Tile"/>.
         /// </summary>
-        public override bool Equals(object obj)
+        internal Tile(WorldGrid grid, int id, int edgeCount)
         {
-            if (ReferenceEquals(obj, null))
-            {
-                return false;
-            }
-            if (obj is Tile t)
-            {
-                return Equals(t);
-            }
-            return false;
+            Index = id;
+            EdgeCount = edgeCount;
         }
 
         /// <summary>
-        /// Returns true if this <see cref="Tile"/> is the same as the given <see cref="Tile"/>.
+        /// Gets the index of the <see cref="Corner"/> at the given index in this <see
+        /// cref="Tile"/>'s collection.
         /// </summary>
-        public bool Equals(Tile other) => other.Vector == Vector;
+        /// <param name="index">
+        /// An index to this <see cref="Tile"/>'s collection of <see cref="Corner"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Corner"/> at the given index.</returns>
+        public int GetCorner(int index)
+        {
+            if (index == 0)
+            {
+                return Corner0;
+            }
+            if (index == 1)
+            {
+                return Corner1;
+            }
+            if (index == 2)
+            {
+                return Corner2;
+            }
+            if (index == 3)
+            {
+                return Corner3;
+            }
+            if (index == 4)
+            {
+                return Corner4;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                return Corner5;
+            }
+            return -1;
+        }
 
         /// <summary>
-        /// Returns the hash code for this instance.
+        /// Enumerates all the <see cref="Corner"/>s to which this <see cref="Tile"/> is connected.
         /// </summary>
-        public override int GetHashCode() => Vector.GetHashCode();
-
-        internal Corner GetLowestCorner(IGrid grid)
-            => Corners.Select(i => grid.Corners[i]).OrderBy(c => c.Elevation).FirstOrDefault();
-
-        internal void SetPolygon(IGrid grid, Quaternion rotation)
+        public IEnumerable<int> GetCorners()
         {
+            var corners = new List<int> { Corner0, Corner1, Corner2, Corner3, Corner4 };
+            if (EdgeCount == 6)
+            {
+                corners.Add(Corner5);
+            }
+            return corners.AsEnumerable();
+        }
+
+        /// <summary>
+        /// Gets the index of the <see cref="Edge"/> at the given index in this <see
+        /// cref="Tile"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// An index to this <see cref="Tile"/>'s collection of <see cref="Edge"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Edge"/> at the given index.</returns>
+        public int GetEdge(int index)
+        {
+            if (index == 0)
+            {
+                return Edge0;
+            }
+            if (index == 1)
+            {
+                return Edge1;
+            }
+            if (index == 2)
+            {
+                return Edge2;
+            }
+            if (index == 3)
+            {
+                return Edge3;
+            }
+            if (index == 4)
+            {
+                return Edge4;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                return Edge5;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Enumerates all the <see cref="Edge"/>s to which this <see cref="Tile"/> is connected.
+        /// </summary>
+        public IEnumerable<int> GetEdges()
+        {
+            var edges = new List<int> { Edge0, Edge1, Edge2, Edge3, Edge4 };
+            if (EdgeCount == 6)
+            {
+                edges.Add(Edge5);
+            }
+            return edges.AsEnumerable();
+        }
+
+        internal Corner GetLowestCorner(WorldGrid grid)
+            => GetCorners().Select(i => grid.GetCorner(i)).OrderBy(c => c.Elevation).FirstOrDefault();
+
+        /// <summary>
+        /// Gets the index of the <see cref="Tile"/> at the given index in this <see
+        /// cref="Tile"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// An index to this <see cref="Tile"/>'s collection of <see cref="Tile"/>s.
+        /// </param>
+        /// <returns>The index of the <see cref="Edge"/> at the given index.</returns>
+        public int GetTile(int index)
+        {
+            if (index == 0)
+            {
+                return Tile0;
+            }
+            if (index == 1)
+            {
+                return Tile1;
+            }
+            if (index == 2)
+            {
+                return Tile2;
+            }
+            if (index == 3)
+            {
+                return Tile3;
+            }
+            if (index == 4)
+            {
+                return Tile4;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                return Tile5;
+            }
+            return -1;
+        }
+
+        /// <summary>
+        /// Enumerates all the <see cref="Tile"/>s to which this one is connected.
+        /// </summary>
+        public IEnumerable<int> GetTiles()
+        {
+            var corners = new List<int> { Tile0, Tile1, Tile2, Tile3, Tile4 };
+            if (EdgeCount == 6)
+            {
+                corners.Add(Tile5);
+            }
+            return corners.AsEnumerable();
+        }
+
+        internal void SetPolygon(Quaternion? rotation = null)
+        {
+            if (rotation == null)
+            {
+                rotation = WorldGrid.Planetoid.AxisRotation.GetReferenceRotation(Vector);
+            }
+
             Polygon = new List<Vector2>();
 
-            for (int k = 0; k < Edges.Length; k++)
+            for (int k = 0; k < EdgeCount; k++)
             {
-                var c = Vector3.Transform(grid.Corners[Corners[k]].Vector, rotation);
+                var c = Vector3.Transform(WorldGrid.GetCorner(GetCorner(k)).Vector, rotation.Value);
                 Polygon.Add(new Vector2(c.X, c.Z));
             }
         }
 
-        internal int IndexOfCorner(int cornerIndex) => Array.IndexOf(Corners, cornerIndex);
+        internal int IndexOfCorner(int cornerIndex)
+        {
+            if (Corner0 == cornerIndex)
+            {
+                return Corner0;
+            }
+            if (Corner1 == cornerIndex)
+            {
+                return Corner1;
+            }
+            if (Corner2 == cornerIndex)
+            {
+                return Corner2;
+            }
+            if (Corner3 == cornerIndex)
+            {
+                return Corner3;
+            }
+            if (Corner4 == cornerIndex)
+            {
+                return Corner4;
+            }
+            if (EdgeCount == 6 && Corner5 == cornerIndex)
+            {
+                return Corner5;
+            }
+            return -1;
+        }
 
-        internal int IndexOfTile(int tileIndex) => Array.IndexOf(Tiles, tileIndex);
+        internal int IndexOfTile(int tileIndex)
+        {
+            if (Tile0 == tileIndex)
+            {
+                return Tile0;
+            }
+            if (Tile1 == tileIndex)
+            {
+                return Tile1;
+            }
+            if (Tile2 == tileIndex)
+            {
+                return Tile2;
+            }
+            if (Tile3 == tileIndex)
+            {
+                return Tile3;
+            }
+            if (Tile4 == tileIndex)
+            {
+                return Tile4;
+            }
+            if (EdgeCount == 6 && Tile5 == tileIndex)
+            {
+                return Tile5;
+            }
+            return -1;
+        }
 
         internal void SetClimate(float bioTemperature, float annualPrecipitation)
         {
@@ -184,6 +494,42 @@ namespace WorldFoundry.WorldGrid
             else
             {
                 ClimateType = ClimateType.Supertropical;
+            }
+        }
+
+        /// <summary>
+        /// Sets the value of the <see cref="Corner"/> index at the given index to this <see
+        /// cref="Tile"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Tile"/>'s collection of <see cref="Corner"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetCorner(int index, int value)
+        {
+            if (index == 0)
+            {
+                Corner0 = value;
+            }
+            if (index == 1)
+            {
+                Corner1 = value;
+            }
+            if (index == 2)
+            {
+                Corner2 = value;
+            }
+            if (index == 3)
+            {
+                Corner3 = value;
+            }
+            if (index == 4)
+            {
+                Corner4 = value;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                Corner5 = value;
             }
         }
 
@@ -434,6 +780,42 @@ namespace WorldFoundry.WorldGrid
             }
         }
 
+        /// <summary>
+        /// Sets the value of the <see cref="Edge"/> index at the given index to this <see
+        /// cref="Tile"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Tile"/>'s collection of <see cref="Edge"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetEdge(int index, int value)
+        {
+            if (index == 0)
+            {
+                Edge0 = value;
+            }
+            if (index == 1)
+            {
+                Edge1 = value;
+            }
+            if (index == 2)
+            {
+                Edge2 = value;
+            }
+            if (index == 3)
+            {
+                Edge3 = value;
+            }
+            if (index == 4)
+            {
+                Edge4 = value;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                Edge5 = value;
+            }
+        }
+
         private void SetHumidityType(float annualPrecipitation)
         {
             if (TerrainType == TerrainType.Water)
@@ -476,5 +858,41 @@ namespace WorldFoundry.WorldGrid
 
         internal void SetFrictionCoefficient()
             => FrictionCoefficient = Elevation <= 0 ? 0.000025f : Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
+
+        /// <summary>
+        /// Sets the value of the <see cref="Tile"/> index at the given index to this <see
+        /// cref="Tile"/>'s collection.
+        /// </summary>
+        /// <param name="index">
+        /// The index to this <see cref="Tile"/>'s collection of <see cref="Tile"/>s to set.
+        /// </param>
+        /// <param name="value">The value to store in the given index.</param>
+        public void SetTile(int index, int value)
+        {
+            if (index == 0)
+            {
+                Tile0 = value;
+            }
+            if (index == 1)
+            {
+                Tile1 = value;
+            }
+            if (index == 2)
+            {
+                Tile2 = value;
+            }
+            if (index == 3)
+            {
+                Tile3 = value;
+            }
+            if (index == 4)
+            {
+                Tile4 = value;
+            }
+            if (EdgeCount == 6 && index == 5)
+            {
+                Tile5 = value;
+            }
+        }
     }
 }

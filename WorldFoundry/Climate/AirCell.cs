@@ -1,5 +1,5 @@
 ﻿using System;
-using WorldFoundry.WorldGrid;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.Climate
 {
@@ -63,7 +63,7 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return planet.AtmosphericPressure * (float)(-planet.G0 * Utilities.Science.Constants.MolarMass_Air * elevation / (Utilities.Science.Constants.R * (temperature)));
+                return (planet.AtmosphericPressure * planet.G0MdivR * elevation) / temperature;
             }
         }
     }

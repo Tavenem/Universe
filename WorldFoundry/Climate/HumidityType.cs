@@ -1,7 +1,7 @@
 ﻿namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Indicates the relative level of humidity in a <see cref="WorldGrid.Tile"/>.
+    /// Indicates the relative level of humidity in a <see cref="WorldGrids.Tile"/>.
     /// </summary>
     public enum HumidityType
     {

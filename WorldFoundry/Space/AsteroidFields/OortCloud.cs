@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
@@ -19,17 +20,19 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
+        internal new static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
+            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+            {
+                { typeof(Comet), (0.85f, null) },
+                { typeof(CTypeAsteroid), (0.11f, null) },
+                { typeof(STypeAsteroid), (0.025f, null) },
+                { typeof(MTypeAsteroid), (0.015f, null) },
+            };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        internal new static IDictionary<Type, float> childPossibilities = new Dictionary<Type, float>
-        {
-            { typeof(Comet), 0.85f },
-            { typeof(CTypeAsteroid), 0.11f },
-            { typeof(STypeAsteroid), 0.025f },
-            { typeof(MTypeAsteroid), 0.015f },
-        };
-        public override IDictionary<Type, float> ChildPossibilities => childPossibilities;
+        [NotMapped]
+        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         public new const double childDensity = 8.31e-38;
         /// <summary>
@@ -85,9 +88,9 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <param name="orbitParameters">
         /// An optional list of parameters which describe the child's orbit. May be null.
         /// </param>
-        public override BioZone GenerateChildOfType(Type type, Vector3? position, List<object> orbitParameters = null)
+        public override BioZone GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {
-            var child = base.GenerateChildOfType(type, position, orbitParameters);
+            var child = base.GenerateChildOfType(type, position, constructorParameters);
 
             if (Star != null)
             {
@@ -105,7 +108,7 @@ namespace WorldFoundry.Space.AsteroidFields
         private void GenerateShape(double? starSystemRadius) => Shape = new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0));
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         protected override void GenerateShape() => GenerateShape(null);
     }

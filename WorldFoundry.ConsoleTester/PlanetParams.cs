@@ -1,4 +1,6 @@
-﻿namespace WorldFoundry.ConsoleApp
+﻿using System;
+
+namespace WorldFoundry.ConsoleApp
 {
     internal class PlanetParams
     {
@@ -10,7 +12,7 @@
         internal float? WaterRatio { get; set; }
         internal int? GridSize { get; set; }
         internal int? ElevationSize { get; set; }
-        internal string Seed { get; set; }
+        internal Guid? ID { get; set; }
 
         internal PlanetParams() { }
     }

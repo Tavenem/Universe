@@ -4,7 +4,6 @@ using System.Linq;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Space;
-using WorldFoundry.Space.StarSystems;
 
 namespace WorldFoundry.CelestialBodies
 {

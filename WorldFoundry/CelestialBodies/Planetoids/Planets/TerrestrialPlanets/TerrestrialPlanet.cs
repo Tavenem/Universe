@@ -8,7 +8,6 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
-using WorldFoundry.Space.StarSystems;
 using WorldFoundry.Substances;
 using WorldFoundry.Utilities;
 
@@ -49,6 +48,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         protected virtual float Density_Max => density_Max;
         internal const float density_Min = 3750;
         protected virtual float Density_Min => density_Min;
+
+        private double? _g0MdivR;
+        /// <summary>
+        /// A pre-calculated value equal to g0 (surface gravity) times the molar mass or air, divided
+        /// by the universal gas constant.
+        /// </summary>
+        internal double G0MdivR
+        {
+            get => GetProperty(ref _g0MdivR, GenerateSurfaceGravity) ?? 0;
+            set => _g0MdivR = value;
+        }
 
         /// <summary>
         /// The <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified during this <see
@@ -1394,6 +1404,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             return satellite;
+        }
+
+        /// <summary>
+        /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
+        /// </summary>
+        protected override void GenerateSurfaceGravity()
+        {
+            base.GenerateSurfaceGravity();
+            G0MdivR = SurfaceGravity * Utilities.Science.Constants.MolarMass_AirDivUniversalGasConstant;
         }
 
         /// <summary>

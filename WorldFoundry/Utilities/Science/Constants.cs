@@ -30,6 +30,11 @@
         public const float MolarMass_Air = 0.0289644f;
 
         /// <summary>
+        /// The molar mass of air divided by the universal gas constant, in SI base units.
+        /// </summary>
+        public const float MolarMass_AirDivUniversalGasConstant = MolarMass_Air / UniversalGasConstant;
+
+        /// <summary>
         /// The specific gas constant of dry air, in SI base units.
         /// </summary>
         public const float SpecificGasConstant_DryAir = 287;

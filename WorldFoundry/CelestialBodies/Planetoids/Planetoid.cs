@@ -27,7 +27,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public float AngleOfRotation
         {
             get => GetProperty(ref _angleOfRotation, GenerateAngleOfRotation) ?? 0;
-            internal set => _angleOfRotation = value;
+            internal set
+            {
+                _angleOfRotation = value;
+                var q = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, value);
+                Axis = Vector3.Transform(Vector3.UnitY, q);
+                AxisRotation = Quaternion.Conjugate(q);
+            }
         }
 
         private Atmosphere _atmosphere;
@@ -53,6 +59,73 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             get => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
             internal set => AngleOfRotation = (Orbit == null ? value : value + Orbit.Inclination);
         }
+
+        /// <summary>
+        /// A <see cref="Vector3"/> which represents the axis of this <see cref="Planetoid"/>.
+        /// </summary>
+        [NotMapped]
+        public Vector3 Axis
+        {
+            get => new Vector3(AxisX, AxisY, AxisZ);
+            set
+            {
+                AxisX = value.X;
+                AxisY = value.Y;
+                AxisZ = value.Z;
+            }
+        }
+
+        /// <summary>
+        /// The X component of the axis of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisX { get; private set; }
+
+        /// <summary>
+        /// The X component of the axis of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisY { get; private set; }
+
+        /// <summary>
+        /// The X component of the axis of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisZ { get; private set; }
+
+        /// <summary>
+        /// A <see cref="Quaternion"/> representing the rotation of this <see cref="Planetoid"/>'s
+        /// <see cref="Axis"/>.
+        /// </summary>
+        [NotMapped]
+        internal Quaternion AxisRotation
+        {
+            get => new Quaternion(AxisRotationX, AxisRotationY, AxisRotationZ, AxisRotationW);
+            set
+            {
+                AxisRotationX = value.X;
+                AxisRotationY = value.Y;
+                AxisRotationZ = value.Z;
+                AxisRotationW = value.W;
+            }
+        }
+
+        /// <summary>
+        /// The X component of the axis rotation of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisRotationX { get; private set; }
+
+        /// <summary>
+        /// The X component of the axis rotation of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisRotationY { get; private set; }
+
+        /// <summary>
+        /// The X component of the axis rotation of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisRotationZ { get; private set; }
+
+        /// <summary>
+        /// The W component of the axis rotation of this <see cref="Planetoid"/>.
+        /// </summary>
+        protected float AxisRotationW { get; private set; }
 
         private Mixture _composition;
         /// <summary>
@@ -259,11 +332,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         {
             if (Randomizer.Static.NextDouble() <= 0.2) // low chance of an extreme tilt
             {
-                _angleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.QuarterPI, Math.PI), 4);
+                AngleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.QuarterPI, Math.PI), 4);
             }
             else
             {
-                _angleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.QuarterPI), 4);
+                AngleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.QuarterPI), 4);
             }
         }
 

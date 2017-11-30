@@ -1,6 +1,5 @@
-﻿using System.Security.Cryptography;
+﻿using System;
 using Troschuetz.Random;
-using WorldFoundry.Extensions;
 
 namespace WorldFoundry.Utilities
 {
@@ -12,16 +11,6 @@ namespace WorldFoundry.Utilities
 
         public Randomizer() => Random = new TRandom();
 
-        public Randomizer(string seed) => Random = new TRandom(GetSeed(seed));
-
-        public static int GetSeed(string seed)
-        {
-            int s;
-            using (var md5 = MD5.Create())
-            {
-                s = md5.GetHash(seed).HexToInt();
-            }
-            return s;
-        }
+        public Randomizer(Guid id) => Random = new TRandom(id.GetHashCode());
     }
 }

@@ -197,7 +197,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         }
 
         /// <summary>
-        /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// A main sequence <see cref="Star"/>'s radius has a direct relationship to <see cref="Luminosity"/>.

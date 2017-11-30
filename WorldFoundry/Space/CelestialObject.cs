@@ -6,7 +6,6 @@ using System.Numerics;
 using System.Reflection;
 using Troschuetz.Random;
 using WorldFoundry.CelestialBodies;
-using WorldFoundry.Orbits;
 using WorldFoundry.Utilities;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 
@@ -20,7 +19,8 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public virtual IDictionary<Type, float> ChildPossibilities => null;
+        [NotMapped]
+        public virtual IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => null;
 
         private const double childDensity = 0;
         /// <summary>
@@ -120,7 +120,7 @@ namespace WorldFoundry.Space
             // Find the amount of each child type.
             foreach (var possibility in ChildPossibilities)
             {
-                var amount = (float)Math.Round(totalNumChildren * possibility.Value);
+                var amount = (float)Math.Round(totalNumChildren * possibility.Value.proportion);
                 if (amount == 0)
                 {
                     continue;
@@ -153,8 +153,8 @@ namespace WorldFoundry.Space
             if (ChildTotals.Count == 0)
             {
                 // Pick the most common type (at random, if multiple types tie for the maximum probability).
-                var max = ChildPossibilities.Max(p => p.Value);
-                var common = Randomizer.Static.Generator.Choice(ChildPossibilities.Where(c => c.Value == max).ToList());
+                var max = ChildPossibilities.Max(p => p.Value.proportion);
+                var common = Randomizer.Static.Generator.Choice(ChildPossibilities.Where(c => c.Value.proportion == max).ToList());
                 ChildTotals.Add(new ChildValue { Type = common.Key, Value = max });
             }
         }
@@ -174,7 +174,7 @@ namespace WorldFoundry.Space
         /// partially overlap this one's space yet still return false from this method, if its center
         /// position lies outside this object's bounds.
         /// </remarks>
-        internal virtual bool ContainsSpaceGrid(CelestialObject other)
+        internal virtual bool ContainsObject(CelestialObject other)
         {
             if (other == null)
             {
@@ -295,7 +295,8 @@ namespace WorldFoundry.Space
 
             // Adjust type probabilities based on existing counts.
             List<Type> effectiveProbabilityTypes = new List<Type>();
-            Dictionary<Type, float> effectiveProbabilities = new Dictionary<Type, float>();
+            Dictionary<Type, (float proportion, object[] constructorParameters)> effectiveProbabilities =
+                new Dictionary<Type, (float proportion, object[] constructorParameters)>();
             if (ChildPossibilities != null)
             {
                 foreach (var possibility in ChildPossibilities)
@@ -307,40 +308,45 @@ namespace WorldFoundry.Space
                     if (total > 0)
                     {
                         effectiveProbabilityTypes.Add(possibility.Key);
-                        effectiveProbabilities.Add(possibility.Key, possibility.Value * (1 - GetTotalChildren(possibility.Key) / total));
+                        effectiveProbabilities.Add(
+                            possibility.Key,
+                            (possibility.Value.proportion * (1 - GetTotalChildren(possibility.Key) / total),
+                            possibility.Value.constructorParameters));
                     }
                 }
             }
-            float totalProbability = effectiveProbabilities.Sum(p => p.Value);
+            var totalProbability = effectiveProbabilities.Sum(p => p.Value.proportion);
             // If no children are indicated after adjusting, there is nothing left to do.
             if (totalProbability == 0)
             {
                 return;
             }
 
-            float ratio = 1 / totalProbability;
+            var ratio = 1 / totalProbability;
             foreach (var type in effectiveProbabilityTypes)
             {
-                effectiveProbabilities[type] /= ratio;
+                effectiveProbabilities[type] =
+                    (effectiveProbabilities[type].proportion / ratio,
+                    effectiveProbabilities[type].constructorParameters);
             }
 
             // Select a child type and create it.
             double chance = Randomizer.Static.NextDouble();
             foreach (var probability in effectiveProbabilities)
             {
-                if (chance <= probability.Value)
+                if (chance <= probability.Value.proportion)
                 {
                     var type = probability.Key;
                     var position = new Vector3(
                         (float)Math.Round((coordinates.X - 1 + Randomizer.Static.NextDouble() * Math.Sign(coordinates.X)) * GridSize, 4),
                         (float)Math.Round((coordinates.Y - 1 + Randomizer.Static.NextDouble() * Math.Sign(coordinates.Y)) * GridSize, 4),
                         (float)Math.Round((coordinates.Z - 1 + Randomizer.Static.NextDouble() * Math.Sign(coordinates.Z)) * GridSize, 4));
-                    GenerateChildOfType(type, position);
+                    GenerateChildOfType(type, position, probability.Value.constructorParameters);
                     break;
                 }
                 else
                 {
-                    chance -= probability.Value;
+                    chance -= probability.Value.proportion;
                 }
             }
         }
@@ -359,7 +365,7 @@ namespace WorldFoundry.Space
         /// <param name="orbitParameters">
         /// An optional list of parameters which describe the child's orbit. May be null.
         /// </param>
-        public virtual BioZone GenerateChildOfType(Type type, Vector3? position, List<object> orbitParameters = null)
+        public virtual BioZone GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {
             // If position is null, find free space.
             if (!position.HasValue)
@@ -374,22 +380,20 @@ namespace WorldFoundry.Space
                 position = GetCenter(freeGridSpace);
             }
             // Include this as the parent parameter
-            var parameters = new object[] { this, position };
+            var parameters = new List<object> { this, position };
+            if (constructorParameters != null)
+            {
+                parameters.AddRange(constructorParameters);
+            }
 
             BioZone child = null;
             if (type.IsSubclassOf(typeof(CelestialObject)))
             {
-                child = (CelestialObject)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters);
+                child = (CelestialObject)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray());
             }
             else if (type.IsSubclassOf(typeof(CelestialBody)))
             {
-                child = (CelestialBody)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters);
-            }
-
-            if (orbitParameters != null)
-            {
-                orbitParameters.Insert(1, child); // Insert child as orbiter parameter.
-                child.Orbit = (Orbit)typeof(Orbit).InvokeMember(null, BindingFlags.CreateInstance, null, null, orbitParameters.ToArray());
+                child = (CelestialBody)type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray());
             }
 
             return child;
@@ -437,7 +441,7 @@ namespace WorldFoundry.Space
             var currentReference = Parent;
             while (currentReference != null)
             {
-                if (ContainsSpaceGrid(currentReference))
+                if (ContainsObject(currentReference))
                 {
                     break;
                 }
@@ -691,7 +695,7 @@ namespace WorldFoundry.Space
         /// <returns>
         /// The coordinates of the grid space where the position is located within local space.
         /// </returns>
-        private Vector3 PositionToGridCoords(Vector3 position)
+        protected Vector3 PositionToGridCoords(Vector3 position)
         {
             float x = position.X / GridSize;
             if (x != x % 1)
