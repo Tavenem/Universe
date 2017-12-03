@@ -29,6 +29,20 @@ namespace WorldFoundry.CelestialBodies
             internal set => _albedo = value;
         }
 
+        private float? _totalTemperatureAtApoapsis;
+        public float TotalTemperatureAtApoapsis
+        {
+            get => GetProperty(ref _totalTemperatureAtApoapsis, GetTotalTemperatureAtApoapsis) ?? 0;
+            private set => _totalTemperatureAtApoapsis = value;
+        }
+
+        private float? _totalTemperatureAtPeriapsis;
+        public float TotalTemperatureAtPeriapsis
+        {
+            get => GetProperty(ref _totalTemperatureAtPeriapsis, GetTotalTemperatureAtPeriapsis) ?? 0;
+            private set => _totalTemperatureAtPeriapsis = value;
+        }
+
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/>.
         /// </summary>
@@ -50,6 +64,17 @@ namespace WorldFoundry.CelestialBodies
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
         public CelestialBody(CelestialObject parent, Vector3 position) : base(parent, position) { }
+
+        /// <summary>
+        /// Calculates the temperature at the given latitude (as an angle in radians from the
+        /// equator), given the temperatures at the equator and poles, in K.
+        /// </summary>
+        /// <param name="equatorialTemp">The temperature at the equator, in K.</param>
+        /// <param name="polarTemp">The temperature at <see cref="polarLatitude"/>, in K.</param>
+        /// <param name="latitude">A latitude at which to calculate the temperature.</param>
+        /// <returns></returns>
+        internal static float GetTemperatureAtLatitude(float equatorialTemp, float polarTemp, float latitude)
+            => (float)(polarTemp + (equatorialTemp - polarTemp) * Math.Cos(latitude * 0.8));
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -110,22 +135,24 @@ namespace WorldFoundry.CelestialBodies
         /// Uses current position if this object is not in an orbit, or if its apoapsis is infinite.
         /// </remarks>
         /// <returns>The total average temperature of the <see cref="CelestialBody"/> at apoapsis, in K.</returns>
-        public float GetTotalTemperatureAtApoapsis()
+        public void GetTotalTemperatureAtApoapsis()
         {
             if (Orbit == null)
             {
-                return GetTotalTemperatureFromPosition(Position);
+                _totalTemperatureAtApoapsis = GetTotalTemperatureFromPosition(Position);
+                return;
             }
 
             var apoapsis = Orbit.Apoapsis;
             if (double.IsInfinity(apoapsis))
             {
-                return GetTotalTemperatureFromPosition(Position);
+                _totalTemperatureAtApoapsis = GetTotalTemperatureFromPosition(Position);
+                return;
             }
 
             // Actual position doesn't matter for temperature, only distance.
             Vector3 apoapsisVector = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(apoapsis / Parent.LocalScale));
-            return GetTotalTemperatureFromPosition(apoapsisVector);
+            _totalTemperatureAtApoapsis = GetTotalTemperatureFromPosition(apoapsisVector);
         }
 
         /// <summary>
@@ -136,16 +163,17 @@ namespace WorldFoundry.CelestialBodies
         /// Uses current position if this object is not in an orbit.
         /// </remarks>
         /// <returns>The total average temperature of the <see cref="CelestialBody"/> at periapsis, in K.</returns>
-        public float GetTotalTemperatureAtPeriapsis()
+        public void GetTotalTemperatureAtPeriapsis()
         {
             if (Orbit == null)
             {
-                return GetTotalTemperatureFromPosition(Position);
+                _totalTemperatureAtPeriapsis = GetTotalTemperatureFromPosition(Position);
+                return;
             }
 
             // Actual position doesn't matter for temperature, only distance.
             Vector3 periapsis = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(Orbit.Periapsis / Parent.LocalScale));
-            return GetTotalTemperatureFromPosition(periapsis);
+            _totalTemperatureAtPeriapsis = GetTotalTemperatureFromPosition(periapsis);
         }
 
         /// <summary>
@@ -165,7 +193,7 @@ namespace WorldFoundry.CelestialBodies
             }
             else
             {
-                return (GetTotalTemperatureAtPeriapsis() + GetTotalTemperatureAtApoapsis()) / 2.0f;
+                return (TotalTemperatureAtPeriapsis + TotalTemperatureAtApoapsis) / 2.0f;
             }
         }
 

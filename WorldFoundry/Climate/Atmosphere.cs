@@ -91,6 +91,22 @@ namespace WorldFoundry.Climate
             }
         }
 
+        private float? _greenhouseEffect;
+        /// <summary>
+        /// The total greenhouse effect for this <see cref="Atmosphere"/>, in K.
+        /// </summary>
+        internal float GreenhouseEffect
+        {
+            get
+            {
+                if (!_greenhouseEffect.HasValue)
+                {
+                    _greenhouseEffect = GetGreenhouseEffect();
+                }
+                return _greenhouseEffect.Value;
+            }
+        }
+
         private float? _greenhouseFactor;
         /// <summary>
         /// The total greenhouse factor for this <see cref="Atmosphere"/>.
@@ -107,19 +123,35 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _polarInsolationFactor;
+        private float? _insolationFactor_Equatorial;
         /// <summary>
-        /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
+        /// The insolation factor to be used at the equator.
         /// </summary>
-        private float PolarInsolationFactor
+        private float InsolationFactor_Equatorial
         {
             get
             {
-                if (!_polarInsolationFactor.HasValue)
+                if (!_insolationFactor_Equatorial.HasValue)
                 {
-                    _polarInsolationFactor = GetPolarInsolationFactor();
+                    _insolationFactor_Equatorial = GetInsolationFactor();
                 }
-                return _polarInsolationFactor.Value;
+                return _insolationFactor_Equatorial.Value;
+            }
+        }
+
+        private float? _insolationFactor_Polar;
+        /// <summary>
+        /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
+        /// </summary>
+        private float InsolationFactor_Polar
+        {
+            get
+            {
+                if (!_insolationFactor_Polar.HasValue)
+                {
+                    _insolationFactor_Polar = GetInsolationFactor(true);
+                }
+                return _insolationFactor_Polar.Value;
             }
         }
 
@@ -347,6 +379,16 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
+        /// Calculates the total greenhouse effect for this <see cref="Atmosphere"/>, in K.
+        /// </summary>
+        /// <returns>The total greenhouse effect for this <see cref="Atmosphere"/>, in K.</returns>
+        private float GetGreenhouseEffect()
+        {
+            var avgTemp = CelestialBody.GetTotalTemperatureAverageOrbital();
+            return avgTemp * InsolationFactor_Equatorial * GreenhouseFactor - avgTemp;
+        }
+
+        /// <summary>
         /// Calculates the total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.
         /// </summary>
         /// <returns>The total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.</returns>
@@ -373,12 +415,18 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
+        /// Calculates the insolation factor to be used at the predetermined latitude for checking polar temperatures.
         /// </summary>
-        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/>s.</param>
-        /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
-        public bool MeetsRequirements(IEnumerable<ComponentRequirement> requirements)
-            => GetFailedRequirements(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+        /// <returns>
+        /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
+        /// </returns>
+        private float GetInsolationFactor(bool polar = false)
+        {
+            var airMass = GetAirMass(polar ? CelestialBody.polarLatitude : 0, 0, polar ? CelestialBody.cosPolarLatitude : 1);
+
+            var atmMassRatio = AtmosphericMass / CelestialBody.Mass;
+            return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
+        }
 
         /// <summary>
         /// Accepts an enumeration of <see cref="ComponentRequirement"/>s, and yields them back
@@ -443,77 +491,48 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Calculates the insolation factor to be used at the predetermined latitude for checking polar temperatures.
-        /// </summary>
-        /// <returns>
-        /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
-        /// </returns>
-        private float GetPolarInsolationFactor()
-        {
-            var airMass = GetAirMass(CelestialBody.polarLatitude, 0, CelestialBody.cosPolarLatitude);
-
-            var atmMassRatio = AtmosphericMass / CelestialBody.Mass;
-            return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
-        }
-
-        /// <summary>
-        /// Calculates the greenhouse effect of this <see cref="Atmosphere"/> and returns the
-        /// effective surface temperature, in K.
+        /// Calculates the effective surface temperature, including greenhouse effects, in K.
         /// </summary>
         /// <param name="polar">
         /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
         internal float GetSurfaceTemperature(bool polar = false)
-        {
-            var baseTemp = CelestialBody.GetTotalTemperature();
-            var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
-            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
-
-        }
+            => CelestialBody.GetTotalTemperature() * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
-        /// Calculates the greenhouse effect of the atmosphere and returns the effective surface
-        /// temperature, as if the body was at apoapsis, in K.
+        /// Returns the effective surface temperature, including greenhouse effects, as if the body
+        /// was at apoapsis, in K.
         /// </summary>
         /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The effective surface temperature at apoapsis, in K.</returns>
         internal float GetSurfaceTemperatureAtApoapsis(bool polar = false)
-        {
-            var baseTemp = CelestialBody.GetTotalTemperatureAtApoapsis();
-            var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
-            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
-        }
+            => CelestialBody.TotalTemperatureAtApoapsis * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
-        /// Calculates the greenhouse effect of the atmosphere and returns the effective surface
-        /// temperature, as if the body was at periapsis, in K.
+        /// Returns the effective surface temperature, including greenhouse effects, as if the body
+        /// was at periapsis, in K.
         /// </summary>
         /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The effective surface temperature at periapsis, in K.</returns>
         internal float GetSurfaceTemperatureAtPeriapsis(bool polar = false)
-        {
-            var baseTemp = CelestialBody.GetTotalTemperatureAtPeriapsis();
-            var greenhouseEffect = (baseTemp * GreenhouseFactor) - baseTemp;
-            return (polar ? baseTemp * PolarInsolationFactor : baseTemp) + greenhouseEffect;
-        }
+            => CelestialBody.TotalTemperatureAtPeriapsis * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
-        /// Calculates the greenhouse effect of the atmosphere and returns the
-        /// effective surface temperature, averaged between periapsis
-        /// and apoapsis, in K.
+        /// Returns the effective surface temperature, including greenhouse effects, averaged between
+        /// periapsis and apoapsis, in K.
         /// </summary>
         /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The average effective surface temperature.</returns>
         internal float GetSurfaceTemperatureAverageOrbital(bool polar = false)
         {
-            // Only bother calculating twice if the body is actually in orbit.
+            // If the body is not actually in orbit, return its current temperature.
             if (CelestialBody.Orbit == null)
             {
                 return GetSurfaceTemperature(polar);
@@ -556,13 +575,21 @@ namespace WorldFoundry.Climate
             }
         }
 
+        /// <summary>
+        /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
+        /// </summary>
+        /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/>s.</param>
+        /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
+        public bool MeetsRequirements(IEnumerable<ComponentRequirement> requirements)
+            => GetFailedRequirements(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+
         internal void ResetPressureDependentProperties()
         {
             _atmosphericHeight = null;
             _atmosphericMass = null;
             _atmosphericScaleHeight = null;
             _greenhouseFactor = null;
-            _polarInsolationFactor = null;
+            _insolationFactor_Polar = null;
         }
 
         /// <summary>

@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using WorldFoundry.CelestialBodies.Planetoids;
+using WorldFoundry.CelestialBodies.Planetoids.Planets;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -58,9 +59,9 @@ namespace WorldFoundry.WorldGrids
         public int GridSize { get; private set; } = -1;
 
         /// <summary>
-        /// The <see cref="Planetoid"/> which this <see cref="WorldGrid"/> maps.
+        /// The <see cref="TerrestrialPlanet"/> which this <see cref="WorldGrid"/> maps.
         /// </summary>
-        internal Planetoid Planetoid { get; set; }
+        internal TerrestrialPlanet Planet { get; set; }
 
         private Tile[] _tileArray;
         internal Tile[] TileArray
@@ -89,9 +90,9 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Initializes a new instance of <see cref="WorldGrid"/> with the given size (level of detail).
         /// </summary>
-        public WorldGrid(Planetoid planet, int size)
+        public WorldGrid(TerrestrialPlanet planet, int size)
         {
-            Planetoid = planet;
+            Planet = planet;
             SubdivideGrid(size);
         }
 
@@ -365,6 +366,17 @@ namespace WorldFoundry.WorldGrids
             while (GridSize < size)
             {
                 SubdivideGrid();
+            }
+
+            foreach (var e in EdgeArray)
+            {
+                e.Length = (float)(Vector3.Distance(CornerArray[e.Corner0].Vector, CornerArray[e.Corner1].Vector) * Planet.Radius);
+            }
+
+            foreach (var c in CornerArray)
+            {
+                c.Latitude = Planet.VectorToLatitude(c.Vector);
+                c.Longitude = Planet.VectorToLongitude(c.Vector);
             }
 
             Corners = new HashSet<Corner>(CornerArray);

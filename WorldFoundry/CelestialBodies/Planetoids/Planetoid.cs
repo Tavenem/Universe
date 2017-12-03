@@ -36,6 +36,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
+        private double? _angularVelocity;
+        /// <summary>
+        /// The angular velocity of this <see cref="Planetoid"/>, in m/s.
+        /// </summary>
+        public double AngularVelocity
+        {
+            get => GetProperty(ref _angularVelocity, GenerateRotationalPeriod) ?? 0;
+            set => _angularVelocity = value;
+        }
+
         private Atmosphere _atmosphere;
         /// <summary>
         /// The atmosphere possessed by this <see cref="Planetoid"/>.
@@ -392,7 +402,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 // Invent an orbit age. Precision isn't important here, and some inaccuracy and
                 // inconsistency between satellites is desirable. The age of the Solar system is used
                 // as an arbitrary norm.
-                float years = (float)Randomizer.Static.Lognormal(0, 4.6e9);
+                var years = (float)Randomizer.Static.Lognormal(0, 4.6e9);
                 if (GetIsTidallyLockedAfter(years))
                 {
                     RotationalPeriod = Orbit.Period;
@@ -402,12 +412,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             if (Randomizer.Static.NextDouble() <= 0.05) // low chance of an extreme period
             {
-                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Max, RotationalPeriod_MaxExtreme));
+                RotationalPeriod = Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Max, RotationalPeriod_MaxExtreme));
             }
             else
             {
-                RotationalPeriod = (float)Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Min, RotationalPeriod_Max));
+                RotationalPeriod = Math.Round(Randomizer.Static.NextDouble(RotationalPeriod_Min, RotationalPeriod_Max));
             }
+
+            AngularVelocity = RotationalPeriod == 0 ? 0 : Utilities.MathUtil.Constants.TwoPI / RotationalPeriod;
         }
 
         /// <summary>

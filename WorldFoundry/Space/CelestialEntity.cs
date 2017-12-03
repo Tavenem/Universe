@@ -40,7 +40,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The primary key for this <see cref="CelestialEntity"/>.
         /// </summary>
-        public Guid ID { get; private set; }
+        public Guid ID { get; internal set; }
 
         private float? _localScale;
         /// <summary>

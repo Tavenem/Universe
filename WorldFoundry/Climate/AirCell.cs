@@ -22,7 +22,7 @@ namespace WorldFoundry.Climate
             Elevation = t.Elevation + LayerHeight * layer;
             Temperature = layer == 0
                 ? tc.Temperature
-                : Season.GetTemperatureAtElevation(tc.Temperature, Elevation);
+                : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, Elevation);
             Pressure = GetAtmosphericPressure(planet, Elevation, Temperature);
             Density = Atmosphere.GetAtmosphericDensity(Pressure, Temperature);
 
@@ -59,11 +59,11 @@ namespace WorldFoundry.Climate
         {
             if (elevation <= 0)
             {
-                return planet.AtmosphericPressure;
+                return planet.Atmosphere.AtmosphericPressure;
             }
             else
             {
-                return (planet.AtmosphericPressure * planet.G0MdivR * elevation) / temperature;
+                return (float)((planet.Atmosphere.AtmosphericPressure * planet.G0MdivR * elevation) / temperature);
             }
         }
     }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using WorldFoundry.CelestialBodies;
 using WorldFoundry.Extensions;
 using WorldFoundry.WorldGrids;
 
@@ -142,42 +143,6 @@ namespace WorldFoundry.Climate
 
         private static float GetSnowMelt(float temperature, double time)
             => (float)(2.44e-6 * (temperature - freezingPoint) * time);
-
-        internal static float GetTemperatureAtElevation(float surfaceTemp, float elevation)
-        {
-            if (elevation <= 0)
-            {
-                return surfaceTemp;
-            }
-            else if (elevation <= 11000)
-            {
-                return surfaceTemp - elevation * temperatureLapseRate;
-            }
-            else if (elevation <= 20000)
-            {
-                return 216.65f;
-            }
-            else if (elevation <= 32000)
-            {
-                return 196.65f + elevation / 1000;
-            }
-            else if (elevation <= 47000)
-            {
-                return 228.65f + 2.8f * (elevation / 1000 - 32);
-            }
-            else if (elevation <= 51000)
-            {
-                return 270.65f;
-            }
-            else if (elevation <= 71000)
-            {
-                return 270.65f - 2.8f * (elevation / 1000 - 51);
-            }
-            else
-            {
-                return 241.65f - 2 * (elevation / 1000 - 71);
-            }
-        }
 
         private void CalculateAdvection(
             Planet planet,
@@ -464,34 +429,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private static float GetAirMass(Planet planet, float latitude)
-        {
-            if (Troschuetz.Random.TMath.IsZero(latitude))
-            {
-                return 1.0f;
-            }
-            else
-            {
-                var r = planet.Radius / planet._atmosphericScaleHeight;
-                var cosLat = Math.Cos(latitude);
-                var rCosLat = r * cosLat;
-                return (float)(Math.Sqrt(rCosLat * rCosLat + 2 * r + 1) - rCosLat);
-            }
-        }
-
-        internal static float GetTemperatureAtLatitude(Planet planet, float latitude)
-            => (float)(planet._polarTemp + (planet._equatorialTemp - planet._polarTemp) * Math.Cos(latitude * 0.8));
-
-        internal static float GetTemperature_Calculated(Planet planet, bool polar = false)
-        {
-            var insolation = 1367.0 * 1.1 * Math.Pow(0.7, Math.Pow(GetAirMass(planet, (float)(polar ? Utilities.MathUtil.Constants.HalfPI : 0.0) * 0.99f), 0.678));
-
-            return (float)Math.Pow((insolation * 0.7) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
-        }
-
         private void SetTemperature(Planet planet)
         {
             var temperatures = new Dictionary<float, float>();
+            var equatorialTemp = planet.Atmosphere.GetSurfaceTemperature();
+            var polarTemp = planet.Atmosphere.GetSurfaceTemperature(true);
             for (int i = 0; i < planet.WorldGrid.Tiles.Count; i++)
             {
                 var t = planet.WorldGrid.GetTile(i);
@@ -501,12 +443,12 @@ namespace WorldFoundry.Climate
                 {
                     lat -= (float)Utilities.MathUtil.Constants.HalfPI;
                 }
-                if (!temperatures.TryGetValue(lat, out var temperature))
+                if (!temperatures.TryGetValue(lat, out var surfaceTemp))
                 {
-                    temperature = GetTemperatureAtLatitude(planet, lat);
-                    temperatures.Add(lat, temperature);
+                    surfaceTemp = CelestialBody.GetTemperatureAtLatitude(equatorialTemp, polarTemp, lat);
+                    temperatures.Add(lat, surfaceTemp);
                 }
-                tc.Temperature = GetTemperatureAtElevation(temperature, t.Elevation);
+                tc.Temperature = planet.Atmosphere.GetTemperatureAtElevation(surfaceTemp, t.Elevation);
                 var c = 0;
                 while (c < 12)
                 {

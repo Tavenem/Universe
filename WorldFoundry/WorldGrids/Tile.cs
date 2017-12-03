@@ -124,6 +124,8 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         public float Longitude { get; internal set; }
 
+        internal float North { get; set; }
+
         private List<Vector2> _polygon;
         [NotMapped]
         internal List<Vector2> Polygon
@@ -132,14 +134,36 @@ namespace WorldFoundry.WorldGrids
             {
                 if (_polygon == null)
                 {
-                    SetPolygon();
+                    SetPolygonList();
                 }
                 return _polygon;
             }
             set => _polygon = value;
         }
 
-        internal float North { get; set; }
+        internal float Polygon0X { get; private set; }
+
+        internal float Polygon0Y { get; private set; }
+
+        internal float Polygon1X { get; private set; }
+
+        internal float Polygon1Y { get; private set; }
+
+        internal float Polygon2X { get; private set; }
+
+        internal float Polygon2Y { get; private set; }
+
+        internal float Polygon3X { get; private set; }
+
+        internal float Polygon3Y { get; private set; }
+
+        internal float Polygon4X { get; private set; }
+
+        internal float Polygon4Y { get; private set; }
+
+        internal float Polygon5X { get; private set; }
+
+        internal float Polygon5Y { get; private set; }
 
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Tile"/>.
@@ -209,7 +233,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
         /// </summary>
-        internal WorldGrid WorldGrid { get; set; }
+        internal WorldGrid WorldGrid { get; private set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
@@ -378,19 +402,46 @@ namespace WorldFoundry.WorldGrids
             return corners.AsEnumerable();
         }
 
-        internal void SetPolygon(Quaternion? rotation = null)
+        internal void SetPolygon(Quaternion rotation)
         {
-            if (rotation == null)
-            {
-                rotation = WorldGrid.Planetoid.AxisRotation.GetReferenceRotation(Vector);
-            }
-
-            Polygon = new List<Vector2>();
+            _polygon = new List<Vector2>();
 
             for (int k = 0; k < EdgeCount; k++)
             {
-                var c = Vector3.Transform(WorldGrid.GetCorner(GetCorner(k)).Vector, rotation.Value);
-                Polygon.Add(new Vector2(c.X, c.Z));
+                var c = Vector3.Transform(WorldGrid.GetCorner(GetCorner(k)).Vector, rotation);
+                _polygon.Add(new Vector2(c.X, c.Z));
+            }
+
+            Polygon0X = Polygon[0].X;
+            Polygon0Y = Polygon[0].Y;
+            Polygon1X = Polygon[1].X;
+            Polygon1Y = Polygon[1].Y;
+            Polygon2X = Polygon[2].X;
+            Polygon2Y = Polygon[2].Y;
+            Polygon3X = Polygon[3].X;
+            Polygon3Y = Polygon[3].Y;
+            Polygon4X = Polygon[4].X;
+            Polygon4Y = Polygon[4].Y;
+            if (EdgeCount == 6)
+            {
+                Polygon5X = Polygon[5].X;
+                Polygon5Y = Polygon[5].Y;
+            }
+        }
+
+        internal void SetPolygonList()
+        {
+            _polygon = new List<Vector2>
+            {
+                new Vector2(Polygon0X, Polygon0Y),
+                new Vector2(Polygon1X, Polygon1Y),
+                new Vector2(Polygon2X, Polygon2Y),
+                new Vector2(Polygon3X, Polygon3Y),
+                new Vector2(Polygon4X, Polygon4Y),
+            };
+            if (EdgeCount == 6)
+            {
+                _polygon.Add(new Vector2(Polygon5X, Polygon5Y));
             }
         }
 

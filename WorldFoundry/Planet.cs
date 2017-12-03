@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 using WorldFoundry.Extensions;
+using WorldFoundry.Utilities.MathUtil.Shapes;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry
@@ -11,7 +13,7 @@ namespace WorldFoundry
     /// <summary>
     /// Represents a planet as a 3D grid of (mostly-hexagonal) tiles.
     /// </summary>
-    public class Planet
+    public class Planet : TerrestrialPlanet
     {
         /// <summary>
         /// The default atmospheric pressure, used if none is specified during planet creation, in kPa.
@@ -53,10 +55,8 @@ namespace WorldFoundry
         /// </summary>
         public const float defaultWaterRatio = 0.65f;
 
-        private const int density = 5514;
-        private const float FourThirdsPIGp = (float)(Utilities.MathUtil.Constants.FourThirdsPI * Utilities.Science.Constants.G * density);
+        private const int defaultDensity = 5514;
 
-        private float _angularVelocity;
         private double _defaultSeasonDuration;
         private float _defaultSeasonProportion;
         private float _elapsedYearToDate = 0;
@@ -70,45 +70,12 @@ namespace WorldFoundry
         /// </summary>
         public float AtmosphericPressure { get; internal set; }
 
-        /// <summary>
-        /// The axial tilt of the planet, in radians.
-        /// </summary>
-        public float AxialTilt { get; private set; }
-
-        /// <summary>
-        /// A <see cref="Vector3"/> which represents the axis of the planet.
-        /// </summary>
-        public Vector3 Axis { get; private set; }
-
-        internal Quaternion AxisRotation { get; private set; }
-
         internal Dictionary<float, float> CoriolisCoefficients { get; private set; }
-
-        /// <summary>
-        /// The standard gravity of the planet, in m/s².
-        /// </summary>
-        public float G0 { get; private set; }
-
-        internal float G0MdivR { get; private set; }
-
-        internal float HalfITCZWidth { get; private set; }
-
-        public Guid ID { get; private set; }
-
-        /// <summary>
-        /// The radius of the planet, in meters.
-        /// </summary>
-        public int Radius { get; private set; } = defaultRadius;
 
         /// <summary>
         /// The period of revolution of the planet, in seconds.
         /// </summary>
         public double RevolutionPeriod { get; internal set; } = defaultRevolutionPeriod;
-
-        /// <summary>
-        /// The period of rotation of the planet, in seconds.
-        /// </summary>
-        public double RotationalPeriod { get; private set; } = defaultRotationalPeriod;
 
         /// <summary>
         /// The ratio of water coverage on the planet.
@@ -377,7 +344,7 @@ namespace WorldFoundry
             return _lastSeason;
         }
 
-        private float GetCoriolisCoefficient(float latitude) => 2 * _angularVelocity * (float)Math.Sin(latitude);
+        private float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
 
         private float GetNorth(Tile t, Quaternion rotation)
         {
@@ -401,7 +368,7 @@ namespace WorldFoundry
             var highest = Math.Max(WorldGrid.Tiles.Max(t => t.Elevation), WorldGrid.Corners.Max(c => c.Elevation));
             highest -= lowest;
 
-            var max = 2e5f / G0;
+            var max = (float)(2e5 / SurfaceGravity);
             var r = new Random(seed);
             var d = 0f;
             for (int i = 0; i < 5; i++)
@@ -424,20 +391,16 @@ namespace WorldFoundry
             }
         }
 
-        internal float _equatorialTemp;
-        internal float _polarTemp;
         private void SetAtmosphericPressure(float pressure)
         {
-            AtmosphericPressure = (float)Math.Max(0, Math.Min(3774.3562, pressure));
-            SetGreenhouseEffect();
-            SetAtmosphericScaleHeight();
-            _equatorialTemp = Season.GetTemperature_Calculated(this) + _greenhouseEffect;
-            _polarTemp = Season.GetTemperature_Calculated(this, true) + _greenhouseEffect;
+            var atmPressure = (float)Math.Max(0, Math.Min(3774.3562, pressure));
+            habitabilityRequirements = new HabitabilityRequirements
+            {
+                MinimumSurfacePressure = atmPressure,
+                MaximumSurfacePressure = atmPressure,
+            };
+            GenerateAtmosphere();
         }
-
-        internal float _atmosphericScaleHeight;
-        private void SetAtmosphericScaleHeight()
-            => _atmosphericScaleHeight = (AtmosphericPressure * 1000) / (G0 * Atmosphere.GetAtmosphericDensity(AtmosphericPressure, Season.GetTemperature_Calculated(this) + _greenhouseEffect));
 
         private void SetAxialTiltBase(float axialTilt)
         {
@@ -508,27 +471,10 @@ namespace WorldFoundry
             SetWaterRatio(WaterRatio);
         }
 
-        internal float _greenhouseEffect;
-        internal void SetGreenhouseEffect()
-        {
-            var co2 = 0.000407f;
-            var ch4 = 0.0000018f;
-            var h2o = 0.004f;
-            var greenhouseFactor = 0.36 * Math.Exp(co2 * AtmosphericPressure);
-            greenhouseFactor += 0.36 * Math.Exp(34 * ch4 * AtmosphericPressure);
-            greenhouseFactor += 0.36 * Math.Exp(h2o * AtmosphericPressure);
-
-            var surfaceTemp = Season.GetTemperature_Calculated(this);
-
-            _greenhouseEffect = (surfaceTemp * (float)Math.Pow(1 / (1 - 0.5 * greenhouseFactor), 0.25)) - surfaceTemp;
-        }
-
         private void SetRadiusBase(int radius)
         {
-            Radius = Math.Max(473000, Math.Min(9556500, radius));
-            HalfITCZWidth = 370400f / Radius;
-            G0 = FourThirdsPIGp * Radius;
-            G0MdivR = G0 * Utilities.Science.Constants.MolarMass_AirDivUniversalGasConstant;
+            var planetRadius = Math.Max(473000, Math.Min(9556500, radius));
+            GenerateShape(planetRadius);
         }
 
         public void SetRevolutionPeriodBase(double seconds)
@@ -538,11 +484,7 @@ namespace WorldFoundry
             _defaultSeasonProportion = (float)(_defaultSeasonDuration / RevolutionPeriod);
         }
 
-        public void SetRotationalPeriodBase(double seconds)
-        {
-            RotationalPeriod = Math.Max(0, seconds);
-            _angularVelocity = RotationalPeriod == 0 ? 0 : (float)(Utilities.MathUtil.Constants.TwoPI / RotationalPeriod);
-        }
+        public void SetRotationalPeriodBase(double seconds) => RotationalPeriod = Math.Max(0, seconds);
 
         /// <summary>
         /// Sets the ratio of water coverage on the planet.
@@ -558,17 +500,6 @@ namespace WorldFoundry
         private void SubdivideGrid(int size)
         {
             WorldGrid = new WorldGrid(null, size);
-
-            foreach (var e in WorldGrid.Edges)
-            {
-                e.Length = Vector3.Distance(WorldGrid.GetCorner(e.Corner0).Vector, WorldGrid.GetCorner(e.Corner1).Vector) * Radius;
-            }
-
-            foreach (var c in WorldGrid.Corners)
-            {
-                c.Latitude = GetPlanetLatitude(c.Vector);
-                c.Longitude = GetPlanetLongitude(c.Vector);
-            }
 
             CoriolisCoefficients = new Dictionary<float, float>();
             var radiusSq = (float)Math.Pow(Radius, 2);

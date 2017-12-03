@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
 using System.Text;
+using WorldFoundry.Extensions;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using WorldFoundry.Utilities;
@@ -313,6 +314,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
 
             return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);
+        }
+
+        /// <summary>
+        /// Converts a <see cref="Vector3"/> to a latitude, in radians.
+        /// </summary>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
+        /// <returns>A latitude, as an angle in radians from the equator.</returns>
+        internal float VectorToLatitude(Vector3 v) => (float)(Utilities.MathUtil.Constants.HalfPI - Axis.GetAngle(v));
+
+        /// <summary>
+        /// Converts a <see cref="Vector3"/> to a longitude, in radians.
+        /// </summary>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
+        /// <returns>A longitude, as an angle in radians from the X-axis.</returns>
+        internal float VectorToLongitude(Vector3 v)
+        {
+            var u = Vector3.Transform(v, AxisRotation);
+            return u.X == 0 && u.Z == 0
+                ? 0
+                : (float)Math.Atan2(u.X, u.Z);
         }
     }
 }

@@ -118,7 +118,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
         /// </summary>
-        internal WorldGrid WorldGrid { get; set; }
+        internal WorldGrid WorldGrid { get; private set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.

@@ -64,7 +64,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified during this <see
         /// cref="TerrestrialPlanet"/>'s creation.
         /// </summary>
-        private HabitabilityRequirements? habitabilityRequirements;
+        protected HabitabilityRequirements? habitabilityRequirements;
+
+        private float? _halfITCZWidth;
+        /// <summary>
+        /// Half the width of the Inter Tropical Convergence Zone of this <see
+        /// cref="TerrestrialPlanet"/>, in meters.
+        /// </summary>
+        internal float HalfITCZWidth
+        {
+            get => GetProperty(ref _halfITCZWidth, GenerateITCZ) ?? 0;
+            private set => _halfITCZWidth = value;
+        }
 
         /// <summary>
         /// Indicates whether or not this planet has a native population of living organisms.
@@ -1231,6 +1242,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 };
             }
         }
+
+        private void GenerateITCZ() => HalfITCZWidth = (float)(370400 / Radius);
 
         /// <summary>
         /// Determines whether this planet is capable of sustaining life, and whether or not it
