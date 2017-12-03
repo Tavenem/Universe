@@ -10,7 +10,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents a tile on a <see cref="WorldGrids.WorldGrid"/>.
     /// </summary>
-    public class Tile
+    public class Tile : IIndexedItem
     {
         /// <summary>
         /// The area of this <see cref="Tile"/>, in square meters.
@@ -105,11 +105,6 @@ namespace WorldFoundry.WorldGrids
         internal float FrictionCoefficient { get; private set; }
 
         /// <summary>
-        /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
-        /// </summary>
-        internal WorldGrid WorldGrid { get; set; }
-
-        /// <summary>
         /// The <see cref="Climate.HumidityType"/> of this <see cref="Tile"/>.
         /// </summary>
         public HumidityType HumidityType { get; internal set; }
@@ -117,7 +112,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The index of this <see cref="Tile"/>.
         /// </summary>
-        internal int Index { get; }
+        public int Index { get; }
 
         /// <summary>
         /// The latitude of this <see cref="Tile"/>, as an angle in radians from the equator.
@@ -210,6 +205,11 @@ namespace WorldFoundry.WorldGrids
         /// The Z component of the vector which defines the position of this <see cref="Tile"/>.
         /// </summary>
         protected float VectorZ { get; private set; }
+
+        /// <summary>
+        /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
+        /// </summary>
+        internal WorldGrid WorldGrid { get; set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
@@ -398,27 +398,27 @@ namespace WorldFoundry.WorldGrids
         {
             if (Corner0 == cornerIndex)
             {
-                return Corner0;
+                return 0;
             }
             if (Corner1 == cornerIndex)
             {
-                return Corner1;
+                return 1;
             }
             if (Corner2 == cornerIndex)
             {
-                return Corner2;
+                return 2;
             }
             if (Corner3 == cornerIndex)
             {
-                return Corner3;
+                return 3;
             }
             if (Corner4 == cornerIndex)
             {
-                return Corner4;
+                return 4;
             }
             if (EdgeCount == 6 && Corner5 == cornerIndex)
             {
-                return Corner5;
+                return 5;
             }
             return -1;
         }
@@ -427,27 +427,27 @@ namespace WorldFoundry.WorldGrids
         {
             if (Tile0 == tileIndex)
             {
-                return Tile0;
+                return 0;
             }
             if (Tile1 == tileIndex)
             {
-                return Tile1;
+                return 1;
             }
             if (Tile2 == tileIndex)
             {
-                return Tile2;
+                return 2;
             }
             if (Tile3 == tileIndex)
             {
-                return Tile3;
+                return 3;
             }
             if (Tile4 == tileIndex)
             {
-                return Tile4;
+                return 4;
             }
             if (EdgeCount == 6 && Tile5 == tileIndex)
             {
-                return Tile5;
+                return 5;
             }
             return -1;
         }

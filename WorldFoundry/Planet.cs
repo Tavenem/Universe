@@ -115,7 +115,7 @@ namespace WorldFoundry
         /// </summary>
         public float WaterRatio { get; internal set; }
 
-        public WorldGrid WorldGrid { get; }
+        public WorldGrid WorldGrid { get; private set; }
 
         /// <summary>
         /// Creates an empty <see cref="Planet"/> object. Has no useful values, and methods may not
@@ -140,7 +140,6 @@ namespace WorldFoundry
             Guid? id = null)
         {
             ID = id ?? Guid.NewGuid();
-            WorldGrid = new WorldGrid();
             SetRadiusBase(radius);
             SetAxialTiltBase(axialTilt);
             SetRevolutionPeriodBase(revolutionPeriod);
@@ -558,7 +557,7 @@ namespace WorldFoundry
 
         private void SubdivideGrid(int size)
         {
-            WorldGrid.SubdivideGrid(size);
+            WorldGrid = new WorldGrid(null, size);
 
             foreach (var e in WorldGrid.Edges)
             {

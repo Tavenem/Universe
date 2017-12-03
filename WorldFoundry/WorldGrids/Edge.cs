@@ -6,7 +6,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents an edge between two tiles on an <see cref="WorldGrid"/>.
     /// </summary>
-    public class Edge
+    public class Edge : IIndexedItem
     {
         /// <summary>
         /// The index of the first <see cref="Corner"/> to which this <see cref="Edge"/> is connected.
@@ -21,7 +21,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The index of this <see cref="Edge"/>.
         /// </summary>
-        internal int Index { get; }
+        public int Index { get; }
 
         /// <summary>
         /// The length of this <see cref="Edge"/>, in meters.
@@ -56,6 +56,11 @@ namespace WorldFoundry.WorldGrids
         public int Tile1 { get; private set; } = -1;
 
         /// <summary>
+        /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
+        /// </summary>
+        internal WorldGrid WorldGrid { get; set; }
+
+        /// <summary>
         /// Creates a new instance of <see cref="Edge"/>.
         /// </summary>
         private Edge() { }
@@ -63,7 +68,11 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Edge"/>.
         /// </summary>
-        internal Edge(int id) => Index = id;
+        internal Edge(WorldGrid worldGrid, int id)
+        {
+            WorldGrid = worldGrid;
+            Index = id;
+        }
 
         /// <summary>
         /// Gets the index of the <see cref="Corner"/> at the given index in this <see

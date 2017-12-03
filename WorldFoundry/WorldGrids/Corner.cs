@@ -8,7 +8,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents a corner between three tiles on an <see cref="WorldGrid"/>.
     /// </summary>
-    public class Corner
+    public class Corner : IIndexedItem
     {
         /// <summary>
         /// The index of the first <see cref="Corner"/> to which this one is connected.
@@ -48,7 +48,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The index of this <see cref="Corner"/>.
         /// </summary>
-        internal int Index { get; }
+        public int Index { get; }
 
         /// <summary>
         /// The depth of the lake on this <see cref="Corner"/> (if any).
@@ -116,6 +116,11 @@ namespace WorldFoundry.WorldGrids
         protected float VectorZ { get; private set; }
 
         /// <summary>
+        /// The <see cref="WorldGrids.WorldGrid"/> of which this <see cref="Tile"/> forms a part.
+        /// </summary>
+        internal WorldGrid WorldGrid { get; set; }
+
+        /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
         public Corner() { }
@@ -123,7 +128,11 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
-        internal Corner(int id) => Index = id;
+        internal Corner(WorldGrid worldGrid, int id)
+        {
+            WorldGrid = worldGrid;
+            Index = id;
+        }
 
         /// <summary>
         /// Gets the index of the <see cref="Corner"/> at the given index in this <see
@@ -233,15 +242,15 @@ namespace WorldFoundry.WorldGrids
         {
             if (Corner0 == cornerIndex)
             {
-                return Corner0;
+                return 0;
             }
             if (Corner1 == cornerIndex)
             {
-                return Corner1;
+                return 1;
             }
             if (Corner2 == cornerIndex)
             {
-                return Corner2;
+                return 2;
             }
             return -1;
         }
