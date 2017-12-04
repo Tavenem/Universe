@@ -472,7 +472,6 @@ namespace WorldFoundry.Climate
                 var t = planet.WorldGrid.GetTile(i);
                 var tc = TileClimates[i];
 
-                var coriolisCoefficient = planet.CoriolisCoefficients[t.Latitude];
                 if (!pressureGradientForces.TryGetValue(t.Latitude, out var pressureGradientForce))
                 {
                     var pgf = GetPressureGradientForce(t.Latitude, _tropicalEquator, planet.HalfITCZWidth);
@@ -480,10 +479,10 @@ namespace WorldFoundry.Climate
                     pressureGradientForces.Add(t.Latitude, pressureGradientForce);
                 }
 
-                var v = Vector2.UnitX.Rotate((pressureGradientForce.Item1 ? Math.PI : 0) - Math.Atan2(coriolisCoefficient, t.FrictionCoefficient));
+                var v = Vector2.UnitX.Rotate((pressureGradientForce.Item1 ? Math.PI : 0) - Math.Atan2(t.CoriolisCoefficient, t.FrictionCoefficient));
                 tc.WindDirection = (float)Math.Atan2(v.Y, v.X) + t.North;
 
-                tc.WindSpeed = pressureGradientForce.Item2 / new Vector2(coriolisCoefficient, t.FrictionCoefficient).Length();
+                tc.WindSpeed = pressureGradientForce.Item2 / new Vector2(t.CoriolisCoefficient, t.FrictionCoefficient).Length();
 
                 var corners = t.Polygon.Select(p => p.Rotate(t.North - tc.WindDirection)).ToList();
                 for (int k = 0; k < t.EdgeCount; k++)

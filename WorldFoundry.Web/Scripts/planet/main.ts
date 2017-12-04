@@ -82,7 +82,6 @@ const seasonNum = $("#season-num") as HTMLInputElement;
 const seasonTotal = $("#season-total") as HTMLInputElement;
 const pressureNum = $("#pressure-num") as HTMLInputElement;
 const radiusNum = $("#radius-num") as HTMLInputElement;
-const revolutionNum = $("#revolution-num") as HTMLInputElement;
 const rotationNum = $("#rotation-num") as HTMLInputElement;
 const smoothCheck = $("#smooth-check") as HTMLInputElement;
 const tiltNum = $("#tilt-num") as HTMLInputElement;
@@ -313,10 +312,9 @@ function getPlanet(btn?: RenderButton) {
     }
 
     let radius = radiusNum.valueAsNumber * 1000;
-    let revolution = revolutionNum.valueAsNumber * 3600;
     let rotation = rotationNum.valueAsNumber * 60;
     let grid = gridNum.valueAsNumber + 2;
-    let planetUrl = `/Home/GetPlanet?atmosphericPressure=${pressureNum.valueAsNumber}&axialTilt=${tiltNum.valueAsNumber}&radius=${radius}&revolutionPeriod=${revolution}&rotationalPeriod=${rotation}&waterRatio=${waterNum.valueAsNumber}&gridSize=${grid}&seasonCount=${seasonCount}`;
+    let planetUrl = `/Home/GetPlanet?atmosphericPressure=${pressureNum.valueAsNumber}&axialTilt=${tiltNum.valueAsNumber}&radius=${radius}&rotationalPeriod=${rotation}&waterRatio=${waterNum.valueAsNumber}&gridSize=${grid}&seasonCount=${seasonCount}`;
     if (!!animationInfo.seed) {
         planetUrl += `&seed=${animationInfo.seed}`;
     }
@@ -332,7 +330,7 @@ function getPlanet(btn?: RenderButton) {
             planet = PlanetData.planetFromData(data);
             animationInfo.seed = planet.seed;
 
-            getSeasons(0, seasonCount, revolution / seasonCount, btn);
+            getSeasons(0, seasonCount, planet.orbitalPeriod / seasonCount, btn);
         })
         .catch((err: Error) => {
             console.log(err.message);

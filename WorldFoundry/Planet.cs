@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Troschuetz.Random;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 using WorldFoundry.Extensions;
+using WorldFoundry.Substances;
 using WorldFoundry.Utilities.MathUtil.Shapes;
 using WorldFoundry.WorldGrids;
 
@@ -31,11 +33,6 @@ namespace WorldFoundry
         public const int defaultGridSize = 6;
 
         /// <summary>
-        /// The default multiplier for the elevation noise generation, used if none is specified during planet creation.
-        /// </summary>
-        public const int defaultElevationSize = 100;
-
-        /// <summary>
         /// The default planetary radius, used if none is specified during planet creation, in meters.
         /// </summary>
         public const int defaultRadius = 6371000;
@@ -60,29 +57,14 @@ namespace WorldFoundry
         private double _defaultSeasonDuration;
         private float _defaultSeasonProportion;
         private float _elapsedYearToDate = 0;
-        private int _elevationSize = defaultElevationSize;
         private Season _lastSeason;
         private double? _seasonDuration;
         private float? _seasonProportion;
 
         /// <summary>
-        /// The standard sea-level atmospheric pressure of the planet, in kPa.
-        /// </summary>
-        public float AtmosphericPressure { get; internal set; }
-
-        internal Dictionary<float, float> CoriolisCoefficients { get; private set; }
-
-        /// <summary>
-        /// The period of revolution of the planet, in seconds.
-        /// </summary>
-        public double RevolutionPeriod { get; internal set; } = defaultRevolutionPeriod;
-
-        /// <summary>
         /// The ratio of water coverage on the planet.
         /// </summary>
         public float WaterRatio { get; internal set; }
-
-        public WorldGrid WorldGrid { get; private set; }
 
         /// <summary>
         /// Creates an empty <see cref="Planet"/> object. Has no useful values, and methods may not
@@ -99,20 +81,16 @@ namespace WorldFoundry
             float atmosphericPressure,
             float axialTilt,
             int radius,
-            double revolutionPeriod,
             double rotationalPeriod,
             float waterRatio,
             int gridSize,
-            int elevationSize,
             Guid? id = null)
         {
             ID = id ?? Guid.NewGuid();
             SetRadiusBase(radius);
             SetAxialTiltBase(axialTilt);
-            SetRevolutionPeriodBase(revolutionPeriod);
             SetRotationalPeriodBase(rotationalPeriod);
             WaterRatio = Math.Max(0, Math.Min(1, waterRatio));
-            _elevationSize = Math.Max(0, elevationSize);
             SetAtmosphericPressure(atmosphericPressure);
 
             ChangeGridSize(gridSize);
@@ -126,21 +104,17 @@ namespace WorldFoundry
             float? atmosphericPressure = null,
             float? axialTilt = null,
             int? radius = null,
-            double? revolutionPeriod = null,
             double? rotationalPeriod = null,
             float? waterRatio = null,
             int? gridSize = null,
-            int? elevationSize = null,
             Guid? id = null)
             => new Planet(
                 atmosphericPressure ?? defaultAtmosphericPressure,
                 axialTilt ?? defaultAxialTilt,
                 radius ?? defaultRadius,
-                revolutionPeriod ?? defaultRevolutionPeriod,
                 rotationalPeriod ?? defaultRotationalPeriod,
                 waterRatio ?? defaultWaterRatio,
                 gridSize ?? defaultGridSize,
-                elevationSize ?? defaultElevationSize,
                 id);
 
         /// <summary>
@@ -164,22 +138,9 @@ namespace WorldFoundry
         }
 
         /// <summary>
-        /// Changes the multiplier used by the elevation noise generation.
-        /// </summary>
-        public void ChangeElevationSize(int elevationSize)
-        {
-            _elevationSize = Math.Max(0, elevationSize);
-            SetElevation(_elevationSize);
-        }
-
-        /// <summary>
         /// Changes the grid size (level of detail) of the <see cref="Planet"/>.
         /// </summary>
-        public void ChangeGridSize(int gridSize)
-        {
-            SubdivideGrid(Math.Min(WorldGrid.maxGridSize, gridSize));
-            SetElevation(_elevationSize);
-        }
+        public void ChangeGridSize(int gridSize) => SetWorldGrid(Math.Min(WorldGrid.maxGridSize, gridSize));
 
         /// <summary>
         /// Changes the radius of the planet.
@@ -192,23 +153,14 @@ namespace WorldFoundry
         }
 
         /// <summary>
-        /// Changes the period of revolution of the planet.
-        /// </summary>
-        /// <param name="radius">A period, in seconds.</param>
-        public void ChangeRevolutionPeriod(double seconds)
-        {
-            SetRevolutionPeriodBase(seconds);
-            _lastSeason = null;
-        }
-
-        /// <summary>
         /// Changes the period of rotation of the planet.
         /// </summary>
         /// <param name="radius">A period, in seconds.</param>
         public void ChangeRotationalPeriod(double seconds)
         {
             SetRotationalPeriodBase(seconds);
-            ChangeGridSize(WorldGrid.GridSize);
+            WorldGrid.SetCoriolisCoefficients();
+            WorldGrid.UpdateCollectionsFromArrays();
         }
 
         private void ClassifyTerrain()
@@ -268,21 +220,24 @@ namespace WorldFoundry
             }
         }
 
-        private void CreateSea(float waterRatio)
+        private void CreateSea()
         {
-            if (waterRatio == 0)
+            if (TMath.IsZero(HydrosphereSurface.Proportion))
             {
                 return;
             }
+            var waterMass = (HydrosphereSurface.GetProportion(Chemical.Water, Phase.Any)
+                + HydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Any))
+                * (Hydrosphere.Mixtures.Count > 0 ? HydrosphereSurface.Proportion : 1)
+                * Hydrosphere.Proportion
+                * Mass;
+            var oceanMass = 0.0;
+            var oceanTileCount = 0;
             var seaLevel = 0f;
-            if (waterRatio == 1)
+            while (waterMass > oceanMass)
             {
-                seaLevel = WorldGrid.Tiles.Max(t => t.Elevation) * 1.1f;
-            }
-            else
-            {
-                var targetWaterTileCount = (int)Math.Round(waterRatio * WorldGrid.Tiles.Count);
-                var landTiles = WorldGrid.Tiles.OrderBy(t => t.Elevation).Skip(targetWaterTileCount);
+                var orderedTiles = WorldGrid.Tiles.OrderBy(t => t.Elevation);
+                var landTiles = orderedTiles.Skip(oceanTileCount);
                 var lowestLandElevation = landTiles.FirstOrDefault()?.Elevation;
                 var nextLowestLandElevation = landTiles.SkipWhile(t => t.Elevation == lowestLandElevation).FirstOrDefault()?.Elevation;
                 seaLevel = lowestLandElevation.HasValue
@@ -290,6 +245,12 @@ namespace WorldFoundry
                         ? (lowestLandElevation.Value + nextLowestLandElevation.Value) / 2
                         : lowestLandElevation.Value * 1.1f)
                     : WorldGrid.Tiles.Max(t => t.Elevation) * 1.1f;
+                if (!nextLowestLandElevation.HasValue)
+                {
+                    break;
+                }
+                oceanTileCount = orderedTiles.TakeWhile(t => t.Elevation <= lowestLandElevation).Count();
+                oceanMass = orderedTiles.Take(oceanTileCount).Sum(x => x.Area * (seaLevel - x.Elevation));
             }
 
             foreach (var t in WorldGrid.Tiles)
@@ -299,6 +260,55 @@ namespace WorldFoundry
             foreach (var c in WorldGrid.Corners)
             {
                 c.Elevation -= seaLevel;
+            }
+        }
+
+        private void CreateSea(float waterRatio)
+        {
+            if (waterRatio == 0)
+            {
+                return;
+            }
+            var seaLevel = 0f;
+            var oceanTileCount = 0;
+            var oceanMass = 0.0;
+            if (waterRatio == 1)
+            {
+                seaLevel = WorldGrid.Tiles.Max(t => t.Elevation) * 1.1f;
+                oceanTileCount = WorldGrid.Tiles.Count;
+                oceanMass = WorldGrid.Tiles.Sum(x => x.Area * (seaLevel - x.Elevation));
+            }
+            else
+            {
+                var targetWaterTileCount = (int)Math.Round(waterRatio * WorldGrid.Tiles.Count);
+                var orderedTiles = WorldGrid.Tiles.OrderBy(t => t.Elevation);
+                var landTiles = orderedTiles.Skip(targetWaterTileCount);
+                var lowestLandElevation = landTiles.FirstOrDefault()?.Elevation;
+                var nextLowestLandElevation = landTiles.SkipWhile(t => t.Elevation == lowestLandElevation).FirstOrDefault()?.Elevation;
+                seaLevel = lowestLandElevation.HasValue
+                    ? (nextLowestLandElevation.HasValue
+                        ? (lowestLandElevation.Value + nextLowestLandElevation.Value) / 2
+                        : lowestLandElevation.Value * 1.1f)
+                    : WorldGrid.Tiles.Max(t => t.Elevation) * 1.1f;
+                oceanTileCount = nextLowestLandElevation.HasValue
+                    ? orderedTiles.TakeWhile(t => t.Elevation <= lowestLandElevation).Count()
+                    : WorldGrid.Tiles.Count;
+                oceanMass = orderedTiles.Take(oceanTileCount).Sum(x => x.Area * (seaLevel - x.Elevation));
+            }
+
+            foreach (var t in WorldGrid.Tiles)
+            {
+                t.Elevation -= seaLevel;
+            }
+            foreach (var c in WorldGrid.Corners)
+            {
+                c.Elevation -= seaLevel;
+            }
+
+            var hydrosphereProportion = oceanMass / Mass;
+            if (Hydrosphere.Mixtures.Count > 0)
+            {
+                hydrosphereProportion *= HydrosphereSurface.Proportion;
             }
         }
 
@@ -318,20 +328,23 @@ namespace WorldFoundry
                 SetClimate();
             }
 
+            var revolutionPeriod = Orbit?.Period ?? defaultRevolutionPeriod;
             if (duration.HasValue && duration != _seasonDuration)
             {
-                _seasonDuration = Math.Min(Math.Max(Season.secondsPerDay, duration.Value), RevolutionPeriod);
-                _seasonProportion = (float)(_seasonDuration / RevolutionPeriod);
+                _seasonDuration = Math.Min(Math.Max(Season.secondsPerDay, duration.Value), revolutionPeriod);
+                _seasonProportion = (float)(_seasonDuration / revolutionPeriod);
             }
 
+            var defaultDuration = Math.Min(Math.Max(Season.secondsPerDay, revolutionPeriod / 4), revolutionPeriod);
+            var defaultProportion = (float)(defaultDuration / revolutionPeriod);
             _lastSeason = new Season(
                 this,
-                _seasonDuration ?? _defaultSeasonDuration,
+                _seasonDuration ?? defaultDuration,
                 _elapsedYearToDate,
-                _seasonProportion ?? _defaultSeasonProportion,
+                _seasonProportion ?? defaultProportion,
                 _lastSeason);
 
-            _elapsedYearToDate += _seasonProportion ?? _defaultSeasonProportion;
+            _elapsedYearToDate += _seasonProportion ?? defaultProportion;
             if (_elapsedYearToDate > 1)
             {
                 _elapsedYearToDate -= 1;
@@ -342,24 +355,6 @@ namespace WorldFoundry
             }
 
             return _lastSeason;
-        }
-
-        private float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
-
-        private float GetNorth(Tile t, Quaternion rotation)
-        {
-            var v = Vector3.Transform(WorldGrid.GetTile(t.Tile0).Vector, rotation);
-            return (float)(Math.PI - Math.Atan2(v.Y, v.X));
-        }
-
-        private float GetPlanetLatitude(Vector3 v) => (float)(Utilities.MathUtil.Constants.HalfPI - Axis.GetAngle(v));
-
-        private float GetPlanetLongitude(Vector3 v)
-        {
-            var u = Vector3.Transform(v, AxisRotation);
-            return u.X == 0 && u.Z == 0
-                ? 0
-                : (float)Math.Atan2(u.X, u.Z);
         }
 
         private void ScaleElevation(int seed)
@@ -419,8 +414,9 @@ namespace WorldFoundry
             // 1 year is pre-generated as a single season,
             // and 1 as 12 seasons, to prime the algorithms,
             // which produce better values with historical data.
-            _lastSeason = new Season(this, RevolutionPeriod, 0, 1, null);
-            var seasonDuration = RevolutionPeriod / 12;
+            var revolutionPeriod = Orbit?.Period ?? defaultRevolutionPeriod;
+            _lastSeason = new Season(this, revolutionPeriod, 0, 1, null);
+            var seasonDuration = revolutionPeriod / 12;
             var seasonProportion = 1.0f / 12;
             var seasons = new List<Season>(12);
             for (int i = 0; i < 12; i++)
@@ -437,51 +433,10 @@ namespace WorldFoundry
             }
         }
 
-        private void SetElevation(int size)
-        {
-            int seed = ID.GetHashCode();
-
-            var m = new FastNoise(seed);
-            m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            m.SetFractalOctaves(6);
-            var n = new FastNoise(seed >> (int.MaxValue / 5));
-            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            n.SetFractalOctaves(5);
-            var o = new FastNoise(seed >> (int.MaxValue / 5 * 2));
-            o.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            o.SetFractalOctaves(4);
-            foreach (var t in WorldGrid.Tiles)
-            {
-                var v = t.Vector * size;
-                t.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-            foreach (var c in WorldGrid.Corners)
-            {
-                var v = c.Vector * size;
-                c.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-
-            ScaleElevation(seed);
-
-            foreach (var t in WorldGrid.Tiles)
-            {
-                t.SetFrictionCoefficient();
-            }
-
-            SetWaterRatio(WaterRatio);
-        }
-
         private void SetRadiusBase(int radius)
         {
             var planetRadius = Math.Max(473000, Math.Min(9556500, radius));
             GenerateShape(planetRadius);
-        }
-
-        public void SetRevolutionPeriodBase(double seconds)
-        {
-            RevolutionPeriod = Math.Max(0, seconds);
-            _defaultSeasonDuration = Math.Min(Math.Max(Season.secondsPerDay, RevolutionPeriod / 4), RevolutionPeriod);
-            _defaultSeasonProportion = (float)(_defaultSeasonDuration / RevolutionPeriod);
         }
 
         public void SetRotationalPeriodBase(double seconds) => RotationalPeriod = Math.Max(0, seconds);
@@ -497,33 +452,11 @@ namespace WorldFoundry
             _lastSeason = null;
         }
 
-        private void SubdivideGrid(int size)
+        private void SetWorldGrid(int size)
         {
-            WorldGrid = new WorldGrid(null, size);
+            GenerateWorldGrid(size);
 
-            CoriolisCoefficients = new Dictionary<float, float>();
-            var radiusSq = (float)Math.Pow(Radius, 2);
-            foreach (var t in WorldGrid.Tiles)
-            {
-                var a = 0f;
-                for (int k = 0; k < t.EdgeCount; k++)
-                {
-                    var angle = Math.Acos(Vector3.Dot(Vector3.Normalize(t.Vector) - WorldGrid.GetCorner(t.GetCorner(k)).Vector,
-                        Vector3.Normalize(t.Vector - WorldGrid.GetCorner(t.GetCorner((k + 1) % t.EdgeCount)).Vector)));
-                    a += 0.5f * (float)Math.Sin(angle) * Vector3.Distance(t.Vector, WorldGrid.GetCorner(t.GetCorner(k)).Vector) * Vector3.Distance(t.Vector, WorldGrid.GetCorner(t.GetCorner((k + 1) % t.EdgeCount)).Vector);
-                }
-                t.Area = a * radiusSq;
-
-                t.Latitude = GetPlanetLatitude(t.Vector);
-                if (!CoriolisCoefficients.ContainsKey(t.Latitude))
-                {
-                    CoriolisCoefficients.Add(t.Latitude, GetCoriolisCoefficient(t.Latitude));
-                }
-                t.Longitude = GetPlanetLongitude(t.Vector);
-                var rotation = AxisRotation.GetReferenceRotation(t.Vector);
-                t.SetPolygon(rotation);
-                t.North = GetNorth(t, rotation);
-            }
+            SetWaterRatio(WaterRatio);
         }
     }
 }

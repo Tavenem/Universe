@@ -2,13 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using WorldFoundry.Extensions;
 
 namespace WorldFoundry.WorldGrids
 {
     public class WorldGrid
     {
+        /// <summary>
+        /// The default multiplier for the elevation noise generation.
+        /// </summary>
+        public const int elevationFactor = 100;
+
         /// <summary>
         /// The maximum grid size (level of detail). 16 is a hard limit. 17 would cause an int
         /// overflow for list indexes.
@@ -143,6 +148,12 @@ namespace WorldFoundry.WorldGrids
         /// <returns>The <see cref="Edge"/> with the given index.</returns>
         public Edge GetEdge(int index) => Edges.FirstOrDefault(x => x.Index == index);
 
+        private float GetNorth(Tile t, Quaternion rotation)
+        {
+            var v = Vector3.Transform(TileArray[t.Tile0].Vector, rotation);
+            return (float)(Math.PI - Math.Atan2(v.Y, v.X));
+        }
+
         /// <summary>
         /// Gets the <see cref="Tile"/> with the given index.
         /// </summary>
@@ -156,6 +167,71 @@ namespace WorldFoundry.WorldGrids
             for (int i = 0; i < collection.Count; i++)
             {
                 array[i] = collection.FirstOrDefault(x => x.Index == i);
+            }
+        }
+
+        internal void SetCoriolisCoefficients()
+        {
+            var coriolisCoefficients = new Dictionary<float, float>();
+            foreach (var t in TileArray)
+            {
+                if (!coriolisCoefficients.ContainsKey(t.Latitude))
+                {
+                    coriolisCoefficients.Add(t.Latitude, Planet.GetCoriolisCoefficient(t.Latitude));
+                }
+                t.CoriolisCoefficient = coriolisCoefficients[t.Latitude];
+            }
+        }
+
+        private void SetElevation()
+        {
+            int seed = Planet.ID.GetHashCode();
+
+            var m = new FastNoise(seed);
+            m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            m.SetFractalOctaves(6);
+            var n = new FastNoise(seed >> (int.MaxValue / 5));
+            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            n.SetFractalOctaves(5);
+            var o = new FastNoise(seed >> (int.MaxValue / 5 * 2));
+            o.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            o.SetFractalOctaves(4);
+            foreach (var t in TileArray)
+            {
+                var v = t.Vector * elevationFactor;
+                t.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
+            }
+            foreach (var c in CornerArray)
+            {
+                var v = c.Vector * elevationFactor;
+                c.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
+            }
+
+            var lowest = Math.Min(TileArray.Min(t => t.Elevation), CornerArray.Min(c => c.Elevation));
+            var highest = Math.Max(TileArray.Max(t => t.Elevation), CornerArray.Max(c => c.Elevation));
+            highest -= lowest;
+
+            var max = 2e5 / Planet.SurfaceGravity;
+            var r = new Random(seed);
+            var d = 0.0;
+            for (int i = 0; i < 5; i++)
+            {
+                d += Math.Pow(r.NextDouble(), 3);
+            }
+            d /= 5;
+            max = (max * (d + 3) / 8) + (max / 2);
+
+            var scale = (float)(max / highest);
+            foreach (var t in TileArray)
+            {
+                t.Elevation -= lowest;
+                t.Elevation *= scale;
+                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : t.Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
+            }
+            foreach (var c in CornerArray)
+            {
+                c.Elevation -= lowest;
+                c.Elevation *= scale;
             }
         }
 
@@ -379,6 +455,34 @@ namespace WorldFoundry.WorldGrids
                 c.Longitude = Planet.VectorToLongitude(c.Vector);
             }
 
+            foreach (var t in TileArray)
+            {
+                var a = 0.0;
+                for (int k = 0; k < t.EdgeCount; k++)
+                {
+                    var c1v = CornerArray[t.GetCorner(k)].Vector;
+                    var c2v = CornerArray[t.GetCorner((k + 1) % t.EdgeCount)].Vector;
+                    var angle = Math.Acos(Vector3.Dot(Vector3.Normalize(t.Vector) - c1v, Vector3.Normalize(t.Vector - c2v)));
+                    a += 0.5 * Math.Sin(angle) * Vector3.Distance(t.Vector, c1v) * Vector3.Distance(t.Vector, c2v);
+                }
+                t.Area = (float)(a * Planet.RadiusSquared);
+
+                t.Latitude = Planet.VectorToLatitude(t.Vector);
+                t.Longitude = Planet.VectorToLongitude(t.Vector);
+                var rotation = Planet.AxisRotation.GetReferenceRotation(t.Vector);
+                t.SetPolygon(rotation);
+                t.North = GetNorth(t, rotation);
+            }
+
+            SetElevation();
+
+            SetCoriolisCoefficients();
+
+            UpdateCollectionsFromArrays();
+        }
+
+        internal void UpdateCollectionsFromArrays()
+        {
             Corners = new HashSet<Corner>(CornerArray);
             Edges = new HashSet<Edge>(EdgeArray);
             Tiles = new HashSet<Tile>(TileArray);

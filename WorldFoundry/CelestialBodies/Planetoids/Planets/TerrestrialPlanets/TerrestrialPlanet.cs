@@ -10,6 +10,7 @@ using WorldFoundry.Climate;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
 using WorldFoundry.Utilities;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -168,6 +169,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             get => GetProperty(ref _surfaceAlbedo, GenerateAlbedo) ?? 0;
             internal set => _surfaceAlbedo = value;
         }
+
+        /// <summary>
+        /// The <see cref="WorldGrids.WorldGrid"/> which describes this <see cref="TerrestrialPlanet"/>'s surface.
+        /// </summary>
+        public WorldGrid WorldGrid { get; private set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
@@ -1429,6 +1435,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Generates a new <see cref="WorldGrid"/> for this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        /// <param name="size">The grid size (level of detail) for the <see cref="WorldGrid"/>.</param>
+        internal void GenerateWorldGrid(int size) => WorldGrid = new WorldGrid(this, Math.Min(WorldGrid.maxGridSize, size));
+
+        /// <summary>
         /// Calculates the distance (in meters) this <see cref="TerrestrialPlanet"/> would have to be
         /// from a <see cref="Star"/> in order to have the given effective temperature.
         /// </summary>
@@ -1463,14 +1475,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
 
         /// <summary>
-        /// Calculates the mass required to produce the given surface gravity.
+        /// Calculates the mass required to produce the given surface gravity, if a <see
+        /// cref="CelestialEntity.Shape"/> is already defined.
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in kg/m².</param>
         /// <returns>The mass required to produce the given surface gravity, in kg.</returns>
         private double GetMassForSurfaceGravity(float gravity) => (gravity * RadiusSquared) / Utilities.Science.Constants.G;
 
         /// <summary>
-        /// Calculates the radius required to produce the given surface gravity.
+        /// Calculates the radius required to produce the given surface gravity, if a <see
+        /// cref="Planetoid.Density"/> is already defined.
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in kg/m².</param>
         /// <returns>The radius required to produce the given surface gravity, in meters.</returns>

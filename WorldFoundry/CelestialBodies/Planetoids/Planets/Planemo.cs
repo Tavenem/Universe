@@ -261,6 +261,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         public virtual float GetCoreProportion() => coreProportion;
 
         /// <summary>
+        /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planemo"/>.
+        /// </summary>
+        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
+        /// <returns></returns>
+        internal float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
+
+        /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the crust of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>

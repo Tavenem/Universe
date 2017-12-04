@@ -21,7 +21,6 @@ namespace WorldFoundry.Web.Controllers
                 var (atmosphericPressure,
                     axialTilt,
                     radius,
-                    revolutionPeriod,
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
@@ -30,7 +29,6 @@ namespace WorldFoundry.Web.Controllers
                     atmosphericPressure,
                     axialTilt,
                     radius,
-                    revolutionPeriod,
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
@@ -41,18 +39,16 @@ namespace WorldFoundry.Web.Controllers
             float atmosphericPressure,
             float axialTilt,
             int radius,
-            double revolutionPeriod,
             double rotationalPeriod,
             float waterRatio,
             int gridSize,
             Guid id)
-            => $"{atmosphericPressure.ToString("G9")};{axialTilt.ToString("G9")};{radius.ToString("X")};{revolutionPeriod.ToString("G17")};{rotationalPeriod.ToString("G17")};{waterRatio.ToString("G9")};{gridSize.ToString("X")};{id.ToString()}";
+            => $"{atmosphericPressure.ToString("G9")};{axialTilt.ToString("G9")};{radius.ToString("X")};{rotationalPeriod.ToString("G17")};{waterRatio.ToString("G9")};{gridSize.ToString("X")};{id.ToString()}";
 
         public PlanetData GetPlanet(
             float atmosphericPressure = Planet.defaultAtmosphericPressure,
             float axialTilt = Planet.defaultAxialTilt,
             int radius = Planet.defaultRadius,
-            double revolutionPeriod = Planet.defaultRevolutionPeriod,
             double rotationalPeriod = Planet.defaultRotationalPeriod,
             float waterRatio = Planet.defaultWaterRatio,
             int gridSize = 4,
@@ -67,7 +63,6 @@ namespace WorldFoundry.Web.Controllers
                 atmosphericPressure,
                 axialTilt,
                 radius,
-                revolutionPeriod,
                 rotationalPeriod,
                 waterRatio,
                 gridSize,
@@ -79,11 +74,10 @@ namespace WorldFoundry.Web.Controllers
                     atmosphericPressure,
                     axialTilt,
                     radius,
-                    revolutionPeriod,
                     rotationalPeriod,
                     waterRatio,
                     gridSize,
-                    id: guid);
+                    guid);
                 p.SetClimate();
                 return p;
             });
@@ -97,7 +91,6 @@ namespace WorldFoundry.Web.Controllers
             float atmosphericPressure,
             float axialTilt,
             int radius,
-            double revolutionPeriod,
             double rotationalPeriod,
             float waterRatio,
             int gridSize,
@@ -115,10 +108,6 @@ namespace WorldFoundry.Web.Controllers
             if (tokens.Length < 3 || !int.TryParse(tokens[2], out var radius))
             {
                 radius = Planet.defaultRadius;
-            }
-            if (tokens.Length < 4 || !double.TryParse(tokens[3], out var revolutionPeriod))
-            {
-                revolutionPeriod = Planet.defaultRevolutionPeriod;
             }
             if (tokens.Length < 5 || !double.TryParse(tokens[4], out var rotationalPeriod))
             {
@@ -141,7 +130,6 @@ namespace WorldFoundry.Web.Controllers
                 atmosphericPressure,
                 axialTilt,
                 radius,
-                revolutionPeriod,
                 rotationalPeriod,
                 waterRatio,
                 gridSize,

@@ -28,6 +28,11 @@ namespace WorldFoundry.WorldGrids
         public ClimateType ClimateType { get; internal set; }
 
         /// <summary>
+        /// The Coriolis coefficient at this <see cref="Tile"/>'s <see cref="Latitude"/>.
+        /// </summary>
+        internal float CoriolisCoefficient { get; set; }
+
+        /// <summary>
         /// The index of the first <see cref="Corner"/> to which this <see cref="Tile"/> is connected.
         /// </summary>
         public int Corner0 { get; private set; } = -1;
@@ -102,7 +107,7 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         public float Elevation { get; internal set; }
 
-        internal float FrictionCoefficient { get; private set; }
+        internal float FrictionCoefficient { get; set; }
 
         /// <summary>
         /// The <see cref="Climate.HumidityType"/> of this <see cref="Tile"/>.
@@ -906,9 +911,6 @@ namespace WorldFoundry.WorldGrids
                 HumidityType = HumidityType.Superhumid;
             }
         }
-
-        internal void SetFrictionCoefficient()
-            => FrictionCoefficient = Elevation <= 0 ? 0.000025f : Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
 
         /// <summary>
         /// Sets the value of the <see cref="Tile"/> index at the given index to this <see

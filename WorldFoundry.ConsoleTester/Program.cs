@@ -15,16 +15,14 @@ namespace WorldFoundry.ConsoleApp
         static void Main(string[] args)
         {
             Console.WriteLine("Commands:");
-            Console.WriteLine("  Generate new planet: \"planet [-p <atmospheric pressure>] [-a <axial tilt>] [-r <radius>] [-rp <revolution period>] [-ro <rotational period>] [-w <water ratio>] [-g <grid count>] [-es <elevation size>] [-seed <string>]\"");
+            Console.WriteLine("  Generate new planet: \"planet [-p <atmospheric pressure>] [-a <axial tilt>] [-r <radius>] [-ro <rotational period>] [-w <water ratio>] [-g <grid count>] [-seed <string>]\"");
             Console.WriteLine("  Generate new season: \"s [-d <duration>] [-n <number of seasons>]\"");
             Console.WriteLine("  Set Atmospheric Pressure: \"a <float, kPa>\"");
             Console.WriteLine("  Set Axial Tilt: \"a <float, radians>\"");
             Console.WriteLine("  Set Radius: \"r <int, meters>\"");
-            Console.WriteLine("  Set Revolution Period: \"rp <double, seconds>\"");
             Console.WriteLine("  Set Rotational Period: \"ro <double, seconds>\"");
             Console.WriteLine("  Set Water Ratio: \"w <float>\"");
             Console.WriteLine("  Set Grid Count: \"g <int>\"");
-            Console.WriteLine("  Set Elevation Size: \"es <int>\"");
             Console.WriteLine();
             while (ReadInput())
             {
@@ -39,11 +37,9 @@ namespace WorldFoundry.ConsoleApp
                   planetParams.AtmosphericPressure,
                   planetParams.AxialTilt,
                   planetParams.Radius,
-                  planetParams.RevolutionPeriod,
                   planetParams.RotationalPeriod,
                   planetParams.WaterRatio,
                   planetParams.GridSize,
-                  planetParams.ElevationSize,
                   planetParams.ID);
         }
 
@@ -604,9 +600,6 @@ namespace WorldFoundry.ConsoleApp
                         case "r":
                             planetParams.Radius = arg[1].ParseNullableInt();
                             break;
-                        case "rp":
-                            planetParams.RevolutionPeriod = arg[1].ParseNullableDouble();
-                            break;
                         case "ro":
                             planetParams.RotationalPeriod = arg[1].ParseNullableDouble();
                             break;
@@ -615,9 +608,6 @@ namespace WorldFoundry.ConsoleApp
                             break;
                         case "g":
                             planetParams.GridSize = arg[1].ParseNullableInt();
-                            break;
-                        case "es":
-                            planetParams.ElevationSize = arg[1].ParseNullableInt();
                             break;
                         case "seed":
                             if (Guid.TryParse(arg[1], out var id))
@@ -685,17 +675,6 @@ namespace WorldFoundry.ConsoleApp
                     _planet.ChangeRadius(result);
                 }
             }
-            else if (line.StartsWith("rp"))
-            {
-                if (_planet == null)
-                {
-                    GenerateNewPlanet(new PlanetParams());
-                }
-                if (GetDoubleArg(line, 2, out var result))
-                {
-                    _planet.ChangeRevolutionPeriod(result);
-                }
-            }
             else if (line.StartsWith("ro"))
             {
                 if (_planet == null)
@@ -727,17 +706,6 @@ namespace WorldFoundry.ConsoleApp
                 if (GetIntArg(line, 1, out var result))
                 {
                     _planet.ChangeGridSize(result);
-                }
-            }
-            else if (line.StartsWith("es"))
-            {
-                if (_planet == null)
-                {
-                    GenerateNewPlanet(new PlanetParams());
-                }
-                if (GetIntArg(line, 2, out var result))
-                {
-                    _planet.ChangeElevationSize(result);
                 }
             }
             return true;
