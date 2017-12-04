@@ -29,8 +29,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             get => GetProperty(ref _angleOfRotation, GenerateAngleOfRotation) ?? 0;
             internal set
             {
-                _angleOfRotation = value;
-                var q = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, value);
+                var angle = value;
+                while (angle > Math.PI)
+                {
+                    angle -= (float)Math.PI;
+                }
+                while (angle < 0)
+                {
+                    angle += (float)Math.PI;
+                }
+                _angleOfRotation = angle;
+                var q = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, angle);
                 Axis = Vector3.Transform(Vector3.UnitY, q);
                 AxisRotation = Quaternion.Conjugate(q);
             }

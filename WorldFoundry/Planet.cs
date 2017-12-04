@@ -88,7 +88,7 @@ namespace WorldFoundry
         {
             ID = id ?? Guid.NewGuid();
             SetRadiusBase(radius);
-            SetAxialTiltBase(axialTilt);
+            AxialTilt = axialTilt;
             SetRotationalPeriodBase(rotationalPeriod);
             WaterRatio = Math.Max(0, Math.Min(1, waterRatio));
             SetAtmosphericPressure(atmosphericPressure);
@@ -133,7 +133,7 @@ namespace WorldFoundry
         /// <param name="axialTilt">An axial tilt, in radians.</param>
         public void ChangeAxialTilt(float axialTilt)
         {
-            SetAxialTiltBase(axialTilt);
+            AxialTilt = axialTilt;
             _lastSeason = null;
         }
 
@@ -226,11 +226,11 @@ namespace WorldFoundry
             {
                 return;
             }
-            var waterMass = (HydrosphereSurface.GetProportion(Chemical.Water, Phase.Any)
-                + HydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Any))
-                * (Hydrosphere.Mixtures.Count > 0 ? HydrosphereSurface.Proportion : 1)
+            var waterMass = Mass
                 * Hydrosphere.Proportion
-                * Mass;
+                * (Hydrosphere.Mixtures.Count > 0 ? HydrosphereSurface.Proportion : 1)
+                * (HydrosphereSurface.GetProportion(Chemical.Water, Phase.Any)
+                + HydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Any));
             var oceanMass = 0.0;
             var oceanTileCount = 0;
             var seaLevel = 0f;
@@ -305,11 +305,12 @@ namespace WorldFoundry
                 c.Elevation -= seaLevel;
             }
 
-            var hydrosphereProportion = oceanMass / Mass;
+            var hydrosphereProportion = (float)(oceanMass / Mass);
             if (Hydrosphere.Mixtures.Count > 0)
             {
-                hydrosphereProportion *= HydrosphereSurface.Proportion;
+                hydrosphereProportion /= Hydrosphere.Proportion;
             }
+            HydrosphereSurface.Proportion = hydrosphereProportion;
         }
 
         /// <summary>
@@ -357,35 +358,6 @@ namespace WorldFoundry
             return _lastSeason;
         }
 
-        private void ScaleElevation(int seed)
-        {
-            var lowest = Math.Min(WorldGrid.Tiles.Min(t => t.Elevation), WorldGrid.Corners.Min(c => c.Elevation));
-            var highest = Math.Max(WorldGrid.Tiles.Max(t => t.Elevation), WorldGrid.Corners.Max(c => c.Elevation));
-            highest -= lowest;
-
-            var max = (float)(2e5 / SurfaceGravity);
-            var r = new Random(seed);
-            var d = 0f;
-            for (int i = 0; i < 5; i++)
-            {
-                d += (float)Math.Pow(r.NextDouble(), 3);
-            }
-            d /= 5;
-            max = (max * (d + 3) / 8) + (max / 2);
-
-            var scale = max / highest;
-            foreach (var t in WorldGrid.Tiles)
-            {
-                t.Elevation -= lowest;
-                t.Elevation *= scale;
-            }
-            foreach (var c in WorldGrid.Corners)
-            {
-                c.Elevation -= lowest;
-                c.Elevation *= scale;
-            }
-        }
-
         private void SetAtmosphericPressure(float pressure)
         {
             var atmPressure = (float)Math.Max(0, Math.Min(3774.3562, pressure));
@@ -395,14 +367,6 @@ namespace WorldFoundry
                 MaximumSurfacePressure = atmPressure,
             };
             GenerateAtmosphere();
-        }
-
-        private void SetAxialTiltBase(float axialTilt)
-        {
-            AxialTilt = Math.Max(0, Math.Min((float)Math.PI, axialTilt));
-            var q = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, AxialTilt);
-            Axis = Vector3.Transform(Vector3.UnitY, q);
-            AxisRotation = Quaternion.Conjugate(q);
         }
 
         /// <summary>
@@ -435,8 +399,9 @@ namespace WorldFoundry
 
         private void SetRadiusBase(int radius)
         {
-            var planetRadius = Math.Max(473000, Math.Min(9556500, radius));
-            GenerateShape(planetRadius);
+            var max = (float)Math.Pow((maxMass_Type / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
+            GenerateShape(Math.Max(600000, Math.Min(max, radius)));
+            Mass = Shape.GetVolume() * Density;
         }
 
         public void SetRotationalPeriodBase(double seconds) => RotationalPeriod = Math.Max(0, seconds);
