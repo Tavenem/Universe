@@ -18,13 +18,13 @@ namespace WorldFoundry.Space.Galaxies
     /// </remarks>
     public class GlobularCluster : Galaxy
     {
-        internal new const string baseTypeName = "Globular Cluster";
+        internal new static string baseTypeName = "Globular Cluster";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public new const double childDensity = 1.3e-17;
+        public new static double childDensity = 1.3e-17;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

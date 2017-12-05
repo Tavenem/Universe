@@ -11,13 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class IceGiant : GiantPlanet
     {
-        internal new const string baseTypeName = "Ice Giant";
+        internal new static string baseTypeName = "Ice Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal new const int maxSatellites = 40;
+        internal new static int maxSatellites = 40;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -185,6 +185,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// No "puffy" ice giants.
         /// </remarks>
-        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(Density_Min, Density_Max));
+        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(MinDensity, MaxDensity));
     }
 }

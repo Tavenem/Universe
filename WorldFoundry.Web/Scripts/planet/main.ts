@@ -330,7 +330,7 @@ function getPlanet(btn?: RenderButton) {
             planet = PlanetData.planetFromData(data);
             animationInfo.seed = planet.seed;
 
-            getSeasons(0, seasonCount, planet.orbitalPeriod / seasonCount, btn);
+            getSeasons(0, seasonCount, btn);
         })
         .catch((err: Error) => {
             console.log(err.message);
@@ -341,10 +341,9 @@ function getPlanet(btn?: RenderButton) {
         });
 }
 
-function getSeasons(n: number, total: number, duration: number, btn?: RenderButton) {
-    let seasonUrl = `/Home/GetSeason?key=${planet.key}`;
+function getSeasons(n: number, total: number, btn?: RenderButton) {
+    let seasonUrl = `/Home/GetSeason?key=${planet.key}&amount=${total}&index=${n}`;
     if (n === 0) {
-        seasonUrl += `&duration=${duration}`;
         showLoading("Loading climate data...");
     }
     fetch(seasonUrl)
@@ -359,7 +358,7 @@ function getSeasons(n: number, total: number, duration: number, btn?: RenderButt
             planet.seasons.push(data);
             n++;
             if (n < total) {
-                getSeasons(n, total, duration, btn);
+                getSeasons(n, total, btn);
             } else {
                 animationInfo.params.season = Math.min(total, seasonNum.valueAsNumber) - 1;
 

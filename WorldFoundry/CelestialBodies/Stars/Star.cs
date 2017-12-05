@@ -14,7 +14,7 @@ namespace WorldFoundry.CelestialBodies.Stars
     {
         public const string RedDwarfTypeName = "Red Dwarf";
 
-        internal new const string baseTypeName = "Star";
+        internal new static string baseTypeName = "Star";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

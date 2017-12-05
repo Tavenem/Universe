@@ -31,7 +31,7 @@ namespace WorldFoundry.Climate
             if (Elevation <= 20000)
             {
                 SaturationVaporPressure = Atmosphere.GetSaturationVaporPressure(Temperature * Exner(Pressure));
-                SaturationHumidity = SaturationVaporPressure / (Season.RWater * Temperature);
+                SaturationHumidity = SaturationVaporPressure / (Utilities.Science.Constants.SpecificGasConstantOfWater * Temperature);
                 SaturationMixingRatio = Atmosphere.GetSaturationMixingRatio(SaturationVaporPressure, Pressure);
             }
         }

@@ -12,13 +12,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class LavaPlanet : TerrestrialPlanet
     {
-        internal new const string baseTypeName = "Lava Planet";
+        internal new static string baseTypeName = "Lava Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal new const bool canHaveWater = false;
+        internal new static bool canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -27,7 +27,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected override bool CanHaveWater => canHaveWater;
 
-        internal new const int maxSatellites = 0;
+        internal new static int maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private const string planemoClassPrefix = "Lava";
+        private static string planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

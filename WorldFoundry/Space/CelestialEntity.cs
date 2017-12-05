@@ -17,9 +17,9 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Local space is a coordinate system with a range of -1000000 to 1000000.
         /// </summary>
-        internal const int localSpaceScale = 1000000;
+        internal const int LocalSpaceScale = 1000000;
 
-        internal const string baseTypeName = "Celestial Object";
+        internal static string baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
@@ -174,7 +174,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialEntity"/>.
         /// </summary>
-        public CelestialEntity() { }
+        public CelestialEntity() => ID = new Guid();
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialEntity"/> with the given parameters.
@@ -182,7 +182,7 @@ namespace WorldFoundry.Space
         /// <param name="parent">
         /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialEntity"/> is located.
         /// </param>
-        public CelestialEntity(CelestialObject parent)
+        public CelestialEntity(CelestialObject parent) : this()
         {
             Parent = parent;
             if (Parent.Children == null)
@@ -229,7 +229,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
-        private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / localSpaceScale) : null;
+        private float? GetLocalScale() => _radius.HasValue ? (float?)(_radius.Value / LocalSpaceScale) : null;
 
         /// <summary>
         /// Calculates the distance between the given position in local space to the

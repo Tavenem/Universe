@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Extensions;
+using WorldFoundry.Utilities;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -12,13 +13,13 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The default multiplier for the elevation noise generation.
         /// </summary>
-        public const int elevationFactor = 100;
+        private const int ElevationFactor = 100;
 
         /// <summary>
         /// The maximum grid size (level of detail). 16 is a hard limit. 17 would cause an int
         /// overflow for list indexes.
         /// </summary>
-        public const int maxGridSize = 16;
+        public const int MaxGridSize = 16;
 
         private Corner[] _cornerArray;
         internal Corner[] CornerArray
@@ -38,6 +39,15 @@ namespace WorldFoundry.WorldGrids
         /// The list of all <see cref="Corner"/>s which make up the <see cref="WorldGrid"/>.
         /// </summary>
         public ICollection<Corner> Corners { get; set; }
+
+        /// <summary>
+        /// The random seed used during elevation height map generation.
+        /// </summary>
+        /// <remarks>
+        /// Preserved so that future runs of the generation can produce identical results, in order
+        /// to reproduce the same height map for different <see cref="GridSize"/>s.
+        /// </remarks>
+        internal int ElevationSeed { get; private set; }
 
         private Edge[] _edgeArray;
         internal Edge[] EdgeArray
@@ -95,6 +105,10 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Initializes a new instance of <see cref="WorldGrid"/> with the given size (level of detail).
         /// </summary>
+        /// <param name="planet">
+        /// The <see cref="TerrestrialPlanet"/> this <see cref="WorldGrid"/> will map.
+        /// </param>
+        /// <param name="size">The grid size (level of detail) for this <see cref="WorldGrid"/>.</param>
         public WorldGrid(TerrestrialPlanet planet, int size)
         {
             Planet = planet;
@@ -131,6 +145,61 @@ namespace WorldFoundry.WorldGrids
                 t.SetEdge(t.IndexOfTile(e.GetTile((i + 1) % 2)), index);
                 var c = CornerArray[e.GetCorner(i)];
                 c.SetEdge(c.IndexOfCorner(e.GetCorner((i + 1) % 2)), index);
+            }
+        }
+
+        private void GenerateElevations(bool preserveShape = false)
+        {
+            if (!preserveShape)
+            {
+                ElevationSeed = Randomizer.Static.NextInclusiveMaxValue();
+            }
+
+            var m = new FastNoise(ElevationSeed);
+            m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            m.SetFractalOctaves(6);
+            var n = new FastNoise(ElevationSeed >> (int.MaxValue / 5));
+            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            n.SetFractalOctaves(5);
+            var o = new FastNoise(ElevationSeed >> (int.MaxValue / 5 * 2));
+            o.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            o.SetFractalOctaves(4);
+            foreach (var t in TileArray)
+            {
+                var v = t.Vector * ElevationFactor;
+                t.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
+            }
+            foreach (var c in CornerArray)
+            {
+                var v = c.Vector * ElevationFactor;
+                c.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
+            }
+
+            var lowest = Math.Min(TileArray.Min(t => t.Elevation), CornerArray.Min(c => c.Elevation));
+            var highest = Math.Max(TileArray.Max(t => t.Elevation), CornerArray.Max(c => c.Elevation));
+            highest -= lowest;
+
+            var max = 2e5 / Planet.SurfaceGravity;
+            var r = new Random(ElevationSeed);
+            var d = 0.0;
+            for (int i = 0; i < 5; i++)
+            {
+                d += Math.Pow(r.NextDouble(), 3);
+            }
+            d /= 5;
+            max = (max * (d + 3) / 8) + (max / 2);
+
+            var scale = (float)(max / highest);
+            foreach (var t in TileArray)
+            {
+                t.Elevation -= lowest;
+                t.Elevation *= scale;
+                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : t.Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
+            }
+            foreach (var c in CornerArray)
+            {
+                c.Elevation -= lowest;
+                c.Elevation *= scale;
             }
         }
 
@@ -183,57 +252,16 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private void SetElevation()
-        {
-            int seed = Planet.ID.GetHashCode();
-
-            var m = new FastNoise(seed);
-            m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            m.SetFractalOctaves(6);
-            var n = new FastNoise(seed >> (int.MaxValue / 5));
-            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            n.SetFractalOctaves(5);
-            var o = new FastNoise(seed >> (int.MaxValue / 5 * 2));
-            o.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            o.SetFractalOctaves(4);
-            foreach (var t in TileArray)
-            {
-                var v = t.Vector * elevationFactor;
-                t.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-            foreach (var c in CornerArray)
-            {
-                var v = c.Vector * elevationFactor;
-                c.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-
-            var lowest = Math.Min(TileArray.Min(t => t.Elevation), CornerArray.Min(c => c.Elevation));
-            var highest = Math.Max(TileArray.Max(t => t.Elevation), CornerArray.Max(c => c.Elevation));
-            highest -= lowest;
-
-            var max = 2e5 / Planet.SurfaceGravity;
-            var r = new Random(seed);
-            var d = 0.0;
-            for (int i = 0; i < 5; i++)
-            {
-                d += Math.Pow(r.NextDouble(), 3);
-            }
-            d /= 5;
-            max = (max * (d + 3) / 8) + (max / 2);
-
-            var scale = (float)(max / highest);
-            foreach (var t in TileArray)
-            {
-                t.Elevation -= lowest;
-                t.Elevation *= scale;
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : t.Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
-            }
-            foreach (var c in CornerArray)
-            {
-                c.Elevation -= lowest;
-                c.Elevation *= scale;
-            }
-        }
+        /// <summary>
+        /// Changes the current <see cref="GridSize"/> to the desired <paramref name="size"/>.
+        /// </summary>
+        /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
+        /// <param name="preserveShape">
+        /// If true, the same random seed will be used for elevation generation as before, resulting
+        /// in the same height map (can be used to maintain a similar look when changing <see
+        /// cref="GridSize"/>, rather than an entirely new geography).
+        /// </param>
+        internal void SetGridSize(int size, bool preserveShape = false) => SubdivideGrid(Math.Min(MaxGridSize, size));
 
         private void SetGridSize0()
         {
@@ -433,9 +461,9 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private void SubdivideGrid(int size)
+        private void SubdivideGrid(int size, bool preserveShape = false)
         {
-            if (GridSize < 0)
+            if (GridSize < 0 || size < GridSize)
             {
                 SetGridSize0();
             }
@@ -474,7 +502,7 @@ namespace WorldFoundry.WorldGrids
                 t.North = GetNorth(t, rotation);
             }
 
-            SetElevation();
+            GenerateElevations(preserveShape);
 
             SetCoriolisCoefficients();
 

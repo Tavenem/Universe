@@ -13,7 +13,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class OceanPlanet : TerrestrialPlanet
     {
-        internal new const string baseTypeName = "Ocean Planet";
+        internal new static string baseTypeName = "Ocean Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
@@ -28,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override float MagnetosphereChanceFactor => 0.5f;
 
-        private const string planemoClassPrefix = "Ocean";
+        private static string planemoClassPrefix = "Ocean";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

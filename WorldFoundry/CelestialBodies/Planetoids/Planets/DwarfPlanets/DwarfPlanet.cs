@@ -17,13 +17,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class DwarfPlanet : Planemo
     {
-        internal new const string baseTypeName = "Dwarf Planet";
+        internal new static string baseTypeName = "Dwarf Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal const double maxMass_Type = 2.0e22;
+        internal static double densityForType = 2000;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal override double DensityForType => densityForType;
+
+        internal static double maxMassForType = 2.0e22;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -32,9 +38,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        internal override double? MaxMass_Type => maxMass_Type;
+        internal override double? MaxMassForType => maxMassForType;
 
-        internal const double minMass_Type = 3.4e20;
+        internal static double minMassForType = 3.4e20;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -42,7 +48,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <remarks>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </remarks>
-        internal override double? MinMass_Type => minMass_Type;
+        internal override double? MinMassForType => minMassForType;
 
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
@@ -52,12 +58,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// cref="DwarfPlanet"/>s.
         /// </remarks>
         protected new static float RingChance => 10;
-
-        internal const double typeDensity = 2000;
-        /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        internal override double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.

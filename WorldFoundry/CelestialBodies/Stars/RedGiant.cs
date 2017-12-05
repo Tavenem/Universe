@@ -10,7 +10,7 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class RedGiant : GiantStar
     {
-        internal new const string baseTypeName = "Red Giant";
+        internal new static string baseTypeName = "Red Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

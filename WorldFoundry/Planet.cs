@@ -20,46 +20,46 @@ namespace WorldFoundry
         /// <summary>
         /// The default atmospheric pressure, used if none is specified during planet creation, in kPa.
         /// </summary>
-        public const float defaultAtmosphericPressure = 101.325f;
+        public const float DefaultAtmosphericPressure = 101.325f;
 
         /// <summary>
         /// The default axial tilt, used if none is specified during planet creation, in radians.
         /// </summary>
-        public const float defaultAxialTilt = 0.41f;
+        public const float DefaultAxialTilt = 0.41f;
 
         /// <summary>
         /// The default grid size (level of detail), used if none is specified during planet creation.
         /// </summary>
-        public const int defaultGridSize = 6;
+        public const int DefaultGridSize = 6;
 
         /// <summary>
         /// The default planetary radius, used if none is specified during planet creation, in meters.
         /// </summary>
-        public const int defaultRadius = 6371000;
+        public const int DefaultRadius = 6371000;
 
         /// <summary>
         /// The default period of revolution, used if none is specified during planet creation, in seconds.
         /// </summary>
-        public const double defaultRevolutionPeriod = 31558150;
+        public const double DefaultRevolutionPeriod = 31558150;
 
         /// <summary>
         /// The default period of rotation, used if none is specified during planet creation, in seconds.
         /// </summary>
-        public const double defaultRotationalPeriod = 86164;
+        public const double DefaultRotationalPeriod = 86164;
 
         /// <summary>
         /// The default ratio of water coverage, used if none is specified during planet creation.
         /// </summary>
-        public const float defaultWaterRatio = 0.65f;
+        public const float DefaultWaterRatio = 0.65f;
 
-        private const int defaultDensity = 5514;
+        private const int DefaultDensity = 5514;
 
-        private double _defaultSeasonDuration;
-        private float _defaultSeasonProportion;
-        private float _elapsedYearToDate = 0;
-        private Season _lastSeason;
-        private double? _seasonDuration;
-        private float? _seasonProportion;
+        /// <summary>
+        /// The number of <see cref="Season"/> s in a year, based on the last <see cref="Season"/> set.
+        /// </summary>
+        public int SeasonCount { get; private set; }
+
+        internal ICollection<Season> Seasons { get; private set; }
 
         /// <summary>
         /// The ratio of water coverage on the planet.
@@ -89,11 +89,13 @@ namespace WorldFoundry
             ID = id ?? Guid.NewGuid();
             SetRadiusBase(radius);
             AxialTilt = axialTilt;
-            SetRotationalPeriodBase(rotationalPeriod);
+            SetRotationalPeriod(rotationalPeriod);
             WaterRatio = Math.Max(0, Math.Min(1, waterRatio));
             SetAtmosphericPressure(atmosphericPressure);
 
-            ChangeGridSize(gridSize);
+            GenerateWorldGrid(gridSize);
+
+            SetWaterRatio(WaterRatio);
         }
 
         /// <summary>
@@ -109,12 +111,12 @@ namespace WorldFoundry
             int? gridSize = null,
             Guid? id = null)
             => new Planet(
-                atmosphericPressure ?? defaultAtmosphericPressure,
-                axialTilt ?? defaultAxialTilt,
-                radius ?? defaultRadius,
-                rotationalPeriod ?? defaultRotationalPeriod,
-                waterRatio ?? defaultWaterRatio,
-                gridSize ?? defaultGridSize,
+                atmosphericPressure ?? DefaultAtmosphericPressure,
+                axialTilt ?? DefaultAxialTilt,
+                radius ?? DefaultRadius,
+                rotationalPeriod ?? DefaultRotationalPeriod,
+                waterRatio ?? DefaultWaterRatio,
+                gridSize ?? DefaultGridSize,
                 id);
 
         /// <summary>
@@ -124,7 +126,7 @@ namespace WorldFoundry
         public void ChangeAtmosphericPressure(float pressure)
         {
             SetAtmosphericPressure(pressure);
-            _lastSeason = null;
+            Seasons.Clear();
         }
 
         /// <summary>
@@ -134,13 +136,8 @@ namespace WorldFoundry
         public void ChangeAxialTilt(float axialTilt)
         {
             AxialTilt = axialTilt;
-            _lastSeason = null;
+            Seasons.Clear();
         }
-
-        /// <summary>
-        /// Changes the grid size (level of detail) of the <see cref="Planet"/>.
-        /// </summary>
-        public void ChangeGridSize(int gridSize) => SetWorldGrid(Math.Min(WorldGrid.maxGridSize, gridSize));
 
         /// <summary>
         /// Changes the radius of the planet.
@@ -149,18 +146,7 @@ namespace WorldFoundry
         public void ChangeRadius(int radius)
         {
             SetRadiusBase(radius);
-            _lastSeason = null;
-        }
-
-        /// <summary>
-        /// Changes the period of rotation of the planet.
-        /// </summary>
-        /// <param name="radius">A period, in seconds.</param>
-        public void ChangeRotationalPeriod(double seconds)
-        {
-            SetRotationalPeriodBase(seconds);
-            WorldGrid.SetCoriolisCoefficients();
-            WorldGrid.UpdateCollectionsFromArrays();
+            Seasons.Clear();
         }
 
         private void ClassifyTerrain()
@@ -314,48 +300,122 @@ namespace WorldFoundry
         }
 
         /// <summary>
-        /// Generates a <see cref="Season"/> for the planet.
+        /// Gets or generates a <see cref="Season"/> for the planet.
         /// </summary>
-        /// <param name="duration">
-        /// The duration of the season. If none of the planet's properties have been altered since
-        /// the last <see cref="Season"/> was generated, the duration can be left as null and the
-        /// last-used value will be repeated. If the duration is left null in other circumstances,
-        /// the default of one quarter of the planet's rotational period will be used.
+        /// <param name="amount">
+        /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
         /// </param>
-        public Season GetSeason(double? duration = null)
+        /// <param name="index">
+        /// The 0-based index of the new <see cref="Season"/> out of one year's worth.
+        /// </param>
+        /// <returns>A <see cref="Season"/> for the planet.</returns>
+        public Season GetSeason(int amount, int index)
         {
-            if (_lastSeason == null)
+            if (Orbit == null)
             {
-                SetClimate();
+                throw new Exception("Can only generate seasons for planets in orbit.");
+            }
+            if (amount < 1)
+            {
+                throw new ArgumentException($"{nameof(amount)} must be greater than or equal to 1.", nameof(amount));
+            }
+            if (index < 0)
+            {
+                throw new ArgumentException($"{nameof(index)} must be greater than or equal to 0.", nameof(index));
             }
 
-            var revolutionPeriod = Orbit?.Period ?? defaultRevolutionPeriod;
-            if (duration.HasValue && duration != _seasonDuration)
+            Season season, previousSeason = null;
+            if (amount == SeasonCount)
             {
-                _seasonDuration = Math.Min(Math.Max(Season.secondsPerDay, duration.Value), revolutionPeriod);
-                _seasonProportion = (float)(_seasonDuration / revolutionPeriod);
+                season = Seasons?.FirstOrDefault(x => x.Index == index);
+                if (season != null)
+                {
+                    return season;
+                }
+            }
+            else if (index == 0)
+            {
+                previousSeason = Seasons.FirstOrDefault(x => x.Index == SeasonCount - 1);
+            }
+            else
+            {
+                GetSeason(amount, 0);
             }
 
-            var defaultDuration = Math.Min(Math.Max(Season.secondsPerDay, revolutionPeriod / 4), revolutionPeriod);
-            var defaultProportion = (float)(defaultDuration / revolutionPeriod);
-            _lastSeason = new Season(
+            if (Seasons == null)
+            {
+                Seasons = new HashSet<Season>();
+            }
+            else if (SeasonCount != amount)
+            {
+                Seasons.Clear();
+            }
+            SeasonCount = amount;
+
+            if (previousSeason == null)
+            {
+                previousSeason = index == 0
+                    ? Seasons.FirstOrDefault(x => x.Index == SeasonCount - 1)
+                    : Seasons.FirstOrDefault(x => x.Index == index - 1);
+            }
+            if (previousSeason == null)
+            {
+                if (index == 0)
+                {
+                    previousSeason = SetClimate();
+                }
+                else
+                {
+                    for (int i = 0; i < index; i++)
+                    {
+                        previousSeason = Seasons.FirstOrDefault(x => x.Index == i);
+                        if (previousSeason == null)
+                        {
+                            previousSeason = GetSeason(amount, i);
+                        }
+                    }
+                }
+            }
+
+            var seasonDuration = Orbit.Period / amount;
+            var seasonProportion = 1.0f / amount;
+            var seasonAngle = Utilities.MathUtil.Constants.TwoPI / amount;
+
+            var winterAngle = AxialPrecession + Utilities.MathUtil.Constants.HalfPI;
+            if (winterAngle >= Utilities.MathUtil.Constants.TwoPI)
+            {
+                winterAngle -= Utilities.MathUtil.Constants.TwoPI;
+            }
+            var seasonStartAngle = winterAngle + (seasonAngle / 2);
+
+            var r0xz = new Vector3(Orbit.R0X, 0, Orbit.R0Z);
+            var r0Angle = r0xz.GetAngle(Vector3.UnitX);
+            var delta = seasonStartAngle - r0Angle;
+            var seasonTrueAnomaly = Orbit.TrueAnomaly + delta;
+            if (seasonTrueAnomaly < 0)
+            {
+                seasonTrueAnomaly += Utilities.MathUtil.Constants.TwoPI;
+            }
+
+            seasonTrueAnomaly += seasonAngle * index;
+            if (seasonTrueAnomaly >= Utilities.MathUtil.Constants.TwoPI)
+            {
+                seasonTrueAnomaly -= Utilities.MathUtil.Constants.TwoPI;
+            }
+            var (r, v) = Orbit.GetStateVectorsForTrueAnomaly((float)seasonTrueAnomaly);
+
+            var elapsedYearToDate = seasonProportion * index;
+
+            season = new Season(
+                index,
                 this,
-                _seasonDuration ?? defaultDuration,
-                _elapsedYearToDate,
-                _seasonProportion ?? defaultProportion,
-                _lastSeason);
-
-            _elapsedYearToDate += _seasonProportion ?? defaultProportion;
-            if (_elapsedYearToDate > 1)
-            {
-                _elapsedYearToDate -= 1;
-            }
-            if (_elapsedYearToDate < Utilities.MathUtil.Constants.NearlyZero)
-            {
-                _elapsedYearToDate = 0;
-            }
-
-            return _lastSeason;
+                r,
+                seasonDuration,
+                elapsedYearToDate,
+                seasonProportion,
+                previousSeason);
+            Seasons.Add(season);
+            return season;
         }
 
         private void SetAtmosphericPressure(float pressure)
@@ -369,24 +429,54 @@ namespace WorldFoundry
             GenerateAtmosphere();
         }
 
-        /// <summary>
-        /// Sets the climate for the planet's tiles. Can be called directly, but will be called
-        /// automatically the first time a <see cref="Season"/> is generated for the planet, if not.
-        /// </summary>
-        public void SetClimate()
+        private Season SetClimate()
         {
-            // 1 year is pre-generated as a single season,
-            // and 1 as 12 seasons, to prime the algorithms,
-            // which produce better values with historical data.
-            var revolutionPeriod = Orbit?.Period ?? defaultRevolutionPeriod;
-            _lastSeason = new Season(this, revolutionPeriod, 0, 1, null);
-            var seasonDuration = revolutionPeriod / 12;
+            // A year is pre-generated as a single season, and another as 12 seasons, to prime the
+            // algorithms, which produce better values with historical data.
+
+            var winterAngle = AxialPrecession + Utilities.MathUtil.Constants.HalfPI;
+            if (winterAngle >= Utilities.MathUtil.Constants.TwoPI)
+            {
+                winterAngle -= Utilities.MathUtil.Constants.TwoPI;
+            }
+            var r0xz = new Vector3(Orbit.R0X, 0, Orbit.R0Z);
+            var r0Angle = r0xz.GetAngle(Vector3.UnitX);
+            var delta = winterAngle - r0Angle;
+            var seasonTrueAnomaly = Orbit.TrueAnomaly + delta;
+            if (seasonTrueAnomaly < 0)
+            {
+                seasonTrueAnomaly += Utilities.MathUtil.Constants.TwoPI;
+            }
+            if (seasonTrueAnomaly >= Utilities.MathUtil.Constants.TwoPI)
+            {
+                seasonTrueAnomaly -= Utilities.MathUtil.Constants.TwoPI;
+            }
+            var (r, v) = Orbit.GetStateVectorsForTrueAnomaly((float)seasonTrueAnomaly);
+
+            var season = new Season(1, this, r, Orbit.Period, 0, 1);
+
+            var seasonAngle = Utilities.MathUtil.Constants.TwoPI / 12;
+            var seasonStartAngle = winterAngle + (seasonAngle / 2);
+            delta = seasonStartAngle - r0Angle;
+            seasonTrueAnomaly = Orbit.TrueAnomaly + delta;
+            if (seasonTrueAnomaly < 0)
+            {
+                seasonTrueAnomaly += Utilities.MathUtil.Constants.TwoPI;
+            }
+            var seasonDuration = Orbit.Period / 12;
             var seasonProportion = 1.0f / 12;
             var seasons = new List<Season>(12);
             for (int i = 0; i < 12; i++)
             {
-                _lastSeason = new Season(this, seasonDuration, (float)i / 12, seasonProportion, _lastSeason);
-                seasons.Add(_lastSeason);
+                seasonTrueAnomaly += seasonAngle * i;
+                if (seasonTrueAnomaly >= Utilities.MathUtil.Constants.TwoPI)
+                {
+                    seasonTrueAnomaly -= Utilities.MathUtil.Constants.TwoPI;
+                }
+                (r, v) = Orbit.GetStateVectorsForTrueAnomaly((float)seasonTrueAnomaly);
+
+                season = new Season(i, this, r, seasonDuration, i / 12.0f, seasonProportion, season);
+                seasons.Add(season);
             }
 
             for (int i = 0; i < WorldGrid.Tiles.Count; i++)
@@ -395,16 +485,31 @@ namespace WorldFoundry
                     seasons.Average(s => s.TileClimates[i].Temperature),
                     seasons.Sum(s => s.TileClimates[i].Precipitation));
             }
+
+            return season;
+        }
+
+        /// <summary>
+        /// Changes the <see cref="WorldGrid.GridSize"/> of the <see cref="Planet"/>'s <see cref="WorldGrid"/>.
+        /// </summary>
+        /// <param name="gridSize">The desired <see cref="WorldGrid.GridSize"/> (level of detail).</param>
+        /// <param name="preserveShape">
+        /// If true, the same random seed will be used for elevation generation as before, resulting
+        /// in the same height map (can be used to maintain a similar look when changing <see
+        /// cref="WorldGrid.GridSize"/>, rather than an entirely new geography).
+        /// </param>
+        public void SetGridSize(int gridSize, bool preserveShape = true)
+        {
+            WorldGrid.SetGridSize(gridSize, preserveShape);
+
+            SetWaterRatio(WaterRatio);
         }
 
         private void SetRadiusBase(int radius)
         {
-            var max = (float)Math.Pow((maxMass_Type / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
-            GenerateShape(Math.Max(600000, Math.Min(max, radius)));
+            GenerateShape(Math.Max(600000, Math.Min(radius, GetMaxRadius())));
             Mass = Shape.GetVolume() * Density;
         }
-
-        public void SetRotationalPeriodBase(double seconds) => RotationalPeriod = Math.Max(0, seconds);
 
         /// <summary>
         /// Sets the ratio of water coverage on the planet.
@@ -414,14 +519,7 @@ namespace WorldFoundry
         {
             CreateSea(Math.Max(0, Math.Min(1, waterRatio)));
             ClassifyTerrain();
-            _lastSeason = null;
-        }
-
-        private void SetWorldGrid(int size)
-        {
-            GenerateWorldGrid(size);
-
-            SetWaterRatio(WaterRatio);
+            Seasons.Clear();
         }
     }
 }

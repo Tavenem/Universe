@@ -13,13 +13,13 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxyGroup : CelestialObject
     {
-        internal new const string baseTypeName = "Galaxy Group";
+        internal new static string baseTypeName = "Galaxy Group";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public const double childDensity = 1.5e-70;
+        public static double childDensity = 1.5e-70;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
@@ -73,11 +73,11 @@ namespace WorldFoundry.Space
                 do
                 {
                     position = new Vector3(
-                        (float)Math.Round(Randomizer.Static.NextDouble(localSpaceScale), 4),
-                        (float)Math.Round(Randomizer.Static.NextDouble(localSpaceScale), 4),
-                        (float)Math.Round(Randomizer.Static.NextDouble(localSpaceScale), 4));
+                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4),
+                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4),
+                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4));
                     counter++;
-                } while ((position.Length() > localSpaceScale || IsGridSpacePopulated(PositionToGridCoords(position))) && counter < 100);
+                } while ((position.Length() > LocalSpaceScale || IsGridSpacePopulated(PositionToGridCoords(position))) && counter < 100);
                 if (counter >= 100)
                 {
                     break;

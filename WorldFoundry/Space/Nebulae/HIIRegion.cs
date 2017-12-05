@@ -13,13 +13,13 @@ namespace WorldFoundry.Space
     /// </summary>
     public class HIIRegion : Nebula
     {
-        internal new const string baseTypeName = "HII Region";
+        internal new static string baseTypeName = "HII Region";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public const double childDensity = 6.0e-50;
+        public static double childDensity = 6.0e-50;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

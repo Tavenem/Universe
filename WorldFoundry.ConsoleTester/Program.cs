@@ -16,7 +16,7 @@ namespace WorldFoundry.ConsoleApp
         {
             Console.WriteLine("Commands:");
             Console.WriteLine("  Generate new planet: \"planet [-p <atmospheric pressure>] [-a <axial tilt>] [-r <radius>] [-ro <rotational period>] [-w <water ratio>] [-g <grid count>] [-seed <string>]\"");
-            Console.WriteLine("  Generate new season: \"s [-d <duration>] [-n <number of seasons>]\"");
+            Console.WriteLine("  Generate seasons: \"s [-a <amount>]\"");
             Console.WriteLine("  Set Atmospheric Pressure: \"a <float, kPa>\"");
             Console.WriteLine("  Set Axial Tilt: \"a <float, radians>\"");
             Console.WriteLine("  Set Radius: \"r <int, meters>\"");
@@ -223,7 +223,7 @@ namespace WorldFoundry.ConsoleApp
             sb.AppendLine();
         }
 
-        static void AddPrecipitationString(StringBuilder sb, List<Season> seasons, float seasonToYearRatio)
+        static void AddPrecipitationString(StringBuilder sb, List<Season> seasons, float seasonsInYear)
         {
             sb.AppendLine("Precipitation (average, land):");
             var list = new List<float>();
@@ -238,38 +238,38 @@ namespace WorldFoundry.ConsoleApp
                 }
             }
             list.Sort();
-            sb.AppendFormat("  Avg:                     {0} mm", list.Count == 0 ? 0 : list.Average() * seasonToYearRatio);
+            sb.AppendFormat("  Avg:                     {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Count == 0 ? 0 : list.Take((int)Math.Floor(list.Count * 0.9)).Average() * seasonToYearRatio);
+            sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Count == 0 ? 0 : list.Take((int)Math.Floor(list.Count * 0.9)).Average() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  P10:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonToYearRatio);
+            sb.AppendFormat("  P10:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  Q1:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonToYearRatio);
+            sb.AppendFormat("  Q1:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  Q2:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonToYearRatio);
+            sb.AppendFormat("  Q2:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  Q3:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonToYearRatio);
+            sb.AppendFormat("  Q3:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  P90:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonToYearRatio);
+            sb.AppendFormat("  P90:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("  Max:                     {0} mm", list.Count == 0 ? 0 : list.Last() * seasonToYearRatio);
+            sb.AppendFormat("  Max:                     {0} mm", list.Count == 0 ? 0 : list.Last() * seasonsInYear);
             sb.AppendLine();
 
             sb.AppendLine("  Selected Tiles:");
             sb.AppendFormat("    [100]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[100].Precipitation) * seasonToYearRatio,
+                seasons.Average(s => s.TileClimates[100].Precipitation) * seasonsInYear,
                 _planet.WorldGrid.GetTile(100).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [200]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[200].Precipitation) * seasonToYearRatio,
+                seasons.Average(s => s.TileClimates[200].Precipitation) * seasonsInYear,
                 _planet.WorldGrid.GetTile(200).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [300]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[300].Precipitation) * seasonToYearRatio,
+                seasons.Average(s => s.TileClimates[300].Precipitation) * seasonsInYear,
                 _planet.WorldGrid.GetTile(300).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [400]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[400].Precipitation) * seasonToYearRatio,
+                seasons.Average(s => s.TileClimates[400].Precipitation) * seasonsInYear,
                 _planet.WorldGrid.GetTile(400).TerrainType);
             sb.AppendLine();
         }
@@ -368,7 +368,7 @@ namespace WorldFoundry.ConsoleApp
             sb.AppendLine();
         }
 
-        static void AddSnowString(StringBuilder sb, List<Season> seasons, float seasonToYearRatio)
+        static void AddSnowString(StringBuilder sb, List<Season> seasons, float seasonsInYear)
         {
             sb.AppendLine("Snow Cover (non-0):");
             sb.AppendLine("  Avg:");
@@ -385,19 +385,19 @@ namespace WorldFoundry.ConsoleApp
                 }
             }
             list.Sort();
-            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonToYearRatio);
+            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonToYearRatio);
+            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonToYearRatio);
+            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last() * seasonToYearRatio);
+            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last() * seasonsInYear);
             sb.AppendLine();
 
             sb.AppendLine("  Max:");
@@ -421,19 +421,19 @@ namespace WorldFoundry.ConsoleApp
                 }
             }
             list.Sort();
-            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonToYearRatio);
+            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonToYearRatio);
+            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonToYearRatio);
+            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonToYearRatio);
+            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonsInYear);
             sb.AppendLine();
-            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last() * seasonToYearRatio);
+            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last() * seasonsInYear);
             sb.AppendLine();
         }
 
@@ -529,40 +529,29 @@ namespace WorldFoundry.ConsoleApp
 
         static void ParseSeasonCommand(string cmd)
         {
-            double? duration = null;
-            var seasonToYearRatio = 1f;
+            int? seasonsInYear = 4;
             var seasons = new List<Season>();
-            if (string.IsNullOrEmpty(cmd))
+            if (!string.IsNullOrEmpty(cmd))
             {
-                seasonToYearRatio = 4;
-                seasons.Add(_planet.GetSeason(duration));
-            }
-            else
-            {
-                int? seasonCount = null;
                 foreach (var arg in cmd.Split('-', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Split(' ')).Where(x => x.Length > 1))
                 {
                     switch (arg[0])
                     {
-                        case "d":
-                            duration = arg[1].ParseNullableDouble();
-                            break;
-                        case "n":
-                            seasonCount = arg[1].ParseNullableInt();
+                        case "a":
+                            seasonsInYear = arg[1].ParseNullableInt();
                             break;
                         default:
                             break;
                     }
                 }
-                if (seasonCount == null)
+                if (seasonsInYear == null)
                 {
-                    seasonCount = 1;
+                    seasonsInYear = 4;
                 }
-                seasonToYearRatio = duration.HasValue ? (float)(_planet.RotationalPeriod / duration.Value) : 4;
-                for (int i = 0; i < seasonCount; i++)
-                {
-                    seasons.Add(_planet.GetSeason(duration));
-                }
+            }
+            for (int i = 0; i < seasonsInYear; i++)
+            {
+                seasons.Add(_planet.GetSeason(seasonsInYear.Value, i));
             }
 
             var sb = new StringBuilder();
@@ -571,9 +560,9 @@ namespace WorldFoundry.ConsoleApp
 
             //AddWindString(sb, seasons);
 
-            //AddPrecipitationString(sb, seasons, seasonToYearRatio);
+            //AddPrecipitationString(sb, seasons, seasonsInYear.Value);
 
-            //AddSnowString(sb, seasons, seasonToYearRatio);
+            //AddSnowString(sb, seasons, seasonsInYear.Value);
 
             //AddSeaIceString(sb, seasons);
 
@@ -683,7 +672,7 @@ namespace WorldFoundry.ConsoleApp
                 }
                 if (GetDoubleArg(line, 2, out var result))
                 {
-                    _planet.ChangeRotationalPeriod(result);
+                    _planet.SetRotationalPeriod(result);
                 }
             }
             else if (line.StartsWith("w"))
@@ -705,7 +694,7 @@ namespace WorldFoundry.ConsoleApp
                 }
                 if (GetIntArg(line, 1, out var result))
                 {
-                    _planet.ChangeGridSize(result);
+                    _planet.SetGridSize(result);
                 }
             }
             return true;

@@ -15,7 +15,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Comet : Planetoid
     {
-        internal new const string baseTypeName = "Comet";
+        internal new static string baseTypeName = "Comet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

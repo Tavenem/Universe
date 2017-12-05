@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using Troschuetz.Random;
 using WorldFoundry.CelestialBodies;
 using WorldFoundry.Substances;
@@ -205,19 +206,19 @@ namespace WorldFoundry.Climate
         /// <returns>The saturation vapor pressure of water at the given temperature, in Pa.</returns>
         internal static float GetSaturationVaporPressure(float temperature)
         {
-            var a = temperature > Season.freezingPoint
+            var a = temperature > Chemical.Water.MeltingPoint
                 ? 611.21
                 : 611.15;
-            var b = temperature > Season.freezingPoint
+            var b = temperature > Chemical.Water.MeltingPoint
                 ? 18.678
                 : 23.036;
-            var c = temperature > Season.freezingPoint
+            var c = temperature > Chemical.Water.MeltingPoint
                 ? 234.5
                 : 333.7;
-            var d = temperature > Season.freezingPoint
+            var d = temperature > Chemical.Water.MeltingPoint
                 ? 257.14
                 : 279.82;
-            var t = temperature - Season.freezingPoint;
+            var t = temperature - Chemical.Water.MeltingPoint;
             return (float)(a * Math.Exp((b - (t / c)) * (t / (d + t))));
         }
 
@@ -264,7 +265,7 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="pressure">A pressure, in kPa.</param>
         /// <returns>The non-dimensionalized pressure.</returns>
-        internal float Exner(float pressure) => (float)Math.Pow(pressure / AtmosphericPressure, Utilities.Science.Constants.SpecificGasConstantDivSpecificHeat_DryAir);
+        internal float Exner(float pressure) => (float)Math.Pow(pressure / AtmosphericPressure, Utilities.Science.Constants.SpecificGasConstantDivSpecificHeatOfDryAir);
 
         /// <summary>
         /// Calculates the air mass coefficient at the given latitude and elevation.
@@ -310,7 +311,7 @@ namespace WorldFoundry.Climate
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
         private float GetAtmosphericHeight()
-            => (float)((Math.Log(1.0e-5) * Utilities.Science.Constants.R * GetSurfaceTemperatureAverageOrbital()) / (AtmosphericPressure * -CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMass_Air));
+            => (float)((Math.Log(1.0e-5) * Utilities.Science.Constants.R * GetSurfaceTemperatureAverageOrbital()) / (AtmosphericPressure * -CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMassOfAir));
 
         /// <summary>
         /// Calculates the total mass of this <see cref="Atmosphere"/>, in kg.
@@ -344,7 +345,7 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return AtmosphericPressure * (float)(-CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMass_Air * elevation / (Utilities.Science.Constants.R * (temperature)));
+                return AtmosphericPressure * (float)(-CelestialBody.SurfaceGravity * Utilities.Science.Constants.MolarMassOfAir * elevation / (Utilities.Science.Constants.R * (temperature)));
             }
         }
 
@@ -422,7 +423,7 @@ namespace WorldFoundry.Climate
         /// </returns>
         private float GetInsolationFactor(bool polar = false)
         {
-            var airMass = GetAirMass(polar ? CelestialBody.polarLatitude : 0, 0, polar ? CelestialBody.cosPolarLatitude : 1);
+            var airMass = GetAirMass(polar ? CelestialBody.PolarLatitude : 0, 0, polar ? CelestialBody.CosPolarLatitude : 1);
 
             var atmMassRatio = AtmosphericMass / CelestialBody.Mass;
             return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
@@ -462,7 +463,7 @@ namespace WorldFoundry.Climate
         /// Calculates the dry adiabatic lapse rate near the surface of this <see cref="Atmosphere"/>, in K/m.
         /// </summary>
         /// <returns>The dry adiabatic lapse rate near the surface of this <see cref="Atmosphere"/>, in K/m.</returns>
-        private float GetLapseRateDry() => (float)(CelestialBody.SurfaceGravity / Utilities.Science.Constants.SpecificHeat_DryAir);
+        private float GetLapseRateDry() => (float)(CelestialBody.SurfaceGravity / Utilities.Science.Constants.SpecificHeatOfDryAir);
 
         /// <summary>
         /// Calculates the moist adiabatic lapse rate near the surface of this <see
@@ -479,13 +480,13 @@ namespace WorldFoundry.Climate
         private float GetLapseRateMoist(float surfaceTemp)
         {
             var surfaceTemp2 = surfaceTemp * surfaceTemp;
-            var gasConstantSurfaceTemp2 = Utilities.Science.Constants.SpecificGasConstant_DryAir * surfaceTemp2;
+            var gasConstantSurfaceTemp2 = Utilities.Science.Constants.SpecificGasConstantOfDryAir * surfaceTemp2;
 
             var waterRatio = GetProportion(Chemical.Water, Phase.Gas, true);
 
-            var numerator = gasConstantSurfaceTemp2 + Utilities.Science.Constants.HeatOfVaporization_Water * waterRatio * surfaceTemp;
+            var numerator = gasConstantSurfaceTemp2 + Utilities.Science.Constants.HeatOfVaporizationOFWater * waterRatio * surfaceTemp;
             var denominator = Utilities.Science.Constants.SpecificHeatTimesSpecificGasConstant_DryAir * surfaceTemp2
-                + Utilities.Science.Constants.HeatOfVaporization_Water_Squared * waterRatio * Utilities.Science.Constants.SpecificGasConstant_Ratio_DryAirToWater;
+                + Utilities.Science.Constants.HeatOfVaporizationOfWaterSquared * waterRatio * Utilities.Science.Constants.SpecificGasConstantRatioOfDryAirToWater;
 
             return (float)(CelestialBody.SurfaceGravity * (numerator / denominator));
         }
@@ -499,6 +500,20 @@ namespace WorldFoundry.Climate
         /// <returns>The surface temperature, in K.</returns>
         internal float GetSurfaceTemperature(bool polar = false)
             => CelestialBody.GetTotalTemperature() * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
+
+        /// <summary>
+        /// Calculates the effective surface temperature, including greenhouse effects, in K.
+        /// </summary>
+        /// <param name="position">
+        /// A hypothetical position for this <see cref="CelestialBody"/> at which its temperature
+        /// will be calculated.
+        /// </param>
+        /// <param name="polar">
+        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
+        /// </param>
+        /// <returns>The surface temperature, in K.</returns>
+        internal float GetSurfaceTemperatureAtPosition(Vector3 position, bool polar = false)
+            => CelestialBody.GetTotalTemperatureFromPosition(position) * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
         /// Returns the effective surface temperature, including greenhouse effects, as if the body

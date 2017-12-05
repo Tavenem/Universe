@@ -11,13 +11,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class NeutronStar : Star
     {
-        internal new const string baseTypeName = "Neutron Star";
+        internal new static string baseTypeName = "Neutron Star";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const float chanceOfLife = 0;
+        private static float chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -28,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </remarks>
         public override float? ChanceOfLife => chanceOfLife;
 
-        private const string designatorPrefix = "X";
+        private static string designatorPrefix = "X";
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
         /// </summary>

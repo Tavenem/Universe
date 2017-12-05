@@ -19,13 +19,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class TerrestrialPlanet : Planemo
     {
-        internal new const string baseTypeName = "Terrestrial Planet";
+        internal new static string baseTypeName = "Terrestrial Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal const bool canHaveOxygen = true;
+        internal static bool canHaveOxygen = true;
         /// <summary>
         /// Used to allow or prevent oxygen in the atmosphere of a terrestrial planet.
         /// </summary>
@@ -35,7 +35,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected virtual bool CanHaveOxygen => canHaveOxygen;
 
-        internal const bool canHaveWater = true;
+        internal static bool canHaveWater = true;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -45,10 +45,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected virtual bool CanHaveWater => canHaveWater;
 
-        internal const float density_Max = 6000;
-        protected virtual float Density_Max => density_Max;
-        internal const float density_Min = 3750;
-        protected virtual float Density_Min => density_Min;
+        private static int extremeRotationalPeriod = 22000000;
+        protected override int ExtremeRotationalPeriod => extremeRotationalPeriod;
 
         private double? _g0MdivR;
         /// <summary>
@@ -108,7 +106,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public Mixture HydrosphereSurface => Hydrosphere.Mixtures.Count > 0 ? Hydrosphere.GetChildAtLastLayer() : Hydrosphere;
 
-        internal const double maxMass_Type = 6.0e25;
+        internal static float maxDensity = 6000;
+        protected virtual float MaxDensity => maxDensity;
+
+        internal static double maxMassForType = 6.0e25;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -117,15 +118,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// At around this limit the planet will have sufficient mass to retain hydrogen, and become
         /// a giant.
         /// </remarks>
-        internal override double? MaxMass_Type => maxMass_Type;
+        internal override double? MaxMassForType => maxMassForType;
 
-        internal const float metalProportion = 0.05f;
+        private static int maxRotationalPeriod = 6500000;
+        protected override int MaxRotationalPeriod => maxRotationalPeriod;
+
+        internal static float metalProportion = 0.05f;
         /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
         protected virtual float MetalProportion => metalProportion;
 
-        internal const double minMass_Type = 2.0e22;
+        internal static float minDensity = 3750;
+        protected virtual float MinDensity => minDensity;
+
+        internal static double minMassForType = 2.0e22;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -134,15 +141,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
         /// systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        internal override double? MinMass_Type => minMass_Type;
+        internal override double? MinMassForType => minMassForType;
 
-        private const string planemoClassPrefix = "Terrestrial";
+        private static int minRotationalPeriod = 40000;
+        protected override int MinRotationalPeriod => minRotationalPeriod;
+
+        private static string planemoClassPrefix = "Terrestrial";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
         public override string PlanemoClassPrefix => planemoClassPrefix;
 
-        internal new const float ringChance = 10;
+        internal new static float ringChance = 10;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
@@ -151,13 +161,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// cref="TerrestrialPlanet"/>s.
         /// </remarks>
         protected override float RingChance => ringChance;
-
-        private const int rotationalPeriod_Min = 40000;
-        protected override int RotationalPeriod_Min => rotationalPeriod_Min;
-        private const int rotationalPeriod_Max = 6500000;
-        protected override int RotationalPeriod_Max => rotationalPeriod_Max;
-        private const int rotationalPeriod_MaxExtreme = 22000000;
-        protected override int RotationalPeriod_MaxExtreme => rotationalPeriod_MaxExtreme;
 
         private float? _surfaceAlbedo;
         /// <summary>
@@ -1199,7 +1202,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(Density_Min, Density_Max));
+        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(MinDensity, MaxDensity));
 
         /// <summary>
         /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.
@@ -1351,7 +1354,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var chance = Randomizer.Static.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > minMass_Type && Randomizer.Static.NextBoolean())
+            if (maxMass > minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -1360,7 +1363,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(density_Max) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(maxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(Parent, maxMass);
                 }
@@ -1375,10 +1378,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet.minMass_Type && Randomizer.Static.NextBoolean())
+            else if (maxMass > DwarfPlanet.minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet.typeDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.densityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(Parent, maxMass);
                 }
@@ -1431,14 +1434,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         protected override void GenerateSurfaceGravity()
         {
             base.GenerateSurfaceGravity();
-            G0MdivR = SurfaceGravity * Utilities.Science.Constants.MolarMass_AirDivUniversalGasConstant;
+            G0MdivR = SurfaceGravity * Utilities.Science.Constants.MolarMassOfAirDivUniversalGasConstant;
         }
 
         /// <summary>
         /// Generates a new <see cref="WorldGrid"/> for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <param name="size">The grid size (level of detail) for the <see cref="WorldGrid"/>.</param>
-        internal void GenerateWorldGrid(int size) => WorldGrid = new WorldGrid(this, Math.Min(WorldGrid.maxGridSize, size));
+        internal void GenerateWorldGrid(int size) => WorldGrid = new WorldGrid(this, Math.Min(WorldGrid.MaxGridSize, size));
 
         /// <summary>
         /// Calculates the distance (in meters) this <see cref="TerrestrialPlanet"/> would have to be
@@ -1647,6 +1650,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             Hydrosphere.Proportion += Hydrosphere.Proportion * (newTotalProportion - Hydrosphere.GetProportion(chemical, phase, Hydrosphere.Mixtures.Count > 0));
             HydrosphereSurface.SetProportion(chemical, phase, proportion);
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
+        }
+
+        /// <summary>
+        /// Sets the <see cref="RotationalPeriod"/> of this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <param name="period">
+        /// A rotational period, in seconds. Negative values will be treated as 0.
+        /// </param>
+        public override void SetRotationalPeriod(double period)
+        {
+            base.SetRotationalPeriod(period);
+
+            WorldGrid?.SetCoriolisCoefficients();
+            WorldGrid?.UpdateCollectionsFromArrays();
         }
 
         /// <summary>

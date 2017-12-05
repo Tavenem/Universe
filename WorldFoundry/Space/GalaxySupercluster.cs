@@ -12,13 +12,13 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySupercluster : CelestialObject
     {
-        internal new const string baseTypeName = "Galaxy Supercluster";
+        internal new static string baseTypeName = "Galaxy Supercluster";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public const double childDensity = 1.0e-73;
+        public static double childDensity = 1.0e-73;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

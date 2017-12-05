@@ -11,7 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class LavaDwarfPlanet : DwarfPlanet
     {
-        internal new const int maxSatellites = 0;
+        internal new static double densityForType = 4000;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal override double DensityForType => densityForType;
+
+        internal new static int maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -22,17 +28,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private const string planemoClassPrefix = "Lava";
+        private static string planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
         public override string PlanemoClassPrefix => planemoClassPrefix;
-
-        internal new const double typeDensity = 4000;
-        /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
-        /// </summary>
-        internal override double TypeDensity => typeDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/>.

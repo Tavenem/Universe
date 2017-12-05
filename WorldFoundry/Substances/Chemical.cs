@@ -339,7 +339,7 @@ namespace WorldFoundry.Substances
         };
         public static Chemical Water_Salt = new Chemical("Salt Water")
         {
-            MeltingPoint = 271.15f,
+            MeltingPoint = 271.35f,
             IsConductive = true,
             GreenhousePotential = 1,
             AntoineCoefficientA = 4.6543f,

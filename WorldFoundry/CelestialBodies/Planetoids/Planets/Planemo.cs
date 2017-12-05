@@ -16,11 +16,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
     /// </summary>
     public class Planemo : Planetoid
     {
-        private const float coreProportion = 0.15f;
-        private const float ringDensity_Icy = 300.0f;
-        private const float ringDensity_Rocky = 1380.0f;
+        private const float CoreProportion = 0.15f;
+        private const float IcyRingDensity = 300.0f;
+        private const float RockyRingDensity = 1380.0f;
 
-        internal new const int maxSatellites = 5;
+        /// <summary>
+        /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
+        /// </summary>
+        internal const int MinimumRadius = 600000;
+
+        internal new static int maxSatellites = 5;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -39,7 +44,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </remarks>
         public virtual string PlanemoClassPrefix => null;
 
-        internal const float ringChance = 0;
+        internal static float ringChance = 0;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
@@ -243,7 +248,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? Math.Round(Math.Max(600000, Math.Pow((Mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0)));
+            var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, Math.Pow((Mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0)));
             var flattening = Randomizer.Static.NextDouble(0.1);
             Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
@@ -258,7 +263,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        public virtual float GetCoreProportion() => coreProportion;
+        public virtual float GetCoreProportion() => CoreProportion;
 
         /// <summary>
         /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planemo"/>.
@@ -275,6 +280,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         protected float GetCrustProportion() => (float)(400000.0 / Math.Pow(Radius, 1.6));
 
         /// <summary>
+        /// Determines the maximum radius allowed for this <see cref="Planemo"/>, given its <see
+        /// cref="Planetoid.Density"/> and maximum mass.
+        /// </summary>
+        /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
+        internal float GetMaxRadius()
+            => (float)Math.Pow(((MaxMassForType ?? double.PositiveInfinity) / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
+
+        /// <summary>
         /// Calculates the approximate outer distance at which rings of the given density may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which rings of the given density may be found, in meters.</returns>
@@ -284,13 +297,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Calculates the approximate outer distance at which ice rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which ice rings may be found, in meters.</returns>
-        protected float GetRingDistance_Icy() => GetRingDistance(ringDensity_Icy);
+        protected float GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rocky rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which rocky rings may be found, in meters.</returns>
-        protected float GetRingDistance_Rocky() => GetRingDistance(ringDensity_Rocky);
+        protected float GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
 
         /// <summary>
         /// Calculates the mass at which the Stern-Levison parameter for this <see cref="Planemo"/>

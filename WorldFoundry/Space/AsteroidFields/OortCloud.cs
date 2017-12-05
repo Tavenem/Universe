@@ -14,7 +14,7 @@ namespace WorldFoundry.Space.AsteroidFields
     /// </summary>
     public class OortCloud : AsteroidField
     {
-        internal new const string baseTypeName = "Oort Cloud";
+        internal new static string baseTypeName = "Oort Cloud";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
@@ -34,7 +34,7 @@ namespace WorldFoundry.Space.AsteroidFields
         [NotMapped]
         public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
-        public new const double childDensity = 8.31e-38;
+        public new static double childDensity = 8.31e-38;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

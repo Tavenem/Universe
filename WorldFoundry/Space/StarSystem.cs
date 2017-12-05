@@ -20,7 +20,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class StarSystem : CelestialObject
     {
-        internal new const string baseTypeName = "Star System";
+        internal new static string baseTypeName = "Star System";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
@@ -709,8 +709,8 @@ namespace WorldFoundry.Space
 
             // The maximum mass and density are used to calculate an outer Roche limit (may not be
             // the actual Roche limit for the body which gets generated).
-            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet.density_Max));
-            var minTerrestialPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(TerrestrialPlanet.density_Max));
+            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet.maxDensity));
+            var minTerrestialPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(TerrestrialPlanet.maxDensity));
 
             // If the calculated minimum and maximum orbits indicates that no stable orbits are
             // possible, eliminate the indicated type of planet.
@@ -803,12 +803,12 @@ namespace WorldFoundry.Space
             // the actual Roche limit for the body which gets generated).
             var chance = Randomizer.Static.NextDouble();
             var position = ((star.Position * LocalScale) + (Vector3.UnitX * (float)periapsis)) / LocalScale;
-            if (periapsis < star.GetRocheLimit(TerrestrialPlanet.density_Max) * 1.05 || chance <= 0.01)
+            if (periapsis < star.GetRocheLimit(TerrestrialPlanet.maxDensity) * 1.05 || chance <= 0.01)
             {
                 return new LavaPlanet(this, position);
             }
             // Planets with close orbits may be iron planets.
-            else if (periapsis < star.GetRocheLimit(TerrestrialPlanet.density_Max) * 200 && chance <= 0.5)
+            else if (periapsis < star.GetRocheLimit(TerrestrialPlanet.maxDensity) * 200 && chance <= 0.5)
             {
                 return new IronPlanet(this, position);
             }

@@ -12,8 +12,8 @@ namespace WorldFoundry.CelestialBodies
     /// </summary>
     public class CelestialBody : BioZone
     {
-        internal const double polarLatitude = 1.5277247828211;
-        internal const double cosPolarLatitude = 0.04305822778985774;
+        internal const double PolarLatitude = 1.5277247828211;
+        internal const double CosPolarLatitude = 0.04305822778985774;
 
         private float? _albedo;
         /// <summary>
@@ -70,7 +70,7 @@ namespace WorldFoundry.CelestialBodies
         /// equator), given the temperatures at the equator and poles, in K.
         /// </summary>
         /// <param name="equatorialTemp">The temperature at the equator, in K.</param>
-        /// <param name="polarTemp">The temperature at <see cref="polarLatitude"/>, in K.</param>
+        /// <param name="polarTemp">The temperature at <see cref="PolarLatitude"/>, in K.</param>
         /// <param name="latitude">A latitude at which to calculate the temperature.</param>
         /// <returns></returns>
         internal static float GetTemperatureAtLatitude(float equatorialTemp, float polarTemp, float latitude)

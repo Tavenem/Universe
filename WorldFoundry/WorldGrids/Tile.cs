@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using WorldFoundry.Climate;
 using WorldFoundry.Extensions;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -519,31 +520,31 @@ namespace WorldFoundry.WorldGrids
 
         private void SetClimateType(float bioTemperature)
         {
-            if (bioTemperature <= Season.freezingPoint + 1.5)
+            if (bioTemperature <= Chemical.Water.MeltingPoint + 1.5)
             {
                 ClimateType = ClimateType.Polar;
             }
-            else if (bioTemperature <= Season.freezingPoint + 3)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 3)
             {
                 ClimateType = ClimateType.Subpolar;
             }
-            else if (bioTemperature <= Season.freezingPoint + 6)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 6)
             {
                 ClimateType = ClimateType.Boreal;
             }
-            else if (bioTemperature <= Season.freezingPoint + 12)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 12)
             {
                 ClimateType = ClimateType.CoolTemperate;
             }
-            else if (bioTemperature <= Season.freezingPoint + 18)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 18)
             {
                 ClimateType = ClimateType.WarmTemperate;
             }
-            else if (bioTemperature <= Season.freezingPoint + 24)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 24)
             {
                 ClimateType = ClimateType.Subtropical;
             }
-            else if (bioTemperature <= Season.freezingPoint + 36)
+            else if (bioTemperature <= Chemical.Water.MeltingPoint + 36)
             {
                 ClimateType = ClimateType.Tropical;
             }

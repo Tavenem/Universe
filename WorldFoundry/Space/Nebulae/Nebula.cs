@@ -10,7 +10,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Nebula : CelestialObject
     {
-        internal new const string baseTypeName = "Nebula";
+        internal new static string baseTypeName = "Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

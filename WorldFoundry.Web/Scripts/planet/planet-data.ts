@@ -127,22 +127,16 @@ export interface Planet {
     key: string;
     lakeBuffers?: WebGLUtil.BufferData;
     oceanBuffers?: WebGLUtil.BufferData[];
-    orbitalPeriod: number;
     seasons: Season[];
     seed: string;
     tileBuffers?: WebGLUtil.BufferData;
     tiles: Tile[];
 }
 
-interface OrbitData {
-    period: number;
-}
-
 export interface PlanetObjData {
     axis: PlanetVector;
     corners: CornerData[];
     edges: Edge[];
-    orbit: OrbitData;
     seed: string;
     tiles: TileData[];
 }
@@ -204,7 +198,6 @@ export function planetFromData(data: PlanetData): Planet {
         corners: cornersFromData(data.planet.corners),
         edges: data.planet.edges,
         key: data.key,
-        orbitalPeriod: data.planet.orbit.period,
         seasons: [],
         seed: data.planet.seed,
         tiles: tilesFromData(data.planet.tiles),

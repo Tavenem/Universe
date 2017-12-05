@@ -22,7 +22,7 @@ namespace WorldFoundry.Space
         [NotMapped]
         public virtual IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => null;
 
-        private const double childDensity = 0;
+        private static double childDensity = 0;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
@@ -185,11 +185,11 @@ namespace WorldFoundry.Space
             // entirely beyond the bounds of the parent's local space.
             if (other == Parent)
             {
-                return Position.Length() - (Radius / LocalScale) < localSpaceScale;
+                return Position.Length() - (Radius / LocalScale) < LocalSpaceScale;
             }
             else if (other.Parent == this)
             {
-                return other.Position.Length() - (other.Radius / LocalScale) < localSpaceScale;
+                return other.Position.Length() - (other.Radius / LocalScale) < LocalSpaceScale;
             }
             else
             {
@@ -466,7 +466,7 @@ namespace WorldFoundry.Space
             var currentReference = this;
             while (currentReference != null)
             {
-                if (position.Length() <= localSpaceScale)
+                if (position.Length() <= LocalSpaceScale)
                 {
                     break;
                 }
@@ -491,7 +491,7 @@ namespace WorldFoundry.Space
                 return 1;
             }
 
-            return (int)Math.Ceiling(localSpaceScale / GridSize);
+            return (int)Math.Ceiling(LocalSpaceScale / GridSize);
         }
 
         /// <summary>
@@ -584,7 +584,7 @@ namespace WorldFoundry.Space
         /// If even the corner closest to the origin (the defining corner) is inside or tangent to
         /// the defined limit of local space, the grid space is considered in-bounds.
         /// </remarks>
-        private bool IsGridSpaceInBounds(Vector3 coordinates) => (coordinates * GridSize).Length() <= localSpaceScale;
+        private bool IsGridSpaceInBounds(Vector3 coordinates) => (coordinates * GridSize).Length() <= LocalSpaceScale;
 
         /// <summary>
         /// Determines if the specified grid coordinates have already been populated with children.

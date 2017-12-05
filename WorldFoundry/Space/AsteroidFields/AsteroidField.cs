@@ -24,15 +24,15 @@ namespace WorldFoundry.Space.AsteroidFields
     /// </remarks>
     public class AsteroidField : CelestialObject
     {
-        public static string AsteroidBeltTypeName => "Asteroid Belt";
+        public const string AsteroidBeltTypeName = "Asteroid Belt";
 
-        internal new const string baseTypeName = "Asteroid Field";
+        internal new static string baseTypeName = "Asteroid Field";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public const double childDensity = 5.8e-26;
+        public static double childDensity = 5.8e-26;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

@@ -14,15 +14,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class CarbonPlanet : TerrestrialPlanet
     {
-        private const float coreProportion = 0.4f;
+        private const float CoreProportion = 0.4f;
 
-        internal new const string baseTypeName = "Carbon Planet";
+        internal new static string baseTypeName = "Carbon Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal new const bool canHaveOxygen = false;
+        internal new static bool canHaveOxygen = false;
         /// <summary>
         /// Used to allow or prevent oxygen in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -31,7 +31,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected override bool CanHaveOxygen => canHaveOxygen;
 
-        internal new const bool canHaveWater = false;
+        internal new static bool canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -40,7 +40,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected override bool CanHaveWater => canHaveWater;
 
-        private const string planemoClassPrefix = "Carbon";
+        private static string planemoClassPrefix = "Carbon";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
@@ -264,7 +264,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var chance = Randomizer.Static.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > minMass_Type && Randomizer.Static.NextBoolean())
+            if (maxMass > minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -273,7 +273,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(density_Max) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(maxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(Parent, maxMass);
                 }
@@ -292,10 +292,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet.minMass_Type && Randomizer.Static.NextBoolean())
+            else if (maxMass > DwarfPlanet.minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet.typeDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.densityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(Parent, maxMass);
                 }
