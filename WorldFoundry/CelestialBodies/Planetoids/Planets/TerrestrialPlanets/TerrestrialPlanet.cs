@@ -750,6 +750,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             GenerateLife();
 
+            foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(HabitabilityRequirements?.AtmosphericRequirements))
+            {
+                var proportion = Atmosphere.GetProportion(requirement.Chemical, requirement.Phase, true);
+                if (proportion < requirement.MinimumProportion)
+                {
+                    Atmosphere.SetProportion(requirement.Chemical, requirement.Phase, requirement.MinimumProportion, true);
+                }
+                else if (requirement.MaximumProportion.HasValue && proportion > requirement.MaximumProportion)
+                {
+                    Atmosphere.SetProportion(requirement.Chemical, requirement.Phase, requirement.MaximumProportion.Value, true);
+                }
+            }
+
             CalculatePhases(0, ref hydrosphereAtmosphereRatio);
 
             // If the adjustments have led to the loss of liquid water, then there is no life after
