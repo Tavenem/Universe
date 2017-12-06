@@ -2261,8 +2261,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             for (int i = 0; i < Topography.Tiles.Count; i++)
             {
                 Topography.GetTile(i).SetClimate(
-                    seasons.Average(s => s.TileClimates[i].Temperature),
-                    seasons.Sum(s => s.TileClimates[i].Precipitation));
+                    seasons.Average(s => s.tileClimateArray[i].Temperature),
+                    seasons.Sum(s => s.tileClimateArray[i].Precipitation));
             }
 
             return season;

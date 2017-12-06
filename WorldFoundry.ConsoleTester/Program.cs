@@ -223,7 +223,7 @@ namespace WorldFoundry.ConsoleApp
                 {
                     if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water)
                     {
-                        list.Add(seasons[j].TileClimates[i].Precipitation);
+                        list.Add(seasons[j].GetTileClimate(i).Precipitation);
                     }
                 }
             }
@@ -247,19 +247,19 @@ namespace WorldFoundry.ConsoleApp
 
             sb.AppendLine("  Selected Tiles:");
             sb.AppendFormat("    [100]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[100].Precipitation) * seasonsInYear,
+                seasons.Average(s => s.GetTileClimate(100).Precipitation) * seasonsInYear,
                 _planet.Topography.GetTile(100).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [200]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[200].Precipitation) * seasonsInYear,
+                seasons.Average(s => s.GetTileClimate(200).Precipitation) * seasonsInYear,
                 _planet.Topography.GetTile(200).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [300]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[300].Precipitation) * seasonsInYear,
+                seasons.Average(s => s.GetTileClimate(300).Precipitation) * seasonsInYear,
                 _planet.Topography.GetTile(300).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [400]:                 {0} mm ({1})",
-                seasons.Average(s => s.TileClimates[400].Precipitation) * seasonsInYear,
+                seasons.Average(s => s.GetTileClimate(400).Precipitation) * seasonsInYear,
                 _planet.Topography.GetTile(400).TerrainType);
             sb.AppendLine();
         }
@@ -270,7 +270,7 @@ namespace WorldFoundry.ConsoleApp
             var list = new List<float>();
             for (int i = 0; i < _planet.Topography.Edges.Count; i++)
             {
-                var flow = seasons.Average(s => s.EdgeRiverFlows[i]);
+                var flow = seasons.Average(s => s.GetEdgeClimate(i).RiverFlow);
                 if (flow > 0)
                 {
                     list.Add(flow);
@@ -302,9 +302,9 @@ namespace WorldFoundry.ConsoleApp
             {
                 for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
                 {
-                    if (seasons[j].TileClimates[i].SeaIce > 0)
+                    if (seasons[j].GetTileClimate(i).SeaIce > 0)
                     {
-                        list.Add(seasons[j].TileClimates[i].SeaIce);
+                        list.Add(seasons[j].GetTileClimate(i).SeaIce);
                     }
                 }
             }
@@ -331,9 +331,9 @@ namespace WorldFoundry.ConsoleApp
                 var min = 1000000f;
                 for (int j = 0; j < seasons.Count; j++)
                 {
-                    if (seasons[j].TileClimates[i].SeaIce > 0)
+                    if (seasons[j].GetTileClimate(i).SeaIce > 0)
                     {
-                        min = Math.Min(min, seasons[j].TileClimates[i].SeaIce);
+                        min = Math.Min(min, seasons[j].GetTileClimate(i).SeaIce);
                     }
                 }
                 if (min > 0 && min < 1000000f)
@@ -368,9 +368,9 @@ namespace WorldFoundry.ConsoleApp
                 for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
                 {
                     if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water
-                        && seasons[j].TileClimates[i].Snow > 0)
+                        && seasons[j].GetTileClimate(i).Snow > 0)
                     {
-                        list.Add(seasons[j].TileClimates[i].Snow);
+                        list.Add(seasons[j].GetTileClimate(i).Snow);
                     }
                 }
             }
@@ -399,9 +399,9 @@ namespace WorldFoundry.ConsoleApp
                     var max = 0f;
                     for (int j = 0; j < seasons.Count; j++)
                     {
-                        if (seasons[j].TileClimates[i].Snow > 0)
+                        if (seasons[j].GetTileClimate(i).Snow > 0)
                         {
-                            max = Math.Max(max, seasons[j].TileClimates[i].Snow);
+                            max = Math.Max(max, seasons[j].GetTileClimate(i).Snow);
                         }
                     }
                     if (max > 0)
@@ -440,7 +440,7 @@ namespace WorldFoundry.ConsoleApp
             {
                 if (_planet.Topography.GetTile(i).TerrainType == TerrainType.Water)
                 {
-                    var avg = seasons.Average(s => s.TileClimates[i].Temperature);
+                    var avg = seasons.Average(s => s.GetTileClimate(i).Temperature);
                     min = Math.Min(min, avg);
                     sum += avg;
                     count++;
@@ -459,13 +459,13 @@ namespace WorldFoundry.ConsoleApp
             var minIndex = -1;
             for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
             {
-                max = Math.Max(max, seasons.Average(s => s.TileClimates[i].Temperature));
+                max = Math.Max(max, seasons.Average(s => s.GetTileClimate(i).Temperature));
                 if (_planet.Topography.GetTile(i).TerrainType.HasFlag(TerrainType.Water))
                 {
                     var sMax = 0f;
                     for (int j = 0; j < seasons.Count; j++)
                     {
-                        sMax = Math.Max(sMax, seasons[j].TileClimates[i].Temperature);
+                        sMax = Math.Max(sMax, seasons[j].GetTileClimate(i).Temperature);
                     }
                     if (sMax < min)
                     {

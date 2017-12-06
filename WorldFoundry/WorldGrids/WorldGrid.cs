@@ -124,6 +124,15 @@ namespace WorldFoundry.WorldGrids
             SubdivideGrid(size);
         }
 
+        private static void SetArrayFromCollection<T>(ref T[] array, ICollection<T> collection) where T : IIndexedItem
+        {
+            array = new T[collection.Count];
+            for (int i = 0; i < collection.Count; i++)
+            {
+                array[i] = collection.FirstOrDefault(x => x.Index == i);
+            }
+        }
+
         private void AddCorner(int index, int[] tileIndexes)
         {
             var c = CornerArray[index];
@@ -238,15 +247,6 @@ namespace WorldFoundry.WorldGrids
         /// <param name="index">A zero-based index.</param>
         /// <returns>The <see cref="Tile"/> with the given index.</returns>
         public Tile GetTile(int index) => Tiles.FirstOrDefault(x => x.Index == index);
-
-        private void SetArrayFromCollection<T>(ref T[] array, ICollection<T> collection) where T : IIndexedItem
-        {
-            array = new T[collection.Count];
-            for (int i = 0; i < collection.Count; i++)
-            {
-                array[i] = collection.FirstOrDefault(x => x.Index == i);
-            }
-        }
 
         internal void SetCoriolisCoefficients()
         {
