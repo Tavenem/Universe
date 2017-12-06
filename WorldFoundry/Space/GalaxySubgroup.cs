@@ -119,11 +119,11 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// The main galaxy is expected to comprise the bulk of the mass.
         /// </remarks>
-        protected override void GenerateMass() => Mass = MainGalaxy.Mass * 1.25;
+        private protected override void GenerateMass() => Mass = MainGalaxy.Mass * 1.25;
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape() => Shape = new Sphere(MainGalaxy.Radius * 10);
+        private protected override void GenerateShape() => Shape = new Sphere(MainGalaxy.Radius * 10);
     }
 }

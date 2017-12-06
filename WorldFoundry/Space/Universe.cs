@@ -73,7 +73,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// The mass of the universe is infinite.
         /// </remarks>
-        protected override void GenerateMass() => Mass = double.PositiveInfinity;
+        private protected override void GenerateMass() => Mass = double.PositiveInfinity;
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -86,12 +86,12 @@ namespace WorldFoundry.Space
         /// (although this would require exhaustive "exploration" to populate so many grid spaces).
         /// This makes the universe effectively infinite in scope, if not in linear dimensions.
         /// </remarks>
-        protected override void GenerateShape() => Shape = new Sphere(1.89214e33);
+        private protected override void GenerateShape() => Shape = new Sphere(1.89214e33);
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
         /// <remarks>The ambient temperature of the universe is 2.73 K.</remarks>
-        protected override void GenerateTemperature() => Temperature = 2.73f;
+        private protected override void GenerateTemperature() => Temperature = 2.73f;
     }
 }

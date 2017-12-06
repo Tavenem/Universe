@@ -7,9 +7,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// A collection of parameters for habitability by a given form of life which a <see
     /// cref="TerrestrialPlanet"/> must meet in order for such life to survive unaided.
     /// </summary>
-    public struct HabitabilityRequirements
+    public class HabitabilityRequirements
     {
-        public List<ComponentRequirement> AtmosphericRequirements { get; set; }
+        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
         public float? MinimumSurfaceTemperature { get; set; }
         public float? MaximumSurfaceTemperature { get; set; }
         public float? MinimumSurfacePressure { get; set; }

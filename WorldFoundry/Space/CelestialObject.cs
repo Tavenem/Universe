@@ -502,7 +502,7 @@ namespace WorldFoundry.Space
         /// <returns>The size of 1 grid space within this object, in local space units.</returns>
         private float GetGridSize() => ChildDensity == 0 ? (float)(Radius / LocalScale) : (float)(Math.Pow(1.0 / ChildDensity, 1.0 / 3.0) / LocalScale);
 
-        protected GridSpace GetGridSpace(Vector3 coordinates, bool withCreation = false)
+        private protected GridSpace GetGridSpace(Vector3 coordinates, bool withCreation = false)
         {
             if (GridSpaces == null)
             {
@@ -599,7 +599,7 @@ namespace WorldFoundry.Space
         /// true if the specified grid coordinates have already been populated with child objects;
         /// false otherwise.
         /// </returns>
-        protected bool IsGridSpacePopulated(Vector3 coordinates) => GetGridSpace(coordinates)?.Populated ?? false;
+        private protected bool IsGridSpacePopulated(Vector3 coordinates) => GetGridSpace(coordinates)?.Populated ?? false;
 
         /// <summary>
         /// Generates an appropriate population of children within a 3x3 box of grid spaces around
@@ -695,7 +695,7 @@ namespace WorldFoundry.Space
         /// <returns>
         /// The coordinates of the grid space where the position is located within local space.
         /// </returns>
-        protected Vector3 PositionToGridCoords(Vector3 position)
+        private protected Vector3 PositionToGridCoords(Vector3 position)
         {
             float x = position.X / GridSize;
             if (x != x % 1)

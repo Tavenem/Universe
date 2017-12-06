@@ -60,6 +60,6 @@ namespace WorldFoundry
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
-        protected virtual void GenerateTemperature() => Temperature = 0;
+        private protected virtual void GenerateTemperature() => Temperature = 0;
     }
 }

@@ -107,7 +107,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Adds an appropriate icy crust with the given proportion.
         /// </summary>
-        protected virtual void AddIcyCrust(int layer, float crustProportion)
+        private protected virtual void AddIcyCrust(int layer, float crustProportion)
         {
             var dust = (float)Math.Round(Randomizer.Static.NextDouble(), 3);
             var total = dust;
@@ -212,7 +212,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        protected override void GenerateAlbedo()
+        private protected override void GenerateAlbedo()
         {
             var albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
             var surfaceIce = Composition.GetChildAtLastLayer().Components
@@ -224,7 +224,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateAtmosphere()
+        private protected override void GenerateAtmosphere()
         {
             // Atmosphere is based solely on the volatile ices present.
 
@@ -324,7 +324,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 
@@ -379,7 +379,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// maximum at two orders of magnitude less than this (dwarf planets in our solar system all
         /// have masses below 5 orders of magnitude less).
         /// </remarks>
-        protected override void GenerateMass()
+        private protected override void GenerateMass()
         {
             var maxMass = MaxMass;
             if (Parent != null)
@@ -420,7 +420,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
         {
             Planetoid satellite = null;
 
@@ -464,6 +464,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        public override float GetCoreProportion() => (float)Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
+        private protected override float GetCoreProportion() => (float)Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
     }
 }

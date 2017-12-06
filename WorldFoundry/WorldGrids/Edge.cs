@@ -147,7 +147,7 @@ namespace WorldFoundry.WorldGrids
         /// The index to this <see cref="Edge"/>'s collection of <see cref="Corner"/>s to set.
         /// </param>
         /// <param name="value">The value to store in the given index.</param>
-        public void SetCorner(int index, int value)
+        internal void SetCorner(int index, int value)
         {
             if (index == 0)
             {
@@ -167,7 +167,7 @@ namespace WorldFoundry.WorldGrids
         /// The index to this <see cref="Corner"/>'s collection of <see cref="Edge"/>s to set.
         /// </param>
         /// <param name="value">The value to store in the given index.</param>
-        public void SetTile(int index, int value)
+        internal void SetTile(int index, int value)
         {
             if (index == 0)
             {

@@ -57,7 +57,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Specifies the X component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        protected float VelocityX
+        private protected float VelocityX
         {
             get => _velocityX;
             private set => _velocityX = value;
@@ -67,7 +67,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Specifies the Y component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        protected float VelocityY
+        private protected float VelocityY
         {
             get => _velocityY;
             private set => _velocityY = value;
@@ -77,7 +77,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Specifies the Z component of the <see cref="Orbiter"/>'s velocity.
         /// </summary>
-        protected float VelocityZ
+        private protected float VelocityZ
         {
             get => _velocityZ;
             private set => _velocityZ = value;
@@ -109,7 +109,7 @@ namespace WorldFoundry.Orbits
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
         /// <remarks>Produces 0 in the base class; expected to be overridden in subclasses.</remarks>
-        protected virtual void GenerateMass() => Mass = 0;
+        private protected virtual void GenerateMass() => Mass = 0;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -133,7 +133,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
         /// </summary>
-        protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / RadiusSquared;
+        private protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / RadiusSquared;
 
         /// <summary>
         /// Calculates the force of gravity on this <see cref="Orbiter"/> from another as a vector,

@@ -102,7 +102,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// One half of a Gaussian distribution, with <see cref="Planetoid.MinMass"/> as the mean,
         /// constrained to <see cref="Planetoid.MaxMass"/> as a hard limit at 3-sigma.
         /// </remarks>
-        protected override void GenerateMass()
+        private protected override void GenerateMass()
         {
             do
             {
@@ -113,7 +113,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Generates an appropriate minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateMinSatellitePeriapsis() => MinSatellitePeriapsis = Radius + 20;
+        private protected override void GenerateMinSatellitePeriapsis() => MinSatellitePeriapsis = Radius + 20;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -140,7 +140,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var axis = Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
@@ -150,7 +150,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Sets an appropriate orbit for the satellite of an asteroid.
         /// </summary>
-        protected void SetAsteroidSatelliteOrbit(Orbiter satellite, double periapsis, float eccentricity)
+        private protected void SetAsteroidSatelliteOrbit(Orbiter satellite, double periapsis, float eccentricity)
             => Orbit.SetOrbit(
                 satellite,
                 this,

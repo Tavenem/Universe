@@ -49,7 +49,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~0.1–1 solar mass.
         /// </remarks>
-        protected override void GenerateMass() => Math.Round(Randomizer.Static.NextDouble(1.99e29, 1.99e30));
+        private protected override void GenerateMass() => Math.Round(Randomizer.Static.NextDouble(1.99e29, 1.99e30));
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -59,12 +59,12 @@ namespace WorldFoundry.Space
         /// and not considered critical to model precisely, especially given their extremely
         /// attenuated nature. Instead, a ~1 ly sphere is used.
         /// </remarks>
-        protected override void GenerateShape() => Shape = new Sphere(9.5e15);
+        private protected override void GenerateShape() => Shape = new Sphere(9.5e15);
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
-        protected override void GenerateTemperature() => Temperature = 10000;
+        private protected override void GenerateTemperature() => Temperature = 10000;
 
         /// <summary>
         /// Generates an appropriate population of child objects in local space, in an area around

@@ -51,12 +51,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
+        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateAtmosphere()
+        private protected override void GenerateAtmosphere()
         {
             var dust = 1.0f;
 
@@ -147,7 +147,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             var dust = 1.0f;
 
@@ -219,12 +219,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateDensity() => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
+        private protected override void GenerateDensity() => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
-        protected override void GenerateMass() => Mass = Shape.GetVolume() * Density;
+        private protected override void GenerateMass() => Mass = Shape.GetVolume() * Density;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -256,7 +256,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             // Gaussian distribution with most values between 1km and 19km.
             var axis = Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 4500)));

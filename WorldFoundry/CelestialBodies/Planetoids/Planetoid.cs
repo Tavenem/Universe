@@ -49,8 +49,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         public double AngularVelocity
         {
-            get => GetProperty(ref _angularVelocity, GenerateRotationalPeriod) ?? 0;
-            set => _angularVelocity = value;
+            get => GetProperty(ref _angularVelocity, GenerateAngularVelocity) ?? 0;
+            private set => _angularVelocity = value;
         }
 
         private Atmosphere _atmosphere;
@@ -63,7 +63,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             protected set => _atmosphere = value;
         }
 
-        private float? _axialPrecession;
+        private protected float? _axialPrecession;
         /// <summary>
         /// The angle between the X-axis and the orbital vector at which the first equinox occurs.
         /// </summary>
@@ -97,7 +97,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public float AxialTilt
         {
             get => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
-            internal set => AngleOfRotation = (Orbit == null ? value : value + Orbit.Inclination);
+            private set => AngleOfRotation = (Orbit == null ? value : value + Orbit.Inclination);
         }
 
         /// <summary>
@@ -118,17 +118,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisX { get; private set; }
+        private protected float AxisX { get; private set; }
 
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisY { get; private set; }
+        private protected float AxisY { get; private set; }
 
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisZ { get; private set; }
+        private protected float AxisZ { get; private set; }
 
         /// <summary>
         /// A <see cref="Quaternion"/> representing the rotation of this <see cref="Planetoid"/>'s
@@ -150,22 +150,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisRotationX { get; private set; }
+        private protected float AxisRotationX { get; private set; }
 
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisRotationY { get; private set; }
+        private protected float AxisRotationY { get; private set; }
 
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisRotationZ { get; private set; }
+        private protected float AxisRotationZ { get; private set; }
 
         /// <summary>
         /// The W component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        protected float AxisRotationW { get; private set; }
+        private protected float AxisRotationW { get; private set; }
 
         private Mixture _composition;
         /// <summary>
@@ -197,7 +197,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         private static int extremeRotationalPeriod = 1100000;
-        protected virtual int ExtremeRotationalPeriod => extremeRotationalPeriod;
+        private protected virtual int ExtremeRotationalPeriod => extremeRotationalPeriod;
 
         private bool? _hasMagnetosphere;
         /// <summary>
@@ -206,7 +206,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public bool HasMagnetosphere
         {
             get => GetProperty(ref _hasMagnetosphere, GenerateMagnetosphere) ?? false;
-            private set => _hasMagnetosphere = value;
+            protected set => _hasMagnetosphere = value;
         }
 
         /// <summary>
@@ -241,7 +241,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         internal virtual double? MaxMassForType => null;
 
         private static int maxRotationalPeriod = 100000;
-        protected virtual int MaxRotationalPeriod => maxRotationalPeriod;
+        private protected virtual int MaxRotationalPeriod => maxRotationalPeriod;
 
         internal static int maxSatellites = 1;
         /// <summary>
@@ -280,13 +280,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         internal virtual double? MinMassForType => null;
 
         private static int minRotationalPeriod = 8000;
-        protected virtual int MinRotationalPeriod => minRotationalPeriod;
+        private protected virtual int MinRotationalPeriod => minRotationalPeriod;
 
         private double? _minSatellitePeriapsis;
         /// <summary>
         /// The minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
         /// </summary>
-        protected double MinSatellitePeriapsis
+        private protected double MinSatellitePeriapsis
         {
             get => GetProperty(ref _minSatellitePeriapsis, GenerateMinSatellitePeriapsis) ?? 0;
             set => _minSatellitePeriapsis = value;
@@ -304,7 +304,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double RotationalPeriod
         {
             get => GetProperty(ref _rotationalPeriod, GenerateRotationalPeriod) ?? 0;
-            private set => _rotationalPeriod = value;
+            protected set => _rotationalPeriod = value;
         }
 
         /// <summary>
@@ -370,7 +370,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Determines an angle between the Y-axis and the axis of rotation for this <see cref="Planetoid"/>.
         /// </summary>
-        protected void GenerateAngleOfRotation()
+        private protected virtual void GenerateAngleOfRotation()
         {
             _axialPrecession = (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4);
             if (Randomizer.Static.NextDouble() <= 0.2) // low chance of an extreme tilt
@@ -384,12 +384,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Calculates the angular velocity of this <see cref="Planetoid"/>.
+        /// </summary>
+        private void GenerateAngularVelocity() => AngularVelocity = RotationalPeriod == 0 ? 0 : Utilities.MathUtil.Constants.TwoPI / RotationalPeriod;
+
+        /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
         /// </summary>
         /// <remarks>
         /// Provides no functionality in the base class; subclasses are expected override.
         /// </remarks>
-        protected virtual void GenerateAtmosphere() { }
+        private protected virtual void GenerateAtmosphere() { }
 
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
@@ -397,7 +402,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>
         /// Provides no functionality in the base class except initialization; subclasses are expected override.
         /// </remarks>
-        protected virtual void GenerateComposition() => Composition = new Mixture();
+        private protected virtual void GenerateComposition() => Composition = new Mixture();
 
         /// <summary>
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
@@ -406,7 +411,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Does nothing in the base class (allowing <see cref="DensityForType"/> to be used);
         /// subclasses may override if necessary.
         /// </remarks>
-        protected virtual void GenerateDensity() { }
+        private protected virtual void GenerateDensity() { }
 
         /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
@@ -417,18 +422,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// (cooled) body does not. Mass is divided by 3e24, and rotational period by the number of
         /// seconds in an Earth year, which simplifies to multiplying mass by 2.88e-19.
         /// </remarks>
-        private void GenerateMagnetosphere()
+        private protected virtual void GenerateMagnetosphere()
             => HasMagnetosphere = Randomizer.Static.NextDouble() <= ((Mass * 2.88e-19) / RotationalPeriod) * MagnetosphereChanceFactor;
 
         /// <summary>
         /// Generates an appropriate minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
         /// </summary>
-        protected virtual void GenerateMinSatellitePeriapsis() => _minSatellitePeriapsis = 0;
+        private protected virtual void GenerateMinSatellitePeriapsis() => _minSatellitePeriapsis = 0;
 
         /// <summary>
         /// Determines a rotational period for this <see cref="Planetoid"/>.
         /// </summary>
-        private void GenerateRotationalPeriod()
+        private protected virtual void GenerateRotationalPeriod()
         {
             // Check for tidal locking.
             if (Orbit != null)
@@ -452,8 +457,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 RotationalPeriod = Math.Round(Randomizer.Static.NextDouble(MinRotationalPeriod, MaxRotationalPeriod));
             }
-
-            AngularVelocity = RotationalPeriod == 0 ? 0 : Utilities.MathUtil.Constants.TwoPI / RotationalPeriod;
         }
 
         /// <summary>
@@ -461,7 +464,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         /// <remarks>Returns null in the base class; subclasses are expected to override.</remarks>
-        protected virtual Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass) => null;
+        private protected virtual Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass) => null;
 
         /// <summary>
         /// Generates a set of natural satellites for this celestial body.
@@ -525,7 +528,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        protected override float GetInsolationHeat(Vector3 position)
+        private protected override float GetInsolationHeat(Vector3 position)
         {
             var heat = base.GetInsolationHeat(position);
 
@@ -569,6 +572,29 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => Orbit == null
             ? false
             : Math.Pow(((years / 6.0e11) * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2)) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
+
+        /// <summary>
+        /// Sets the <see cref="AxialTilt"/> of this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <param name="value">
+        /// An angle from the Y-axis (or the orbital inclination, if in orbit), in radians.
+        /// </param>
+        public virtual void SetAxialTilt(float value)
+        {
+            if (Orbit != null)
+            {
+                value += Orbit.Inclination;
+            }
+            while (value < 0)
+            {
+                value += (float)Utilities.MathUtil.Constants.TwoPI;
+            }
+            while (value >= Utilities.MathUtil.Constants.TwoPI)
+            {
+                value -= (float)Utilities.MathUtil.Constants.TwoPI;
+            }
+            AngleOfRotation = value;
+        }
 
         private void SetAxis()
         {

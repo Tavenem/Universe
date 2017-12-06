@@ -23,11 +23,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         public override string BaseTypeName => baseTypeName;
 
         internal static int subMinDensity = 600;
-        protected int SubMinDensity => subMinDensity;
+        private protected int SubMinDensity => subMinDensity;
         internal static int minDensity = 1100;
-        protected int MinDensity => minDensity;
+        private protected int MinDensity => minDensity;
         internal static int maxDensity = 1650;
-        protected int MaxDensity => maxDensity;
+        private protected int MaxDensity => maxDensity;
 
         private static double maxMassForType = 2.5e28;
         /// <summary>
@@ -35,7 +35,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// generation, in kg. Null indicates no maximum.
         /// </summary>
         /// <remarks>At around this limit the planet will have sufficient mass to sustain fusion, and become a brown dwarf.</remarks>
-        internal override double? MaxMassForType => null;
+        internal override double? MaxMassForType => maxMassForType;
 
         internal new static int maxSatellites = 75;
         /// <summary>
@@ -111,7 +111,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.275, 0.35), 3);
+        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.275, 0.35), 3);
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
@@ -120,7 +120,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// Giants have no solid surface, instead the "surface" is arbitrarily defined as the level
         /// where the pressure is 1 MPa.
         /// </remarks>
-        protected override void GenerateAtmosphere()
+        private protected override void GenerateAtmosphere()
         {
             Atmosphere = new Atmosphere(this, 1000)
             {
@@ -310,7 +310,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 
@@ -455,7 +455,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// Relatively low chance of a "puffy" giant (Saturn-like, low-density).
         /// </remarks>
-        protected override void GenerateDensity()
+        private protected override void GenerateDensity()
         {
             if (Randomizer.Static.NextDouble() <= 0.2)
             {
@@ -470,13 +470,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
-        protected override void GenerateMass() => Mass = Math.Round(Randomizer.Static.NextDouble(MinMass, MaxMass));
+        private protected override void GenerateMass() => Mass = Math.Round(Randomizer.Static.NextDouble(MinMass, MaxMass));
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
         {
             Planetoid satellite = null;
             double chance;
@@ -572,6 +572,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// Cannot be less than the minimum required to become a gas giant rather than a terrestrial planet.
         /// </remarks>
-        public override float GetCoreProportion() => (float)Math.Min(Randomizer.Static.NextDouble(0.02, 0.2), (MinMass_Type ?? 0) / Mass);
+        private protected override float GetCoreProportion() => (float)Math.Min(Randomizer.Static.NextDouble(0.02, 0.2), (MinMassForType ?? 0) / Mass);
     }
 }

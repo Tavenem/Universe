@@ -103,13 +103,13 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
-        protected override void GenerateMass() => Mass = 3.0e25;
+        private protected override void GenerateMass() => Mass = 3.0e25;
 
         private void GenerateShape(double? starSystemRadius) => Shape = new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0));
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape() => GenerateShape(null);
+        private protected override void GenerateShape() => GenerateShape(null);
     }
 }

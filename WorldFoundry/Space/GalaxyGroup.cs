@@ -92,7 +92,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// General average; 1.0e14 solar masses.
         /// </remarks>
-        protected override void GenerateMass() => Mass = 2.0e44;
+        private protected override void GenerateMass() => Mass = 2.0e44;
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -100,7 +100,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~500–1000 kpc
         /// </remarks>
-        protected override void GenerateShape() => Shape = new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23));
+        private protected override void GenerateShape() => Shape = new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23));
 
         /// <summary>
         /// Generates an appropriate population of child objects in local space, in an area around

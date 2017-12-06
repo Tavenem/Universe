@@ -64,7 +64,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// General average; 1.0e16–1.0e17 solar masses.
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -72,7 +72,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
         /// </remarks>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var majorAxis = Randomizer.Static.NextDouble(9.4607e23, 9.4607e25);
             var minorAxis1 = majorAxis * Randomizer.Static.NextDouble(0.02, 0.15);

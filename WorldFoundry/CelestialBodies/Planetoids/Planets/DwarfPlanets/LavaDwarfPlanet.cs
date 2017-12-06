@@ -82,7 +82,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 

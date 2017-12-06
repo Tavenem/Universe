@@ -44,12 +44,12 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of dwarf galaxies are ordinary black holes, not super-massive.
         /// </remarks>
-        protected override void GenerateGalacticCore() => GalacticCore = new BlackHole(this);
+        private protected override void GenerateGalacticCore() => GalacticCore = new BlackHole(this);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Randomizer.Static.NextDouble(9.5e18, 2.5e18); // ~200–1800 ly
             var axis = radius * Randomizer.Static.Normal(0.02, 1);

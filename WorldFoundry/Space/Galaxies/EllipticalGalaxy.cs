@@ -100,7 +100,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Randomizer.Static.NextDouble(1.5e18, 1.5e21); // ~160–160000 ly
             var axis = radius * Randomizer.Static.Normal(0.5, 1);

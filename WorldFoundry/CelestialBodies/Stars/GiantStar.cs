@@ -43,7 +43,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosity()
+        private protected override void GenerateLuminosity()
         {
             switch (LuminosityClass)
             {
@@ -68,7 +68,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosityClass()
+        private protected override void GenerateLuminosityClass()
         {
             if (Randomizer.Static.NextDouble() <= 0.05)
             {

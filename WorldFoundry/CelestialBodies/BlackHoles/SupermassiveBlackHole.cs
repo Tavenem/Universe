@@ -43,6 +43,6 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <remarks>
         /// ~10e5–10e10 solar masses
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e35, 2.0e40);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e35, 2.0e40);
     }
 }

@@ -44,7 +44,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~10e3–10e7 solar masses.
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -54,7 +54,7 @@ namespace WorldFoundry.Space
         /// which the dust clouds and filaments roughly fit. The radius follows a log-normal
         /// distribution, with ~32 ly as the mode, starting at ~16 ly, and cutting off around ~600 ly.
         /// </remarks>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var axis = 0.0;
             do

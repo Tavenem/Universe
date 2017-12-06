@@ -146,7 +146,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
-        protected override void GenerateMass() => Mass = Shape.GetVolume() * 7.0e-8;
+        private protected override void GenerateMass() => Mass = Shape.GetVolume() * 7.0e-8;
 
         private void GenerateShape(double? majorRadius, double? minorRadius)
         {
@@ -164,6 +164,6 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape() => GenerateShape(null, null);
+        private protected override void GenerateShape() => GenerateShape(null, null);
     }
 }

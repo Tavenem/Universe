@@ -76,7 +76,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 
@@ -185,6 +185,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// No "puffy" ice giants.
         /// </remarks>
-        protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(MinDensity, MaxDensity));
+        private protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(MinDensity, MaxDensity));
     }
 }

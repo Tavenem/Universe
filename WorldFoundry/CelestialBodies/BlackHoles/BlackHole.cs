@@ -45,7 +45,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <remarks>
         /// ~3–20 solar masses
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(6.0e30, 4.0e31);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(6.0e30, 4.0e31);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -54,7 +54,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// Black holes are strange objects with zero volume and infinite density. The shape given is
         /// presumed to refer to the shape of the event horizon.
         /// </remarks>
-        protected override void GenerateShape() => Shape = new Sphere(Math.Round(1.48e-27 * Mass));
+        private protected override void GenerateShape() => Shape = new Sphere(Math.Round(1.48e-27 * Mass));
 
         /// <summary>
         /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
@@ -63,6 +63,6 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <remarks>
         /// The gravity at the event horizon of a black hole is infinite.
         /// </remarks>
-        protected override void GenerateSurfaceGravity() => SurfaceGravity = double.PositiveInfinity;
+        private protected override void GenerateSurfaceGravity() => SurfaceGravity = double.PositiveInfinity;
     }
 }

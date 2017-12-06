@@ -127,12 +127,12 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of globular clusters are ordinary black holes, not super-massive.
         /// </remarks>
-        protected override void GenerateGalacticCore() => GalacticCore = new BlackHole(this);
+        private protected override void GenerateGalacticCore() => GalacticCore = new BlackHole(this);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Randomizer.Static.NextDouble(8.0e6, 2.1e7);
             var axis = radius * Randomizer.Static.Normal(0.02, 1);

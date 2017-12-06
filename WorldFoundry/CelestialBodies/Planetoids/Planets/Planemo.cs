@@ -56,7 +56,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// The eccentricity of this <see cref="Planemo"/>'s orbit.
         /// </summary>
         [NotMapped]
-        protected float Eccentricity
+        private protected float Eccentricity
         {
             get => GetProperty(ref _eccentricity, GenerateEccentricity) ?? 0;
             set => _eccentricity = value;
@@ -180,7 +180,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// Generates the ring system around this <see cref="Planemo"/>, if any.
         /// </summary>
-        protected virtual void GenerateRings()
+        private protected virtual void GenerateRings()
         {
             if (_rings == null)
             {
@@ -244,7 +244,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// A predetermined radius for the <see cref="Planemo"/>. May be left null to randomly
         /// determine an appropriate radius.
         /// </param>
-        protected void GenerateShape(float? knownRadius = null)
+        private protected void GenerateShape(float? knownRadius)
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
@@ -256,14 +256,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape() => GenerateShape(null);
+        private protected override void GenerateShape() => GenerateShape(null);
 
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        public virtual float GetCoreProportion() => CoreProportion;
+        private protected virtual float GetCoreProportion() => CoreProportion;
 
         /// <summary>
         /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planemo"/>.
@@ -277,7 +277,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>Smaller <see cref="Planemo"/>s have thicker crusts due to faster proto-planetary cooling.</remarks>
-        protected float GetCrustProportion() => (float)(400000.0 / Math.Pow(Radius, 1.6));
+        private protected float GetCrustProportion() => (float)(400000.0 / Math.Pow(Radius, 1.6));
 
         /// <summary>
         /// Determines the maximum radius allowed for this <see cref="Planemo"/>, given its <see
@@ -297,13 +297,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Calculates the approximate outer distance at which ice rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which ice rings may be found, in meters.</returns>
-        protected float GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
+        private protected float GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rocky rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which rocky rings may be found, in meters.</returns>
-        protected float GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
+        private protected float GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
 
         /// <summary>
         /// Calculates the mass at which the Stern-Levison parameter for this <see cref="Planemo"/>
@@ -314,7 +314,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// doesn't already have a defined orbit.
         /// </remarks>
         /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit or <see cref="CelestialEntity.Parent"/>.</exception>
-        protected double GetSternLevisonLambdaMass()
+        private protected double GetSternLevisonLambdaMass()
         {
             var semiMajorAxis = 0.0;
             if (Orbit != null)
@@ -347,7 +347,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Converts a <see cref="Vector3"/> to a longitude, in radians.
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
-        /// <returns>A longitude, as an angle in radians from the X-axis.</returns>
+        /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
         internal float VectorToLongitude(Vector3 v)
         {
             var u = Vector3.Transform(v, AxisRotation);

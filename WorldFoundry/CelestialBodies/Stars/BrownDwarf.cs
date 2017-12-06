@@ -55,12 +55,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
+        private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
 
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.V;
+        private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.V;
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
@@ -68,7 +68,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// Between 13 and 90 times the mass of Jupiter.
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
@@ -76,7 +76,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// Brown dwarfs are all approximately the same radius as Jupiter, within about a 15% tolerance.
         /// </remarks>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Math.Round(Randomizer.Static.Normal(69911000, 3495550));
             var flattening = Math.Max(Randomizer.Static.NextDouble(0.1), 0);
@@ -86,7 +86,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateSpectralClass()
+        private protected override void GenerateSpectralClass()
         {
             var chance = Randomizer.Static.NextDouble();
             if (chance <= 0.29)

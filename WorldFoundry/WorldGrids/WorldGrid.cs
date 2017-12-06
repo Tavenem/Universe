@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
@@ -11,6 +12,11 @@ namespace WorldFoundry.WorldGrids
     public class WorldGrid
     {
         /// <summary>
+        /// The default grid size (level of detail).
+        /// </summary>
+        public const short DefaultGridSize = 6;
+
+        /// <summary>
         /// The default multiplier for the elevation noise generation.
         /// </summary>
         private const int ElevationFactor = 100;
@@ -19,9 +25,10 @@ namespace WorldFoundry.WorldGrids
         /// The maximum grid size (level of detail). 16 is a hard limit. 17 would cause an int
         /// overflow for list indexes.
         /// </summary>
-        public const int MaxGridSize = 16;
+        public const short MaxGridSize = 16;
 
         private Corner[] _cornerArray;
+        [NotMapped]
         internal Corner[] CornerArray
         {
             get
@@ -50,6 +57,7 @@ namespace WorldFoundry.WorldGrids
         internal int ElevationSeed { get; private set; }
 
         private Edge[] _edgeArray;
+        [NotMapped]
         internal Edge[] EdgeArray
         {
             get
@@ -71,7 +79,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The current grid size (level of detail).
         /// </summary>
-        public int GridSize { get; private set; } = -1;
+        public short GridSize { get; private set; } = -1;
 
         /// <summary>
         /// The <see cref="TerrestrialPlanet"/> which this <see cref="WorldGrid"/> maps.
@@ -79,6 +87,7 @@ namespace WorldFoundry.WorldGrids
         internal TerrestrialPlanet Planet { get; set; }
 
         private Tile[] _tileArray;
+        [NotMapped]
         internal Tile[] TileArray
         {
             get
@@ -261,7 +270,7 @@ namespace WorldFoundry.WorldGrids
         /// in the same height map (can be used to maintain a similar look when changing <see
         /// cref="GridSize"/>, rather than an entirely new geography).
         /// </param>
-        internal void SetGridSize(int size, bool preserveShape = false) => SubdivideGrid(Math.Min(MaxGridSize, size));
+        internal void SetGridSize(short size, bool preserveShape = false) => SubdivideGrid(Math.Min(MaxGridSize, size));
 
         private void SetGridSize0()
         {
@@ -354,7 +363,7 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private (Corner[], Edge[], Tile[]) SetNewGridSize(int size)
+        private (Corner[], Edge[], Tile[]) SetNewGridSize(short size)
         {
             GridSize = size;
 
@@ -401,7 +410,7 @@ namespace WorldFoundry.WorldGrids
 
         private void SubdivideGrid()
         {
-            var (prevCorners, prevEdges, prevTiles) = SetNewGridSize(GridSize + 1);
+            var (prevCorners, prevEdges, prevTiles) = SetNewGridSize((short)(GridSize + 1));
 
             for (int i = 0; i < prevTiles.Length; i++)
             {

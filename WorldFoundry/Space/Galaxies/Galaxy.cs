@@ -187,12 +187,12 @@ namespace WorldFoundry.Space.Galaxies
         /// A factor by which the mass of this <see cref="Galaxy"/> will be multiplied due to the
         /// abundance of dark matter.
         /// </returns>
-        protected virtual double GenerateDarkMatterMultiplier() => Randomizer.Static.NextDouble(5, 15);
+        private protected virtual double GenerateDarkMatterMultiplier() => Randomizer.Static.NextDouble(5, 15);
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        protected virtual void GenerateGalacticCore() => GalacticCore = new SupermassiveBlackHole(this);
+        private protected virtual void GenerateGalacticCore() => GalacticCore = new SupermassiveBlackHole(this);
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
@@ -201,13 +201,13 @@ namespace WorldFoundry.Space.Galaxies
         /// Produces a rough approximation of the mass of all children, plus the galactic core, plus
         /// an additional high proportion of dark matter.
         /// </remarks>
-        protected override void GenerateMass()
+        private protected override void GenerateMass()
             => Mass = Math.Round(((Shape.GetVolume() * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Randomizer.Static.NextDouble(1.55e19, 1.55e21); // ~1600–160000 ly
             var axis = radius * Randomizer.Static.Normal(0.02, 0.001);

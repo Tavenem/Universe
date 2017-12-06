@@ -60,12 +60,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
+        private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
 
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.Other;
+        private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.Other;
 
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
@@ -73,12 +73,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// Between 1.44 and 3 times solar mass.
         /// </remarks>
-        protected override void GenerateMass() => Mass = Randomizer.Static.Normal(4.4178e30, 5.174e29);
+        private protected override void GenerateMass() => Mass = Randomizer.Static.Normal(4.4178e30, 5.174e29);
 
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var radius = Math.Round(Randomizer.Static.NextDouble(1000, 2000));
             var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
@@ -88,11 +88,11 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateSpectralClass() => SpectralClass = SpectralClass.Other;
+        private protected override void GenerateSpectralClass() => SpectralClass = SpectralClass.Other;
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
-        protected override void GenerateTemperature() => Temperature = (float)Math.Round(Randomizer.Static.Normal(600000, 133333));
+        private protected override void GenerateTemperature() => Temperature = (float)Math.Round(Randomizer.Static.Normal(600000, 133333));
     }
 }

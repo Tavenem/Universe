@@ -36,16 +36,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public override float MagnetosphereChanceFactor => 5;
 
         internal new static float maxDensity = 8000;
-        protected override float MaxDensity => maxDensity;
+        private protected override float MaxDensity => maxDensity;
 
         internal new static float metalProportion = 0.25f;
         /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
-        protected override float MetalProportion => metalProportion;
+        private protected override float MetalProportion => metalProportion;
 
         internal new static float minDensity = 5250;
-        protected override float MinDensity => minDensity;
+        private protected override float MinDensity => minDensity;
 
         private static string planemoClassPrefix = "Iron";
         /// <summary>
@@ -102,6 +102,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        public override float GetCoreProportion() => CoreProportion;
+        private protected override float GetCoreProportion() => CoreProportion;
     }
 }

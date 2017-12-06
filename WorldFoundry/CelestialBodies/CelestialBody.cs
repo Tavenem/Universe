@@ -82,7 +82,7 @@ namespace WorldFoundry.CelestialBodies
         /// <remarks>
         /// Sets 0 in the base class; subclasses which are not black-bodies are expected to override.
         /// </remarks>
-        protected virtual void GenerateAlbedo() => Albedo = 0;
+        private protected virtual void GenerateAlbedo() => Albedo = 0;
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -96,7 +96,7 @@ namespace WorldFoundry.CelestialBodies
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        protected virtual float GetInsolationHeat(Vector3 position)
+        private protected virtual float GetInsolationHeat(Vector3 position)
         {
             // Nearby stars within the same parent may provide heat.
             // Other stars are ignored, presumed to be far enough away that

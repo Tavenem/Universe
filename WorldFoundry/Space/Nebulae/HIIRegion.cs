@@ -67,7 +67,7 @@ namespace WorldFoundry.Space
         /// which the dust clouds and filaments roughly fit. The radius follows a log-normal
         /// distribution, with  ~20 ly as the mode, starting at ~10 ly, and cutting off around ~600 ly.
         /// </remarks>
-        protected override void GenerateShape()
+        private protected override void GenerateShape()
         {
             var axis = 0.0;
             do
@@ -83,6 +83,6 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
-        protected override void GenerateTemperature() => Temperature = 10000;
+        private protected override void GenerateTemperature() => Temperature = 10000;
     }
 }

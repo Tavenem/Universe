@@ -94,7 +94,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 
@@ -258,7 +258,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
         {
             Planetoid satellite = null;
             var chance = Randomizer.Static.NextDouble();

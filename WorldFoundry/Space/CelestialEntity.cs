@@ -106,7 +106,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public float PositionZ { get; set; }
 
-        protected double? _radius;
+        private double? _radius;
         /// <summary>
         /// Gets a radius which fully contains this <see cref="CelestialEntity"/>, in meters.
         /// </summary>
@@ -122,7 +122,7 @@ namespace WorldFoundry.Space
             }
         }
 
-        protected double? _radiusSquared;
+        private double? _radiusSquared;
         /// <summary>
         /// Gets the <see cref="Radius"/>, squared, in meters.
         /// </summary>
@@ -138,7 +138,7 @@ namespace WorldFoundry.Space
             }
         }
 
-        protected Shape _shape;
+        private Shape _shape;
         /// <summary>
         /// The shape of the <see cref="CelestialEntity"/>.
         /// </summary>
@@ -215,7 +215,7 @@ namespace WorldFoundry.Space
             return GetTreePathToSpaceGrid().TakeWhile((o, i) => otherPath.Count > i && o == otherPath[i]).LastOrDefault() as CelestialObject;
         }
 
-        protected void GenerateDesgination()
+        private protected void GenerateDesgination()
             => _designation = string.IsNullOrEmpty(DesignatorPrefix)
                 ? ID.ToString("B")
                 : $"{DesignatorPrefix} {ID.ToString("B")}";
@@ -224,7 +224,7 @@ namespace WorldFoundry.Space
         /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Generates an empty sphere in the base class; expected to be overridden in subclasses.</remarks>
-        protected virtual void GenerateShape() => Shape = new Sphere();
+        private protected virtual void GenerateShape() => Shape = new Sphere();
 
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.

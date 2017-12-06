@@ -61,7 +61,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
         /// </summary>
-        protected override void GenerateMass()
+        private protected override void GenerateMass()
         {
             if (LuminosityClass == LuminosityClass.Zero) // Hypergiants
             {
@@ -88,11 +88,11 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
+        private protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
         /// </summary>
-        protected override void GenerateTemperature() => Temperature = (float)Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 13333)));
+        private protected override void GenerateTemperature() => Temperature = (float)Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 13333)));
     }
 }

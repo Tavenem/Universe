@@ -627,7 +627,7 @@ namespace WorldFoundry.Space
         /// The mass of the stellar bodies is presumed to be at least 99% of the total, so it is used
         /// as a close-enough approximation, plus a bit of extra.
         /// </remarks>
-        protected override void GenerateMass() => Mass = (Stars?.Sum(s => s.Mass) ?? 0) * 1.001;
+        private protected override void GenerateMass() => Mass = (Stars?.Sum(s => s.Mass) ?? 0) * 1.001;
 
         private void GeneratePlanet(
             Star star,

@@ -92,7 +92,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             Composition = new Mixture();
 
@@ -228,6 +228,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <remarks>
         /// Unlike most celestial bodies, lava planets have a significant amount of self-generated heat.
         /// </remarks>
-        protected override void GenerateTemperature() => Temperature = (float)(Randomizer.Static.NextDouble(974.15, 1574.15));
+        private protected override void GenerateTemperature() => Temperature = (float)(Randomizer.Static.NextDouble(974.15, 1574.15));
     }
 }

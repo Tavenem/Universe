@@ -76,12 +76,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
+        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
 
         /// <summary>
         /// Determines the composition of this <see cref="Planetoid"/>.
         /// </summary>
-        protected override void GenerateComposition()
+        private protected override void GenerateComposition()
         {
             var rock = 1.0f;
 
@@ -118,7 +118,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
         {
             var satellite = new CTypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);

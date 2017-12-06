@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using System;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 using WorldFoundry.Web.ViewModels;
-using System;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.Web.Controllers
 {
@@ -14,17 +16,17 @@ namespace WorldFoundry.Web.Controllers
 
         public IActionResult Index() => View();
 
-        private Planet CreatePlanet(
-            float atmosphericPressure = Planet.DefaultAtmosphericPressure,
-            float axialTilt = Planet.DefaultAxialTilt,
-            int radius = Planet.DefaultRadius,
-            double rotationalPeriod = Planet.DefaultRotationalPeriod,
-            float waterRatio = Planet.DefaultWaterRatio,
-            int gridSize = 4) => throw new NotImplementedException();
+        private TerrestrialPlanet CreatePlanet(
+            float atmosphericPressure = TerrestrialPlanetParams.DefaultAtmosphericPressure,
+            float axialTilt = TerrestrialPlanetParams.DefaultAxialTilt,
+            int radius = TerrestrialPlanetParams.DefaultRadius,
+            double rotationalPeriod = TerrestrialPlanetParams.DefaultRotationalPeriod,
+            float waterRatio = TerrestrialPlanetParams.DefaultWaterRatio,
+            int gridSize = WorldGrid.DefaultGridSize) => throw new NotImplementedException();
 
-        private Planet LoadPlanet(Guid id) => throw new NotImplementedException();
+        private TerrestrialPlanet LoadPlanet(Guid id) => throw new NotImplementedException();
 
-        private Planet GetCachedPlanet(string key)
+        private TerrestrialPlanet GetCachedPlanet(string key)
         {
             if (string.IsNullOrEmpty(key) || !Guid.TryParse(key, out var guid))
             {
@@ -39,12 +41,12 @@ namespace WorldFoundry.Web.Controllers
         }
 
         public PlanetData GetPlanet(
-            float atmosphericPressure = Planet.DefaultAtmosphericPressure,
-            float axialTilt = Planet.DefaultAxialTilt,
-            int radius = Planet.DefaultRadius,
-            double rotationalPeriod = Planet.DefaultRotationalPeriod,
-            float waterRatio = Planet.DefaultWaterRatio,
-            int gridSize = 4,
+            float atmosphericPressure = TerrestrialPlanetParams.DefaultAtmosphericPressure,
+            float axialTilt = TerrestrialPlanetParams.DefaultAxialTilt,
+            int radius = TerrestrialPlanetParams.DefaultRadius,
+            double rotationalPeriod = TerrestrialPlanetParams.DefaultRotationalPeriod,
+            float waterRatio = TerrestrialPlanetParams.DefaultWaterRatio,
+            int gridSize = WorldGrid.DefaultGridSize,
             string id = null)
         {
             if (string.IsNullOrEmpty(id) || !Guid.TryParse(id, out var guid))
