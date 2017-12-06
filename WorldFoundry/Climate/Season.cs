@@ -16,7 +16,7 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Season : IIndexedItem
     {
-        private const float AdvectionErrorTolerance = 1.0e-4f;
+        internal const float ClimateErrorTolerance = 1.0e-4f;
         private const float SeaIcePerSecond = 1.53935e-4f;
         private const float SnowToRainRatio = 13;
 
@@ -249,7 +249,7 @@ namespace WorldFoundry.Climate
                     ? 0
                     : GetHumidityChange(originalAbsHumidities[j], ac.AbsoluteHumidity));
             }
-            if (delta > AdvectionErrorTolerance)
+            if (delta > ClimateErrorTolerance)
             {
                 foreach (var k in destinationTiles.Where(k => !advectionTiles.Contains(k)
                     && (!visitedTiles.ContainsKey(k) || visitedTiles[k] < 5)))

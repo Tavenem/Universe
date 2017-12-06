@@ -8,6 +8,7 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Extensions;
+using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
 using WorldFoundry.Utilities;
@@ -232,15 +233,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
-        public TerrestrialPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="TerrestrialPlanet"/> is located.
-        /// </param>
-        /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="TerrestrialPlanet"/> during random generation, in kg.
         /// </param>
@@ -258,8 +250,31 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// A set of parameters which will control the random generation of this <see
         /// cref="TerrestrialPlanet"/>'s characteristics.
         /// </param>
-        public TerrestrialPlanet(CelestialObject parent, Vector3 position, TerrestrialPlanetParams planetParams) : base(parent, position)
-            => PlanetParams = planetParams;
+        /// <param name="requirements">
+        /// A set of requirements which will control the random generation of this <see
+        /// cref="TerrestrialPlanet"/>'s characteristics.
+        /// </param>
+        public TerrestrialPlanet(
+            CelestialObject parent,
+            Vector3 position,
+            TerrestrialPlanetParams planetParams = null,
+            HabitabilityRequirements requirements = null) : base(parent, position)
+        {
+            HabitabilityRequirements = requirements;
+            PlanetParams = planetParams;
+        }
+
+        private void AdjustOrbitForTemperature(Star star, float trueAnomaly, float distance, float targetTemp)
+        {
+            if (PlanetParams?.RevolutionPeriod.HasValue == true)
+            {
+                star.Luminosity = GetLuminosityForTemperature(star, targetTemp, distance);
+            }
+            else
+            {
+                GenerateOrbit(star, trueAnomaly, GetDistanceForTemperature(star, targetTemp));
+            }
+        }
 
         private void CalculateGasPhaseMix(Chemical chemical, float surfaceTemp, float polarTemp, ref float hydrosphereAtmosphereRatio)
         {
@@ -714,11 +729,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private protected override void GenerateAtmosphere()
         {
             var surfaceTemp = GetTotalTemperatureAverageOrbital();
-
-            // If the planet is not massive enough or too hot to hold onto carbon dioxide gas, it is
-            // presumed that it will have a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
-            var escapeVelocity = Math.Sqrt((Utilities.Science.Constants.TwoG * Mass) / Radius);
-            if (Math.Sqrt(566.6137 * surfaceTemp) >= 0.2 * escapeVelocity)
+            if (surfaceTemp >= GetTempForThinAtmosphere())
             {
                 GenerateAtmosphereTrace(surfaceTemp);
             }
@@ -757,18 +768,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 pressure = Math.Max(0, PlanetParams.AtmosphericPressure.Value);
             }
-            else if (HabitabilityRequirements?.MinimumSurfacePressure.HasValue == true
-                || HabitabilityRequirements?.MaximumSurfacePressure.HasValue == true)
+            else if (HabitabilityRequirements?.MinimumPressure.HasValue == true
+                || HabitabilityRequirements?.MaximumPressure.HasValue == true)
             {
                 // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                if (!HabitabilityRequirements?.MaximumSurfacePressure.HasValue == true)
+                if (!HabitabilityRequirements?.MaximumPressure.HasValue == true)
                 {
-                    pressure = (float)Math.Abs(Randomizer.Static.Normal(0, HabitabilityRequirements.MinimumSurfacePressure.Value / 3))
-                        + HabitabilityRequirements.MinimumSurfacePressure.Value;
+                    pressure = HabitabilityRequirements.MinimumPressure.Value
+                        + (float)Math.Abs(Randomizer.Static.Normal(0, HabitabilityRequirements.MinimumPressure.Value / 3));
                 }
                 else
                 {
-                    pressure = (float)Randomizer.Static.NextDouble(HabitabilityRequirements.MinimumSurfacePressure ?? 0, HabitabilityRequirements.MaximumSurfacePressure.Value);
+                    pressure = (float)Randomizer.Static.NextDouble(HabitabilityRequirements.MinimumPressure ?? 0, HabitabilityRequirements.MaximumPressure.Value);
                 }
             }
             else
@@ -968,30 +979,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void GenerateAtmosphereTrace(float surfaceTemp)
         {
-            float pressure;
-            if (PlanetParams?.AtmosphericPressure.HasValue == true)
-            {
-                pressure = Math.Max(0, PlanetParams.AtmosphericPressure.Value);
-            }
-            else if (HabitabilityRequirements?.MinimumSurfacePressure.HasValue == true
-                || HabitabilityRequirements?.MaximumSurfacePressure.HasValue == true)
-            {
-                // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                if (!HabitabilityRequirements?.MaximumSurfacePressure.HasValue == true)
-                {
-                    pressure = (float)Math.Abs(Randomizer.Static.Normal(0, HabitabilityRequirements.MinimumSurfacePressure.Value / 3))
-                        + HabitabilityRequirements.MinimumSurfacePressure.Value;
-                }
-                else
-                {
-                    pressure = (float)Randomizer.Static.NextDouble(HabitabilityRequirements.MinimumSurfacePressure ?? 0, HabitabilityRequirements.MaximumSurfacePressure.Value);
-                }
-            }
-            else
-            {
-                pressure = (float)Math.Round(Randomizer.Static.NextDouble(25));
-            }
-
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
             // atmospheric escape.
             var h = (float)Math.Round(Randomizer.Static.NextDouble(0.5e-7, 0.2e-6), 4);
@@ -1068,7 +1055,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
             else
             {
-                Atmosphere = new Atmosphere(this, pressure)
+                Atmosphere = new Atmosphere(this, (float)Math.Round(Randomizer.Static.NextDouble(25)))
                 {
                     Mixtures = new HashSet<Mixture>()
                 };
@@ -1573,6 +1560,89 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
+        private void GenerateOrbit(Orbiter orbitedObject, float trueAnomaly, float distance)
+        {
+            var r0 = Vector3.Transform(Vector3.UnitX, Quaternion.CreateFromAxisAngle(Vector3.UnitY, trueAnomaly)) * distance;
+            Position = ((orbitedObject.Position * Parent.LocalScale) + r0) / Parent.LocalScale;
+
+            base.GenerateOrbit(orbitedObject);
+        }
+
+        /// <summary>
+        /// Determines an orbit for this <see cref="Orbiter"/>.
+        /// </summary>
+        /// <param name="orbitedObject">The <see cref="Orbiter"/> which is to be orbited.</param>
+        public override void GenerateOrbit(Orbiter orbitedObject)
+        {
+            if (orbitedObject == null)
+            {
+                return;
+            }
+
+            var ta = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
+            float distance = 1;
+
+            if (PlanetParams?.RevolutionPeriod.HasValue == true)
+            {
+                var a = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, PlanetParams.RevolutionPeriod.Value);
+                var semiLatusRectum = a * (1 - (Eccentricity * Eccentricity));
+                distance = (float)(semiLatusRectum / (1 + (Eccentricity * Math.Cos(ta))));
+
+                GenerateOrbit(orbitedObject, ta, distance);
+            }
+
+            if (orbitedObject is Star star
+                && (PlanetParams?.SurfaceTemperature.HasValue == true
+                || HabitabilityRequirements?.MinimumTemperature.HasValue == true
+                || HabitabilityRequirements?.MaximumTemperature.HasValue == true))
+            {
+                var maxTemp = Math.Min(GetTempForThinAtmosphere(), HabitabilityRequirements?.MaximumTemperature ?? float.MaxValue);
+
+                float targetTemp = 250;
+                if (PlanetParams?.SurfaceTemperature.HasValue == true)
+                {
+                    targetTemp = PlanetParams.SurfaceTemperature.Value;
+                }
+                else if (HabitabilityRequirements.MinimumTemperature.HasValue)
+                {
+                    targetTemp = HabitabilityRequirements.MinimumTemperature.Value;
+                }
+                else
+                {
+                    targetTemp = maxTemp / 2;
+                }
+
+                var count = 0;
+                var delta = 0.0f;
+                do
+                {
+                    AdjustOrbitForTemperature(star, ta, distance, targetTemp);
+
+                    if (PlanetParams?.SurfaceTemperature.HasValue == true)
+                    {
+                        delta = targetTemp - Atmosphere.GetSurfaceTemperatureAverageOrbital();
+                    }
+                    else
+                    {
+                        var coolestEquatorialTemp = Atmosphere.GetSurfaceTemperatureAtApoapsis();
+                        if (coolestEquatorialTemp < HabitabilityRequirements.MinimumTemperature)
+                        {
+                            delta = HabitabilityRequirements.MaximumTemperature.Value - coolestEquatorialTemp;
+                        }
+                        else
+                        {
+                            var warmestPolarTemp = Atmosphere.GetSurfaceTemperatureAtPeriapsis(true);
+                            if (warmestPolarTemp > HabitabilityRequirements.MaximumTemperature)
+                            {
+                                delta = HabitabilityRequirements.MaximumTemperature.Value - warmestPolarTemp;
+                            }
+                        }
+                    }
+                    targetTemp += delta;
+                } while (count < 10 && delta > Season.ClimateErrorTolerance);
+            }
+        }
+
         /// <summary>
         /// Determines a rotational period for this <see cref="Planetoid"/>.
         /// </summary>
@@ -1685,13 +1755,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 GenerateShape(Math.Max(MinimumRadius, Math.Min(GetRadiusForSurfaceGravity(PlanetParams.SurfaceGravity.Value), GetMaxRadius())));
             }
-            else if (HabitabilityRequirements?.MinimumSurfaceGravity.HasValue == true
-                || HabitabilityRequirements?.MaximumSurfaceGravity.HasValue == true)
+            else if (HabitabilityRequirements?.MinimumGravity.HasValue == true
+                || HabitabilityRequirements?.MaximumGravity.HasValue == true)
             {
                 float maxGravity = 0;
-                if (HabitabilityRequirements.MaximumSurfaceGravity.HasValue)
+                if (HabitabilityRequirements.MaximumGravity.HasValue)
                 {
-                    maxGravity = HabitabilityRequirements.MaximumSurfaceGravity.Value;
+                    maxGravity = HabitabilityRequirements.MaximumGravity.Value;
                 }
                 else // Determine the absolute maximum gravity a terrestrial planet could have, before it would become a giant.
                 {
@@ -1700,7 +1770,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     var maxRadius = Math.Pow(maxVolume / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
                     maxGravity = (float)((Utilities.Science.Constants.G * maxMass) / (maxRadius * maxRadius));
                 }
-                var gravity = (float)Randomizer.Static.NextDouble(HabitabilityRequirements?.MinimumSurfaceGravity ?? 0, maxGravity);
+                var gravity = (float)Randomizer.Static.NextDouble(HabitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
                 GenerateShape(Math.Max(MinimumRadius, Math.Min(GetRadiusForSurfaceGravity(gravity), GetMaxRadius())));
             }
             else
@@ -1743,7 +1813,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// its own. The effects of other nearby stars are ignored.
         /// </remarks>
         /// <param name="star">The <see cref="Star"/> for which the calculation is to be made.</param>
-        /// <param name="temperature">The desired temperature (in K).</param>
+        /// <param name="temperature">The desired temperature, in K.</param>
         public float GetDistanceForTemperature(Star star, float temperature)
         {
             var areaRatio = 1;
@@ -1763,10 +1833,44 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
             }
 
-            return (float)(Math.Sqrt((star.Luminosity * (1 - Albedo))) / (Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio));
+            return (float)(Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio));
         }
 
         private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
+
+        /// <summary>
+        /// Calculates the luminosity (in Watts) the given <see cref="Star"/> would have to be
+        /// in order to cause the given effective temperature at the given distance.
+        /// </summary>
+        /// <remarks>
+        /// It is assumed that this <see cref="TerrestrialPlanet"/> has no internal temperature of
+        /// its own. The effects of other nearby stars are ignored.
+        /// </remarks>
+        /// <param name="star">The <see cref="Star"/> for which the calculation is to be made.</param>
+        /// <param name="temperature">The desired temperature, in K.</param>
+        /// <param name="distance">The desired distance, in meters.</param>
+        public double GetLuminosityForTemperature(Star star, float temperature, float distance)
+        {
+            var areaRatio = 1;
+            if (RotationalPeriod > 2500)
+            {
+                if (RotationalPeriod <= 75000)
+                {
+                    areaRatio = 4;
+                }
+                else if (RotationalPeriod <= 150000)
+                {
+                    areaRatio = 3;
+                }
+                else if (RotationalPeriod <= 300000)
+                {
+                    areaRatio = 2;
+                }
+            }
+
+            return Math.Pow(distance * Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio, 2)
+                / (1 - Albedo);
+        }
 
         /// <summary>
         /// Calculates the mass required to produce the given surface gravity, if a <see
@@ -1916,6 +2020,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Calculates the temperature at which this <see cref="TerrestrialPlanet"/> will retain only
+        /// a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
+        /// </summary>
+        /// <returns>A temperature, in K.</returns>
+        /// <remarks>
+        /// If the planet is not massive enough or too hot to hold onto carbon dioxide gas, it is
+        /// presumed that it will have a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
+        /// </remarks>
+        private float GetTempForThinAtmosphere() => (float)((Utilities.Science.Constants.TwoG * Mass * 7.0594833834763e-5) / Radius);
+
+        /// <summary>
         /// Gets the troposphere of this <see cref="TerrestrialPlanet"/>'s <see cref="Atmosphere"/>.
         /// </summary>
         /// <returns>The troposphere of this <see cref="TerrestrialPlanet"/>'s <see cref="Atmosphere"/>.</returns>
@@ -1983,34 +2098,34 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // the coldest temperature should occur at its parent's own apoapsis, but this is
             // unrelated to the moon's own apses and is effectively impossible to calculate due to
             // the complexities of the potential orbital dynamics, so this special case is ignored.
-            if (Atmosphere.GetSurfaceTemperatureAtApoapsis() < (habitabilityRequirements.MinimumSurfaceTemperature ?? 0))
+            if (Atmosphere.GetSurfaceTemperatureAtApoapsis() < (habitabilityRequirements.MinimumTemperature ?? 0))
             {
                 reason |= UninhabitabilityReason.TooCold;
             }
 
             // To determine if a planet is too hot, the polar temperature at periapsis is used, since
             // this should be the coldest region at its hottest time.
-            if (Atmosphere.GetSurfaceTemperatureAtPeriapsis(true) > (habitabilityRequirements.MaximumSurfaceTemperature ?? float.PositiveInfinity))
+            if (Atmosphere.GetSurfaceTemperatureAtPeriapsis(true) > (habitabilityRequirements.MaximumTemperature ?? float.PositiveInfinity))
             {
                 reason |= UninhabitabilityReason.TooHot;
             }
 
-            if (Atmosphere.AtmosphericPressure < (habitabilityRequirements.MinimumSurfacePressure ?? 0))
+            if (Atmosphere.AtmosphericPressure < (habitabilityRequirements.MinimumPressure ?? 0))
             {
                 reason |= UninhabitabilityReason.LowPressure;
             }
 
-            if (Atmosphere.AtmosphericPressure > (habitabilityRequirements.MaximumSurfacePressure ?? float.PositiveInfinity))
+            if (Atmosphere.AtmosphericPressure > (habitabilityRequirements.MaximumPressure ?? float.PositiveInfinity))
             {
                 reason |= UninhabitabilityReason.HighPressure;
             }
 
-            if (SurfaceGravity < (habitabilityRequirements.MinimumSurfaceGravity ?? 0))
+            if (SurfaceGravity < (habitabilityRequirements.MinimumGravity ?? 0))
             {
                 reason |= UninhabitabilityReason.LowGravity;
             }
 
-            if (SurfaceGravity > (habitabilityRequirements.MaximumSurfaceGravity ?? float.PositiveInfinity))
+            if (SurfaceGravity > (habitabilityRequirements.MaximumGravity ?? float.PositiveInfinity))
             {
                 reason |= UninhabitabilityReason.HighGravity;
             }
@@ -2205,26 +2320,5 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             GenerateHydrosphere();
             Seasons?.Clear();
         }
-
-        /// <summary>
-        /// The <see cref="TerrestrialPlanets.HabitabilityRequirements"/> for humans.
-        /// </summary>
-        /// <remarks>
-        /// 236 K (-34 F) used as a minimum temperature: the average low of Yakutsk, a city with a
-        /// permanent human population.
-        ///
-        /// 6.18 kPa is the Armstrong limit, where water boils at human body temperature.
-        ///
-        /// 4980 kPa is the critical point of oxygen, at which oxygen becomes a supercritical fluid.
-        /// </remarks>
-        public static HabitabilityRequirements HumanHabitabilityRequirements =
-            new HabitabilityRequirements(
-                Atmosphere.HumanBreathabilityRequirements,
-                minimumSurfaceTemperature: 236,
-                maximumSurfaceTemperature: 308,
-                minimumSurfacePressure: 6.18f,
-                maximumSurfacePressure: 4980,
-                minimumSurfaceGravity: 0,
-                maximumSurfaceGravity: 14.7f);
     }
 }

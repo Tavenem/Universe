@@ -53,11 +53,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public float? AtmosphericPressure { get; set; }
 
         /// <summary>
-        /// The acceptable limits of atmospheric gases.
-        /// </summary>
-        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
-
-        /// <summary>
         /// The target axial tilt, in radians.
         /// </summary>
         public float? AxialTilt { get; set; }
@@ -106,7 +101,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
         public TerrestrialPlanetParams(
-            float? atmosphericPressure = DefaultAtmosphericPressure,
             List<ComponentRequirement> atmosphericRequirements = null,
             float? axialTilt = DefaultAxialTilt,
             int? gridSize = WorldGrid.DefaultGridSize,
@@ -118,8 +112,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float? surfaceTemperature = DefaultSurfaceTemperature,
             float? waterRatio = DefaultWaterRatio)
         {
-            AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = atmosphericRequirements ?? Atmosphere.HumanBreathabilityRequirements;
             AxialTilt = axialTilt;
             GridSize = gridSize;
             HasMagnetosphere = hasMagnetosphere;

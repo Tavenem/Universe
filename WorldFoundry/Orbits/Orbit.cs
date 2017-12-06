@@ -526,6 +526,16 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
+        /// Calculates the semi-major axis of an orbit of the given bodies with the given period.
+        /// </summary>
+        /// <param name="orbitingObject">The orbiting object.</param>
+        /// <param name="orbitedObject">The orbited object.</param>
+        /// <param name="period">A period, in seconds.</param>
+        /// <returns>THe semi-major axis of the desired orbit, in meters.</returns>
+        public static double GetSemiMajorAxisForPeriod(Orbiter orbitingObject, Orbiter orbitedObject, double period)
+            => Math.Pow((Utilities.Science.Constants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period) / (Utilities.MathUtil.Constants.FourPI * Math.PI), 1.0 / 3.0);
+
+        /// <summary>
         /// Sets the orbit of the given <see cref="Orbiter"/> based on the orbiting object's current
         /// position and the given <paramref name="eccentricity"/>, and adjusts its velocity as necessary.
         /// </summary>
@@ -560,7 +570,6 @@ namespace WorldFoundry.Orbits
             orbitingObject.Orbit.R0 = (orbitingObject.Position - orbitedObject.Position) * orbitingObject.Parent.LocalScale;
 
             // Calculate magnitudes manually to avoid low-precision implementation resulting in infinity.
-            orbitingObject.Orbit.R0.Length();
             var distance = (float)Math.Sqrt(Math.Pow(orbitingObject.Orbit._r0X.Value, 2) + Math.Pow(orbitingObject.Orbit._r0Y.Value, 2) + Math.Pow(orbitingObject.Orbit._r0Z.Value, 2));
 
             var xz = new Vector3(orbitingObject.Orbit._r0X.Value, 0, orbitingObject.Orbit._r0Z.Value);
