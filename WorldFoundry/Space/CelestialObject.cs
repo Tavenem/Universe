@@ -424,7 +424,7 @@ namespace WorldFoundry.Space
         /// The child <see cref="CelestialObject"/> which contains the given position within its <see
         /// cref="Radius"/>, or null if no child does.
         /// </returns>
-        internal virtual CelestialObject GetContainingChild(Vector3 position)
+        public CelestialObject GetContainingChild(Vector3 position)
             => Children?.FirstOrDefault(c => c.GetType().IsSubclassOf(typeof(CelestialObject)) && c.Shape.IsPointWithin(c.Position, position)) as CelestialObject;
 
         /// <summary>
@@ -436,7 +436,7 @@ namespace WorldFoundry.Space
         /// contains it within its local space (even partially); null if the object is outside the
         /// bounds of the hierarchy completely.
         /// </returns>
-        internal CelestialObject GetContainingParent()
+        public CelestialObject GetContainingParent()
         {
             var currentReference = Parent;
             while (currentReference != null)
@@ -461,7 +461,7 @@ namespace WorldFoundry.Space
         /// contains the position within its local space; null if the object is outside the bounds of
         /// the hierarchy completely.
         /// </returns>
-        internal CelestialObject GetContainingParent(Vector3 position)
+        public CelestialObject GetContainingParent(Vector3 position)
         {
             var currentReference = this;
             while (currentReference != null)
@@ -524,9 +524,10 @@ namespace WorldFoundry.Space
         /// Finds all children in a 3x3 box of grid spaces around the given position in local space.
         /// </summary>
         /// <param name="position">The location around which to locate children.</param>
-        internal IEnumerable<CelestialEntity> GetNearbyChildren(Vector3 position)
+        public IEnumerable<CelestialEntity> GetNearbyChildren(Vector3 position)
         {
             Vector3 coordinates = PositionToGridCoords(position);
+            Populate3x3GridRegion(coordinates);
             if (Children != null)
             {
                 foreach (var child in Children)

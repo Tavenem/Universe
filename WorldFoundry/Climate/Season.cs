@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Numerics;
 using Troschuetz.Random;
@@ -15,13 +16,15 @@ namespace WorldFoundry.Climate
     /// Represents an indeterminate period of time during which the climate on a <see cref="Planet"/>
     /// is reported as an average.
     /// </summary>
-    public class Season : IIndexedItem
+    public class Season : DataItem, IIndexedItem
     {
         internal const float ClimateErrorTolerance = 1.0e-4f;
         private const float SeaIcePerSecond = 1.53935e-4f;
         private const float SnowToRainRatio = 13;
 
+        [NotMapped]
         internal EdgeClimate[] edgeClimateArray;
+
         /// <summary>
         /// The climate of each <see cref="Edge"/> during this <see cref="Season"/>.
         /// </summary>
@@ -37,7 +40,9 @@ namespace WorldFoundry.Climate
         /// </summary>
         public TerrestrialPlanet Planet { get; private set; }
 
+        [NotMapped]
         internal TileClimate[] tileClimateArray;
+
         /// <summary>
         /// The climate of each <see cref="Tile"/> during this <see cref="Season"/>.
         /// </summary>
@@ -90,6 +95,8 @@ namespace WorldFoundry.Climate
             }
             TileClimates = new HashSet<TileClimate>(tileClimateArray);
             EdgeClimates = new HashSet<EdgeClimate>(edgeClimateArray);
+
+            Planet.Topography.UpdateCollectionsFromArrays();
         }
 
         private static void CalculatePrecipitation(Tile t, TileClimate tc, float timeRatio)
@@ -128,25 +135,22 @@ namespace WorldFoundry.Climate
                 }
             }
 
+            // snow
             tc.SnowFall = 0;
-            if (snowMixingRatios.Any(s => s > Utilities.MathUtil.Constants.NearlyZero)) // snow
+            tc.SnowFallWaterEquivalent = 0;
+            if (snowMixingRatios.Any(s => s > Utilities.MathUtil.Constants.NearlyZero))
             {
-                tc.SnowFall = snowMixingRatios.Select((s, i) => s * tc.airCellList[i].Density).Sum() * AirCell.LayerHeight * timeRatio;
+                tc.SnowFallWaterEquivalent = snowMixingRatios.Select((s, i) => s * tc.airCellList[i].Density).Sum() * AirCell.LayerHeight * timeRatio;
+                tc.SnowFall = tc.SnowFallWaterEquivalent / SnowToRainRatio;
             }
 
-            tc.Precipitation = tc.SnowFall;
-            if (rainMixingRatios.Any(r => r > Utilities.MathUtil.Constants.NearlyZero)) // rain
+            // rain
+            tc.Precipitation = tc.SnowFallWaterEquivalent;
+            if (rainMixingRatios.Any(r => r > Utilities.MathUtil.Constants.NearlyZero))
             {
                 tc.Precipitation += rainMixingRatios.Select((r, i) => r * tc.airCellList[i].Density).Sum() * AirCell.LayerHeight * timeRatio;
             }
         }
-
-        /// <summary>
-        /// Gets the <see cref="EdgeClimate"/> for this <see cref="Season"/> with the given index.
-        /// </summary>
-        /// <param name="index">An index to a <see cref="EdgeClimate"/>.</param>
-        /// <returns>The <see cref="EdgeClimate"/> with the given index.</returns>
-        public EdgeClimate GetEdgeClimate(int index) => EdgeClimates.FirstOrDefault(x => x.Index == index);
 
         private static float GetHumidityChange(double first, double second)
         {
@@ -160,29 +164,8 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private static float GetPressureGradientForce(float latitude, float tropicalEquator, float halfITCZWidth)
-        {
-            var c = Utilities.MathUtil.Constants.ThreePI / (Utilities.MathUtil.Constants.HalfPI + tropicalEquator * (latitude > tropicalEquator ? -1 : 1));
-            var pressure_derivate = -0.001f * (float)Math.Sin(c * (latitude - tropicalEquator)) + 3.333333e-4f;
-
-            if (latitude < tropicalEquator + halfITCZWidth
-                && latitude > tropicalEquator - halfITCZWidth)
-            {
-                pressure_derivate *= 1.25f;
-            }
-
-            return pressure_derivate;
-        }
-
         private static float GetSnowMelt(float temperature, double time)
             => (float)(2.44e-6 * (temperature - Chemical.Water.MeltingPoint) * time);
-
-        /// <summary>
-        /// Gets the <see cref="TileClimate"/> for this <see cref="Season"/> with the given index.
-        /// </summary>
-        /// <param name="index">An index to a <see cref="TileClimate"/>.</param>
-        /// <returns>The <see cref="TileClimate"/> with the given index.</returns>
-        public TileClimate GetTileClimate(int index) => TileClimates.FirstOrDefault(x => x.Index == index);
 
         private void CalculateAdvection(
             float timeRatio,
@@ -191,14 +174,14 @@ namespace WorldFoundry.Climate
             Dictionary<int, int> visitedTiles,
             double[] edgeAirFlows)
         {
-            var t = Planet.Topography.GetTile(i);
+            var t = Planet.Topography.TileArray[i];
             var tc = tileClimateArray[i];
 
             // incoming
             var inflow = new List<(double, double, double)[]>();
             for (int k = 0; k < t.EdgeCount; k++)
             {
-                if (Planet.Topography.GetEdge(t.GetEdge(k)).GetSign(i) * edgeAirFlows[t.GetEdge(k)] > 0)
+                if (Planet.Topography.EdgeArray[t.GetEdge(k)].GetSign(i) * edgeAirFlows[t.GetEdge(k)] > 0)
                 {
                     var otherACs = tileClimateArray[t.GetTile(k)].airCellList;
                     var airFlow = Math.Abs(edgeAirFlows[t.GetEdge(k)]);
@@ -239,12 +222,12 @@ namespace WorldFoundry.Climate
             var outflow = 0d;
             for (int k = 0; k < t.EdgeCount; k++)
             {
-                if (Planet.Topography.GetEdge(t.GetEdge(k)).GetSign(i) * edgeAirFlows[t.GetEdge(k)] < 0)
+                if (Planet.Topography.EdgeArray[t.GetEdge(k)].GetSign(i) * edgeAirFlows[t.GetEdge(k)] < 0)
                 {
                     outflow += Math.Abs(edgeAirFlows[t.GetEdge(k)]);
 
                     var tk = t.GetTile(k);
-                    if (Planet.Topography.GetTile(tk).TerrainType != TerrainType.Water)
+                    if (Planet.Topography.TileArray[tk].TerrainType != TerrainType.Water)
                     {
                         destinationTiles.Add(tk);
                     }
@@ -287,30 +270,64 @@ namespace WorldFoundry.Climate
             }
         }
 
+        /// <summary>
+        /// Gets the <see cref="EdgeClimate"/> for this <see cref="Season"/> with the given index.
+        /// </summary>
+        /// <param name="index">An index to a <see cref="EdgeClimate"/>.</param>
+        /// <returns>The <see cref="EdgeClimate"/> with the given index.</returns>
+        public EdgeClimate GetEdgeClimate(int index) => index == -1 ? null : EdgeClimates.FirstOrDefault(x => x.Index == index);
+
+        private float GetPressureGradientForce(float latitude)
+        {
+            var c = Utilities.MathUtil.Constants.ThreePI / (Utilities.MathUtil.Constants.HalfPI + TropicalEquator * (latitude > TropicalEquator ? -1 : 1));
+            var pressure_derivate = (float)(-0.001 * Math.Sin(c * (latitude - TropicalEquator)) + (1.0 / 3000));
+
+            if (latitude < TropicalEquator + Planet.HalfITCZWidth
+                && latitude > TropicalEquator - Planet.HalfITCZWidth)
+            {
+                pressure_derivate *= 1.25f;
+            }
+
+            return pressure_derivate;
+        }
+
+        /// <summary>
+        /// Gets the <see cref="TileClimate"/> for this <see cref="Season"/> with the given index.
+        /// </summary>
+        /// <param name="index">An index to a <see cref="TileClimate"/>.</param>
+        /// <returns>The <see cref="TileClimate"/> with the given index.</returns>
+        public TileClimate GetTileClimate(int index) => index == -1 ? null : TileClimates.FirstOrDefault(x => x.Index == index);
+
         private void SetGroundWater(double time, Season previous)
         {
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
-                var t = Planet.Topography.GetTile(i);
+                var t = Planet.Topography.TileArray[i];
                 if (t.TerrainType != TerrainType.Water)
                 {
                     var tc = tileClimateArray[i];
-                    var previousSnow = (previous?.GetTileClimate(i).Snow ?? 0) / SnowToRainRatio;
+                    var previousSnow = (previous?.GetTileClimate(i).SnowCover ?? 0) / SnowToRainRatio;
+                    var newSnow = tc.SnowFallWaterEquivalent;
 
                     var melt = 0f;
-                    if (tc.Temperature > Chemical.Water.MeltingPoint && previousSnow > 0)
+                    if (tc.Temperature > Chemical.Water.MeltingPoint
+                        && (previousSnow > 0 || newSnow > 0))
                     {
                         var meltPotential = GetSnowMelt(tc.Temperature, time);
 
                         melt = Math.Min(meltPotential, previousSnow);
+                        meltPotential -= melt;
                         previousSnow -= melt;
+
+                        melt = Math.Min(meltPotential, newSnow);
+                        newSnow -= melt;
                     }
 
-                    tc.Snow = Math.Max(previousSnow, tc.SnowFall) * SnowToRainRatio;
+                    tc.SnowCover = Math.Max(previousSnow, newSnow) * SnowToRainRatio;
 
                     // rolling average, weighted to the heavier, roughly models infiltration and seepage
                     // multiplied by a factor of 4 to roughly model groundwater flow
-                    var runoff = (float)(((tc.Precipitation - tc.SnowFall + melt) * 0.004f * t.Area) / time);
+                    var runoff = (float)(((tc.Precipitation - tc.SnowFallWaterEquivalent + melt) * 0.004f * t.Area) / time);
                     var previousRunoff = previous?.GetTileClimate(i).Runoff ?? runoff;
                     tc.Runoff = (previousRunoff > runoff ? (previousRunoff * 3 + runoff) : (runoff * 3 + previousRunoff)) / 4;
                 }
@@ -321,9 +338,9 @@ namespace WorldFoundry.Climate
         {
             var advectionTiles = new Queue<int>();
 
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
-                var t = Planet.Topography.GetTile(i);
+                var t = Planet.Topography.TileArray[i];
                 var tc = tileClimateArray[i];
                 if (t.TerrainType == TerrainType.Water)
                 {
@@ -376,11 +393,11 @@ namespace WorldFoundry.Climate
             var cornerFlows = new Dictionary<int, float>();
             var endpoints = new SortedSet<Corner>(Comparer<Corner>.Create((c1, c2) => c2.Elevation.CompareTo(c1.Elevation) * -1));
 
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
                 if (tileClimateArray[i].Runoff > 0)
                 {
-                    var lowest = Planet.Topography.GetTile(i).GetLowestCorner(Planet.Topography);
+                    var lowest = Planet.Topography.TileArray[i].GetLowestCorner(Planet.Topography);
 
                     cornerFlows[lowest.Index] = tileClimateArray[i].Runoff;
 
@@ -393,28 +410,32 @@ namespace WorldFoundry.Climate
                 var c = endpoints.First();
                 endpoints.Remove(c);
 
-                var next = c.GetLowestCorner(Planet.Topography, true);
-                if (next.Elevation > c.Elevation)
+                var next = Planet.Topography.GetCorner(Planet.Topography.EdgeArray.FirstOrDefault(x => x.RiverSource == c.Index)?.RiverDirection ?? -1);
+                if (next == null)
                 {
-                    next = c.GetLowestCorner(Planet.Topography, false);
+                    next = c.GetLowestCorner(Planet.Topography, true);
+                    if (next.Elevation > c.Elevation)
+                    {
+                        next = c.GetLowestCorner(Planet.Topography, false);
+                    }
+                    if (next.Elevation > c.Elevation && (prev?.LakeDepth ?? 0) == 0)
+                    {
+                        c.LakeDepth = Math.Min(
+                            c.GetCorners().Min(x => Planet.Topography.CornerArray[x].Elevation),
+                            c.GetTiles().Min(x => Planet.Topography.TileArray[x].Elevation)) - c.Elevation;
+                    }
                 }
 
-                if (next.Elevation > c.Elevation && (prev?.LakeDepth ?? 0) == 0)
-                {
-                    c.LakeDepth = Math.Min(
-                        c.GetCorners().Min(x => Planet.Topography.GetCorner(x).Elevation),
-                        c.GetTiles().Min(x => Planet.Topography.GetTile(x).Elevation)) - c.Elevation;
-                }
                 if ((prev?.LakeDepth ?? 0) == 0 || c.LakeDepth + c.Elevation >= next.Elevation)
                 {
                     var edgeIndex = c.GetEdge(c.IndexOfCorner(next.Index));
-                    var edge = Planet.Topography.GetEdge(edgeIndex);
+                    var edge = Planet.Topography.EdgeArray[edgeIndex];
                     edge.RiverSource = c.Index;
                     edge.RiverDirection = next.Index;
 
                     cornerFlows.TryGetValue(c.Index, out var flow);
                     flow += c.GetEdges()
-                        .Where(e => Planet.Topography.GetEdge(e).RiverDirection == c.Index)
+                        .Where(e => Planet.Topography.EdgeArray[e].RiverDirection == c.Index)
                         .Sum(e => edgeClimateArray[e].RiverFlow);
                     edgeClimateArray[edgeIndex].RiverFlow = flow;
 
@@ -422,12 +443,12 @@ namespace WorldFoundry.Climate
                     int nextRiverEdge = -1;
                     do
                     {
-                        var nextRiverEdges = rc.GetEdges().Where(e => Planet.Topography.GetEdge(e).RiverSource == rc.Index).ToList();
+                        var nextRiverEdges = rc.GetEdges().Where(e => Planet.Topography.EdgeArray[e].RiverSource == rc.Index).ToList();
                         if (nextRiverEdges.Count > 0)
                         {
                             nextRiverEdge = nextRiverEdges[0];
                             edgeClimateArray[nextRiverEdge].RiverFlow += flow;
-                            rc = Planet.Topography.GetCorner(Planet.Topography.GetEdge(nextRiverEdge).RiverDirection);
+                            rc = Planet.Topography.CornerArray[Planet.Topography.EdgeArray[nextRiverEdge].RiverDirection];
                         }
                         else
                         {
@@ -438,7 +459,7 @@ namespace WorldFoundry.Climate
                     if (next.TerrainType == TerrainType.Land
                         && next.LakeDepth == 0
                         && !endpoints.Contains(next)
-                        && !next.GetEdges().Any(e => Planet.Topography.GetEdge(e).RiverSource == next.Index))
+                        && !next.GetEdges().Any(e => Planet.Topography.EdgeArray[e].RiverSource == next.Index))
                     {
                         endpoints.Add(next);
                     }
@@ -451,10 +472,10 @@ namespace WorldFoundry.Climate
         private void SetSeaIce(double time, Season previous)
         {
             var saltWaterMeltingPointOffset = Chemical.Water.MeltingPoint - Chemical.Water_Salt.MeltingPoint;
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
                 var tc = tileClimateArray[i];
-                if (Planet.Topography.GetTile(i).TerrainType.HasFlag(TerrainType.Water))
+                if (Planet.Topography.TileArray[i].TerrainType.HasFlag(TerrainType.Water))
                 {
                     var previousIce = previous?.GetTileClimate(i).SeaIce ?? 0;
                     var ice = 0f;
@@ -473,14 +494,13 @@ namespace WorldFoundry.Climate
 
         private void SetTemperature(Vector3 position)
         {
-            var temperatures = new Dictionary<float, float>();
-
             var equatorialTemp = Planet.Atmosphere.GetSurfaceTemperatureAtPosition(position);
             var polarTemp = Planet.Atmosphere.GetSurfaceTemperatureAtPosition(position, true);
 
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            var temperatures = new Dictionary<float, float>();
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
-                var t = Planet.Topography.GetTile(i);
+                var t = Planet.Topography.TileArray[i];
                 var tc = tileClimateArray[i];
                 var lat = Math.Abs(t.Latitude - TropicalEquator);
                 if (lat > Utilities.MathUtil.Constants.HalfPI)
@@ -495,6 +515,7 @@ namespace WorldFoundry.Climate
                 tc.Temperature = Planet.Atmosphere.GetTemperatureAtElevation(surfaceTemp, t.Elevation);
                 var c = 0;
                 var layers = (int)Math.Floor(Planet.Atmosphere.AtmosphericHeight / AirCell.LayerHeight);
+                tc.airCellList = new List<AirCell>();
                 while (c < layers)
                 {
                     var ac = new AirCell(Planet, t, tc, c);
@@ -511,16 +532,16 @@ namespace WorldFoundry.Climate
 
         private double[] SetWind()
         {
-            var edgeAirFlows = new double[Planet.Topography.Edges.Count];
+            var edgeAirFlows = new double[Planet.Topography.EdgeArray.Length];
             var pressureGradientForces = new Dictionary<float, Tuple<bool, float>>();
-            for (int i = 0; i < Planet.Topography.Tiles.Count; i++)
+            for (int i = 0; i < Planet.Topography.TileArray.Length; i++)
             {
-                var t = Planet.Topography.GetTile(i);
+                var t = Planet.Topography.TileArray[i];
                 var tc = tileClimateArray[i];
 
                 if (!pressureGradientForces.TryGetValue(t.Latitude, out var pressureGradientForce))
                 {
-                    var pgf = GetPressureGradientForce(t.Latitude, TropicalEquator, Planet.HalfITCZWidth);
+                    var pgf = GetPressureGradientForce(t.Latitude);
                     pressureGradientForce = new Tuple<bool, float>(pgf < 0, Math.Abs(pgf));
                     pressureGradientForces.Add(t.Latitude, pressureGradientForce);
                 }
@@ -533,7 +554,7 @@ namespace WorldFoundry.Climate
                 var corners = t.Polygon.Select(p => p.Rotate(t.North - tc.WindDirection)).ToList();
                 for (int k = 0; k < t.EdgeCount; k++)
                 {
-                    var e = Planet.Topography.GetEdge(t.GetEdge(k));
+                    var e = Planet.Topography.EdgeArray[t.GetEdge(k)];
                     var direction = e.GetSign(i);
                     if (corners[k].X + corners[(k + 1) % t.EdgeCount].X < 0)
                     {

@@ -2,7 +2,7 @@
 
 namespace WorldFoundry.Utilities.MathUtil
 {
-    internal class Constants
+    public static class Constants
     {
         /// <summary>
         /// Four Pi

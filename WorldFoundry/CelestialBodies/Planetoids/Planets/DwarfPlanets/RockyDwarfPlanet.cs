@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.Generic;
+using System.Numerics;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
 
@@ -71,7 +72,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         private protected override void GenerateComposition()
         {
-            Composition = new Mixture();
+            Composition = new Mixture()
+            {
+                Mixtures = new HashSet<Mixture>(),
+            };
 
             var crustProportion = GetCrustProportion();
 

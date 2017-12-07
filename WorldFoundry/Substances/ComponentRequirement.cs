@@ -3,7 +3,7 @@
     /// <summary>
     /// Indicates the requirements for a particular component in a mixture.
     /// </summary>
-    public class ComponentRequirement
+    public class ComponentRequirement : DataItem
     {
         /// <summary>
         /// The <see cref="Substances.Chemical"/> required.

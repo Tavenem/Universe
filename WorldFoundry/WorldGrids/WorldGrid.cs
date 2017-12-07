@@ -9,7 +9,7 @@ using WorldFoundry.Utilities;
 
 namespace WorldFoundry.WorldGrids
 {
-    public class WorldGrid
+    public class WorldGrid : DataItem
     {
         /// <summary>
         /// The default grid size (level of detail).
@@ -112,12 +112,12 @@ namespace WorldFoundry.WorldGrids
         public WorldGrid() { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="WorldGrid"/> with the given size (level of detail).
+        /// Initializes a new instance of <see cref="WorldGrid"/> with the given values.
         /// </summary>
         /// <param name="planet">
         /// The <see cref="TerrestrialPlanet"/> this <see cref="WorldGrid"/> will map.
         /// </param>
-        /// <param name="size">The grid size (level of detail) for this <see cref="WorldGrid"/>.</param>
+        /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
         public WorldGrid(TerrestrialPlanet planet, int size)
         {
             Planet = planet;
@@ -226,14 +226,14 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         /// <param name="index">A zero-based index.</param>
         /// <returns>The <see cref="Corner"/> with the given index.</returns>
-        public Corner GetCorner(int index) => Corners.FirstOrDefault(x => x.Index == index);
+        public Corner GetCorner(int index) => index == -1 ? null : Corners.FirstOrDefault(x => x.Index == index);
 
         /// <summary>
         /// Gets the <see cref="Edge"/> with the given index.
         /// </summary>
         /// <param name="index">A zero-based index.</param>
         /// <returns>The <see cref="Edge"/> with the given index.</returns>
-        public Edge GetEdge(int index) => Edges.FirstOrDefault(x => x.Index == index);
+        public Edge GetEdge(int index) => index == -1 ? null : Edges.FirstOrDefault(x => x.Index == index);
 
         private float GetNorth(Tile t, Quaternion rotation)
         {
@@ -246,7 +246,7 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         /// <param name="index">A zero-based index.</param>
         /// <returns>The <see cref="Tile"/> with the given index.</returns>
-        public Tile GetTile(int index) => Tiles.FirstOrDefault(x => x.Index == index);
+        public Tile GetTile(int index) => index == -1 ? null : Tiles.FirstOrDefault(x => x.Index == index);
 
         internal void SetCoriolisCoefficients()
         {
@@ -260,17 +260,6 @@ namespace WorldFoundry.WorldGrids
                 t.CoriolisCoefficient = coriolisCoefficients[t.Latitude];
             }
         }
-
-        /// <summary>
-        /// Changes the current <see cref="GridSize"/> to the desired <paramref name="size"/>.
-        /// </summary>
-        /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
-        /// <param name="preserveShape">
-        /// If true, the same random seed will be used for elevation generation as before, resulting
-        /// in the same height map (can be used to maintain a similar look when changing <see
-        /// cref="GridSize"/>, rather than an entirely new geography).
-        /// </param>
-        internal void SetGridSize(short size, bool preserveShape = false) => SubdivideGrid(Math.Min(MaxGridSize, size));
 
         private void SetGridSize0()
         {
@@ -470,8 +459,18 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private void SubdivideGrid(int size, bool preserveShape = false)
+        /// <summary>
+        /// Changes the current <see cref="GridSize"/> to the desired <paramref name="size"/>.
+        /// </summary>
+        /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
+        /// <param name="preserveShape">
+        /// If true, the same random seed will be used for elevation generation as any previous use,
+        /// resulting in the same height map (can be used to maintain a similar look when changing
+        /// <see cref="GridSize"/>, rather than an entirely new geography).
+        /// </param>
+        internal void SubdivideGrid(int size, bool preserveShape = false)
         {
+            size = Math.Min(MaxGridSize, size);
             if (GridSize < 0 || size < GridSize)
             {
                 SetGridSize0();

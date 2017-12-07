@@ -11,7 +11,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents a tile on a <see cref="WorldGrids.WorldGrid"/>.
     /// </summary>
-    public class Tile : IIndexedItem
+    public class Tile : DataItem, IIndexedItem
     {
         /// <summary>
         /// The area of this <see cref="Tile"/>, in square meters.
@@ -251,6 +251,7 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         internal Tile(WorldGrid grid, int id, int edgeCount)
         {
+            WorldGrid = grid;
             Index = id;
             EdgeCount = edgeCount;
         }
@@ -356,7 +357,7 @@ namespace WorldFoundry.WorldGrids
         }
 
         internal Corner GetLowestCorner(WorldGrid grid)
-            => GetCorners().Select(i => grid.GetCorner(i)).OrderBy(c => c.Elevation).FirstOrDefault();
+            => GetCorners().Select(i => grid.CornerArray[i]).OrderBy(c => c.Elevation).FirstOrDefault();
 
         /// <summary>
         /// Gets the index of the <see cref="Tile"/> at the given index in this <see
@@ -414,7 +415,7 @@ namespace WorldFoundry.WorldGrids
 
             for (int k = 0; k < EdgeCount; k++)
             {
-                var c = Vector3.Transform(WorldGrid.GetCorner(GetCorner(k)).Vector, rotation);
+                var c = Vector3.Transform(WorldGrid.CornerArray[GetCorner(k)].Vector, rotation);
                 _polygon.Add(new Vector2(c.X, c.Z));
             }
 

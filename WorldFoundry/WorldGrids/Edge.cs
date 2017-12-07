@@ -6,7 +6,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents an edge between two tiles on an <see cref="WorldGrid"/>.
     /// </summary>
-    public class Edge : IIndexedItem
+    public class Edge : DataItem, IIndexedItem
     {
         /// <summary>
         /// The index of the first <see cref="Corner"/> to which this <see cref="Edge"/> is connected.

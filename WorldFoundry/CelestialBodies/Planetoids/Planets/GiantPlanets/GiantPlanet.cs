@@ -312,7 +312,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </summary>
         private protected override void GenerateComposition()
         {
-            Composition = new Mixture();
+            Composition = new Mixture()
+            {
+                Mixtures = new HashSet<Mixture>(),
+            };
 
             // Iron-nickel inner core.
             var coreProportion = GetCoreProportion();

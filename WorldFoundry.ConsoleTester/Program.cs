@@ -4,34 +4,109 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.ConsoleApp.Extensions;
+using WorldFoundry.Space;
+using WorldFoundry.Space.Galaxies;
 
 namespace WorldFoundry.ConsoleApp
 {
     class Program
     {
+        private static SpiralGalaxy _galaxy = null;
         private static TerrestrialPlanet _planet = null;
 
         static void Main(string[] args)
         {
             Console.WriteLine("Commands:");
-            Console.WriteLine("  Generate new planet: \"planet [-p <atmospheric pressure>] [-a <axial tilt>] [-r <radius>] [-ro <rotational period>] [-w <water ratio>] [-g <grid count>]\"");
+            Console.WriteLine("  Generate new planet: \"planet [-p <atmospheric pressure>] [-a <axial tilt>] [-g <grid size>] [-r <radius>] [-re <revolution period>] [-ro <rotational period>] [-w <water ratio>]\"");
             Console.WriteLine("  Generate seasons: \"s [-a <amount>]\"");
             Console.WriteLine("  Set Atmospheric Pressure: \"a <float, kPa>\"");
             Console.WriteLine("  Set Axial Tilt: \"a <float, radians>\"");
+            Console.WriteLine("  Set Grid Size: \"g <int>\"");
             Console.WriteLine("  Set Radius: \"r <int, meters>\"");
+            Console.WriteLine("  Set Revolution Period: \"ro <double, seconds>\"");
             Console.WriteLine("  Set Rotational Period: \"ro <double, seconds>\"");
             Console.WriteLine("  Set Water Ratio: \"w <float>\"");
-            Console.WriteLine("  Set Grid Count: \"g <int>\"");
             Console.WriteLine();
+
+            //GenerateUniverse();
+
             while (ReadInput())
             {
                 Console.WriteLine(GetPlanetString());
             }
         }
 
-        static void GenerateNewPlanet(TerrestrialPlanetParams planetParams = null) => _planet = new TerrestrialPlanet(null, Vector3.Zero, planetParams);
+        static T NavigateToChild<T>(CelestialObject current, Func<T, bool> condition = null) where T : CelestialObject
+        {
+            var position = Vector3.Zero;
+            while (current.GetContainingParent(position) == current)
+            {
+                current.PopulateRegion(position);
+                foreach (var child in current.GetNearbyChildren(position))
+                {
+                    if (child is T t && condition?.Invoke(t) == true)
+                    {
+                        return t;
+                    }
+                }
+                var m = position.Length();
+                var delta = (m + current.GridSize) / m;
+                position *= delta;
+                Vector3.Transform(position, Quaternion.CreateFromYawPitchRoll((float)Utilities.MathUtil.Constants.QuarterPI, (float)Utilities.MathUtil.Constants.QuarterPI, 0));
+            }
+            return null;
+        }
+
+        static void GenerateUniverse()
+        {
+            var universe = new Universe();
+            var supercluster = NavigateToChild<GalaxySupercluster>(universe);
+            if (supercluster == null)
+            {
+                return;
+            }
+            var cluster = NavigateToChild<GalaxyCluster>(supercluster);
+            if (cluster == null)
+            {
+                return;
+            }
+            var group = NavigateToChild<GalaxyGroup>(cluster, x =>
+            {
+                x.PopulateRegion(Vector3.Zero);
+                return x.Children.FirstOrDefault(y => y is GalaxySubgroup s && s.MainGalaxy is SpiralGalaxy) != null;
+            });
+            if (group == null)
+            {
+                return;
+            }
+            var subgroup = group.Children.FirstOrDefault(x => x is GalaxySubgroup s && s.MainGalaxy is SpiralGalaxy) as GalaxySubgroup;
+            if (subgroup == null)
+            {
+                return;
+            }
+            _galaxy = subgroup.MainGalaxy as SpiralGalaxy;
+        }
+
+        static void GenerateNewPlanet(TerrestrialPlanetParams planetParams = null)
+        {
+            StarSystem system = new StarSystem(null, Vector3.Zero, typeof(Star), SpectralClass.G, LuminosityClass.V);
+            //while (system == null)
+            //{
+            //    system = _galaxy.GenerateChildOfType(
+            //    typeof(StarSystem),
+            //    null,
+            //    new object[] { typeof(Star), SpectralClass.G, LuminosityClass.V }) as StarSystem;
+            //    if (system.Stars.Count != 1)
+            //    {
+            //        system = null;
+            //    }
+            //}
+            _planet = new TerrestrialPlanet(system, Vector3.Zero, planetParams);
+            _planet.GenerateOrbit(system.Stars.First());
+        }
 
         static bool GetDoubleArg(string cmd, int cmdLength, out double result)
         {
@@ -368,9 +443,9 @@ namespace WorldFoundry.ConsoleApp
                 for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
                 {
                     if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water
-                        && seasons[j].GetTileClimate(i).Snow > 0)
+                        && seasons[j].GetTileClimate(i).SnowCover > 0)
                     {
-                        list.Add(seasons[j].GetTileClimate(i).Snow);
+                        list.Add(seasons[j].GetTileClimate(i).SnowCover);
                     }
                 }
             }
@@ -399,9 +474,9 @@ namespace WorldFoundry.ConsoleApp
                     var max = 0f;
                     for (int j = 0; j < seasons.Count; j++)
                     {
-                        if (seasons[j].GetTileClimate(i).Snow > 0)
+                        if (seasons[j].GetTileClimate(i).SnowCover > 0)
                         {
-                            max = Math.Max(max, seasons[j].GetTileClimate(i).Snow);
+                            max = Math.Max(max, seasons[j].GetTileClimate(i).SnowCover);
                         }
                     }
                     if (max > 0)
@@ -539,10 +614,7 @@ namespace WorldFoundry.ConsoleApp
                     seasonsInYear = 4;
                 }
             }
-            for (int i = 0; i < seasonsInYear; i++)
-            {
-                seasons.Add(_planet.GetSeason(seasonsInYear.Value, i));
-            }
+            seasons = _planet.GetSeasons(seasonsInYear.Value).ToList();
 
             var sb = new StringBuilder();
 
@@ -563,7 +635,7 @@ namespace WorldFoundry.ConsoleApp
 
         static void ParsePlanetCommand(string cmd)
         {
-            var planetParams = new TerrestrialPlanetParams();
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
             if (!string.IsNullOrWhiteSpace(cmd))
             {
                 foreach (var arg in cmd.Split('-', StringSplitOptions.RemoveEmptyEntries).Select(x => x.Split(' ')).Where(x => x.Length > 1))
@@ -578,6 +650,9 @@ namespace WorldFoundry.ConsoleApp
                             break;
                         case "r":
                             planetParams.Radius = arg[1].ParseNullableInt();
+                            break;
+                        case "re":
+                            planetParams.RevolutionPeriod = arg[1].ParseNullableDouble();
                             break;
                         case "ro":
                             planetParams.RotationalPeriod = arg[1].ParseNullableDouble();
@@ -637,6 +712,25 @@ namespace WorldFoundry.ConsoleApp
                     _planet.SetAxialTilt(result);
                 }
             }
+            else if (line.StartsWith("g"))
+            {
+                if (_planet == null)
+                {
+                    GenerateNewPlanet();
+                }
+                if (GetIntArg(line, 1, out var result))
+                {
+                    if (result < 0)
+                    {
+                        result = 0;
+                    }
+                    if (result > WorldGrids.WorldGrid.MaxGridSize)
+                    {
+                        result = WorldGrids.WorldGrid.MaxGridSize;
+                    }
+                    _planet.SetGridSize((short)result);
+                }
+            }
             else if (line.StartsWith("r"))
             {
                 if (_planet == null)
@@ -646,6 +740,17 @@ namespace WorldFoundry.ConsoleApp
                 if (GetIntArg(line, 1, out var result))
                 {
                     _planet.SetRadius(result);
+                }
+            }
+            else if (line.StartsWith("re"))
+            {
+                if (_planet == null)
+                {
+                    GenerateNewPlanet();
+                }
+                if (GetDoubleArg(line, 2, out var result))
+                {
+                    _planet.SetRevolutionPeriod(result);
                 }
             }
             else if (line.StartsWith("ro"))
@@ -668,25 +773,6 @@ namespace WorldFoundry.ConsoleApp
                 if (GetFloatArg(line, 1, out var result))
                 {
                     _planet.SetWaterRatio(result);
-                }
-            }
-            else if (line.StartsWith("g"))
-            {
-                if (_planet == null)
-                {
-                    GenerateNewPlanet();
-                }
-                if (GetIntArg(line, 1, out var result))
-                {
-                    if (result < 0)
-                    {
-                        result = 0;
-                    }
-                    if (result > WorldGrids.WorldGrid.MaxGridSize)
-                    {
-                        result = WorldGrids.WorldGrid.MaxGridSize;
-                    }
-                    _planet.SetGridSize((short)result);
                 }
             }
             return true;

@@ -326,7 +326,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         private protected override void GenerateComposition()
         {
-            Composition = new Mixture();
+            Composition = new Mixture()
+            {
+                Mixtures = new HashSet<Mixture>(),
+            };
 
             // rocky core
             var coreProportion = GetCoreProportion();

@@ -248,7 +248,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, Math.Pow((Mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0)));
+            var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, GetRadiusForMass(Mass)));
             var flattening = Randomizer.Static.NextDouble(0.1);
             Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
@@ -284,8 +284,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// cref="Planetoid.Density"/> and maximum mass.
         /// </summary>
         /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
-        internal float GetMaxRadius()
-            => (float)Math.Pow(((MaxMassForType ?? double.PositiveInfinity) / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
+        internal float GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
+
+        private float GetRadiusForMass(double mass) => (float)Math.Pow((mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rings of the given density may be found, in meters.

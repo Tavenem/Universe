@@ -32,7 +32,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public double Luminosity
         {
-            get => GetProperty(ref _luminosity, GenerateLuminosityClass) ?? 0;
+            get => GetProperty(ref _luminosity, GenerateLuminosity) ?? 0;
             set => _luminosity = value;
         }
 

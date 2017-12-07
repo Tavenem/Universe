@@ -1,6 +1,6 @@
 ﻿namespace WorldFoundry.Utilities.Science
 {
-    public class Constants
+    public static class Constants
     {
         /// <summary>
         /// The gravitational constant, in SI base units.

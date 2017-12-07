@@ -180,7 +180,7 @@ namespace WorldFoundry.Climate
         /// <param name="pressure">A pressure, in kPa.</param>
         /// <param name="temperature">A temperature, in K.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        internal static float GetAtmosphericDensity(float pressure, float temperature)
+        internal static float GetAtmosphericDensity(float temperature, float pressure)
             => pressure * 1000 / (287.058f * temperature);
 
         /// <summary>
@@ -254,9 +254,16 @@ namespace WorldFoundry.Climate
         /// </returns>
         public IEnumerable<ComponentRequirement> ConvertRequirementsForPressure(IEnumerable<ComponentRequirement> requirements)
         {
-            foreach (var requirement in requirements)
+            if (requirements == null)
             {
-                yield return ConvertRequirementForPressure(requirement);
+                yield break;
+            }
+            else
+            {
+                foreach (var requirement in requirements)
+                {
+                    yield return ConvertRequirementForPressure(requirement);
+                }
             }
         }
 
@@ -337,7 +344,7 @@ namespace WorldFoundry.Climate
         /// which is clearly not correct for other atmospheres, but is considered "close enough" for
         /// the purposes of this library.
         /// </remarks>
-        internal float GetAtmosphericPressure(float elevation, float temperature)
+        internal float GetAtmosphericPressure(float temperature, float elevation)
         {
             if (elevation <= 0)
             {
@@ -354,8 +361,15 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <returns>The scale height of the atmosphere, in meters.</returns>
         /// <remarks>
+        /// It reduces accuracy to use the effective temperature of the body, rather than the
+        /// adjusted temperature with air mass and greenhouse effect taken into account, but there is
+        /// a circular dependency among those properties and this one. Since scale height is judged
+        /// to be both the least accurate and the least sensitive of the properties, it uses the
+        /// effective temperature, allowing the more sensitive and accurate properties to be
+        /// calculated with the more accurate temperature values.
+        /// </remarks>
         private float GetAtmosphericScaleHeight()
-            => (float)((AtmosphericPressure * 1000) / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(AtmosphericPressure, GetSurfaceTemperatureAverageOrbital() * GreenhouseFactor)));
+            => (float)((AtmosphericPressure * 1000) / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(CelestialBody.GetTotalTemperature(), AtmosphericPressure)));
 
         /// <summary>
         /// Determines the proportion of cloud cover provided by this <see cref="Atmosphere"/>.
@@ -395,16 +409,10 @@ namespace WorldFoundry.Climate
         /// <returns>The total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.</returns>
         private float GetGreenhouseFactor()
         {
-            var total = 0.0;
-            if (Mixtures != null)
-            {
-                foreach (var mixture in Mixtures)
-                {
-                    total += mixture.Components?
-                        .Where(c => c.Chemical.GreenhousePotential > 0)
-                        .Sum(c => c.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0;
-                }
-            }
+            var total = Math.Min(2 - TMath.Tolerance,
+                Mixtures?.Sum(m => m.Components?
+                    .Where(c => c.Chemical.GreenhousePotential > 0)
+                    .Sum(c => c.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0) ?? 0);
             if (TMath.IsZero(total))
             {
                 return 1;

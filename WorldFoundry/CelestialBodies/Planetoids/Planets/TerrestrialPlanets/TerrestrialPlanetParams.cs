@@ -18,6 +18,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public const float DefaultAxialTilt = 0.41f;
 
         /// <summary>
+        /// The default orbital eccentricity, used if none is specified.
+        /// </summary>
+        public const float DefaultEccentricity = 0.0167f;
+
+        /// <summary>
         /// The default planetary radius, used if none is specified, in meters.
         /// </summary>
         public const int DefaultRadius = 6371000;
@@ -56,6 +61,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The target axial tilt, in radians.
         /// </summary>
         public float? AxialTilt { get; set; }
+
+        /// <summary>
+        /// The target orbital eccentricity.
+        /// </summary>
+        public float? Eccentricity { get; set; }
 
         /// <summary>
         /// The target grid size (level of detail).
@@ -101,8 +111,41 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
         public TerrestrialPlanetParams(
+            float? atmosphericPressure = null,
+            List<ComponentRequirement> atmosphericRequirements = null,
+            float? axialTilt = null,
+            float? eccentricity = null,
+            int? gridSize = null,
+            bool? hasMagnetosphere = null,
+            int? radius = null,
+            double? revolutionPeriod = null,
+            double? rotationalPeriod = null,
+            float? surfaceGravity = null,
+            float? surfaceTemperature = null,
+            float? waterRatio = null)
+        {
+            AtmosphericPressure = atmosphericPressure;
+            atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            AxialTilt = axialTilt;
+            Eccentricity = eccentricity;
+            GridSize = gridSize;
+            HasMagnetosphere = hasMagnetosphere;
+            Radius = radius;
+            RevolutionPeriod = revolutionPeriod;
+            RotationalPeriod = rotationalPeriod;
+            SurfaceGravity = surfaceGravity;
+            SurfaceTemperature = surfaceTemperature;
+            WaterRatio = waterRatio;
+        }
+
+        /// <summary>
+        /// Generates a new instance of <see cref="TerrestrialPlanetParams"/> with either the given or default values.
+        /// </summary>
+        public static TerrestrialPlanetParams FromDefaults(
+            float? atmosphericPressure = DefaultAtmosphericPressure,
             List<ComponentRequirement> atmosphericRequirements = null,
             float? axialTilt = DefaultAxialTilt,
+            float? eccentricity = DefaultEccentricity,
             int? gridSize = WorldGrid.DefaultGridSize,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
@@ -112,15 +155,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float? surfaceTemperature = DefaultSurfaceTemperature,
             float? waterRatio = DefaultWaterRatio)
         {
-            AxialTilt = axialTilt;
-            GridSize = gridSize;
-            HasMagnetosphere = hasMagnetosphere;
-            Radius = radius;
-            RevolutionPeriod = revolutionPeriod;
-            RotationalPeriod = rotationalPeriod;
-            SurfaceGravity = surfaceGravity;
-            SurfaceTemperature = surfaceTemperature;
-            WaterRatio = waterRatio;
+            if (atmosphericRequirements == null)
+            {
+                atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            }
+            return new TerrestrialPlanetParams(
+                atmosphericPressure,
+                atmosphericRequirements,
+                axialTilt,
+                eccentricity,
+                gridSize,
+                hasMagnetosphere,
+                radius,
+                revolutionPeriod,
+                rotationalPeriod,
+                surfaceGravity,
+                surfaceTemperature,
+                waterRatio);
         }
     }
 }

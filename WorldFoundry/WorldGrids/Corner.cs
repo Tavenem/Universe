@@ -8,7 +8,7 @@ namespace WorldFoundry.WorldGrids
     /// <summary>
     /// Represents a corner between three tiles on an <see cref="WorldGrid"/>.
     /// </summary>
-    public class Corner : IIndexedItem
+    public class Corner : DataItem, IIndexedItem
     {
         /// <summary>
         /// The index of the first <see cref="Corner"/> to which this one is connected.
@@ -226,10 +226,10 @@ namespace WorldFoundry.WorldGrids
 
         internal Corner GetLowestCorner(WorldGrid grid, bool riverSources = false)
         {
-            var corners = GetCorners().Select(i => grid.GetCorner(i));
+            var corners = GetCorners().Select(i => grid.CornerArray[i]);
             if (riverSources)
             {
-                var riverSourceCorners = corners.Where(c => c.GetEdges().Any(e => grid.GetEdge(e).RiverSource == c.Index));
+                var riverSourceCorners = corners.Where(c => c.GetEdges().Any(e => grid.EdgeArray[e].RiverSource == c.Index));
                 if (riverSourceCorners.Any())
                 {
                     corners = riverSourceCorners;

@@ -7,7 +7,7 @@ namespace WorldFoundry.Space
     /// <summary>
     /// Represents a single region of space in a 3D grid.
     /// </summary>
-    public class GridSpace
+    public class GridSpace : DataItem
     {
         /// <summary>
         /// Specifies the coordinates of the <see cref="GridSpace"/> in its containing <see cref="CelestialObject"/>.

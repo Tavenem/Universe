@@ -5,7 +5,7 @@ namespace WorldFoundry.Substances
     /// <summary>
     /// Describes a chemical's properties.
     /// </summary>
-    public class Chemical
+    public class Chemical : DataItem
     {
         /// <summary>
         /// The first Antoine coefficient which can be used to determine the vapor

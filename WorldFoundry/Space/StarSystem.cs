@@ -551,7 +551,11 @@ namespace WorldFoundry.Space
         /// </returns>
         private int GenerateNumCompanions()
         {
-            var primary = Stars.FirstOrDefault();
+            var primary = Stars?.FirstOrDefault();
+            if (primary == null)
+            {
+                return 0;
+            }
             var chance = Randomizer.Static.NextDouble();
             if (primary is BrownDwarf)
             {
@@ -759,6 +763,10 @@ namespace WorldFoundry.Space
         {
             if (starType != null && starType == typeof(Star) || starType.IsSubclassOf(typeof(Star)))
             {
+                if (Stars == null)
+                {
+                    Stars = new HashSet<Star>();
+                }
                 Stars.Add((Star)starType.InvokeMember(null, System.Reflection.BindingFlags.CreateInstance, null, null,
                     new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII }));
             }
@@ -776,21 +784,21 @@ namespace WorldFoundry.Space
             // room for any objects with high eccentricity to stay within the system's local space
             // while not placing the objects of interest (stars, planets) too close together in the
             // center of local space.
-            var radius = 1.125e16 + companions.Max(x => GetTotalApoapsis(companions, x.star, 0));
+            var radius = 1.125e16 + (companions?.Select(x => GetTotalApoapsis(companions, x.star, 0)).DefaultIfEmpty().Max() ?? 0);
             Shape = new Sphere(radius);
-            foreach (var c in companions)
+            foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
                 Orbit.SetOrbit(
-                    c.star,
-                    c.orbited,
-                    c.periapsis,
-                    c.eccentricity,
+                    star,
+                    orbited,
+                    periapsis,
+                    eccentricity,
                     (float)Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
                     (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
                     (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
                     (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
 
-                Stars.Add(c.star);
+                Stars.Add(star);
             }
         }
 

@@ -106,7 +106,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Gets the top layer of the <see cref="Hydrosphere"/>, whether that is the <see
         /// cref="Hydrosphere"/> itself (if it is non-layered), or the uppermost layer (if it is).
         /// </summary>
-        public Mixture HydrosphereSurface => Hydrosphere.Mixtures.Count > 0 ? Hydrosphere.GetChildAtLastLayer() : Hydrosphere;
+        public Mixture HydrosphereSurface => Hydrosphere.Mixtures?.Count > 0 ? Hydrosphere.GetChildAtLastLayer() : Hydrosphere;
 
         internal static float maxDensity = 6000;
         private protected virtual float MaxDensity => maxDensity;
@@ -264,7 +264,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             PlanetParams = planetParams;
         }
 
-        private void AdjustOrbitForTemperature(Star star, float trueAnomaly, float distance, float targetTemp)
+        private void AdjustOrbitForTemperature(Star star, ref double? semiMajorAxis, float trueAnomaly, float distance, float targetTemp)
         {
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
@@ -272,7 +272,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
             else
             {
-                GenerateOrbit(star, trueAnomaly, GetDistanceForTemperature(star, targetTemp));
+                if (!semiMajorAxis.HasValue)
+                {
+                    var semiLatusRectum = distance * (1 + (Eccentricity * Math.Cos(trueAnomaly)));
+                    semiMajorAxis = semiLatusRectum / (1 - (Eccentricity * Eccentricity));
+                }
+                GenerateOrbit(star, semiMajorAxis.Value, trueAnomaly, GetDistanceForTemperature(star, targetTemp));
             }
         }
 
@@ -284,7 +289,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 Atmosphere.AtmosphericPressure > chemical.CalculateVaporPressure(surfaceTemp)))
             {
                 float gasProportion = Hydrosphere.GetProportion(chemical, Phase.Any);
-                if (!TMath.IsZero(gasProportion))
+                if (gasProportion != 0)
                 {
                     SetHydrosphereProportion(chemical, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
                     Hydrosphere.Proportion -= Hydrosphere.Proportion * gasProportion;
@@ -366,8 +371,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void CalculateWaterPhaseMix(float surfaceTemp, float polarTemp, float hydrosphereAtmosphereRatio)
         {
-            var water = Hydrosphere.GetProportion(Chemical.Water, Phase.Any, Hydrosphere.Mixtures.Count > 0);
-            var saltWater = Hydrosphere.GetProportion(Chemical.Water_Salt, Phase.Any, Hydrosphere.Mixtures.Count > 0);
+            var water = Hydrosphere.GetProportion(Chemical.Water, Phase.Any, Hydrosphere.Mixtures?.Count > 0);
+            var saltWater = Hydrosphere.GetProportion(Chemical.Water_Salt, Phase.Any, Hydrosphere.Mixtures?.Count > 0);
             var totalWater = water + saltWater;
 
             var waterVapor = Atmosphere.GetProportion(Chemical.Water, Phase.Gas, true);
@@ -401,13 +406,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void ClassifyTerrain()
         {
-            foreach (var t in Topography.Tiles)
+            foreach (var t in Topography.TileArray)
             {
                 var land = 0;
                 var water = 0;
                 for (int i = 0; i < t.EdgeCount; i++)
                 {
-                    if (Topography.GetCorner(t.GetCorner(i)).Elevation < 0)
+                    if (Topography.CornerArray[t.GetCorner(i)].Elevation < 0)
                     {
                         water++;
                     }
@@ -428,12 +433,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     ? TerrainType.Coast
                     : (land > 0 ? TerrainType.Land : TerrainType.Water);
             }
-            foreach (var c in Topography.Corners)
+            foreach (var c in Topography.CornerArray)
             {
                 var land = 0;
                 for (int i = 0; i < 3; i++)
                 {
-                    if (Topography.GetCorner(c.GetCorner(i)).Elevation >= 0)
+                    if (Topography.CornerArray[c.GetCorner(i)].Elevation >= 0)
                     {
                         land++;
                     }
@@ -442,14 +447,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     ? (land > 0 ? TerrainType.Coast : TerrainType.Water)
                     : TerrainType.Land;
             }
-            foreach (var e in Topography.Edges)
+            foreach (var e in Topography.EdgeArray)
             {
                 var type = TerrainType.Land;
                 for (int i = 0; i < 2; i++)
                 {
-                    if (Topography.GetCorner(e.GetCorner(i)).TerrainType != type)
+                    if (Topography.CornerArray[e.GetCorner(i)].TerrainType != type)
                     {
-                        type = i == 0 ? Topography.GetTile(e.GetTile(i)).TerrainType : TerrainType.Coast;
+                        type = i == 0 ? Topography.TileArray[e.GetTile(i)].TerrainType : TerrainType.Coast;
                     }
                 }
                 e.TerrainType = type;
@@ -466,7 +471,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             if (surfaceTemp <= chemical.MeltingPoint)
             {
                 iceProportion = gasProportion / hydrosphereAtmosphereRatio;
-                if (!TMath.IsZero(iceProportion))
+                if (iceProportion != 0)
                 {
                     SetHydrosphereProportion(chemical, Phase.Solid, iceProportion, ref hydrosphereAtmosphereRatio);
                 }
@@ -484,7 +489,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 if (polarTemp <= chemical.MeltingPoint)
                 {
                     iceProportion = (gasProportion / hydrosphereAtmosphereRatio) * 0.28f;
-                    if (!TMath.IsZero(iceProportion))
+                    if (iceProportion != 0)
                     {
                         SetHydrosphereProportion(chemical, Phase.Solid, iceProportion, ref hydrosphereAtmosphereRatio);
                     }
@@ -507,7 +512,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 Atmosphere.ResetPressureDependentProperties();
 
                 var liquidProportion = (gasProportion / hydrosphereAtmosphereRatio) - iceProportion;
-                if (!TMath.IsZero(liquidProportion))
+                if (liquidProportion != 0)
                 {
                     SetHydrosphereProportion(chemical, Phase.Liquid, liquidProportion, ref hydrosphereAtmosphereRatio);
                 }
@@ -526,7 +531,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // If no water vapor is present in the atmosphere, generate it based on the hydrosphere.
-            if (TMath.IsZero(waterVapor))
+            if (waterVapor == 0)
             {
                 var pressureRatio = Math.Max(float.Epsilon, Math.Min(1, vaporPressure / Atmosphere.AtmosphericPressure));
                 // This would represent 100% humidity. Since this is the case, in principle, only at
@@ -534,7 +539,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // an approximation of 25% average humidity overall is used.
                 waterVapor = Math.Max(float.Epsilon, totalWater * pressureRatio);
                 waterVapor *= 0.25f;
-                if (!TMath.IsZero(waterVapor))
+                if (waterVapor != 0)
                 {
                     Atmosphere.AddComponent(Chemical.Water, Phase.Gas, waterVapor, true);
 
@@ -550,7 +555,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // Add clouds.
             var clouds = waterVapor * 0.2f;
-            if (!TMath.IsZero(clouds))
+            if (clouds != 0)
             {
                 var troposphere = GetTroposphere();
                 if (surfaceTemp <= Chemical.Water.MeltingPoint)
@@ -583,21 +588,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // No existing water in hydrosphere; add some condensed ice from atmospheric water vapor.
-            if (TMath.IsZero(ice))
+            if (ice == 0)
             {
                 ice = waterVapor / hydrosphereAtmosphereRatio;
             }
 
-            if (TMath.IsZero(ice))
+            if (ice == 0)
             {
                 return;
             }
 
-            if (!TMath.IsZero(totalWater)) // Change existing water in hydrosphere to ice.
+            if (totalWater != 0) // Change existing water in hydrosphere to ice.
             {
                 if (ice < totalWater) // A subsurface ocean is indicated.
                 {
-                    if (Hydrosphere.Mixtures.Count == 0)
+                    if ((Hydrosphere.Mixtures?.Count ?? 0) == 0)
                     {
                         Hydrosphere.CopyLayer(0, ice);
                     }
@@ -636,7 +641,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             // If the hydrosphere was a surface of ice with a subsurface ocean, melt the surface and
             // return to a single layer.
-            if (Hydrosphere.Mixtures.Count > 0)
+            if (Hydrosphere.Mixtures?.Count > 0)
             {
                 var ice = HydrosphereSurface.GetProportion(Chemical.Water, Phase.Solid);
                 HydrosphereSurface.RemoveComponent(Chemical.Water, Phase.Solid);
@@ -663,10 +668,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // If there is no liquid water on the surface, condense from the atmosphere.
-            if (TMath.IsZero(liquidWater))
+            if (liquidWater == 0)
             {
                 var addedWater = waterVapor / hydrosphereAtmosphereRatio;
-                if (!TMath.IsZero(addedWater))
+                if (addedWater != 0)
                 {
                     SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, addedWater * saltWaterProportion, ref hydrosphereAtmosphereRatio);
                     SetHydrosphereProportion(Chemical.Water, Phase.Liquid, addedWater * (1 - saltWaterProportion), ref hydrosphereAtmosphereRatio);
@@ -738,6 +743,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 GenerateAtmosphereThick(surfaceTemp);
             }
 
+            // Recalculate temperatures based on the new atmosphere.
+            surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
+            var polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
+
             float hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
             // Water may be removed, or if not may remove CO2 from the atmosphere, depending on
             // planetary conditions.
@@ -745,7 +754,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Any)
                 || Atmosphere.ContainsSubstance(Chemical.Water, Phase.Any))
             {
-                CalculateWaterPhaseMix(surfaceTemp, surfaceTemp, hydrosphereAtmosphereRatio);
+                CalculateWaterPhaseMix(surfaceTemp, polarTemp, hydrosphereAtmosphereRatio);
             }
 
             GenerateLife();
@@ -815,8 +824,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
             // atmospheric escape.
-            var h = (float)Math.Round(Randomizer.Static.NextDouble(0.5e-7, 0.2e-6), 4);
-            var he = (float)Math.Round(Randomizer.Static.NextDouble(0.26e-6, 1.0e-5), 4);
+            var h = (float)Randomizer.Static.NextDouble(0.5e-7, 0.2e-6);
+            var he = (float)Randomizer.Static.NextDouble(0.26e-6, 1.0e-5);
 
             // 50% chance not to have these components at all.
             var ch4 = (float)Math.Max(0, Math.Round(Randomizer.Static.NextDouble(-0.5, 0.5), 4));
@@ -853,7 +862,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float o2 = 0;
             if (CanHaveOxygen)
             {
-                if (!TMath.IsZero(waterVapor))
+                if (waterVapor != 0)
                 {
                     o2 = waterVapor * 0.0001f;
                 }
@@ -912,7 +921,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 },
             })
             {
-                Components = new HashSet<MixtureComponent>(),
                 Proportion = 1,
             };
             if (ar > 0)
@@ -1062,9 +1070,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // H and He are always assumed to be present in small amounts if a planet has any
             // atmosphere, but without any other gases making up the bulk of the atmosphere, they are
             // presumed lost to atmospheric escape entirely, and no atmosphere at all is indicated.
-            if (TMath.IsZero(total))
+            if (total == 0)
             {
-                Atmosphere = new Atmosphere(this, 0);
+                Atmosphere = new Atmosphere(this, 0)
+                {
+                    Mixtures = new HashSet<Mixture>()
+                };
             }
             else
             {
@@ -1088,7 +1099,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     },
                 })
                 {
-                    Components = new HashSet<MixtureComponent>(),
                     Proportion = 1,
                 };
                 if (ar > 0)
@@ -1190,7 +1200,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         private protected override void GenerateComposition()
         {
-            Composition = new Mixture();
+            Composition = new Mixture()
+            {
+                Mixtures = new HashSet<Mixture>(),
+            };
 
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
@@ -1347,7 +1360,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var mass = GenerateHydrosphereMass();
 
                 var water = (float)(mass / Mass);
-                if (!TMath.IsZero(water))
+                if (water != 0)
                 {
                     // Surface water is mostly salt water.
                     var saltWater = (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
@@ -1504,19 +1517,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // Convert most methane to CO2 and H2O.
             var ch4 = Atmosphere.GetProportion(Chemical.Methane, Phase.Gas, true);
-            if (!TMath.IsZero(ch4))
+            if (ch4 != 0)
             {
                 // The levels of CO2 and H2O are not adjusted; it is presumed that the levels already
                 // determined for them take the amounts derived from CH4 into account. If either gas
                 // is entirely missing, however, it is added.
                 var co2 = Atmosphere.GetProportion(Chemical.CarbonDioxide, Phase.Gas, true);
-                if (TMath.IsZero(co2))
+                if (co2 == 0)
                 {
                     Atmosphere.AddComponent(Chemical.CarbonDioxide, Phase.Gas, ch4 / 3);
                 }
 
                 var waterVapor = Atmosphere.GetProportion(Chemical.Water, Phase.Gas, true);
-                if (TMath.IsZero(waterVapor))
+                if (waterVapor == 0)
                 {
                     Atmosphere.AddComponent(Chemical.Water, Phase.Gas, ch4 * 2 / 3);
                 }
@@ -1573,13 +1586,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private void GenerateOrbit(Orbiter orbitedObject, float trueAnomaly, float distance)
-        {
-            var r0 = Vector3.Transform(Vector3.UnitX, Quaternion.CreateFromAxisAngle(Vector3.UnitY, trueAnomaly)) * distance;
-            Position = ((orbitedObject.Position * Parent.LocalScale) + r0) / Parent.LocalScale;
-
-            base.GenerateOrbit(orbitedObject);
-        }
+        private void GenerateOrbit(Orbiter orbitedObject, double semiMajorAxis, float trueAnomaly, float distance)
+            => Orbit.SetOrbit(
+                this,
+                orbitedObject,
+                (1 - Eccentricity) * semiMajorAxis,
+                Eccentricity,
+                (float)Math.Round(Randomizer.Static.NextDouble(0.9), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                trueAnomaly);
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -1592,16 +1608,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 return;
             }
 
+            if (PlanetParams?.Eccentricity.HasValue == true)
+            {
+                Eccentricity = PlanetParams.Eccentricity.Value;
+            }
+
             var ta = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
             float distance = 1;
 
+            double? semiMajorAxis = null;
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
-                var a = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, PlanetParams.RevolutionPeriod.Value);
-                var semiLatusRectum = a * (1 - (Eccentricity * Eccentricity));
+                semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, PlanetParams.RevolutionPeriod.Value);
+                var semiLatusRectum = semiMajorAxis * (1 - (Eccentricity * Eccentricity));
                 distance = (float)(semiLatusRectum / (1 + (Eccentricity * Math.Cos(ta))));
 
-                GenerateOrbit(orbitedObject, ta, distance);
+                GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta, distance);
             }
 
             if (orbitedObject is Star star
@@ -1629,7 +1651,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var delta = 0.0f;
                 do
                 {
-                    AdjustOrbitForTemperature(star, ta, distance, targetTemp);
+                    AdjustOrbitForTemperature(star, ref semiMajorAxis, ta, distance, targetTemp);
 
                     if (PlanetParams?.SurfaceTemperature.HasValue == true)
                     {
@@ -1762,7 +1784,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             if (PlanetParams?.Radius.HasValue == true)
             {
-                GenerateShape(Math.Max(MinimumRadius, Math.Min(PlanetParams.Radius.Value, GetMaxRadius())));
+                GenerateShape(Math.Max(MinimumRadius, PlanetParams.Radius.Value));
             }
             else if (PlanetParams?.SurfaceGravity.HasValue == true)
             {
@@ -1808,7 +1830,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private void GenerateTopography()
         {
             var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
-            Topography = new WorldGrid(this, Math.Min(WorldGrid.MaxGridSize, size));
+            Topography = new WorldGrid(this, size);
         }
 
         /// <summary>
@@ -1849,7 +1871,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return (float)(Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio));
         }
 
-        private float GetHydrosphereAtmosphereRatio() => (float)Math.Max(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
+        private float GetHydrosphereAtmosphereRatio() => (float)Math.Min(1, (Hydrosphere.Proportion * Mass) / Atmosphere.AtmosphericMass);
 
         /// <summary>
         /// Calculates the luminosity (in Watts) the given <see cref="Star"/> would have to be
@@ -1864,25 +1886,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="distance">The desired distance, in meters.</param>
         public double GetLuminosityForTemperature(Star star, float temperature, float distance)
         {
-            var areaRatio = 1;
+            var areaRatio = 1.0;
             if (RotationalPeriod > 2500)
             {
                 if (RotationalPeriod <= 75000)
                 {
-                    areaRatio = 4;
+                    areaRatio = 0.25;
                 }
                 else if (RotationalPeriod <= 150000)
                 {
-                    areaRatio = 3;
+                    areaRatio = 1.0 / 3.0;
                 }
                 else if (RotationalPeriod <= 300000)
                 {
-                    areaRatio = 2;
+                    areaRatio = 0.5;
                 }
             }
 
-            return Math.Pow(distance * Math.Pow(temperature, 4) * Utilities.MathUtil.Constants.FourPI * Utilities.Science.Constants.StefanBoltzmannConstant * areaRatio, 2)
-                / (1 - Albedo);
+            return (Math.Pow(temperature / Math.Pow(areaRatio, 0.25), 4) * Utilities.Science.Constants.FourStefanBoltzmannConstant * Utilities.MathUtil.Constants.FourPI * distance * distance) / (1 - Albedo);
         }
 
         /// <summary>
@@ -1926,7 +1947,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (index == 0)
                 {
-                    previousSeason = Seasons.FirstOrDefault(x => x.Index == SeasonCount - 1);
+                    previousSeason = Seasons?.FirstOrDefault(x => x.Index == SeasonCount - 1);
                 }
                 else
                 {
@@ -1950,8 +1971,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             previousSeason = index == 0
-                ? Seasons.FirstOrDefault(x => x.Index == SeasonCount - 1)
-                : Seasons.FirstOrDefault(x => x.Index == index - 1);
+                ? Seasons?.FirstOrDefault(x => x.Index == SeasonCount - 1)
+                : Seasons?.FirstOrDefault(x => x.Index == index - 1);
             if (previousSeason != null)
             {
                 return previousSeason;
@@ -1965,7 +1986,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 for (int i = 0; i < index; i++)
                 {
-                    previousSeason = Seasons.FirstOrDefault(x => x.Index == i);
+                    previousSeason = Seasons?.FirstOrDefault(x => x.Index == i);
                     if (previousSeason == null)
                     {
                         previousSeason = GetSeason(amount, i);
@@ -1985,7 +2006,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private float GetRadiusForSurfaceGravity(float gravity) => (float)Math.Sqrt((Mass * Utilities.Science.Constants.G) / gravity);
 
         /// <summary>
-        /// Gets or generates a <see cref="Season"/> for the planet.
+        /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <param name="amount">
         /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
@@ -1993,7 +2014,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="index">
         /// The 0-based index of the new <see cref="Season"/> out of one year's worth.
         /// </param>
-        /// <returns>A <see cref="Season"/> for the planet.</returns>
+        /// <returns>A <see cref="Season"/>.</returns>
         public Season GetSeason(int amount, int index)
         {
             if (Orbit == null)
@@ -2028,8 +2049,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 amount,
                 position,
                 previousSeason);
+            if (Seasons == null)
+            {
+                Seasons = new HashSet<Season>();
+            }
             Seasons.Add(season);
             return season;
+        }
+
+        /// <summary>
+        /// Gets or generates a set of <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        /// <param name="amount">
+        /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
+        /// </param>
+        /// <returns>An enumeration of <see cref="Season"/>s.</returns>
+        public IEnumerable<Season> GetSeasons(int amount)
+        {
+            for (int i = 0; i < amount; i++)
+            {
+                yield return GetSeason(amount, i);
+            }
         }
 
         /// <summary>
@@ -2258,12 +2298,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 seasons.Add(season);
             }
 
-            for (int i = 0; i < Topography.Tiles.Count; i++)
+            for (int i = 0; i < Topography.TileArray.Length; i++)
             {
-                Topography.GetTile(i).SetClimate(
+                Topography.TileArray[i].SetClimate(
                     seasons.Average(s => s.tileClimateArray[i].Temperature),
                     seasons.Sum(s => s.tileClimateArray[i].Precipitation));
             }
+            Topography.UpdateCollectionsFromArrays();
 
             return season;
         }
@@ -2280,15 +2321,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </param>
         public void SetGridSize(short gridSize, bool preserveShape = true)
         {
-            Topography.SetGridSize(gridSize, preserveShape);
+            Topography.SubdivideGrid(gridSize, preserveShape);
             GenerateHydrosphere();
             Seasons?.Clear();
         }
 
         private void SetHydrosphereProportion(Chemical chemical, Phase phase, float proportion, ref float hydrosphereAtmosphereRatio)
         {
-            var newTotalProportion = Hydrosphere.Mixtures.Count > 0 ? HydrosphereSurface.Proportion * proportion : proportion;
-            Hydrosphere.Proportion += Hydrosphere.Proportion * (newTotalProportion - Hydrosphere.GetProportion(chemical, phase, Hydrosphere.Mixtures.Count > 0));
+            var newTotalProportion = Hydrosphere.Mixtures?.Count > 0 ? HydrosphereSurface.Proportion * proportion : proportion;
+            Hydrosphere.Proportion += Hydrosphere.Proportion * (newTotalProportion - Hydrosphere.GetProportion(chemical, phase, Hydrosphere.Mixtures?.Count > 0));
             HydrosphereSurface.SetProportion(chemical, phase, proportion);
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
         }
@@ -2306,6 +2347,37 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Sets the revolution period of this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        /// <param name="period">
+        /// A revolution period, in seconds. Negative values will be treated as 0.
+        /// </param>
+        /// <remarks>
+        /// Has no immediate effect if the <see cref="TerrestrialPlanet"/> is not already in orbit,
+        /// but if an orbit is later generated, the requested period will be honored.
+        /// </remarks>
+        public void SetRevolutionPeriod(double period)
+        {
+            if (PlanetParams == null)
+            {
+                PlanetParams = new TerrestrialPlanetParams();
+            }
+            PlanetParams.RevolutionPeriod = Math.Max(0, period);
+
+            if (Orbit != null)
+            {
+                var semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, Orbit.OrbitedObject, PlanetParams.RevolutionPeriod.Value);
+                var semiLatusRectum = semiMajorAxis * (1 - (Eccentricity * Eccentricity));
+                var ta = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
+                var distance = (float)(semiLatusRectum / (1 + (Eccentricity * Math.Cos(ta))));
+                GenerateOrbit(Orbit.OrbitedObject, semiMajorAxis, ta, distance);
+            }
+
+            GenerateAtmosphere();
+            Seasons?.Clear();
+        }
+
+        /// <summary>
         /// Sets the <see cref="RotationalPeriod"/> of this <see cref="Planetoid"/>.
         /// </summary>
         /// <param name="period">
@@ -2317,6 +2389,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             Topography?.SetCoriolisCoefficients();
             Topography?.UpdateCollectionsFromArrays();
+            GenerateAtmosphere();
+            Seasons?.Clear();
         }
 
         /// <summary>

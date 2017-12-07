@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
@@ -96,7 +97,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         private protected override void GenerateComposition()
         {
-            Composition = new Mixture();
+            Composition = new Mixture()
+            {
+                Mixtures = new HashSet<Mixture>(),
+            };
 
             // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
             var coreProportion = GetCoreProportion();

@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.WorldGrids;
 
@@ -13,7 +12,7 @@ namespace WorldFoundry.Climate
     /// calculations during <see cref="Season"/> generation, and can be discarded after the
     /// generation process is complete.
     /// </remarks>
-    public class AirCell : IIndexedItem
+    public class AirCell : DataItem, IIndexedItem
     {
         internal const float LayerHeight = 2000;
 
@@ -21,9 +20,6 @@ namespace WorldFoundry.Climate
 
         [NotMapped]
         internal float Density { get; set; }
-
-        [NotMapped]
-        internal float Elevation { get; set; }
 
         /// <summary>
         /// The index of this item.
@@ -55,17 +51,15 @@ namespace WorldFoundry.Climate
 
         internal AirCell(TerrestrialPlanet planet, Tile t, TileClimate tc, int layer)
         {
-            Elevation = t.Elevation + LayerHeight * layer;
+            var height = LayerHeight * layer;
             Temperature = layer == 0
                 ? tc.Temperature
-                : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, Elevation);
-            Pressure = planet.Atmosphere.GetAtmosphericPressure(Elevation, Temperature);
-            Density = Atmosphere.GetAtmosphericDensity(Pressure, Temperature);
-            SaturationVaporPressure = Atmosphere.GetSaturationVaporPressure(Temperature * Exner(Pressure));
+                : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, height);
+            Pressure = planet.Atmosphere.GetAtmosphericPressure(Temperature, t.Elevation + height);
+            Density = Atmosphere.GetAtmosphericDensity(Temperature, Pressure);
+            SaturationVaporPressure = Atmosphere.GetSaturationVaporPressure(Temperature * planet.Atmosphere.Exner(Pressure));
             SaturationHumidity = SaturationVaporPressure / (Utilities.Science.Constants.SpecificGasConstantOfWater * Temperature);
             SaturationMixingRatio = Atmosphere.GetSaturationMixingRatio(SaturationVaporPressure, Pressure);
         }
-
-        private static float Exner(float pressure) => (float)Math.Pow(pressure / 100, 0.286);
     }
 }

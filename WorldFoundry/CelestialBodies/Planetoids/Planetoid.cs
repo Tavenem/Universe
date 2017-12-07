@@ -115,20 +115,35 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
+        private float? _axisX;
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisX { get; private set; }
+        private protected float AxisX
+        {
+            get => GetProperty(ref _axisX, GenerateAngleOfRotation) ?? 0;
+            private set => _axisX = value;
+        }
 
+        private float? _axisY;
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisY { get; private set; }
+        private protected float AxisY
+        {
+            get => GetProperty(ref _axisY, GenerateAngleOfRotation) ?? 0;
+            private set => _axisY = value;
+        }
 
+        private float? _axisZ;
         /// <summary>
         /// The X component of the axis of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisZ { get; private set; }
+        private protected float AxisZ
+        {
+            get => GetProperty(ref _axisZ, GenerateAngleOfRotation) ?? 0;
+            private set => _axisZ = value;
+        }
 
         /// <summary>
         /// A <see cref="Quaternion"/> representing the rotation of this <see cref="Planetoid"/>'s
@@ -147,25 +162,45 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
+        private float? _axisRotationX;
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisRotationX { get; private set; }
+        private protected float AxisRotationX
+        {
+            get => GetProperty(ref _axisRotationX, GenerateAngleOfRotation) ?? 0;
+            private set => _axisRotationX = value;
+        }
 
+        private float? _axisRotationY;
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisRotationY { get; private set; }
+        private protected float AxisRotationY
+        {
+            get => GetProperty(ref _axisRotationY, GenerateAngleOfRotation) ?? 0;
+            private set => _axisRotationY = value;
+        }
 
+        private float? _axisRotationZ;
         /// <summary>
         /// The X component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisRotationZ { get; private set; }
+        private protected float AxisRotationZ
+        {
+            get => GetProperty(ref _axisRotationZ, GenerateAngleOfRotation) ?? 0;
+            private set => _axisRotationZ = value;
+        }
 
+        private float? _axisRotationW;
         /// <summary>
         /// The W component of the axis rotation of this <see cref="Planetoid"/>.
         /// </summary>
-        private protected float AxisRotationW { get; private set; }
+        private protected float AxisRotationW
+        {
+            get => GetProperty(ref _axisRotationW, GenerateAngleOfRotation) ?? 0;
+            private set => _axisRotationW = value;
+        }
 
         private Mixture _composition;
         /// <summary>
@@ -598,7 +633,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private void SetAxis()
         {
-            var precession = Quaternion.CreateFromAxisAngle(Vector3.UnitY, AxialPrecession);
+            var precession = Quaternion.CreateFromYawPitchRoll(AxialPrecession, 0, 0);
             var precessionVector = Vector3.Transform(Vector3.UnitX, precession);
             var q = Quaternion.CreateFromAxisAngle(precessionVector, AngleOfRotation);
             Axis = Vector3.Transform(Vector3.UnitY, q);

@@ -4,7 +4,7 @@
     /// Describes a particular <see cref="Substances.Phase"/> of a <see cref="Substances.Chemical"/>
     /// in a <see cref="Mixture"/> in a particular proportion.
     /// </summary>
-    public class MixtureComponent
+    public class MixtureComponent : DataItem
     {
         /// <summary>
         /// The <see cref="Substances.Chemical"/>.

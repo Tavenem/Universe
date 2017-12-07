@@ -8,7 +8,7 @@ namespace WorldFoundry.Substances
     /// <summary>
     /// Defines a mixture of components in particular proportions.
     /// </summary>
-    public class Mixture
+    public class Mixture : DataItem
     {
         /// <summary>
         /// The <see cref="MixtureComponent"/>s included in this mixture.
@@ -53,7 +53,7 @@ namespace WorldFoundry.Substances
         /// </summary>
         public void AbsorbLayers()
         {
-            while (Mixtures.Count > 1)
+            while (Mixtures?.Count > 1)
             {
                 CombineLayers(GetChildAtFirstLayer(), GetChildAtLastLayer());
             }
@@ -62,7 +62,7 @@ namespace WorldFoundry.Substances
                 Components = new HashSet<MixtureComponent>();
             }
             var source = GetChildAtFirstLayer();
-            foreach (var component in source.Components)
+            foreach (var component in source?.Components)
             {
                 var newProportion = GetProportion(component.Chemical, component.Phase) + component.Proportion;
 
@@ -86,7 +86,7 @@ namespace WorldFoundry.Substances
                 }
             }
             BalanceProportions();
-            Mixtures.Remove(source);
+            Mixtures?.Remove(source);
         }
 
         /// <summary>
@@ -255,11 +255,11 @@ namespace WorldFoundry.Substances
                 }
             }
             destination.BalanceProportions();
-            foreach (var mixture in Mixtures.Where(x => x.Layer > source.Layer))
+            foreach (var mixture in Mixtures?.Where(x => x.Layer > source.Layer))
             {
                 mixture.Layer--;
             }
-            Mixtures.Remove(source);
+            Mixtures?.Remove(source);
         }
 
         /// <summary>
@@ -300,9 +300,9 @@ namespace WorldFoundry.Substances
 
             var newLayer = new Mixture()
             {
-                Components = new HashSet<MixtureComponent>(original.Components),
+                Components = original.Components == null ? new HashSet<MixtureComponent>() : new HashSet<MixtureComponent>(original.Components),
                 Layer = Mixtures.Max(m => m.Layer) + 1,
-                Mixtures = new HashSet<Mixture>(original.Mixtures),
+                Mixtures = original.Mixtures == null ? new HashSet<Mixture>() : new HashSet<Mixture>(original.Mixtures),
                 Proportion = Math.Min(1, proportion),
             };
 
@@ -519,7 +519,7 @@ namespace WorldFoundry.Substances
         /// </summary>
         public void RemoveEmptyChildren()
         {
-            var empties = Mixtures.Where(x => x.Components.Count == 0);
+            var empties = Mixtures?.Where(x => x.Components.Count == 0);
             foreach (var empty in empties)
             {
                 Mixtures.Remove(empty);

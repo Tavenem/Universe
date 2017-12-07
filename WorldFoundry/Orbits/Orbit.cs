@@ -9,7 +9,7 @@ namespace WorldFoundry.Orbits
     /// <summary>
     /// Defines an orbit by the Kepler elements.
     /// </summary>
-    public class Orbit
+    public class Orbit : DataItem
     {
         private const float Tolerance = 1.0e-8F;
 

@@ -12,7 +12,7 @@ namespace WorldFoundry.Space
     /// Indicates an entity which may be contained within a <see cref="CelestialObject"/>, whether that is
     /// a <see cref="CelestialObject"/> or a <see cref="CelestialObjects.CelestialBody"/>.
     /// </summary>
-    public class CelestialEntity
+    public class CelestialEntity : DataItem
     {
         /// <summary>
         /// Local space is a coordinate system with a range of -1000000 to 1000000.
@@ -36,11 +36,6 @@ namespace WorldFoundry.Space
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
         /// </summary>
         protected virtual string DesignatorPrefix => string.Empty;
-
-        /// <summary>
-        /// The primary key for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        public Guid ID { get; internal set; }
 
         private float? _localScale;
         /// <summary>
@@ -184,12 +179,15 @@ namespace WorldFoundry.Space
         /// </param>
         public CelestialEntity(CelestialObject parent) : this()
         {
-            Parent = parent;
-            if (Parent.Children == null)
+            if (parent != null)
             {
-                Parent.Children = new HashSet<CelestialEntity>();
+                Parent = parent;
+                if (Parent.Children == null)
+                {
+                    Parent.Children = new HashSet<CelestialEntity>();
+                }
+                Parent.Children.Add(this);
             }
-            Parent.Children.Add(this);
         }
 
         /// <summary>
