@@ -84,7 +84,7 @@ namespace WorldFoundry.Climate
 
             if (previous != null)
             {
-                WorldGrid.SetArrayFromCollection(ref previous.tileClimateArray, previous.TileClimates);
+                previous.TileClimates.SetIndexedArray(ref previous.tileClimateArray);
             }
 
             SetTemperature(position);

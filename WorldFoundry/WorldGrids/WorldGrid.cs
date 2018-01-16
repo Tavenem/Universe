@@ -35,7 +35,7 @@ namespace WorldFoundry.WorldGrids
             {
                 if (_cornerArray == null && Corners != null)
                 {
-                    SetArrayFromCollection(ref _cornerArray, Corners);
+                    Corners.SetIndexedArray(ref _cornerArray);
                 }
                 return _cornerArray;
             }
@@ -64,7 +64,7 @@ namespace WorldFoundry.WorldGrids
             {
                 if (_edgeArray == null && Edges != null)
                 {
-                    SetArrayFromCollection(ref _edgeArray, Edges);
+                    Edges.SetIndexedArray(ref _edgeArray);
                 }
                 return _edgeArray;
             }
@@ -94,7 +94,7 @@ namespace WorldFoundry.WorldGrids
             {
                 if (_tileArray == null && Tiles != null)
                 {
-                    SetArrayFromCollection(ref _tileArray, Tiles);
+                    Tiles.SetIndexedArray(ref _tileArray);
                 }
                 return _tileArray;
             }
@@ -122,15 +122,6 @@ namespace WorldFoundry.WorldGrids
         {
             Planet = planet;
             SubdivideGrid(size);
-        }
-
-        internal static void SetArrayFromCollection<T>(ref T[] array, ICollection<T> collection) where T : IIndexedItem
-        {
-            array = new T[collection.Count];
-            for (int i = 0; i < collection.Count; i++)
-            {
-                array[i] = collection.FirstOrDefault(x => x.Index == i);
-            }
         }
 
         private void AddCorner(int index, int[] tileIndexes)
