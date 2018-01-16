@@ -18,11 +18,11 @@
         /// <summary>
         /// The heat of vaporization of water, in SI base units.
         /// </summary>
-        public const float HeatOfVaporizationOFWater = 2501000;
+        public const float HeatOfVaporizationOfWater = 2501000;
         /// <summary>
         /// The heat of vaporization of water, squared, in SI base units.
         /// </summary>
-        public const float HeatOfVaporizationOfWaterSquared = HeatOfVaporizationOFWater * HeatOfVaporizationOFWater;
+        public const float HeatOfVaporizationOfWaterSquared = HeatOfVaporizationOfWater * HeatOfVaporizationOfWater;
 
         /// <summary>
         /// The molar mass of air, in SI base units.

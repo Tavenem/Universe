@@ -407,19 +407,27 @@ namespace WorldFoundry.Climate
         /// Calculates the total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.
         /// </summary>
         /// <returns>The total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.</returns>
+        /// <remarks>
+        /// This uses an empirically-derived formula which fits the greenhouse effect for Venus,
+        /// Earth and Mars based on calculated effective surface temperatures versus observed surface
+        /// temperatures, and should provide good results for greenhouse gas concentrations and
+        /// atmospheric pressures in the vicinity of the extremes represented by those three planets.
+        /// A true formula for greenhouse effect is unknown; only the relative difference in
+        /// temperature based on changing proportions in an existing atmosphere is well-studied, and
+        /// relies on unique formulas for each gas, which is impractical for this library.
+        /// </remarks>
         private float GetGreenhouseFactor()
         {
-            var total = Math.Min(2 - TMath.Tolerance,
-                Mixtures?.Sum(m => m.Components?
+            var total = Mixtures?.Sum(m => m.Components?
                     .Where(c => c.Chemical.GreenhousePotential > 0)
-                    .Sum(c => c.Chemical.GreenhousePotential * 0.36 * Math.Exp(c.Proportion * AtmosphericPressure)) ?? 0) ?? 0);
+                    .Sum(c => c.Chemical.GreenhousePotential * c.Proportion) ?? 0) ?? 0;
             if (TMath.IsZero(total))
             {
                 return 1;
             }
             else
             {
-                return (float)Math.Pow(1 / (1 - 0.5 * total), 0.25);
+                return (float)(0.933835 + 0.0441533 * Math.Exp(1.79077 * total) * (1.11169 + Math.Log(AtmosphericPressure)));
             }
         }
 
@@ -492,7 +500,7 @@ namespace WorldFoundry.Climate
 
             var waterRatio = GetProportion(Chemical.Water, Phase.Gas, true);
 
-            var numerator = gasConstantSurfaceTemp2 + Utilities.Science.Constants.HeatOfVaporizationOFWater * waterRatio * surfaceTemp;
+            var numerator = gasConstantSurfaceTemp2 + Utilities.Science.Constants.HeatOfVaporizationOfWater * waterRatio * surfaceTemp;
             var denominator = Utilities.Science.Constants.SpecificHeatTimesSpecificGasConstant_DryAir * surfaceTemp2
                 + Utilities.Science.Constants.HeatOfVaporizationOfWaterSquared * waterRatio * Utilities.Science.Constants.SpecificGasConstantRatioOfDryAirToWater;
 
@@ -612,7 +620,9 @@ namespace WorldFoundry.Climate
             _atmosphericMass = null;
             _atmosphericScaleHeight = null;
             _greenhouseFactor = null;
+            _greenhouseEffect = null;
             _insolationFactor_Polar = null;
+            _insolationFactor_Equatorial = null;
         }
 
         /// <summary>

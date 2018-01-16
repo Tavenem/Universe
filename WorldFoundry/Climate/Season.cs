@@ -68,12 +68,12 @@ namespace WorldFoundry.Climate
             tileClimateArray = new TileClimate[planet.Topography.Tiles.Count];
             for (int j = 0; j < planet.Topography.Tiles.Count; j++)
             {
-                tileClimateArray[j] = new TileClimate();
+                tileClimateArray[j] = new TileClimate(j);
             }
             edgeClimateArray = new EdgeClimate[planet.Topography.Edges.Count];
             for (int j = 0; j < planet.Topography.Edges.Count; j++)
             {
-                edgeClimateArray[j] = new EdgeClimate();
+                edgeClimateArray[j] = new EdgeClimate(j);
             }
 
             var seasonDuration = planet.Orbit.Period / amount;
@@ -81,6 +81,11 @@ namespace WorldFoundry.Climate
             var elapsedYearToDate = seasonProportion * index;
 
             TropicalEquator = planet.AxialTilt * (float)Math.Sin(Utilities.MathUtil.Constants.TwoPI * elapsedYearToDate + Utilities.MathUtil.Constants.HalfPI) * 0.6666667f;
+
+            if (previous != null)
+            {
+                WorldGrid.SetArrayFromCollection(ref previous.tileClimateArray, previous.TileClimates);
+            }
 
             SetTemperature(position);
             var edgeAirFlows = SetWind();
@@ -306,7 +311,7 @@ namespace WorldFoundry.Climate
                 if (t.TerrainType != TerrainType.Water)
                 {
                     var tc = tileClimateArray[i];
-                    var previousSnow = (previous?.GetTileClimate(i).SnowCover ?? 0) / SnowToRainRatio;
+                    var previousSnow = (previous?.tileClimateArray[i].SnowCover ?? 0) / SnowToRainRatio;
                     var newSnow = tc.SnowFallWaterEquivalent;
 
                     var melt = 0f;
@@ -328,7 +333,7 @@ namespace WorldFoundry.Climate
                     // rolling average, weighted to the heavier, roughly models infiltration and seepage
                     // multiplied by a factor of 4 to roughly model groundwater flow
                     var runoff = (float)(((tc.Precipitation - tc.SnowFallWaterEquivalent + melt) * 0.004f * t.Area) / time);
-                    var previousRunoff = previous?.GetTileClimate(i).Runoff ?? runoff;
+                    var previousRunoff = previous?.tileClimateArray[i].Runoff ?? runoff;
                     tc.Runoff = (previousRunoff > runoff ? (previousRunoff * 3 + runoff) : (runoff * 3 + previousRunoff)) / 4;
                 }
             }
@@ -362,7 +367,7 @@ namespace WorldFoundry.Climate
 
                     if (previous != null)
                     {
-                        var prevTC = previous.GetTileClimate(i);
+                        var prevTC = previous.tileClimateArray[i];
                         var minCount = Math.Min(tc.airCellList.Count, prevTC.AirCells.Count);
                         for (int j = 0; j < minCount; j++)
                         {
@@ -477,7 +482,7 @@ namespace WorldFoundry.Climate
                 var tc = tileClimateArray[i];
                 if (Planet.Topography.TileArray[i].TerrainType.HasFlag(TerrainType.Water))
                 {
-                    var previousIce = previous?.GetTileClimate(i).SeaIce ?? 0;
+                    var previousIce = previous?.tileClimateArray[i].SeaIce ?? 0;
                     var ice = 0f;
                     if (tc.Temperature < Chemical.Water_Salt.MeltingPoint)
                     {
@@ -514,11 +519,11 @@ namespace WorldFoundry.Climate
                 }
                 tc.Temperature = Planet.Atmosphere.GetTemperatureAtElevation(surfaceTemp, t.Elevation);
                 var c = 0;
-                var layers = (int)Math.Floor(Planet.Atmosphere.AtmosphericHeight / AirCell.LayerHeight);
+                var layers = (int)Math.Max(1, Math.Floor(Planet.Atmosphere.AtmosphericHeight / AirCell.LayerHeight));
                 tc.airCellList = new List<AirCell>();
                 while (c < layers)
                 {
-                    var ac = new AirCell(Planet, t, tc, c);
+                    var ac = new AirCell(c, Planet, t, tc);
                     tc.airCellList.Add(ac);
                     if (TMath.IsZero(ac.SaturationVaporPressure))
                     {

@@ -17,5 +17,12 @@ namespace WorldFoundry.Climate
         /// cref="Season"/>, in m³/s.
         /// </summary>
         public float RiverFlow { get; internal set; }
+
+        private EdgeClimate() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="EdgeClimate"/>.
+        /// </summary>
+        public EdgeClimate(int index) => Index = index;
     }
 }

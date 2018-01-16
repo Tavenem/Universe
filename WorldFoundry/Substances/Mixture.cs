@@ -62,27 +62,30 @@ namespace WorldFoundry.Substances
                 Components = new HashSet<MixtureComponent>();
             }
             var source = GetChildAtFirstLayer();
-            foreach (var component in source?.Components)
+            if (source?.Components != null)
             {
-                var newProportion = GetProportion(component.Chemical, component.Phase) + component.Proportion;
+                foreach (var component in source.Components)
+                {
+                    var newProportion = GetProportion(component.Chemical, component.Phase) + component.Proportion;
 
-                var oldComponent = GetComponent(component.Chemical, component.Phase);
-                if (TMath.AreEqual(newProportion, oldComponent?.Proportion ?? 0))
-                {
-                    continue;
-                }
-                else if (oldComponent == null)
-                {
-                    Components.Add(new MixtureComponent
+                    var oldComponent = GetComponent(component.Chemical, component.Phase);
+                    if (TMath.AreEqual(newProportion, oldComponent?.Proportion ?? 0))
                     {
-                        Chemical = component.Chemical,
-                        Phase = component.Phase,
-                        Proportion = newProportion,
-                    });
-                }
-                else
-                {
-                    oldComponent.Proportion = newProportion;
+                        continue;
+                    }
+                    else if (oldComponent == null)
+                    {
+                        Components.Add(new MixtureComponent
+                        {
+                            Chemical = component.Chemical,
+                            Phase = component.Phase,
+                            Proportion = newProportion,
+                        });
+                    }
+                    else
+                    {
+                        oldComponent.Proportion = newProportion;
+                    }
                 }
             }
             BalanceProportions();
@@ -497,7 +500,7 @@ namespace WorldFoundry.Substances
             {
                 if (phase == Phase.Any)
                 {
-                    foreach (var match in GetComponentPhases(chemical))
+                    foreach (var match in GetComponentPhases(chemical).ToList())
                     {
                         Components.Remove(match);
                     }

@@ -211,5 +211,11 @@ namespace WorldFoundry.CelestialBodies
         /// in K.
         /// </returns>
         internal float GetTotalTemperatureFromPosition(Vector3 position) => (Temperature ?? 0) + GetInsolationHeat(position);
+
+        internal void ResetCachedTemperatures()
+        {
+            _totalTemperatureAtApoapsis = null;
+            _totalTemperatureAtPeriapsis = null;
+        }
     }
 }

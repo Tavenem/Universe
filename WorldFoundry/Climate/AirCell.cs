@@ -44,15 +44,18 @@ namespace WorldFoundry.Climate
         [NotMapped]
         internal float Temperature { get; set; }
 
+        private AirCell() { }
+
         /// <summary>
         /// Initializes a new instance of <see cref="AirCell"/>.
         /// </summary>
-        public AirCell() { }
+        public AirCell(int index) => Index = index;
 
-        internal AirCell(TerrestrialPlanet planet, Tile t, TileClimate tc, int layer)
+        internal AirCell(int index, TerrestrialPlanet planet, Tile t, TileClimate tc)
         {
-            var height = LayerHeight * layer;
-            Temperature = layer == 0
+            Index = index;
+            var height = LayerHeight * index;
+            Temperature = index == 0
                 ? tc.Temperature
                 : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, height);
             Pressure = planet.Atmosphere.GetAtmosphericPressure(Temperature, t.Elevation + height);

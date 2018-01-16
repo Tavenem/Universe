@@ -45,7 +45,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The default surface temperature, used if none is specified, in K.
         /// </summary>
-        public const float DefaultSurfaceTemperature = 255;
+        public const float DefaultSurfaceTemperature = 288;
 
         /// <summary>
         /// The default ratio of water coverage, used if none is specified.

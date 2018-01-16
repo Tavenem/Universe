@@ -90,6 +90,13 @@ namespace WorldFoundry.Climate
         /// </summary>
         public float WindSpeed { get; internal set; }
 
+        private TileClimate() { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="TileClimate"/>.
+        /// </summary>
+        public TileClimate(int index) => Index = index;
+
         /// <summary>
         /// Retrieves the <see cref="AirCell"/> with the given index.
         /// </summary>

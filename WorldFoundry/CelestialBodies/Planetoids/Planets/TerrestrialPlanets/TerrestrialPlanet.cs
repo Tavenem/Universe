@@ -279,6 +279,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
                 GenerateOrbit(star, semiMajorAxis.Value, trueAnomaly, GetDistanceForTemperature(star, targetTemp));
             }
+            ResetCachedTemperatures();
+            Atmosphere?.ResetPressureDependentProperties();
         }
 
         private void CalculateGasPhaseMix(Chemical chemical, float surfaceTemp, float polarTemp, ref float hydrosphereAtmosphereRatio)
@@ -394,11 +396,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 EvaporateWater(ref hydrosphereAtmosphereRatio);
             }
 
-            // At least 1% humidity leads to a reduction of CO2 to a trace gas,
-            // by a presumed carbon-silicate cycle.
-            var humidity = (Atmosphere.GetChildAtFirstLayer().GetComponent(Chemical.Water, Phase.Gas)?.Proportion ?? 0 *
-                Atmosphere.AtmosphericPressure) / vaporPressure;
-            if (humidity >= 0.01)
+            CheckCO2Reduction(vaporPressure);
+        }
+
+        /// <remarks>
+        /// At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
+        /// carbon-silicate cycle.
+        /// </remarks>
+        private void CheckCO2Reduction(float vaporPressure)
+        {
+            if ((Atmosphere.GetChildAtFirstLayer().GetComponent(Chemical.Water, Phase.Gas)?.Proportion ?? 0) *
+                Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
             {
                 ReduceCO2();
             }
@@ -743,10 +751,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 GenerateAtmosphereThick(surfaceTemp);
             }
 
-            // Recalculate temperatures based on the new atmosphere.
-            surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
-            var polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
-
             float hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
             // Water may be removed, or if not may remove CO2 from the atmosphere, depending on
             // planetary conditions.
@@ -754,6 +758,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Any)
                 || Atmosphere.ContainsSubstance(Chemical.Water, Phase.Any))
             {
+                // Recalculate temperature based on the new atmosphere.
+                surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
+                var vaporPressure = Chemical.Water.CalculateVaporPressure(surfaceTemp);
+                CheckCO2Reduction(vaporPressure);
+
+                // Recalculate temperatures based on the new atmosphere.
+                surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
+                var polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
+
                 CalculateWaterPhaseMix(surfaceTemp, polarTemp, hydrosphereAtmosphereRatio);
             }
 
@@ -1647,11 +1660,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     targetTemp = maxTemp / 2;
                 }
 
+                var targetSurfaceTemp = targetTemp;
                 var count = 0;
                 var delta = 0.0f;
                 do
                 {
-                    AdjustOrbitForTemperature(star, ref semiMajorAxis, ta, distance, targetTemp);
+                    AdjustOrbitForTemperature(star, ref semiMajorAxis, ta, distance, targetSurfaceTemp);
 
                     if (PlanetParams?.SurfaceTemperature.HasValue == true)
                     {
@@ -1673,8 +1687,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                             }
                         }
                     }
-                    targetTemp += delta;
-                } while (count < 10 && delta > Season.ClimateErrorTolerance);
+                    targetSurfaceTemp += delta;
+                    count++;
+                } while (count < 10 && Math.Abs(delta) > Season.ClimateErrorTolerance);
             }
         }
 
@@ -2058,7 +2073,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// Gets or generates a set of <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
+        /// Gets or generates a set of <see cref="Season"/>s for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <param name="amount">
         /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
@@ -2198,7 +2213,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 x.ContainsSubstance(Chemical.CarbonDioxide, Phase.Gas)))
             {
                 co2 = (float)Randomizer.Static.NextDouble(1.5e-5, 1.0e-3);
-                var n2 = layer.GetProportion(Chemical.CarbonDioxide, Phase.Any) - co2;
+                var n2 = layer.GetProportion(Chemical.Nitrogen, Phase.Gas) + layer.GetProportion(Chemical.CarbonDioxide, Phase.Any) - co2;
                 layer.RemoveComponent(Chemical.CarbonDioxide, Phase.Liquid);
                 layer.RemoveComponent(Chemical.CarbonDioxide, Phase.Solid);
                 layer.SetProportion(Chemical.CarbonDioxide, Phase.Gas, co2);

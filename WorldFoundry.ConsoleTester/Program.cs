@@ -259,82 +259,58 @@ namespace WorldFoundry.ConsoleApp
 
         static void AddElevationString(StringBuilder sb)
         {
+            var elevations = _planet.Topography.Tiles.Select(x => x.Elevation)
+                .Concat(_planet.Topography.Corners.Select(x => x.Elevation));
             sb.AppendLine("Elevation:");
-            sb.AppendFormat("  Min:                     {0} m", Math.Min(_planet.Topography.Tiles.Min(t => t.Elevation), _planet.Topography.Corners.Min(c => c.Elevation)));
+            sb.AppendFormat("  Min:                     {0} m", elevations.Min());
             sb.AppendLine();
-            sb.AppendFormat("  Avg:                     {0} m", (_planet.Topography.Tiles.Sum(t => t.Elevation) + _planet.Topography.Corners.Sum(c => c.Elevation)) / (_planet.Topography.Tiles.Count + _planet.Topography.Corners.Count));
+            sb.AppendFormat("  Avg:                     {0} m", elevations.Average());
             sb.AppendLine();
-            var sum = 0f;
-            var count = 0;
-            for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-            {
-                if (_planet.Topography.GetTile(i).Elevation > 0)
-                {
-                    sum += _planet.Topography.GetTile(i).Elevation;
-                    count++;
-                }
-            }
-            for (int i = 0; i < _planet.Topography.Corners.Count; i++)
-            {
-                if (_planet.Topography.GetCorner(i).Elevation > 0)
-                {
-                    sum += _planet.Topography.GetCorner(i).Elevation;
-                    count++;
-                }
-            }
-            sb.AppendFormat("  Avg(> 0):                {0} m", sum / count);
+            sb.AppendFormat("  Avg(> 0):                {0} m", elevations.Where(x => x > 0).Average());
             sb.AppendLine();
-            sb.AppendFormat("  Max:                     {0} m", Math.Max(_planet.Topography.Tiles.Max(t => t.Elevation), _planet.Topography.Corners.Max(c => c.Elevation)));
+            sb.AppendFormat("  Max:                     {0} m", elevations.Max());
             sb.AppendLine();
         }
 
         static void AddPrecipitationString(StringBuilder sb, List<Season> seasons, float seasonsInYear)
         {
-            sb.AppendLine("Precipitation (average, land):");
-            var list = new List<float>();
-            for (int j = 0; j < seasons.Count; j++)
-            {
-                for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-                {
-                    if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water)
-                    {
-                        list.Add(seasons[j].GetTileClimate(i).Precipitation);
-                    }
-                }
-            }
+            sb.AppendLine("Precipitation (annual average, land):");
+            var list = _planet.Topography.Tiles.Where(x => x.TerrainType != TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).Precipitation).Sum())
+                .ToList();
             list.Sort();
-            sb.AppendFormat("  Avg:                     {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
+            sb.AppendFormat("  Avg:                     {0} mm", list.Count == 0 ? 0 : list.Average());
             sb.AppendLine();
-            sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Count == 0 ? 0 : list.Take((int)Math.Floor(list.Count * 0.9)).Average() * seasonsInYear);
+            sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Count == 0 ? 0 : list.Take((int)Math.Floor(list.Count * 0.9)).Average());
             sb.AppendLine();
-            sb.AppendFormat("  P10:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonsInYear);
+            sb.AppendFormat("  P10:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First());
             sb.AppendLine();
-            sb.AppendFormat("  Q1:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonsInYear);
+            sb.AppendFormat("  Q1:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First());
             sb.AppendLine();
-            sb.AppendFormat("  Q2:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonsInYear);
+            sb.AppendFormat("  Q2:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First());
             sb.AppendLine();
-            sb.AppendFormat("  Q3:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonsInYear);
+            sb.AppendFormat("  Q3:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First());
             sb.AppendLine();
-            sb.AppendFormat("  P90:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonsInYear);
+            sb.AppendFormat("  P90:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First());
             sb.AppendLine();
-            sb.AppendFormat("  Max:                     {0} mm", list.Count == 0 ? 0 : list.Last() * seasonsInYear);
+            sb.AppendFormat("  Max:                     {0} mm", list.Count == 0 ? 0 : list.Last());
             sb.AppendLine();
 
             sb.AppendLine("  Selected Tiles:");
             sb.AppendFormat("    [100]:                 {0} mm ({1})",
-                seasons.Average(s => s.GetTileClimate(100).Precipitation) * seasonsInYear,
+                seasons.Sum(s => s.GetTileClimate(100).Precipitation),
                 _planet.Topography.GetTile(100).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [200]:                 {0} mm ({1})",
-                seasons.Average(s => s.GetTileClimate(200).Precipitation) * seasonsInYear,
+                seasons.Sum(s => s.GetTileClimate(200).Precipitation),
                 _planet.Topography.GetTile(200).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [300]:                 {0} mm ({1})",
-                seasons.Average(s => s.GetTileClimate(300).Precipitation) * seasonsInYear,
+                seasons.Sum(s => s.GetTileClimate(300).Precipitation),
                 _planet.Topography.GetTile(300).TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [400]:                 {0} mm ({1})",
-                seasons.Average(s => s.GetTileClimate(400).Precipitation) * seasonsInYear,
+                seasons.Sum(s => s.GetTileClimate(400).Precipitation),
                 _planet.Topography.GetTile(400).TerrainType);
             sb.AppendLine();
         }
@@ -342,15 +318,7 @@ namespace WorldFoundry.ConsoleApp
         static void AddRiverString(StringBuilder sb, List<Season> seasons)
         {
             sb.AppendLine("Average River Flow (non-0):");
-            var list = new List<float>();
-            for (int i = 0; i < _planet.Topography.Edges.Count; i++)
-            {
-                var flow = seasons.Average(s => s.GetEdgeClimate(i).RiverFlow);
-                if (flow > 0)
-                {
-                    list.Add(flow);
-                }
-            }
+            var list = _planet.Topography.Edges.Select(x => seasons.Average(y => y.GetEdgeClimate(x.Index).RiverFlow)).ToList();
             list.Sort();
             sb.AppendFormat("    Avg:                   {0} m³/s", list.Count == 0 ? 0 : list.Average());
             sb.AppendLine();
@@ -372,17 +340,10 @@ namespace WorldFoundry.ConsoleApp
         {
             sb.AppendLine("Sea Ice Depth (non-0):");
             sb.AppendLine("  Avg:");
-            var list = new List<float>();
-            for (int j = 0; j < seasons.Count; j++)
-            {
-                for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-                {
-                    if (seasons[j].GetTileClimate(i).SeaIce > 0)
-                    {
-                        list.Add(seasons[j].GetTileClimate(i).SeaIce);
-                    }
-                }
-            }
+            var list = _planet.Topography.Tiles.Select(x => seasons
+                .Select(y => y.GetTileClimate(x.Index).SeaIce).Average())
+                .Where(x => x > 0)
+                .ToList();
             list.Sort();
             sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average());
             sb.AppendLine();
@@ -400,22 +361,31 @@ namespace WorldFoundry.ConsoleApp
             sb.AppendLine();
 
             sb.AppendLine("  Min:");
-            list = new List<float>();
-            for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-            {
-                var min = 1000000f;
-                for (int j = 0; j < seasons.Count; j++)
-                {
-                    if (seasons[j].GetTileClimate(i).SeaIce > 0)
-                    {
-                        min = Math.Min(min, seasons[j].GetTileClimate(i).SeaIce);
-                    }
-                }
-                if (min > 0 && min < 1000000f)
-                {
-                    list.Add(min);
-                }
-            }
+            list = _planet.Topography.Tiles.Select(x => seasons
+                .Select(y => y.GetTileClimate(x.Index).SeaIce).Min())
+                .Where(x => x > 0)
+                .ToList();
+            list.Sort();
+            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average());
+            sb.AppendLine();
+            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First());
+            sb.AppendLine();
+            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First());
+            sb.AppendLine();
+            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First());
+            sb.AppendLine();
+            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First());
+            sb.AppendLine();
+            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First());
+            sb.AppendLine();
+            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last());
+            sb.AppendLine();
+
+            sb.AppendLine("  Max:");
+            list = _planet.Topography.Tiles.Select(x => seasons
+                .Select(y => y.GetTileClimate(x.Index).SeaIce).Max())
+                .Where(x => x > 0)
+                .ToList();
             list.Sort();
             sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average());
             sb.AppendLine();
@@ -437,18 +407,33 @@ namespace WorldFoundry.ConsoleApp
         {
             sb.AppendLine("Snow Cover (non-0):");
             sb.AppendLine("  Avg:");
-            var list = new List<float>();
-            for (int j = 0; j < seasons.Count; j++)
-            {
-                for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-                {
-                    if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water
-                        && seasons[j].GetTileClimate(i).SnowCover > 0)
-                    {
-                        list.Add(seasons[j].GetTileClimate(i).SnowCover);
-                    }
-                }
-            }
+            var list = _planet.Topography.Tiles
+                .Where(x => x.TerrainType != TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).SnowCover).Average())
+                .Where(x => x > 0)
+                .ToList();
+            list.Sort();
+            sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    P10:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    Q1:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    Q2:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    Q3:                    {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    P90:                   {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First() * seasonsInYear);
+            sb.AppendLine();
+            sb.AppendFormat("    Max:                   {0} mm", list.Count == 0 ? 0 : list.Last() * seasonsInYear);
+            sb.AppendLine();
+
+            sb.AppendLine("  Min:");
+            list = _planet.Topography.Tiles
+                .Where(x => x.TerrainType != TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).SnowCover).Min())
+                .Where(x => x > 0)
+                .ToList();
             list.Sort();
             sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
             sb.AppendLine();
@@ -466,25 +451,11 @@ namespace WorldFoundry.ConsoleApp
             sb.AppendLine();
 
             sb.AppendLine("  Max:");
-            list = new List<float>();
-            for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-            {
-                if (_planet.Topography.GetTile(i).TerrainType != TerrainType.Water)
-                {
-                    var max = 0f;
-                    for (int j = 0; j < seasons.Count; j++)
-                    {
-                        if (seasons[j].GetTileClimate(i).SnowCover > 0)
-                        {
-                            max = Math.Max(max, seasons[j].GetTileClimate(i).SnowCover);
-                        }
-                    }
-                    if (max > 0)
-                    {
-                        list.Add(max);
-                    }
-                }
-            }
+            list = _planet.Topography.Tiles
+                .Where(x => x.TerrainType != TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).SnowCover).Max())
+                .Where(x => x > 0)
+                .ToList();
             list.Sort();
             sb.AppendFormat("    Avg:                   {0} mm", list.Count == 0 ? 0 : list.Average() * seasonsInYear);
             sb.AppendLine();
@@ -508,50 +479,34 @@ namespace WorldFoundry.ConsoleApp
             sb.AppendFormat("  Avg:                     {0} K", seasons.Average(s => s.TileClimates.Average(t => t.Temperature)));
             sb.AppendLine();
 
-            var sum = 0f;
-            var count = 0;
-            var min = 10000f;
-            for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-            {
-                if (_planet.Topography.GetTile(i).TerrainType == TerrainType.Water)
-                {
-                    var avg = seasons.Average(s => s.GetTileClimate(i).Temperature);
-                    min = Math.Min(min, avg);
-                    sum += avg;
-                    count++;
-                }
-            }
+
+            var min = _planet.Topography.Tiles
+                .Where(x => x.TerrainType == TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).Temperature).Min()).Min();
             sb.AppendFormat("  Min Sea-Level:           {0} K", min);
             sb.AppendLine();
-            sb.AppendFormat("  Avg Sea-Level:           {0} K", sum / count);
+
+            var avg = _planet.Topography.Tiles
+                .Where(x => x.TerrainType == TerrainType.Water)
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).Temperature).Average()).Average();
+            sb.AppendFormat("  Avg Sea-Level:           {0} K", avg);
             sb.AppendLine();
 
             sb.AppendFormat("  Max:                     {0} K", seasons.Max(s => s.TileClimates.Max(t => t.Temperature)));
             sb.AppendLine();
 
-            min = 10000f;
-            var max = 0f;
-            var minIndex = -1;
-            for (int i = 0; i < _planet.Topography.Tiles.Count; i++)
-            {
-                max = Math.Max(max, seasons.Average(s => s.GetTileClimate(i).Temperature));
-                if (_planet.Topography.GetTile(i).TerrainType.HasFlag(TerrainType.Water))
-                {
-                    var sMax = 0f;
-                    for (int j = 0; j < seasons.Count; j++)
-                    {
-                        sMax = Math.Max(sMax, seasons[j].GetTileClimate(i).Temperature);
-                    }
-                    if (sMax < min)
-                    {
-                        min = sMax;
-                        minIndex = i;
-                    }
-                }
-            }
-            sb.AppendFormat("  Max Avg:          {0} K", max);
+            var maxAvg = _planet.Topography.Tiles
+                .Select(x => seasons.Select(y => y.GetTileClimate(x.Index).Temperature).Average())
+                .Max();
+            sb.AppendFormat("  Max Avg:          {0} K", maxAvg);
             sb.AppendLine();
-            sb.AppendFormat("  Min Max (water):  {0} K [{1}]", min, minIndex);
+
+            var (minMaxTemp, minMaxIndex) = _planet.Topography.Tiles
+                .Where(x => x.TerrainType == TerrainType.Water)
+                .Select(x => (temp: seasons.Select(y => y.GetTileClimate(x.Index).Temperature).Max(), x.Index))
+                .OrderBy(x => x.temp)
+                .First();
+            sb.AppendFormat("  Min Max (water):  {0} K [{1}]", minMaxTemp, minMaxIndex);
             sb.AppendLine();
 
             sb.AppendFormat("Avg Surface Pressure:      {0} kPa", seasons.Average(s => s.TileClimates.Average(t => t.AtmosphericPressure)));

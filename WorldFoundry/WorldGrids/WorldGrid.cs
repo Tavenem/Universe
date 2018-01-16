@@ -124,7 +124,7 @@ namespace WorldFoundry.WorldGrids
             SubdivideGrid(size);
         }
 
-        private static void SetArrayFromCollection<T>(ref T[] array, ICollection<T> collection) where T : IIndexedItem
+        internal static void SetArrayFromCollection<T>(ref T[] array, ICollection<T> collection) where T : IIndexedItem
         {
             array = new T[collection.Count];
             for (int i = 0; i < collection.Count; i++)
