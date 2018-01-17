@@ -108,11 +108,11 @@ namespace WorldFoundry.Substances
         {
             if (temperature > AntoineMaximumTemperature)
             {
-                return float.NegativeInfinity;
+                return float.PositiveInfinity;
             }
             else if (temperature < AntoineMinimumTemperature)
             {
-                return float.PositiveInfinity;
+                return float.NegativeInfinity;
             }
             else
             {

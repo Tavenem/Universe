@@ -4,7 +4,9 @@ using System.Linq;
 using System.Numerics;
 using Troschuetz.Random;
 using WorldFoundry.CelestialBodies;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Substances;
+using WorldFoundry.Utilities;
 
 namespace WorldFoundry.Climate
 {
@@ -52,7 +54,14 @@ namespace WorldFoundry.Climate
         public float AtmosphericPressure
         {
             get => Mixtures.All(x => x.Components.Count == 0) ? 0 : _atmosphericPressure;
-            set => _atmosphericPressure = value;
+            set
+            {
+                if (_atmosphericPressure != value)
+                {
+                    _atmosphericPressure = value;
+                    ResetPressureDependentProperties();
+                }
+            }
         }
 
         private float? _atmosphericScaleHeight;
@@ -222,6 +231,382 @@ namespace WorldFoundry.Climate
             return (float)(a * Math.Exp((b - (t / c)) * (t / (d + t))));
         }
 
+        internal void CalculateGasPhaseMix(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            bool canHaveOxygen,
+            Chemical chemical,
+            float surfaceTemp,
+            float polarTemp,
+            ref float hydrosphereAtmosphereRatio,
+            ref float adjustedAtmosphericPressure)
+        {
+            var hydrosphereProportion = hydrosphere.GetProportion(chemical, Phase.Any, hydrosphere.Mixtures?.Count > 0);
+            if (chemical == Chemical.Water)
+            {
+                hydrosphereProportion += hydrosphere.GetProportion(Chemical.Water_Salt, Phase.Any, hydrosphere.Mixtures?.Count > 0);
+            }
+
+            var vaporProportion = GetProportion(chemical, Phase.Gas, true);
+
+            var vaporPressure = Chemical.Water.CalculateVaporPressure(surfaceTemp);
+
+            if (surfaceTemp < Chemical.Water.AntoineMinimumTemperature ||
+                (surfaceTemp <= Chemical.Water.AntoineMaximumTemperature &&
+                AtmosphericPressure > vaporPressure))
+            {
+                CondenseAtmosphericComponent(
+                    hydrosphere,
+                    hydrosphereSurface,
+                    canHaveOxygen,
+                    chemical,
+                    surfaceTemp,
+                    polarTemp,
+                    hydrosphereProportion,
+                    vaporProportion,
+                    vaporPressure,
+                    ref hydrosphereAtmosphereRatio,
+                    ref adjustedAtmosphericPressure);
+            }
+            // This indicates that the chemical will fully boil off.
+            else if (hydrosphereProportion > 0)
+            {
+                EvaporateAtmosphericComponent(
+                    hydrosphere,
+                    hydrosphereSurface,
+                    canHaveOxygen,
+                    chemical,
+                    hydrosphereProportion,
+                    vaporProportion,
+                    ref hydrosphereAtmosphereRatio,
+                    ref adjustedAtmosphericPressure);
+            }
+
+            if (chemical == Chemical.Water)
+            {
+                CheckCO2Reduction(vaporPressure);
+            }
+        }
+
+        /// <summary>
+        /// Adjusts the phase of various atmospheric and surface substances depending on the surface
+        /// temperature of the body.
+        /// </summary>
+        /// <remarks>
+        /// Despite the theoretical possibility of an atmosphere cold enough to precipitate some of
+        /// the noble gases, or hydrogen, they are ignored and presumed to exist always as trace
+        /// atmospheric gases, never surface liquids or ices, or in large enough quantities to form clouds.
+        /// </remarks>
+        internal void CalculatePhases(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            bool canHaveOxygen,
+            float surfaceTemp,
+            ref float hydrosphereAtmosphereRatio,
+            ref float adjustedAtmosphericPressure)
+        {
+            var polarTemp = GetSurfaceTemperatureAverageOrbital(true);
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.Methane, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.CarbonMonoxide, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.CarbonDioxide, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.Nitrogen, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.Oxygen, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            // No need to check for ozone, since it is only added to atmospheres on planets with
+            // liquid surface water, which means temperatures too high for liquid or solid ozone.
+
+            CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.SulphurDioxide, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+
+            // Water is handled differently, since the planet may already have surface water.
+            if (hydrosphere.ContainsSubstance(Chemical.Water, Phase.Any)
+                || hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Any)
+                || ContainsSubstance(Chemical.Water, Phase.Any))
+            {
+                CalculateGasPhaseMix(hydrosphere, hydrosphereSurface, canHaveOxygen, Chemical.Water, surfaceTemp, polarTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
+            }
+        }
+
+        /// <remarks>
+        /// At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
+        /// carbon-silicate cycle.
+        /// </remarks>
+        internal void CheckCO2Reduction(float vaporPressure)
+        {
+            if ((GetChildAtFirstLayer().GetComponent(Chemical.Water, Phase.Gas)?.Proportion ?? 0) *
+                AtmosphericPressure >= 0.01 * vaporPressure)
+            {
+                var co2 = GetProportion(Chemical.CarbonDioxide, Phase.Gas, true);
+                if (co2 < 1.0e-3)
+                {
+                    return;
+                }
+
+                foreach (var layer in Mixtures.Where(x =>
+                    x.ContainsSubstance(Chemical.CarbonDioxide, Phase.Gas)))
+                {
+                    co2 = (float)Randomizer.Static.NextDouble(1.5e-5, 1.0e-3);
+
+                    // Replace most of the CO2 with inert gases.
+                    var n2 = layer.GetProportion(Chemical.Nitrogen, Phase.Gas) + layer.GetProportion(Chemical.CarbonDioxide, Phase.Any) - co2;
+                    layer.RemoveComponent(Chemical.CarbonDioxide, Phase.Liquid);
+                    layer.RemoveComponent(Chemical.CarbonDioxide, Phase.Solid);
+                    layer.SetProportion(Chemical.CarbonDioxide, Phase.Gas, co2);
+
+                    // Some portion of the N2 may be Ar instead.
+                    var ar = (float)Math.Max(layer.GetProportion(Chemical.Argon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-0.02, 0.04));
+                    layer.SetProportion(Chemical.Argon, Phase.Gas, ar);
+                    n2 -= ar;
+
+                    // An even smaller fraction may be Kr.
+                    var kr = (float)Math.Max(layer.GetProportion(Chemical.Krypton, Phase.Gas), n2 * Randomizer.Static.NextDouble(-2.5e-4, 5.0e-4));
+                    layer.SetProportion(Chemical.Krypton, Phase.Gas, kr);
+                    n2 -= kr;
+
+                    // An even smaller fraction may be Xe or Ne.
+                    var xe = (float)Math.Max(layer.GetProportion(Chemical.Xenon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
+                    layer.SetProportion(Chemical.Xenon, Phase.Gas, xe);
+                    n2 -= xe;
+
+                    var ne = (float)Math.Max(layer.GetProportion(Chemical.Neon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
+                    layer.SetProportion(Chemical.Neon, Phase.Gas, ne);
+                    n2 -= ne;
+
+                    layer.SetProportion(Chemical.Nitrogen, Phase.Gas, n2);
+                }
+            }
+        }
+
+        private void CondenseAtmosphericComponent(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            bool canHaveOxygen,
+            Chemical chemical,
+            float surfaceTemp,
+            float polarTemp,
+            float hydrosphereProportion,
+            float vaporProportion,
+            float vaporPressure,
+            ref float hydrosphereAtmosphereRatio,
+            ref float adjustedAtmosphericPressure)
+        {
+            if (surfaceTemp <= Chemical.Water.MeltingPoint) // Below freezing point; add ice.
+            {
+                CondenseAtmosphericIce(
+                    hydrosphere,
+                    hydrosphereSurface,
+                    chemical,
+                    surfaceTemp,
+                    hydrosphereProportion,
+                    ref vaporProportion,
+                    ref hydrosphereAtmosphereRatio,
+                    ref adjustedAtmosphericPressure);
+            }
+            else // Above freezing point, but also above vapor pressure; add liquid.
+            {
+                CondenseAtmosphericLiquid(
+                    hydrosphere,
+                    hydrosphereSurface,
+                    chemical,
+                    polarTemp,
+                    ref hydrosphereProportion,
+                    vaporProportion,
+                    hydrosphereAtmosphereRatio);
+            }
+
+            // Adjust water vapor present in the atmosphere based on the vapor pressure.
+            var pressureRatio = Math.Min(1, vaporPressure / AtmosphericPressure);
+            // This would represent 100% humidity. Since this is the case, in principle, only at
+            // the surface of bodies of water, and should decrease exponentially with altitude,
+            // an approximation of 25% average humidity overall is used.
+            vaporProportion = (hydrosphereProportion + vaporProportion) * pressureRatio;
+            vaporProportion *= 0.25f;
+            if (!TMath.IsZero(vaporProportion))
+            {
+                float previousGasFraction = 0;
+                var gasFraction = vaporProportion;
+                AddComponent(chemical, Phase.Gas, vaporProportion, true);
+
+                // For water, also add a corresponding amount of oxygen, if it's not already present.
+                if (chemical == Chemical.Water && canHaveOxygen)
+                {
+                    var o2 = GetProportion(Chemical.Oxygen, Phase.Gas, true);
+                    previousGasFraction += o2;
+                    o2 = (float)Math.Max(o2, Math.Round(vaporProportion * 0.0001, 5));
+                    gasFraction += o2;
+                    SetProportion(Chemical.Oxygen, Phase.Gas, o2, true);
+                }
+
+                adjustedAtmosphericPressure += adjustedAtmosphericPressure * (gasFraction - previousGasFraction);
+            }
+
+            // Add clouds.
+            var clouds = vaporProportion * 0.2f;
+            if (!TMath.IsZero(clouds))
+            {
+                var troposphere = GetTroposphere();
+                if (surfaceTemp <= chemical.MeltingPoint)
+                {
+                    troposphere.SetProportion(chemical, Phase.Solid, clouds);
+                }
+                else if (polarTemp < chemical.MeltingPoint)
+                {
+                    var halfClouds = clouds / 2;
+                    troposphere.SetProportion(chemical, Phase.Liquid, halfClouds);
+                    troposphere.SetProportion(chemical, Phase.Solid, halfClouds);
+                }
+                else
+                {
+                    troposphere.SetProportion(chemical, Phase.Liquid, clouds);
+                }
+            }
+        }
+
+        private void CondenseAtmosphericIce(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            Chemical chemical,
+            float surfaceTemp,
+            float hydrosphereProportion,
+            ref float vaporProportion,
+            ref float hydrosphereAtmosphereRatio,
+            ref float adjustedAtmosphericPressure)
+        {
+            var ice = hydrosphereProportion;
+
+            // A subsurface liquid water ocean may persist if it's deep enough.
+            if (chemical == Chemical.Water && hydrosphere.Proportion >= 0.01)
+            {
+                ice = (0.01f / hydrosphere.Proportion) * hydrosphereProportion;
+            }
+
+            // Liquid fully precipitates out of the atmosphere when below the minimum; if no liquid
+            // exists in the hydrosphere yet, condensed ice is added from atmospheric vapor, though
+            // the latter is not removed.
+            if (surfaceTemp < chemical.AntoineMinimumTemperature || ice == 0)
+            {
+                ice += vaporProportion / hydrosphereAtmosphereRatio;
+
+                if (surfaceTemp < chemical.AntoineMinimumTemperature)
+                {
+                    vaporProportion = 0;
+                    RemoveComponent(chemical, Phase.Any, true);
+                    RemoveEmptyChildren();
+                    if (Mixtures.Count == 0)
+                    {
+                        Mixtures.Add(new Mixture());
+                        adjustedAtmosphericPressure = 0;
+                    }
+                }
+            }
+
+            if (TMath.IsZero(ice))
+            {
+                return;
+            }
+
+            if (!TMath.IsZero(hydrosphereProportion)) // Change existing hydrosphere to ice.
+            {
+                if (ice < hydrosphereProportion) // A subsurface ocean is indicated.
+                {
+                    if ((hydrosphere.Mixtures?.Count ?? 0) == 0)
+                    {
+                        hydrosphere.CopyLayer(0, ice);
+                    }
+                    else
+                    {
+                        hydrosphere.GetChildAtFirstLayer().Proportion = 1 - ice;
+                        hydrosphere.GetChildAtLastLayer().Proportion = ice;
+                    }
+                }
+
+                // Convert entire hydrosphere surface to ice.
+                // Remove any existing liquid from the hydrosphere.
+                hydrosphereSurface.RemoveComponent(chemical, Phase.Liquid);
+                if (chemical == Chemical.Water) // Also remove salt water when removing water.
+                {
+                    hydrosphereSurface.RemoveComponent(Chemical.Water_Salt, Phase.Liquid);
+                }
+
+                // Nothing but the chemical in the former hydrosphere.
+                if (hydrosphereSurface.Components.Count == 0)
+                {
+                    hydrosphereSurface.AddComponent(chemical, Phase.Solid, 1);
+                }
+                // Something besides the chemical left in the hydrosphere (other deposited liquids and ices).
+                else
+                {
+                    hydrosphereSurface.AddComponent(chemical, Phase.Solid, ice);
+                }
+                if (CelestialBody is TerrestrialPlanet t)
+                {
+                    hydrosphereAtmosphereRatio = t.GetHydrosphereAtmosphereRatio();
+                }
+            }
+            else // Chemical not yet present in hydrosphere.
+            {
+                SetHydrosphereProportion(hydrosphere, hydrosphereSurface, chemical, Phase.Solid, ice, ref hydrosphereAtmosphereRatio);
+            }
+        }
+
+        private void CondenseAtmosphericLiquid(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            Chemical chemical,
+            float polarTemp,
+            ref float hydrosphereProportion,
+            float vaporProportion,
+            float hydrosphereAtmosphereRatio)
+        {
+            // If the hydrosphere was a surface of water ice with a subsurface ocean, melt the
+            // surface and return to a single layer.
+            if (chemical == Chemical.Water && hydrosphere.Mixtures?.Count > 0)
+            {
+                var ice = hydrosphereSurface.GetProportion(Chemical.Water, Phase.Solid);
+                hydrosphereSurface.RemoveComponent(Chemical.Water, Phase.Solid);
+                SetHydrosphereProportion(hydrosphere, hydrosphereSurface, Chemical.Water_Salt, Phase.Liquid, ice, ref hydrosphereAtmosphereRatio);
+
+                var saltIce = hydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Solid);
+                hydrosphereSurface.RemoveComponent(Chemical.Water_Salt, Phase.Solid);
+                SetHydrosphereProportion(hydrosphere, hydrosphereSurface, Chemical.Water_Salt, Phase.Liquid, saltIce, ref hydrosphereAtmosphereRatio);
+
+                hydrosphere.AbsorbLayers();
+            }
+
+            var saltWaterProportion = chemical == Chemical.Water ? (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3) : 0;
+            var liquidProportion = 1 - saltWaterProportion;
+
+            // If there is no liquid on the surface, condense from the atmosphere.
+            if (TMath.IsZero(hydrosphereProportion))
+            {
+                var addedLiquid = vaporProportion / hydrosphereAtmosphereRatio;
+                if (!TMath.IsZero(addedLiquid))
+                {
+                    SetHydrosphereProportion(hydrosphere, hydrosphereSurface, chemical, Phase.Liquid, addedLiquid * liquidProportion, ref hydrosphereAtmosphereRatio);
+                    if (chemical == Chemical.Water)
+                    {
+                        SetHydrosphereProportion(hydrosphere, hydrosphereSurface, Chemical.Water_Salt, Phase.Liquid, addedLiquid * saltWaterProportion, ref hydrosphereAtmosphereRatio);
+                    }
+                    hydrosphereProportion += addedLiquid;
+                }
+            }
+
+            // Create icecaps.
+            if (polarTemp <= Chemical.Water.MeltingPoint)
+            {
+                var iceCaps = hydrosphereProportion * 0.28f;
+                SetHydrosphereProportion(hydrosphere, hydrosphereSurface, chemical, Phase.Solid, iceCaps * liquidProportion, ref hydrosphereAtmosphereRatio);
+                if (chemical == Chemical.Water)
+                {
+                    SetHydrosphereProportion(hydrosphere, hydrosphereSurface, Chemical.Water_Salt, Phase.Solid, iceCaps * saltWaterProportion, ref hydrosphereAtmosphereRatio);
+                }
+            }
+        }
+
         /// <summary>
         /// Standard pressure of 101.325 kPa is presumed for a <see cref="ComponentRequirement"/>.
         /// This method converts the proportional values to reflect <see cref="AtmosphericPressure"/>.
@@ -265,6 +650,64 @@ namespace WorldFoundry.Climate
                     yield return ConvertRequirementForPressure(requirement);
                 }
             }
+        }
+
+        private void EvaporateAtmosphericComponent(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            bool canHaveOxygen,
+            Chemical chemical,
+            float hydrosphereProportion,
+            float vaporProportion,
+            ref float hydrosphereAtmosphereRatio,
+            ref float adjustedAtmosphericPressure)
+        {
+            if (TMath.IsZero(hydrosphereProportion))
+            {
+                return;
+            }
+
+            if (chemical == Chemical.Water)
+            {
+                hydrosphere.AbsorbLayers();
+            }
+
+            var gasProportion = hydrosphereProportion * hydrosphereAtmosphereRatio;
+            float previousGasProportion = vaporProportion;
+
+            SetHydrosphereProportion(hydrosphere, hydrosphereSurface, chemical, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
+
+            if (chemical == Chemical.Water)
+            {
+                SetHydrosphereProportion(hydrosphere, hydrosphereSurface, Chemical.Water_Salt, Phase.Any, 0, ref hydrosphereAtmosphereRatio);
+
+                // It is presumed that photodissociation will eventually reduce the amount of water
+                // vapor to a trace gas (the H2 will be lost due to atmospheric escape, and the
+                // oxygen will be lost to surface oxidation).
+                var waterVapor = Math.Min(gasProportion, (float)Math.Round(Randomizer.Static.NextDouble(0.001), 4));
+                gasProportion = waterVapor;
+
+                previousGasProportion += GetProportion(Chemical.Oxygen, Phase.Gas, true);
+                var o2 = (float)Math.Round(gasProportion * 0.0001, 5);
+                gasProportion += o2;
+
+                foreach (var layer in Mixtures)
+                {
+                    layer.SetProportion(chemical, Phase.Gas, Math.Max(layer.GetProportion(chemical, Phase.Gas), waterVapor));
+
+                    // Some is added as oxygen, due to photodissociation.
+                    if (canHaveOxygen)
+                    {
+                        layer.SetProportion(Chemical.Oxygen, Phase.Gas, Math.Max(layer.GetProportion(Chemical.Oxygen, Phase.Gas), o2));
+                    }
+                }
+            }
+            else
+            {
+                SetProportion(chemical, Phase.Gas, gasProportion, true);
+            }
+
+            adjustedAtmosphericPressure += adjustedAtmosphericPressure * (gasProportion - previousGasProportion);
         }
 
         /// <summary>
@@ -607,6 +1050,27 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
+        /// Gets the troposphere of this <see cref="Atmosphere"/>.
+        /// </summary>
+        /// <returns>The troposphere of this <see cref="Atmosphere"/>.</returns>
+        /// <remarks>
+        /// If the <see cref="Atmosphere"/> doesn't yet have differentiated layers, they are first
+        /// separated before returning the lowest layer as the troposphere.
+        /// </remarks>
+        internal Mixture GetTroposphere()
+        {
+            var troposphere = GetChildAtFirstLayer();
+
+            // Separate troposphere from upper atmosphere if undifferentiated.
+            if (Mixtures.Count == 1)
+            {
+                CopyLayer(0, 0.2f);
+            }
+
+            return troposphere;
+        }
+
+        /// <summary>
         /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
         /// </summary>
         /// <param name="requirements">An enumeration of <see cref="ComponentRequirement"/>s.</param>
@@ -623,6 +1087,32 @@ namespace WorldFoundry.Climate
             _greenhouseEffect = null;
             _insolationFactor_Polar = null;
             _insolationFactor_Equatorial = null;
+        }
+
+        internal void ResetTemperatureDependentProperties()
+        {
+            _atmosphericHeight = null;
+            _atmosphericScaleHeight = null;
+            _greenhouseEffect = null;
+            _insolationFactor_Polar = null;
+            _insolationFactor_Equatorial = null;
+        }
+
+        private void SetHydrosphereProportion(
+            Mixture hydrosphere,
+            Mixture hydrosphereSurface,
+            Chemical chemical,
+            Phase phase,
+            float proportion,
+            ref float hydrosphereAtmosphereRatio)
+        {
+            var newTotalProportion = hydrosphere.Mixtures?.Count > 0 ? hydrosphereSurface.Proportion * proportion : proportion;
+            hydrosphere.Proportion += hydrosphere.Proportion * (newTotalProportion - hydrosphere.GetProportion(chemical, phase, hydrosphere.Mixtures?.Count > 0));
+            hydrosphereSurface.SetProportion(chemical, phase, proportion);
+            if (CelestialBody is TerrestrialPlanet t)
+            {
+                hydrosphereAtmosphereRatio = t.GetHydrosphereAtmosphereRatio();
+            }
         }
 
         /// <summary>
