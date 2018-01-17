@@ -100,7 +100,7 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~500–1000 kpc
         /// </remarks>
-        private protected override void GenerateShape() => Shape = new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23));
+        private protected override void GenerateShape() => SetShape(new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23)));
 
         /// <summary>
         /// Generates an appropriate population of child objects in local space, in an area around

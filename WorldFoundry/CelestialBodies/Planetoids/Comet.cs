@@ -261,7 +261,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // Gaussian distribution with most values between 1km and 19km.
             var axis = Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 4500)));
             var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
-            Shape = new Ellipsoid(axis, irregularity);
+            SetShape(new Ellipsoid(axis, irregularity));
         }
     }
 }

@@ -140,19 +140,7 @@ namespace WorldFoundry.Space
         public virtual Shape Shape
         {
             get => GetProperty(ref _shape, GenerateShape);
-            protected set
-            {
-                if (_shape == value)
-                {
-                    return;
-                }
-                _shape = value;
-
-                if (value != null)
-                {
-                    Parent?.SetRegionPopulated(Position, _shape);
-                }
-            }
+            protected set => _shape = value;
         }
 
         /// <summary>
@@ -222,7 +210,7 @@ namespace WorldFoundry.Space
         /// Generates the <see cref="Utilities.MathUtil.Shapes.Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Generates an empty sphere in the base class; expected to be overridden in subclasses.</remarks>
-        private protected virtual void GenerateShape() => Shape = new Sphere();
+        private protected virtual void GenerateShape() => SetShape(new Sphere());
 
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.
@@ -362,6 +350,19 @@ namespace WorldFoundry.Space
                 : Vector3.Zero;
 
             Parent = newParent;
+        }
+
+        /// <summary>
+        /// Sets this <see cref="CelestialEntity"/>'s <see cref="Shape"/> to the given value.
+        /// </summary>
+        protected virtual void SetShape(Shape shape)
+        {
+            Shape = shape;
+
+            if (shape != null)
+            {
+                Parent?.SetRegionPopulated(Position, _shape);
+            }
         }
 
         /// <summary>

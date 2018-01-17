@@ -209,7 +209,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
 
-            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
 
         /// <summary>

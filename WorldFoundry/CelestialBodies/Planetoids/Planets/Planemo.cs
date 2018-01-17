@@ -250,7 +250,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
             var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, GetRadiusForMass(Mass)));
             var flattening = Randomizer.Static.NextDouble(0.1);
-            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
 
         /// <summary>

@@ -153,11 +153,11 @@ namespace WorldFoundry.Space.AsteroidFields
             if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
             {
                 var axis = majorRadius ?? Randomizer.Static.NextDouble(1.5e11, 3.15e12);
-                Shape = new Ellipsoid(axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis);
+                SetShape(new Ellipsoid(axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis));
             }
             else
             {
-                Shape = new Torus(majorRadius ?? 0, minorRadius ?? 0);
+                SetShape(new Torus(majorRadius ?? 0, minorRadius ?? 0));
             }
         }
 

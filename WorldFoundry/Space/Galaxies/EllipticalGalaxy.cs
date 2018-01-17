@@ -104,7 +104,7 @@ namespace WorldFoundry.Space.Galaxies
         {
             var radius = Randomizer.Static.NextDouble(1.5e18, 1.5e21); // ~160–160000 ly
             var axis = radius * Randomizer.Static.Normal(0.5, 1);
-            Shape = new Ellipsoid(radius, axis);
+            SetShape(new Ellipsoid(radius, axis));
         }
     }
 }

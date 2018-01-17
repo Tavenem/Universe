@@ -71,6 +71,6 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// ~1–5 Mpc
         /// </remarks>
-        private protected override void GenerateShape() => Shape = new Sphere(Randomizer.Static.NextDouble(3.0e23, 1.5e24));
+        private protected override void GenerateShape() => SetShape(new Sphere(Randomizer.Static.NextDouble(3.0e23, 1.5e24)));
     }
 }

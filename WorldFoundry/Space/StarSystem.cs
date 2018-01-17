@@ -785,7 +785,7 @@ namespace WorldFoundry.Space
             // while not placing the objects of interest (stars, planets) too close together in the
             // center of local space.
             var radius = 1.125e16 + (companions?.Select(x => GetTotalApoapsis(companions, x.star, 0)).DefaultIfEmpty().Max() ?? 0);
-            Shape = new Sphere(radius);
+            SetShape(new Sphere(radius));
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
                 Orbit.SetOrbit(

@@ -136,7 +136,7 @@ namespace WorldFoundry.Space.Galaxies
         {
             var radius = Randomizer.Static.NextDouble(8.0e6, 2.1e7);
             var axis = radius * Randomizer.Static.Normal(0.02, 1);
-            Shape = new Ellipsoid(radius, axis);
+            SetShape(new Ellipsoid(radius, axis));
         }
     }
 }

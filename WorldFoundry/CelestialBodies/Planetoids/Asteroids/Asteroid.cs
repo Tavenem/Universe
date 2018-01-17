@@ -144,7 +144,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         {
             var axis = Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
-            Shape = new Ellipsoid(axis, irregularity);
+            SetShape(new Ellipsoid(axis, irregularity));
         }
 
         /// <summary>

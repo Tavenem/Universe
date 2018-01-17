@@ -86,7 +86,7 @@ namespace WorldFoundry.Space
         /// (although this would require exhaustive "exploration" to populate so many grid spaces).
         /// This makes the universe effectively infinite in scope, if not in linear dimensions.
         /// </remarks>
-        private protected override void GenerateShape() => Shape = new Sphere(1.89214e33);
+        private protected override void GenerateShape() => SetShape(new Sphere(1.89214e33));
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.

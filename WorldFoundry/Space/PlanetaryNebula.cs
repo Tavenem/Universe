@@ -59,7 +59,7 @@ namespace WorldFoundry.Space
         /// and not considered critical to model precisely, especially given their extremely
         /// attenuated nature. Instead, a ~1 ly sphere is used.
         /// </remarks>
-        private protected override void GenerateShape() => Shape = new Sphere(9.5e15);
+        private protected override void GenerateShape() => SetShape(new Sphere(9.5e15));
 
         /// <summary>
         /// Determines a temperature for this <see cref="ThermalBody"/>, in K.

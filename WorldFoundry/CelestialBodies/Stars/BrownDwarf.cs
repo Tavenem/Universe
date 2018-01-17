@@ -80,7 +80,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             var radius = Math.Round(Randomizer.Static.Normal(69911000, 3495550));
             var flattening = Math.Max(Randomizer.Static.NextDouble(0.1), 0);
-            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
 
         /// <summary>

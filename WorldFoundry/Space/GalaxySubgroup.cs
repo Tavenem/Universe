@@ -124,6 +124,6 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateShape() => Shape = new Sphere(MainGalaxy.Radius * 10);
+        private protected override void GenerateShape() => SetShape(new Sphere(MainGalaxy.Radius * 10));
     }
 }
