@@ -26,7 +26,7 @@ namespace WorldFoundry.ConsoleApp
             Console.WriteLine("  Set Axial Tilt: \"a <float, radians>\"");
             Console.WriteLine("  Set Grid Size: \"g <int>\"");
             Console.WriteLine("  Set Radius: \"r <int, meters>\"");
-            Console.WriteLine("  Set Revolution Period: \"ro <double, seconds>\"");
+            Console.WriteLine("  Set Revolution Period: \"re <double, seconds>\"");
             Console.WriteLine("  Set Rotational Period: \"ro <double, seconds>\"");
             Console.WriteLine("  Set Water Ratio: \"w <float>\"");
             Console.WriteLine();

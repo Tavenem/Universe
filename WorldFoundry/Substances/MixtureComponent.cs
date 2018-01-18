@@ -22,6 +22,18 @@
         public float Proportion { get; set; }
 
         /// <summary>
+        /// Gets a shallow copy of this <see cref="MixtureComponent"/>.
+        /// </summary>
+        /// <returns>A shallow copy of this <see cref="MixtureComponent"/>.</returns>
+        public MixtureComponent GetShallowCopy()
+            => new MixtureComponent
+            {
+                Chemical = Chemical,
+                Phase = Phase,
+                Proportion = Proportion,
+            };
+
+        /// <summary>
         /// Returns a string that represents the current <see cref="MixtureComponent"/>.
         /// </summary>
         /// <returns>A string that represents the current <see cref="MixtureComponent"/>.</returns>

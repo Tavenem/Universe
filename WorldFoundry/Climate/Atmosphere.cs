@@ -335,7 +335,7 @@ namespace WorldFoundry.Climate
         /// At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
         /// carbon-silicate cycle.
         /// </remarks>
-        internal void CheckCO2Reduction(float vaporPressure)
+        private void CheckCO2Reduction(float vaporPressure)
         {
             if ((GetChildAtFirstLayer().GetComponent(Chemical.Water, Phase.Gas)?.Proportion ?? 0) *
                 AtmosphericPressure >= 0.01 * vaporPressure)
@@ -378,6 +378,7 @@ namespace WorldFoundry.Climate
 
                     layer.SetProportion(Chemical.Nitrogen, Phase.Gas, n2);
                 }
+                ResetGreenhouseFactor();
             }
         }
 
@@ -418,11 +419,11 @@ namespace WorldFoundry.Climate
                     hydrosphereAtmosphereRatio);
             }
 
-            // Adjust water vapor present in the atmosphere based on the vapor pressure.
+            // Adjust vapor present in the atmosphere based on the vapor pressure.
             var pressureRatio = Math.Min(1, vaporPressure / AtmosphericPressure);
-            // This would represent 100% humidity. Since this is the case, in principle, only at
-            // the surface of bodies of water, and should decrease exponentially with altitude,
-            // an approximation of 25% average humidity overall is used.
+            // This would represent 100% humidity. Since this is the case, in principle, only at the
+            // surface of bodies of liquid, and should decrease exponentially with altitude, an
+            // approximation of 25% average humidity overall is used.
             vaporProportion = (hydrosphereProportion + vaporProportion) * pressureRatio;
             vaporProportion *= 0.25f;
             if (!TMath.IsZero(vaporProportion))
@@ -861,9 +862,10 @@ namespace WorldFoundry.Climate
         /// </remarks>
         private float GetGreenhouseFactor()
         {
-            var total = Mixtures?.Sum(m => m.Components?
+            var total = Mixtures?.Sum(m => (m.Components?
                     .Where(c => c.Chemical.GreenhousePotential > 0)
-                    .Sum(c => c.Chemical.GreenhousePotential * c.Proportion) ?? 0) ?? 0;
+                    .Sum(c => c.Chemical.GreenhousePotential * c.Proportion) ?? 0)
+                    * m.Proportion) ?? 0;
             if (TMath.IsZero(total))
             {
                 return 1;
@@ -1077,6 +1079,8 @@ namespace WorldFoundry.Climate
         /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
         public bool MeetsRequirements(IEnumerable<ComponentRequirement> requirements)
             => GetFailedRequirements(requirements).All(x => x.Item2 == ComponentRequirementFailureType.None);
+
+        internal void ResetGreenhouseFactor() => _greenhouseFactor = null;
 
         internal void ResetPressureDependentProperties()
         {

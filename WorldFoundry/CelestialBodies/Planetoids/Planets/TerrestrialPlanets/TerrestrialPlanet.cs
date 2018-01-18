@@ -21,6 +21,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class TerrestrialPlanet : Planemo
     {
+        private const float TemperatureErrorTolerance = 0.5f;
+
         internal new static string baseTypeName = "Terrestrial Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -264,20 +266,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             PlanetParams = planetParams;
         }
 
-        private void AdjustOrbitForTemperature(Star star, ref double? semiMajorAxis, float trueAnomaly, float distance, float targetTemp)
+        private void AdjustOrbitForTemperature(Star star, double? semiMajorAxis, float trueAnomaly, float targetTemp)
         {
+            // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
+            // This allows calculation of the correct distance/orbit for an average
+            // orbital temperature (rather than the temperature at the current position).
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
+                var distance = (float)(semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity) / 2));
                 star.Luminosity = GetLuminosityForTemperature(star, targetTemp, distance);
             }
             else
             {
-                if (!semiMajorAxis.HasValue)
-                {
-                    var semiLatusRectum = distance * (1 + (Eccentricity * Math.Cos(trueAnomaly)));
-                    semiMajorAxis = semiLatusRectum / (1 - (Eccentricity * Eccentricity));
-                }
-                GenerateOrbit(star, semiMajorAxis.Value, trueAnomaly, GetDistanceForTemperature(star, targetTemp));
+                semiMajorAxis = GetDistanceForTemperature(star, targetTemp) / (1 + (Eccentricity * Eccentricity) / 2);
+                GenerateOrbit(star, semiMajorAxis.Value, trueAnomaly);
             }
             ResetCachedTemperatures();
         }
@@ -426,22 +428,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
             var adjustedAtmosphericPressure = Atmosphere.AtmosphericPressure;
 
-            // Recalculate temperature based on the new atmosphere.
-            surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
-
             // Water may be removed, or if not may remove CO2 from the atmosphere, depending on
             // planetary conditions.
             if (Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Any)
                 || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Any)
                 || Atmosphere.ContainsSubstance(Chemical.Water, Phase.Any))
             {
+                var polarTemp = surfaceTemp;
                 var vaporPressure = Chemical.Water.CalculateVaporPressure(surfaceTemp);
-                Atmosphere.CheckCO2Reduction(vaporPressure);
 
-                // Recalculate temperatures based on the new atmosphere.
-                surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
-                var polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
-
+                // First calculate water phases at effective temp, to establish a baseline
+                // for the presence of water and its effect on CO2.
                 Atmosphere.CalculateGasPhaseMix(
                     Hydrosphere,
                     HydrosphereSurface,
@@ -451,11 +448,50 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     polarTemp,
                     ref hydrosphereAtmosphereRatio,
                     ref adjustedAtmosphericPressure);
+
+                // Recalculate temperatures based on the new atmosphere.
+                ResetCachedTemperatures();
+                surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
+                polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
+
+                // Recalculate the phases of water based on the new temperature.
+                Atmosphere.CalculateGasPhaseMix(
+                    Hydrosphere,
+                    HydrosphereSurface,
+                    CanHaveOxygen,
+                    Chemical.Water,
+                    surfaceTemp,
+                    polarTemp,
+                    ref hydrosphereAtmosphereRatio,
+                    ref adjustedAtmosphericPressure);
+
+                // If life alters the greenhouse potential, temperature and water phase must be
+                // recalculated once again.
+                if (GenerateLife())
+                {
+                    ResetCachedTemperatures();
+                    surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
+                    polarTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital(true);
+                    Atmosphere.CalculateGasPhaseMix(
+                        Hydrosphere,
+                        HydrosphereSurface,
+                        CanHaveOxygen,
+                        Chemical.Water,
+                        surfaceTemp,
+                        polarTemp,
+                        ref hydrosphereAtmosphereRatio,
+                        ref adjustedAtmosphericPressure);
+                }
+            }
+            else
+            {
+                // Recalculate temperature based on the new atmosphere.
+                ResetCachedTemperatures();
+                surfaceTemp = Atmosphere.GetSurfaceTemperatureAverageOrbital();
             }
 
-            GenerateLife();
-
-            foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(HabitabilityRequirements?.AtmosphericRequirements))
+            foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(HabitabilityRequirements?.AtmosphericRequirements)
+                .Concat(Atmosphere.ConvertRequirementsForPressure(PlanetParams?.AtmosphericRequirements)))
             {
                 var proportion = Atmosphere.GetProportion(requirement.Chemical, requirement.Phase, true);
                 if (proportion < requirement.MinimumProportion)
@@ -1178,18 +1214,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Determines whether this planet is capable of sustaining life, and whether or not it
         /// actually does. If so, the atmosphere may be adjusted.
         /// </summary>
-        private void GenerateLife()
+        /// <returns>
+        /// True if the atmosphere's greeenhouse potential is adjusted; false if not.
+        /// </returns>
+        private bool GenerateLife()
         {
             if (!IsHabitable() || Randomizer.Static.NextDouble() > GetChanceOfLife())
             {
                 HasBiosphere = false;
-                return;
+                return false;
             }
 
             // If the planet already has a biosphere, there is nothing left to do.
             if (HasBiosphere)
             {
-                return;
+                return false;
             }
 
             HasBiosphere = true;
@@ -1197,7 +1236,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             if (!HydrosphereSurface.ContainsSubstance(Chemical.Water, Phase.Liquid) &&
                 !HydrosphereSurface.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid))
             {
-                return;
+                return false;
             }
 
             // If there is a habitable surface layer (as opposed to a subsurface ocean), it is
@@ -1226,17 +1265,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var co2 = Atmosphere.GetProportion(Chemical.CarbonDioxide, Phase.Gas, true);
                 if (co2 == 0)
                 {
-                    Atmosphere.AddComponent(Chemical.CarbonDioxide, Phase.Gas, ch4 / 3);
+                    Atmosphere.AddComponent(Chemical.CarbonDioxide, Phase.Gas, ch4 / 3, true);
                 }
 
                 var waterVapor = Atmosphere.GetProportion(Chemical.Water, Phase.Gas, true);
                 if (waterVapor == 0)
                 {
-                    Atmosphere.AddComponent(Chemical.Water, Phase.Gas, ch4 * 2 / 3);
+                    Atmosphere.AddComponent(Chemical.Water, Phase.Gas, ch4 * 2 / 3, true);
                 }
 
-                Atmosphere.SetProportion(Chemical.Methane, Phase.Gas, ch4 * 0.001f);
+                Atmosphere.SetProportion(Chemical.Methane, Phase.Gas, ch4 * 0.001f, true);
+
+                Atmosphere.ResetGreenhouseFactor();
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>
@@ -1287,7 +1331,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private void GenerateOrbit(Orbiter orbitedObject, double semiMajorAxis, float trueAnomaly, float distance)
+        private void GenerateOrbit(Orbiter orbitedObject, double semiMajorAxis, float trueAnomaly)
             => Orbit.SetOrbit(
                 this,
                 orbitedObject,
@@ -1315,16 +1359,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             var ta = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
-            float distance = 1;
-
             double? semiMajorAxis = null;
+
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
                 semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, PlanetParams.RevolutionPeriod.Value);
                 var semiLatusRectum = semiMajorAxis * (1 - (Eccentricity * Eccentricity));
-                distance = (float)(semiLatusRectum / (1 + (Eccentricity * Math.Cos(ta))));
 
-                GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta, distance);
+                GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta);
             }
 
             if (orbitedObject is Star star
@@ -1348,12 +1390,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     targetTemp = maxTemp / 2;
                 }
 
-                var targetSurfaceTemp = targetTemp;
+                // Convert the target average surface temperature to an estimated target equatorial
+                // surface temperature, for which orbit/luminosity requirements can be calculated.
+                targetTemp *= 1.06f;
+                var targetEquatorialEffectiveTemp = targetTemp;
+
+                // Due to atmospheric effects, the target is likely to be missed considerably on the
+                // first attempt, since the calculations for orbit/luminosity will not be able to
+                // account for greenhouse warming. By determining the degree of over/undershoot, the
+                // target can be adjusted. This is repeated until the real target is approached to
+                // within an acceptable tolerance, but not to excess.
                 var count = 0;
                 var delta = 0.0f;
                 do
                 {
-                    AdjustOrbitForTemperature(star, ref semiMajorAxis, ta, distance, targetSurfaceTemp);
+                    AdjustOrbitForTemperature(star, semiMajorAxis, ta, targetEquatorialEffectiveTemp);
 
                     if (PlanetParams?.SurfaceTemperature.HasValue == true)
                     {
@@ -1375,9 +1426,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                             }
                         }
                     }
-                    targetSurfaceTemp += delta;
+                    targetEquatorialEffectiveTemp += delta;
                     count++;
-                } while (count < 10 && Math.Abs(delta) > Season.ClimateErrorTolerance);
+                } while (count < 10 && Math.Abs(delta) > TemperatureErrorTolerance);
             }
         }
 
@@ -2001,8 +2052,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, Orbit.OrbitedObject, PlanetParams.RevolutionPeriod.Value);
                 var semiLatusRectum = semiMajorAxis * (1 - (Eccentricity * Eccentricity));
                 var ta = (float)Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI);
-                var distance = (float)(semiLatusRectum / (1 + (Eccentricity * Math.Cos(ta))));
-                GenerateOrbit(Orbit.OrbitedObject, semiMajorAxis, ta, distance);
+                GenerateOrbit(Orbit.OrbitedObject, semiMajorAxis, ta);
             }
 
             GenerateAtmosphere();

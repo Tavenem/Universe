@@ -18,7 +18,7 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Season : DataItem, IIndexedItem
     {
-        internal const float ClimateErrorTolerance = 1.0e-4f;
+        private const float ClimateErrorTolerance = 1.0e-4f;
         private const float SeaIcePerSecond = 1.53935e-4f;
         private const float SnowToRainRatio = 13;
 

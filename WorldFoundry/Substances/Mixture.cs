@@ -102,7 +102,7 @@ namespace WorldFoundry.Substances
         /// <param name="phase">THe <see cref="Phase"/> in which to add the <paramref name="chemical"/>.</param>
         /// <param name="proportion">The proportion at which to add the <paramref name="chemical"/>.</param>
         /// <param name="children">
-        /// If true, adds the <paramref name="chemical"/> to all child <see cref="Mixture"/> s, not
+        /// If true, adds the <paramref name="chemical"/> to all child <see cref="Mixture"/>s, not
         /// to this overall <see cref="Mixture"/>.
         /// </param>
         public void AddComponent(Chemical chemical, Phase phase, float proportion, bool children = false)
@@ -283,6 +283,7 @@ namespace WorldFoundry.Substances
         /// The 0-based layer index of the child <see cref="Mixture"/> to be copied.
         /// </param>
         /// <param name="proportion">The proportion to be assigned to the new layer (mass ratio).</param>
+        /// <remarks>If no layer with the given index exists, this method does nothing.</remarks>
         public void CopyLayer(int layer, float proportion)
         {
             if (proportion <= 0)
@@ -296,20 +297,45 @@ namespace WorldFoundry.Substances
                 return;
             }
 
-            if (Mixtures == null)
-            {
-                Mixtures = new HashSet<Mixture>();
-            }
-
-            var newLayer = new Mixture()
-            {
-                Components = original.Components == null ? new HashSet<MixtureComponent>() : new HashSet<MixtureComponent>(original.Components),
-                Layer = Mixtures.Max(m => m.Layer) + 1,
-                Mixtures = original.Mixtures == null ? new HashSet<Mixture>() : new HashSet<Mixture>(original.Mixtures),
-                Proportion = Math.Min(1, proportion),
-            };
+            var newLayer = original.GetDeepCopy();
+            newLayer.Layer = (Mixtures?.Max(m => m.Layer) ?? -1) + 1;
+            newLayer.Proportion = Math.Min(1, proportion);
 
             AddMixture(newLayer);
+        }
+
+        /// <summary>
+        /// Gets a deep copy of this <see cref="Mixture"/>.
+        /// </summary>
+        /// <returns>A deep copy of this <see cref="Mixture"/>.</returns>
+        /// <remarks>
+        /// This <see cref="DataItem.ID"/> is not copied. The individual <see
+        /// cref="MixtureComponent"/>s are shallow-copied.
+        /// </remarks>
+        public Mixture GetDeepCopy()
+        {
+            var newMixture = new Mixture()
+            {
+                Components = new HashSet<MixtureComponent>(),
+                Layer = Layer,
+                Mixtures = Mixtures == null ? new HashSet<Mixture>() : new HashSet<Mixture>(Mixtures),
+                Proportion = Proportion,
+            };
+            if (Components != null)
+            {
+                foreach (var component in Components)
+                {
+                    newMixture.Components.Add(component.GetShallowCopy());
+                }
+            }
+            if (Mixtures != null)
+            {
+                foreach (var mixture in Mixtures)
+                {
+                    newMixture.Mixtures.Add(mixture.GetDeepCopy());
+                }
+            }
+            return newMixture;
         }
 
         /// <summary>

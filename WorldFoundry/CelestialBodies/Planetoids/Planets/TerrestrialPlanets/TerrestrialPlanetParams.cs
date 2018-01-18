@@ -45,7 +45,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The default surface temperature, used if none is specified, in K.
         /// </summary>
-        public const float DefaultSurfaceTemperature = 288;
+        /// <remarks>
+        /// This target overshoots the average surface temperature of Earth considerably, since
+        /// Earth's topography means that many locations have significantly reduced temperatures than
+        /// they would if they had been at sea level (consider a mountaintop). Through
+        /// experimentation, this value was determined to result in planets whose actual average
+        /// surface temperature, after taking topography into account, is close to 289.15K.
+        /// </remarks>
+        public const float DefaultSurfaceTemperature = 289;
 
         /// <summary>
         /// The default ratio of water coverage, used if none is specified.
@@ -56,6 +63,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The target atmospheric pressure, in kPa.
         /// </summary>
         public float? AtmosphericPressure { get; set; }
+
+        /// <summary>
+        /// All atmospheric requirements.
+        /// </summary>
+        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
 
         /// <summary>
         /// The target axial tilt, in radians.
@@ -125,7 +137,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float? waterRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
-            atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            AtmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
