@@ -15,6 +15,7 @@ namespace WorldFoundry.Web
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddCors();
             services.AddMemoryCache();
             services.AddMvc();
         }
@@ -36,6 +37,11 @@ namespace WorldFoundry.Web
             }
 
             app.UseStaticFiles();
+
+            app.UseCors(x => x
+                .WithOrigins("http://localhost:61224/")
+                .AllowAnyHeader()
+                .AllowAnyMethod());
 
             app.UseMvcWithDefaultRoute();
         }

@@ -1,8 +1,9 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.BlackHoles
 {
@@ -20,49 +21,48 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/>.
         /// </summary>
-        public BlackHole() { }
+        public BlackHole() : base()  { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="BlackHole"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="BlackHole"/> is located.
         /// </param>
-        public BlackHole(CelestialObject parent) : base(parent) { }
+        public BlackHole(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="BlackHole"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="BlackHole"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="BlackHole"/>.</param>
-        public BlackHole(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public BlackHole(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="BlackHole"/>.
         /// </summary>
         /// <remarks>
         /// ~3–20 solar masses
         /// </remarks>
-        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(6.0e30, 4.0e31);
+        private protected virtual double GenerateMass() => Randomizer.Static.NextDouble(6.0e30, 4.0e31);
 
         /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Black holes are strange objects with zero volume and infinite density. The shape given is
         /// presumed to refer to the shape of the event horizon.
         /// </remarks>
-        private protected override void GenerateShape() => SetShape(new Sphere(Math.Round(1.48e-27 * Mass)));
-
-        /// <summary>
-        /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
-        /// </summary>
-        /// <returns>The average surface gravity of this <see cref="Orbiter"/>, in N.</returns>
-        /// <remarks>
-        /// The gravity at the event horizon of a black hole is infinite.
-        /// </remarks>
-        private protected override void GenerateSurfaceGravity() => SurfaceGravity = double.PositiveInfinity;
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Singularity
+            {
+                Composition = new Material(CosmicSubstances.Fuzzball, Phase.Plasma),
+                Mass = GenerateMass(),
+            };
+            SetShape(new Sphere(Math.Round(1.48e-27 * Substance.Mass)));
+        }
     }
 }

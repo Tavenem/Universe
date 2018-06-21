@@ -1,14 +1,15 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Numerics;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// A cloud of interstellar gas and dust.
     /// </summary>
-    public class Nebula : CelestialObject
+    public class Nebula : CelestialRegion
     {
         internal new static string baseTypeName = "Nebula";
         /// <summary>
@@ -19,47 +20,43 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/>.
         /// </summary>
-        public Nebula() { }
+        public Nebula() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Nebula"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Nebula"/> is located.
         /// </param>
-        public Nebula(CelestialObject parent) : base(parent) { }
+        public Nebula(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Nebula"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Nebula"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Nebula"/>.</param>
-        public Nebula(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public Nebula(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>
-        /// ~10e3–10e7 solar masses.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37);
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <remarks>
-        /// Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
-        /// which the dust clouds and filaments roughly fit. The radius follows a log-normal
-        /// distribution, with ~32 ly as the mode, starting at ~16 ly, and cutting off around ~600 ly.
-        /// </remarks>
-        private protected override void GenerateShape()
+        private protected override void GenerateSubstance()
         {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
+                Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
+            };
+
+            // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
+            // which the dust clouds and filaments roughly fit. The radius follows a log-normal
+            // distribution, with ~32 ly as the mode, starting at ~16 ly, and cutting off around ~600 ly.
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.5e17 + Randomizer.Static.Lognormal(0, 1.5e17));
+                axis = Math.Round(1.5e17 + Randomizer.Static.Lognormal(0, 1) * 1.5e17);
             } while (axis > 5.5e18);
             SetShape(new Ellipsoid(
                 axis,

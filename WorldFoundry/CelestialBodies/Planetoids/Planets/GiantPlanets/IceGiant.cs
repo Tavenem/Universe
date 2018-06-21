@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
@@ -32,96 +31,68 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/>.
         /// </summary>
-        public IceGiant() { }
+        public IceGiant() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
-        public IceGiant(CelestialObject parent) : base(parent) { }
+        public IceGiant(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="IceGiant"/> during random generation, in kg.
         /// </param>
-        public IceGiant(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public IceGiant(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
-        public IceGiant(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public IceGiant(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="IceGiant"/> during random generation, in kg.
         /// </param>
-        public IceGiant(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public IceGiant(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
+            var layers = new List<(IComposition substance, float proportion)>();
 
             // Iron-nickel inner core.
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
             var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = 1 - coreNickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = coreNickel,
-                },
-            })
-            {
-                Proportion = innerCoreProportion,
-            });
+                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
+                { (Chemical.Nickel, Phase.Solid), coreNickel },
+            }), innerCoreProportion));
 
             // Molten rock outer core.
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = coreProportion - innerCoreProportion,
-            });
+            layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
 
-            var layer = 2;
             var diamond = 1 - coreProportion;
             var water = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
             diamond -= water;
@@ -133,54 +104,39 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             // Liquid diamond mantle
             if (!Troschuetz.Random.TMath.IsZero(diamond))
             {
-                Composition.Mixtures.Add(new Mixture(layer, new MixtureComponent[]
-                {
-                    new MixtureComponent
-                    {
-                        Chemical = Chemical.Diamond,
-                        Phase = Phase.Liquid,
-                        Proportion = 1,
-                    },
-                })
-                {
-                    Proportion = diamond,
-                });
-                layer++;
+                layers.Add((new Material(Chemical.Diamond, Phase.Liquid), diamond));
             }
 
             // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
-            var upperLayer = new Mixture(layer, new MixtureComponent[]
+            IComposition upperLayer = null;
+            if (ch4 >0 || nh4 > 0)
             {
-                new MixtureComponent
+                upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
                 {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Liquid,
-                    Proportion = water,
-                },
-            })
-            {
-                Proportion = 1 - coreProportion - diamond,
-            };
-            if (ch4 > 0)
-            {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Liquid,
-                    Proportion = ch4,
+                    { (Chemical.Water, Phase.Liquid), water },
                 });
+                if (ch4 > 0)
+                {
+                    (upperLayer as Composite).Components[(Chemical.Methane, Phase.Liquid)] = ch4;
+                }
+                if (nh4 > 0)
+                {
+                    (upperLayer as Composite).Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
+                }
             }
-            if (nh4 > 0)
+            else
             {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Liquid,
-                    Proportion = nh4,
-                });
+                upperLayer = new Material(Chemical.Water, Phase.Liquid);
             }
             upperLayer.BalanceProportions();
-            Composition.Mixtures.Add(upperLayer);
+            layers.Add((upperLayer, 1 - coreProportion - diamond));
+
+            Substance = new Substance()
+            {
+                Composition = new LayeredComposite(layers),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>

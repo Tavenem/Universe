@@ -1,8 +1,9 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
@@ -11,7 +12,7 @@ namespace WorldFoundry.Space
     /// dwarf star.
     /// </summary>
     /// <remarks>Not actually a nebula. Gets its name from a quirk of history.</remarks>
-    public class PlanetaryNebula : CelestialObject
+    public class PlanetaryNebula : CelestialRegion
     {
         internal new static string baseTypeName = "Planetary Nebula";
         /// <summary>
@@ -22,49 +23,45 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/>.
         /// </summary>
-        public PlanetaryNebula() { }
+        public PlanetaryNebula() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="PlanetaryNebula"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="PlanetaryNebula"/> is located.
         /// </param>
-        public PlanetaryNebula(CelestialObject parent) : base(parent) { }
+        public PlanetaryNebula(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="PlanetaryNebula"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="PlanetaryNebula"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="PlanetaryNebula"/>.</param>
-        public PlanetaryNebula(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public PlanetaryNebula(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         private void GenerateChildren() => new StarSystem(this, Vector3.Zero, typeof(WhiteDwarf));
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <remarks>
-        /// ~0.1–1 solar mass.
-        /// </remarks>
-        private protected override void GenerateMass() => Math.Round(Randomizer.Static.NextDouble(1.99e29, 1.99e30));
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
         /// and not considered critical to model precisely, especially given their extremely
         /// attenuated nature. Instead, a ~1 ly sphere is used.
         /// </remarks>
-        private protected override void GenerateShape() => SetShape(new Sphere(9.5e15));
-
-        /// <summary>
-        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
-        /// </summary>
-        private protected override void GenerateTemperature() => Temperature = 10000;
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
+                Mass = Math.Round(Randomizer.Static.NextDouble(1.99e29, 1.99e30)), // ~0.1–1 solar mass.
+                Temperature = 10000,
+            };
+            SetShape(new Sphere(9.5e15));
+        }
 
         /// <summary>
         /// Generates an appropriate population of child objects in local space, in an area around
@@ -79,7 +76,7 @@ namespace WorldFoundry.Space
         {
             if (!IsGridSpacePopulated(Vector3.Zero))
             {
-                GetGridSpace(Vector3.Zero, true).Populated = true;
+                GridSpaces[Vector3.Zero] = true;
                 GenerateChildren();
             }
         }

@@ -1,12 +1,12 @@
-﻿using System;
+﻿using MathAndScience.MathUtil;
+using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Climate;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
@@ -29,29 +29,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/>.
         /// </summary>
-        public Comet() { }
+        public Comet() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Comet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Comet"/> is located.
         /// </param>
-        public Comet(CelestialObject parent) : base(parent) { }
+        public Comet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Comet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Comet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Comet"/>.</param>
-        public Comet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public Comet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
+        private protected override void GenerateAlbedo()
+            => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
@@ -87,67 +88,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var so2 = (float)Math.Round(Randomizer.Static.NextDouble(0.001), 4);
             dust -= so2;
 
-            Atmosphere = new Atmosphere(this)
-            {
-                Mixtures = new HashSet<Mixture>()
-            };
-            Atmosphere.Mixtures.Add(new Mixture(new MixtureComponent[]
-            {
-                new MixtureComponent
+            Atmosphere = new Atmosphere(this,
+                new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
                 {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Gas,
-                    Proportion = water,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Dust,
-                    Phase = Phase.Solid,
-                    Proportion = dust,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonMonoxide,
-                    Phase = Phase.Gas,
-                    Proportion = co,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonDioxide,
-                    Phase = Phase.Gas,
-                    Proportion = co2,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Gas,
-                    Proportion = nh3,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Gas,
-                    Proportion = ch4,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.HydrogenSulfide,
-                    Phase = Phase.Gas,
-                    Proportion = h2s,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.SulphurDioxide,
-                    Phase = Phase.Gas,
-                    Proportion = so2,
-                },
-            }));
+                    { (Chemical.Water, Phase.Gas), water },
+                    { (Chemical.Dust, Phase.Solid), dust },
+                    { (Chemical.CarbonMonoxide, Phase.Gas), co },
+                    { (Chemical.CarbonDioxide, Phase.Gas), co2 },
+                    { (Chemical.Ammonia, Phase.Gas), nh3 },
+                    { (Chemical.Methane, Phase.Gas), ch4 },
+                    { (Chemical.HydrogenSulfide, Phase.Gas), h2s },
+                    { (Chemical.SulphurDioxide, Phase.Gas), so2 },
+                }),
+                1e-8f);
         }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
             var dust = 1.0f;
 
@@ -175,56 +134,34 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var rock = (float)Math.Round(Randomizer.Static.NextDouble(0.05), 3);
             dust -= rock;
 
-            Composition = new Mixture(new MixtureComponent[]
+            Substance = new Substance
             {
-                new MixtureComponent
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
                 {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = water,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Dust,
-                    Phase = Phase.Solid,
-                    Proportion = dust,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonMonoxide,
-                    Phase = Phase.Solid,
-                    Proportion = co,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonDioxide,
-                    Phase = Phase.Solid,
-                    Proportion = co2,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Solid,
-                    Proportion = nh3,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Solid,
-                    Proportion = ch4,
-                },
-            });
+                    { (Chemical.Water, Phase.Solid), water },
+                    { (Chemical.Dust, Phase.Solid), dust },
+                    { (Chemical.CarbonMonoxide, Phase.Solid), co },
+                    { (Chemical.CarbonDioxide, Phase.Solid), co2 },
+                    { (Chemical.Ammonia, Phase.Solid), nh3 },
+                    { (Chemical.Methane, Phase.Solid), ch4 },
+                })
+            };
+
+            // Gaussian distribution with most values between 1km and 19km.
+            var axis = Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 4500)));
+            var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
+            var shape = new Ellipsoid(axis, irregularity);
+
+            Substance.Mass = shape.Volume * Density;
+
+            SetShape(shape);
         }
 
         /// <summary>
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
-        private protected override void GenerateDensity() => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
-
-        /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        private protected override void GenerateMass() => Mass = Shape.GetVolume() * Density;
+        private protected override void GenerateDensity()
+            => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -248,20 +185,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 periapsis,
                 eccentricity,
                 (float)Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 (float)Math.PI);
-        }
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateShape()
-        {
-            // Gaussian distribution with most values between 1km and 19km.
-            var axis = Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 4500)));
-            var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
-            SetShape(new Ellipsoid(axis, irregularity));
         }
     }
 }

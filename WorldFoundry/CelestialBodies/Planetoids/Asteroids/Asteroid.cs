@@ -1,10 +1,11 @@
-﻿using System;
+﻿using MathAndScience.MathUtil;
+using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -13,7 +14,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class Asteroid : Planetoid
     {
-        private static double maxMassForType = 3.4e20;
+        private static readonly double maxMassForType = 3.4e20;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -24,7 +25,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </remarks>
         internal override double? MaxMassForType => maxMassForType;
 
-        private static double minMassForType = 5.9e8;
+        private static readonly double minMassForType = 5.9e8;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -53,61 +54,63 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/>.
         /// </summary>
-        public Asteroid() { }
+        public Asteroid() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
-        public Asteroid(CelestialObject parent) : base(parent) { }
+        public Asteroid(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Asteroid"/> during random generation, in kg.
         /// </param>
-        public Asteroid(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public Asteroid(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
-        public Asteroid(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public Asteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Asteroid"/> during random generation, in kg.
         /// </param>
-        public Asteroid(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public Asteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="Asteroid"/>.
         /// </summary>
         /// <remarks>
         /// One half of a Gaussian distribution, with <see cref="Planetoid.MinMass"/> as the mean,
         /// constrained to <see cref="Planetoid.MaxMass"/> as a hard limit at 3-sigma.
         /// </remarks>
-        private protected override void GenerateMass()
+        private protected double GenerateMass()
         {
+            var mass = 0.0;
             do
             {
-                Mass = MinMass + Math.Abs(Randomizer.Static.Normal(0, (MaxMass - MinMass) / 3.0));
-            } while (Mass > MaxMass); // Loop rather than using Math.Min to avoid over-representing MaxMass.
+                mass = MinMass + Math.Abs(Randomizer.Static.Normal(0, (MaxMass - MinMass) / 3.0));
+            } while (mass > MaxMass); // Loop rather than using Math.Min to avoid over-representing MaxMass.
+            return mass;
         }
 
         /// <summary>
@@ -132,15 +135,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 GetDistanceToTarget(orbitedObject),
                 (float)Math.Round(Randomizer.Static.NextDouble(0.4), 2),
                 (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 0);
         }
 
         /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the shape of this <see cref="Asteroid"/>.
         /// </summary>
-        private protected override void GenerateShape()
+        private protected void GenerateShape()
         {
             var axis = Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
@@ -157,8 +160,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 periapsis,
                 eccentricity,
                 (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
     }
 }

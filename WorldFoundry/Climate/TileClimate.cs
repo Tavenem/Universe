@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.Climate
@@ -7,13 +7,14 @@ namespace WorldFoundry.Climate
     /// <summary>
     /// Describes the climate of a <see cref="Tile"/> during a particular <see cref="Season"/>.
     /// </summary>
-    public class TileClimate : DataItem, IIndexedItem
+    public class TileClimate
     {
-        internal List<AirCell> airCellList;
+        internal const float AirCellLayerHeight = 2000;
+
         /// <summary>
-        /// The cells of air above this <see cref="Tile"/> during this <see cref="Season"/>.
+        /// The number of cells of air above this <see cref="Tile"/> during this <see cref="Season"/>.
         /// </summary>
-        internal ICollection<AirCell> AirCells { get; set; }
+        internal int AirCellLayers { get; set; }
 
         /// <summary>
         /// The average atmospheric pressure in this <see cref="Tile"/> during this <see
@@ -22,9 +23,9 @@ namespace WorldFoundry.Climate
         public float AtmosphericPressure { get; internal set; }
 
         /// <summary>
-        /// The index of this item.
+        /// The latitude of this <see cref="Tile"/> relative to the tropical equator (versus the true equator).
         /// </summary>
-        public int Index { get; }
+        internal float Latitude { get; set; }
 
         /// <summary>
         /// The total precipitation in this <see cref="Tile"/> during this <see cref="Season"/>,
@@ -67,41 +68,31 @@ namespace WorldFoundry.Climate
         public float SnowFall { get; set; }
 
         /// <summary>
-        /// The total amount of snow which falls in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in water-equivalent mm.
-        /// </summary>
-        internal float SnowFallWaterEquivalent { get; set; }
-
-        /// <summary>
         /// The average temperature in this <see cref="Tile"/> during this <see cref="Season"/>,
         /// in K.
         /// </summary>
         public float Temperature { get; internal set; }
 
-        /// <summary>
-        /// The direction of the prevailing wind in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, as an angle in radians from north.
-        /// </summary>
-        public float WindDirection { get; internal set; }
+        internal static int GetAirCellIndexOfNearlyZeroSaturationVaporPressure(TerrestrialPlanet planet, Tile t, TileClimate tc)
+        {
+            var height = planet.Atmosphere.GetHeightForTemperature(Atmosphere.TemperatureAtNearlyZeroSaturationVaporPressure, tc.Temperature, t.Elevation);
+            return (int)Math.Ceiling(height / AirCellLayerHeight);
+        }
 
-        /// <summary>
-        /// The average speed of the prevailing wind in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in m/s.
-        /// </summary>
-        public float WindSpeed { get; internal set; }
+        internal static float GetSaturationVaporPressure(int index, TerrestrialPlanet planet, Tile t, TileClimate tc)
+        {
+            var height = AirCellLayerHeight * index;
+            var temperature = index == 0
+                ? tc.Temperature
+                : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, t.Elevation + height);
+            var pressure = planet.Atmosphere.GetAtmosphericPressure(temperature, t.Elevation + height);
+            return Atmosphere.GetSaturationVaporPressure(temperature * planet.Atmosphere.Exner(pressure));
+        }
 
-        private TileClimate() { }
+        internal static float GetSaturationMixingRatio(TerrestrialPlanet planet, Tile t, TileClimate tc)
+            => Atmosphere.GetSaturationMixingRatio(GetSaturationVaporPressure(0, planet, t, tc), tc.AtmosphericPressure);
 
-        /// <summary>
-        /// Initializes a new instance of <see cref="TileClimate"/>.
-        /// </summary>
-        public TileClimate(int index) => Index = index;
-
-        /// <summary>
-        /// Retrieves the <see cref="AirCell"/> with the given index.
-        /// </summary>
-        /// <param name="index">The 0-based index to the <see cref="AirCell"/> to be retrieved.</param>
-        /// <returns>The <see cref="AirCell"/> with the given index.</returns>
-        internal AirCell GetAirCell(int index) => index == -1 ? null : AirCells.FirstOrDefault(x => x.Index == index);
+        internal static float GetAirCellHeight(TileClimate tc)
+            => Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * AirCellLayerHeight * tc.AirCellLayers;
     }
 }

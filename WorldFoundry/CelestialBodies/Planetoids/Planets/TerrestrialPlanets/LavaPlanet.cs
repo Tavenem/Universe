@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -39,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private static string planemoClassPrefix = "Lava";
+        private static readonly string planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
@@ -48,96 +47,69 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/>.
         /// </summary>
-        public LavaPlanet() { }
+        public LavaPlanet() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
-        public LavaPlanet(CelestialObject parent) : base(parent) { }
+        public LavaPlanet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
         /// </param>
-        public LavaPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public LavaPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
-        public LavaPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public LavaPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
         /// </param>
-        public LavaPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public LavaPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
+            var layers = new List<(IComposition substance, float proportion)>();
 
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
             var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = 1 - coreNickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = coreNickel,
-                },
-            })
-            {
-                Proportion = coreProportion,
-            });
+                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
+                { (Chemical.Nickel, Phase.Solid), coreNickel },
+            }), coreProportion));
 
             var crustProportion = GetCrustProportion();
 
             // Molten rock mantle
             var mantleProportion = 1 - coreProportion - crustProportion;
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = mantleProportion,
-            });
+            layers.Add((new Material(Chemical.Rock, Phase.Liquid), mantleProportion));
 
             // Molten crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
@@ -164,74 +136,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var rock = 1 - metals;
 
-            Composition.Mixtures.Add(new Mixture(2, new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Aluminum,
-                    Phase = Phase.Liquid,
-                    Proportion = aluminum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Copper,
-                    Phase = Phase.Liquid,
-                    Proportion = copper,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Gold,
-                    Phase = Phase.Liquid,
-                    Proportion = gold,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Liquid,
-                    Proportion = iron,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Liquid,
-                    Proportion = nickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Platinum,
-                    Phase = Phase.Liquid,
-                    Proportion = platinum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = rock,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Silver,
-                    Phase = Phase.Liquid,
-                    Proportion = silver,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Titanium,
-                    Phase = Phase.Liquid,
-                    Proportion = titanium,
-                },
-            })
-            {
-                Proportion = crustProportion,
-            });
-        }
+                { (Chemical.Aluminum, Phase.Liquid), aluminum },
+                { (Chemical.Copper, Phase.Liquid), copper },
+                { (Chemical.Gold, Phase.Liquid), gold },
+                { (Chemical.Iron, Phase.Liquid), iron },
+                { (Chemical.Nickel, Phase.Liquid), nickel },
+                { (Chemical.Platinum, Phase.Liquid), platinum },
+                { (Chemical.Rock, Phase.Liquid), rock },
+                { (Chemical.Silver, Phase.Liquid), silver },
+                { (Chemical.Titanium, Phase.Liquid), titanium },
+            }), crustProportion));
 
-        /// <summary>
-        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
-        /// </summary>
-        /// <remarks>
-        /// Unlike most celestial bodies, lava planets have a significant amount of self-generated heat.
-        /// </remarks>
-        private protected override void GenerateTemperature() => Temperature = (float)(Randomizer.Static.NextDouble(974.15, 1574.15));
+            Substance = new Substance()
+            {
+                Composition = new LayeredComposite(layers),
+                Temperature = (float)Randomizer.Static.NextDouble(974.15, 1574.15),
+            };
+            GenerateShape();
+        }
     }
 }

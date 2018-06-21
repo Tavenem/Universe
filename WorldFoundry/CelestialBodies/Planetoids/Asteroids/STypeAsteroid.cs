@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -17,7 +17,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static double densityForType = 2710;
+        private static readonly double densityForType = 2710;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
@@ -31,47 +31,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/>.
         /// </summary>
-        public STypeAsteroid() { }
+        public STypeAsteroid() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="STypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="STypeAsteroid"/> is located.
         /// </param>
-        public STypeAsteroid(CelestialObject parent) : base(parent) { }
+        public STypeAsteroid(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="STypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="STypeAsteroid"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="STypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public STypeAsteroid(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public STypeAsteroid(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="STypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="STypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="STypeAsteroid"/>.</param>
-        public STypeAsteroid(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public STypeAsteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="STypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="STypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="STypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="STypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public STypeAsteroid(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public STypeAsteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -79,9 +79,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.22), 2);
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
             var iron = 0.568f;
 
@@ -92,39 +92,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 
             var platinum = 0.005f - gold;
 
-            Composition = new Mixture(new MixtureComponent[]
+            Substance = new Substance
             {
-                new MixtureComponent
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
                 {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = 0.427f,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = iron,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = nickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Gold,
-                    Phase = Phase.Solid,
-                    Proportion = gold,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Platinum,
-                    Phase = Phase.Solid,
-                    Proportion = platinum,
-                },
-            });
+                    { (Chemical.Rock, Phase.Solid), 0.427f },
+                    { (Chemical.Iron, Phase.Solid), iron },
+                    { (Chemical.Nickel, Phase.Solid), nickel },
+                    { (Chemical.Gold, Phase.Solid), gold },
+                    { (Chemical.Platinum, Phase.Solid), platinum },
+                }),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>

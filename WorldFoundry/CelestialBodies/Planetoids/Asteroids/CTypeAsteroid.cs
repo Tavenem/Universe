@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -17,7 +17,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static double densityForType = 1380;
+        private static readonly double densityForType = 1380;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
@@ -31,47 +31,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/>.
         /// </summary>
-        public CTypeAsteroid() { }
+        public CTypeAsteroid() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
-        public CTypeAsteroid(CelestialObject parent) : base(parent) { }
+        public CTypeAsteroid(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public CTypeAsteroid(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public CTypeAsteroid(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CTypeAsteroid"/>.</param>
-        public CTypeAsteroid(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public CTypeAsteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CTypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public CTypeAsteroid(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public CTypeAsteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -79,9 +79,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
             var rock = 1.0f;
 
@@ -91,27 +91,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             var ice = (float)Math.Round(Randomizer.Static.NextDouble(0.22), 3);
             rock -= ice;
 
-            Composition = new Mixture(new MixtureComponent[]
+            Substance = new Substance
             {
-                new MixtureComponent
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
                 {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = rock,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Clay,
-                    Phase = Phase.Solid,
-                    Proportion = clay,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = ice,
-                },
-            });
+                    { (Chemical.Rock, Phase.Solid), rock },
+                    { (Chemical.Clay, Phase.Solid), clay },
+                    { (Chemical.Water, Phase.Solid), ice },
+                }),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>

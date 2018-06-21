@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -13,21 +12,21 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/>.
         /// </summary>
-        public GiantStar() { }
+        public GiantStar() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantStar"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantStar"/> is located.
         /// </param>
-        public GiantStar(CelestialObject parent) : base(parent) { }
+        public GiantStar(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantStar"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantStar"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GiantStar"/>.</param>
         /// <param name="luminosityClass">
@@ -35,7 +34,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="GiantStar"/>.</param>
         public GiantStar(
-            CelestialObject parent,
+            CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, null, luminosityClass, populationII) { }

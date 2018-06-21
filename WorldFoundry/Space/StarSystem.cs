@@ -1,4 +1,9 @@
-﻿using System;
+﻿using ExtensionLib;
+using MathAndScience.MathUtil;
+using MathAndScience.MathUtil.Shapes;
+using MathAndScience.Science;
+using Substances;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -7,18 +12,16 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Extensions;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space.AsteroidFields;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// A region of space containing a system of stars, and the bodies which orbit that system.
     /// </summary>
-    public class StarSystem : CelestialObject
+    public class StarSystem : CelestialRegion
     {
         internal new static string baseTypeName = "Star System";
         /// <summary>
@@ -45,7 +48,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The <see cref="Star"/>s in this <see cref="StarSystem"/>.
         /// </summary>
-        public ICollection<Star> Stars { get; set; }
+        public IList<Star> Stars { get; set; }
 
         /// <summary>
         /// The name for this type of <see cref="CelestialEntity"/>.
@@ -75,13 +78,13 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/>.
         /// </summary>
-        public StarSystem() { }
+        public StarSystem() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="StarSystem"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="StarSystem"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
         /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
@@ -98,12 +101,66 @@ namespace WorldFoundry.Space
         /// be a Population II <see cref="Star"/>.
         /// </param>
         public StarSystem(
-            CelestialObject parent,
+            CelestialRegion parent,
+            Vector3 position,
+            Type starType,
+            SpectralClass? spectralClass,
+            LuminosityClass? luminosityClass,
+            bool populationII) : base(parent, position) => GenerateStars(starType, spectralClass, luminosityClass, populationII);
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="StarSystem"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
+        /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
+        public StarSystem(
+            CelestialRegion parent,
+            Vector3 position,
+            Type starType) : base(parent, position) => GenerateStars(starType, null, null, false);
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="StarSystem"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
+        /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
+        /// <param name="populationII">
+        /// Set to true if the <see cref="Star"/> to include in this <see cref="StarSystem"/> is to
+        /// be a Population II <see cref="Star"/>.
+        /// </param>
+        public StarSystem(
+            CelestialRegion parent,
+            Vector3 position,
+            Type starType,
+            bool populationII) : base(parent, position) => GenerateStars(starType, null, null, populationII);
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
+        /// </summary>
+        /// <param name="parent">
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="StarSystem"/> is located.
+        /// </param>
+        /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
+        /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
+        /// <param name="spectralClass">
+        /// The <see cref="Stars.SpectralClass"/> of the <see cref="Star"/> to include in this <see
+        /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
+        /// </param>
+        /// <param name="luminosityClass">
+        /// The <see cref="Stars.LuminosityClass"/> of the <see cref="Star"/> to include in this <see
+        /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
+        /// </param>
+        public StarSystem(
+            CelestialRegion parent,
             Vector3 position,
             Type starType,
             SpectralClass? spectralClass = null,
-            LuminosityClass? luminosityClass = null,
-            bool populationII = false) : base(parent, position) => GenerateStars(starType, spectralClass, luminosityClass, populationII);
+            LuminosityClass? luminosityClass = null) : this(parent, position, starType, spectralClass, luminosityClass, false) { }
 
         private static double GetTotalApoapsis(
             List<(
@@ -190,7 +247,7 @@ namespace WorldFoundry.Space
             var eccentricity = (float)Math.Round(Math.Abs(Randomizer.Static.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
 
             // Assuming an effective 2-body system, the period lets us determine the semi-major axis.
-            var semiMajorAxis = Math.Pow(Math.Pow(period / Utilities.MathUtil.Constants.TwoPI, 2) * Utilities.Science.Constants.G * (orbited.Mass + star.Mass), 1.0 / 3.0);
+            var semiMajorAxis = Math.Pow(Math.Pow(period / MathConstants.TwoPI, 2) * ScienceConstants.G * (orbited.Mass + star.Mass), 1.0 / 3.0);
 
             var periapsis = Math.Round((1 - eccentricity) * semiMajorAxis);
             var apoapsis = (1 + eccentricity) * semiMajorAxis;
@@ -258,7 +315,7 @@ namespace WorldFoundry.Space
             }
             else
             {
-                companionPeriod = Randomizer.Static.Lognormal(0, 1.5768e9);
+                companionPeriod = Randomizer.Static.Lognormal(0, 1) * 1.5768e9;
             }
             var companion = AddCompanionStar(companions, orbited, companionPeriod);
 
@@ -278,7 +335,7 @@ namespace WorldFoundry.Space
             if (close)
             {
                 AddCompanionStar(companions, orbited,
-                    Randomizer.Static.Lognormal(0, 1.5768e9)
+                    Randomizer.Static.Lognormal(0, 1) * 1.5768e9
                     + Orbit.GetHillSphereRadius(
                         companion.star,
                         companion.orbited,
@@ -312,7 +369,7 @@ namespace WorldFoundry.Space
             orbited = primary;
             var period = companionPeriod;
             var startingPeriod = period;
-            for (int c = 4; c <= amount; c += 2) // Step of 2 since a companion is also generated.
+            for (var c = 4; c <= amount; c += 2) // Step of 2 since a companion is also generated.
             {
                 // Period increases geometrically.
                 period = period * startingPeriod;
@@ -468,8 +525,8 @@ namespace WorldFoundry.Space
                         periapsis = Math.Max(outerPlanet.Orbit.Apoapsis
                             + outerPlanet.Orbit.GetMutualHillSphereRadius(
                                 planet is GiantPlanet ? 1.25e28 : 3.0e25),
-                                Math.Pow(Math.Pow(newPeriod / Utilities.MathUtil.Constants.TwoPI, 2)
-                                * Utilities.Science.Constants.G
+                                Math.Pow(Math.Pow(newPeriod / MathConstants.TwoPI, 2)
+                                * ScienceConstants.G
                                 * (star.Mass + (planet is GiantPlanet ? 1.25e28 : 3.0e25)),
                                 1.0 / 3.0));
                     }
@@ -529,7 +586,7 @@ namespace WorldFoundry.Space
             var innerRadius = outerApoapsis + (outerPlanet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Static.Normal(21.7, 9.5));
             var width = (Stars.Count > 1 || Randomizer.Static.NextDouble() <= 0.5)
                 ? Randomizer.Static.NextDouble(3.0e12, 4.5e12)
-                : Randomizer.Static.Lognormal(0, 7.5e12);
+                : Randomizer.Static.Lognormal(0, 1) * 7.5e12;
             if (maxApoapsis.HasValue)
             {
                 width = Math.Min(width, maxApoapsis.Value - innerRadius);
@@ -625,13 +682,10 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>
-        /// The mass of the stellar bodies is presumed to be at least 99% of the total, so it is used
-        /// as a close-enough approximation, plus a bit of extra.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = (Stars?.Sum(s => s.Mass) ?? 0) * 1.001;
+        private protected override void GenerateSubstance()
+            => Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
 
         private void GeneratePlanet(
             Star star,
@@ -642,7 +696,7 @@ namespace WorldFoundry.Space
             ref int totalTerrestrials, int totalGiants,
             List<Planemo> pregenPlanets)
         {
-            Planemo planet = CapturePregenPlanet(
+            var planet = CapturePregenPlanet(
                 pregenPlanets,
                 out var periapsis,
                 ref numTerrestrials, ref numGiants, ref numIceGiants,
@@ -728,8 +782,8 @@ namespace WorldFoundry.Space
                 numTerrestrial = 0;
             }
 
-            int totalGiants = numGiants + numIceGiants;
-            int totalTerrestrials = 0;
+            var totalGiants = numGiants + numIceGiants;
+            var totalTerrestrials = 0;
 
             // Generate planets one at a time until the specified number have been generated.
             Planemo innerPlanet = null;
@@ -765,27 +819,32 @@ namespace WorldFoundry.Space
             {
                 if (Stars == null)
                 {
-                    Stars = new HashSet<Star>();
+                    Stars = new List<Star>();
                 }
                 Stars.Add((Star)starType.InvokeMember(null, System.Reflection.BindingFlags.CreateInstance, null, null,
                     new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII }));
             }
 
             var numCompanions = GenerateNumCompanions();
-
             var companions = AddCompanionStars(numCompanions);
+
             // The Shape must be set before adding orbiting Stars, since it will be accessed during
             // the configuration of Orbits. However, the Shape of a StarSystem depends on the
             // configuration of the Stars, creating a circular dependency. This is resolved by
-            // pre-calculating the outer radius of the mutually-orbiting Stars in order to first
-            // create a Shape, then adding the companion Stars in their Orbits. The radius of the
-            // system is set ~75000 AU past the outer orbit of the stars, or roughly 150% the
-            // distance from the outer limit of any Oort cloud. This should give plenty of breathing
-            // room for any objects with high eccentricity to stay within the system's local space
-            // while not placing the objects of interest (stars, planets) too close together in the
-            // center of local space.
-            var radius = 1.125e16 + (companions?.Select(x => GetTotalApoapsis(companions, x.star, 0)).DefaultIfEmpty().Max() ?? 0);
+            // pre-calculating the orbit of the mutually-orbiting Stars (with ~75000 AU extra space,
+            // or roughly 150% the outer limit for a potential Oort cloud), then adding the companion
+            // Stars in their actual Orbits. This should give plenty of breathing room for any
+            // objects with high eccentricity to stay within the system's local space, while not
+            // placing the objects of interest (stars, planets) too close together in the center of
+            // local space.
+            var radius = 1.125e16 + companions?.Sum(x => GetTotalApoapsis(companions, x.star, 0)) ?? 0;
+
+            // The mass of the stellar bodies is presumed to be at least 99% of the total, so it is used
+            // as a close-enough approximation, plus a bit of extra.
+            Substance.Mass = ((Stars?.Sum(s => s.Mass) ?? 0) + (companions?.Sum(s => s.star.Mass) ?? 0)) * 1.001;
+
             SetShape(new Sphere(radius));
+
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
                 Orbit.SetOrbit(
@@ -794,9 +853,9 @@ namespace WorldFoundry.Space
                     periapsis,
                     eccentricity,
                     (float)Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
 
                 Stars.Add(star);
             }
@@ -844,9 +903,9 @@ namespace WorldFoundry.Space
             var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
             var asteroids = new AsteroidField(this, (-Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
             var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755f; // +60°
-            while (trueAnomaly > Utilities.MathUtil.Constants.TwoPI)
+            while (trueAnomaly > MathConstants.TwoPI)
             {
-                trueAnomaly -= (float)Utilities.MathUtil.Constants.TwoPI;
+                trueAnomaly -= (float)MathConstants.TwoPI;
             }
             Orbits.Orbit.SetOrbit(
                 asteroids,
@@ -854,15 +913,15 @@ namespace WorldFoundry.Space
                 periapsis,
                 planet.Orbit.Eccentricity,
                 (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
 
             asteroids = new AsteroidField(this, (Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
             trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755f; // -60°
             while (trueAnomaly < 0)
             {
-                trueAnomaly += (float)Utilities.MathUtil.Constants.TwoPI;
+                trueAnomaly += (float)MathConstants.TwoPI;
             }
             Orbits.Orbit.SetOrbit(
                 asteroids,
@@ -870,8 +929,8 @@ namespace WorldFoundry.Space
                 periapsis,
                 planet.Orbit.Eccentricity,
                 (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
         }
 
@@ -1153,7 +1212,7 @@ namespace WorldFoundry.Space
         {
             if (!IsGridSpacePopulated(Vector3.Zero))
             {
-                GetGridSpace(Vector3.Zero, true).Populated = true;
+                GridSpaces[Vector3.Zero] = true;
                 GenerateChildren();
             }
         }

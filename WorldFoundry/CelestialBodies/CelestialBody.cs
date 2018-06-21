@@ -1,8 +1,11 @@
-﻿using System;
+﻿using MathAndScience.MathUtil;
+using MathAndScience.Science;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
+using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies
@@ -10,7 +13,7 @@ namespace WorldFoundry.CelestialBodies
     /// <summary>
     /// Represents any contiguous physical object in space, such as a star or planet.
     /// </summary>
-    public class CelestialBody : BioZone
+    public class CelestialBody : Orbiter
     {
         internal const double PolarLatitude = 1.5277247828211;
         internal const double CosPolarLatitude = 0.04305822778985774;
@@ -46,24 +49,24 @@ namespace WorldFoundry.CelestialBodies
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/>.
         /// </summary>
-        public CelestialBody() { }
+        public CelestialBody() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialBody"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
-        public CelestialBody(CelestialObject parent) : base(parent) { }
+        public CelestialBody(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CelestialBody"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
-        public CelestialBody(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public CelestialBody(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Calculates the temperature at the given latitude (as an angle in radians from the
@@ -83,6 +86,12 @@ namespace WorldFoundry.CelestialBodies
         /// Sets 0 in the base class; subclasses which are not black-bodies are expected to override.
         /// </remarks>
         private protected virtual void GenerateAlbedo() => Albedo = 0;
+
+        /// <summary>
+        /// Calculates the escape velocity from this body, in m/s.
+        /// </summary>
+        /// <returns>The escape velocity from this body, in m/s.</returns>
+        public float GetEscapeVelocity() => (float)Math.Sqrt((ScienceConstants.TwoG * Mass) / Radius);
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -115,10 +124,10 @@ namespace WorldFoundry.CelestialBodies
             var totalInsolation = 0.0;
             foreach (var star in stellarSiblings)
             {
-                totalInsolation += star.Luminosity / (Utilities.MathUtil.Constants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
+                totalInsolation += star.Luminosity / (MathConstants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
             }
 
-            return (float)Math.Pow((totalInsolation * (1 - Albedo)) / Utilities.Science.Constants.FourStefanBoltzmannConstant, 0.25);
+            return (float)Math.Pow((totalInsolation * (1 - Albedo)) / ScienceConstants.FourSigma, 0.25);
         }
 
         /// <summary>
@@ -151,7 +160,7 @@ namespace WorldFoundry.CelestialBodies
             }
 
             // Actual position doesn't matter for temperature, only distance.
-            Vector3 apoapsisVector = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(apoapsis / Parent.LocalScale));
+            var apoapsisVector = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(apoapsis / Parent.LocalScale));
             _totalTemperatureAtApoapsis = GetTotalTemperatureFromPosition(apoapsisVector);
         }
 
@@ -172,7 +181,7 @@ namespace WorldFoundry.CelestialBodies
             }
 
             // Actual position doesn't matter for temperature, only distance.
-            Vector3 periapsis = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(Orbit.Periapsis / Parent.LocalScale));
+            var periapsis = Orbit.OrbitedObject.Position + (Vector3.UnitX * (float)(Orbit.Periapsis / Parent.LocalScale));
             _totalTemperatureAtPeriapsis = GetTotalTemperatureFromPosition(periapsis);
         }
 

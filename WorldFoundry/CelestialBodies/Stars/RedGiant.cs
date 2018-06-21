@@ -1,7 +1,7 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using System;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -19,21 +19,21 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/>.
         /// </summary>
-        public RedGiant() { }
+        public RedGiant() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="RedGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="RedGiant"/> is located.
         /// </param>
-        public RedGiant(CelestialObject parent) : base(parent) { }
+        public RedGiant(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="RedGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="RedGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="RedGiant"/>.</param>
         /// <param name="luminosityClass">
@@ -41,24 +41,26 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="RedGiant"/>.</param>
         public RedGiant(
-            CelestialObject parent,
+            CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateMass()
+        private protected override double GenerateMass(Shape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero
                 || LuminosityClass == LuminosityClass.Ia
                 || LuminosityClass == LuminosityClass.Ib)
             {
-                Mass = Randomizer.Static.NextDouble(1.592e31, 4.975e31); // Super/hypergiants
+                return Randomizer.Static.NextDouble(1.592e31, 4.975e31); // Super/hypergiants
             }
-
-            Mass = Randomizer.Static.NextDouble(5.97e29, 1.592e31); // (Bright)giants
+            else
+            {
+                return Randomizer.Static.NextDouble(5.97e29, 1.592e31); // (Bright)giants
+            }
         }
 
         /// <summary>
@@ -67,8 +69,8 @@ namespace WorldFoundry.CelestialBodies.Stars
         private protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
 
         /// <summary>
-        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
+        /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected override void GenerateTemperature() => Temperature = (float)Math.Round(Randomizer.Static.Normal(3800, 466));
+        private protected override float GenerateTemperature() => (float)Math.Round(Randomizer.Static.Normal(3800, 466));
     }
 }

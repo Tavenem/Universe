@@ -1,17 +1,18 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
+using WorldFoundry.Orbits;
 using WorldFoundry.Space.Galaxies;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// A collection of dwarf galaxies and globular clusters orbiting a large main galaxy.
     /// </summary>
-    public class GalaxySubgroup : CelestialObject
+    public class GalaxySubgroup : CelestialRegion
     {
         internal new static string baseTypeName = "Galaxy Subgroup";
         /// <summary>
@@ -25,17 +26,16 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
-            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+        internal static IList<(Type type,float proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type,float proportion, object[] constructorParameters)>
             {
-                { typeof(DwarfGalaxy), (0.26f, null) },
-                { typeof(GlobularCluster), (0.74f, null) },
+                (typeof(DwarfGalaxy), 0.26f, null),
+                (typeof(GlobularCluster), 0.74f, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        [NotMapped]
-        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         private Galaxy _mainGalaxy;
         /// <summary>
@@ -51,31 +51,31 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/>.
         /// </summary>
-        public GalaxySubgroup() { }
+        public GalaxySubgroup() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxySubgroup"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySubgroup"/> is located.
         /// </param>
-        public GalaxySubgroup(CelestialObject parent) : base(parent) { }
+        public GalaxySubgroup(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxySubgroup"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySubgroup"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxySubgroup"/>.</param>
-        public GalaxySubgroup(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public GalaxySubgroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates a child of the specified type within this <see cref="CelestialObject"/>.
+        /// Generates a child of the specified type within this <see cref="CelestialRegion"/>.
         /// </summary>
         /// <param name="type">
         /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="CelestialObject"/> or <see cref="CelestialBody"/>.
+        /// types, but must be a subclass of <see cref="CelestialRegion"/> or <see cref="CelestialBody"/>.
         /// </param>
         /// <param name="position">
         /// The location at which to generate the child. If null, a randomly-selected free space will
@@ -84,11 +84,11 @@ namespace WorldFoundry.Space
         /// <param name="orbitParameters">
         /// An optional list of parameters which describe the child's orbit. May be null.
         /// </param>
-        public override BioZone GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
+        public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {
             var child = base.GenerateChildOfType(type, position, constructorParameters);
 
-            Orbits.Orbit.SetOrbit(
+            Orbit.SetOrbit(
                 child,
                 MainGalaxy,
                 (float)Math.Round(Randomizer.Static.NextDouble(0.1), 3));
@@ -114,16 +114,16 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>
-        /// The main galaxy is expected to comprise the bulk of the mass.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = MainGalaxy.Mass * 1.25;
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateShape() => SetShape(new Sphere(MainGalaxy.Radius * 10));
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
+                Mass = MainGalaxy.Mass * 1.25, // the main galaxy is expected to comprise the bulk of the mass
+            };
+            SetShape(new Sphere(MainGalaxy.Radius * 10));
+        }
     }
 }

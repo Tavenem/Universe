@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -41,7 +41,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected override bool CanHaveWater => canHaveWater;
 
-        private static string planemoClassPrefix = "Carbon";
+        private static readonly string planemoClassPrefix = "Carbon";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
@@ -50,110 +50,76 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/>.
         /// </summary>
-        public CarbonPlanet() { }
+        public CarbonPlanet() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
-        public CarbonPlanet(CelestialObject parent) : base(parent) { }
+        public CarbonPlanet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        public CarbonPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public CarbonPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
-        public CarbonPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public CarbonPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        public CarbonPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public CarbonPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
+            var layers = new List<(IComposition substance, float proportion)>();
 
             // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
             var coreProportion = GetCoreProportion();
             var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
             var coreSteel = (float)Math.Round(Randomizer.Static.NextDouble(1 - coreNickel), 4);
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = 1 - coreNickel - coreSteel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = coreNickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Steel,
-                    Phase = Phase.Solid,
-                    Proportion = coreSteel,
-                },
-            })
-            {
-                Proportion = coreProportion,
-            });
+                { (Chemical.Iron, Phase.Solid), 1 - coreNickel - coreSteel },
+                { (Chemical.Nickel, Phase.Solid), coreNickel },
+                { (Chemical.Steel, Phase.Solid), coreSteel },
+            }), coreProportion));
 
             var crustProportion = GetCrustProportion();
 
             // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
             var mantleProportion = 1 - coreProportion - crustProportion;
             var diamond = (float)Math.Round(Randomizer.Static.NextDouble(0.01, 0.05), 4);
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Diamond,
-                    Phase = Phase.Solid,
-                    Proportion = diamond,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = 1 - diamond,
-                },
-            })
-            {
-                Proportion = mantleProportion,
-            });
+                { (Chemical.Diamond, Phase.Solid), diamond },
+                { (Chemical.Rock, Phase.Liquid), 1 - diamond },
+            }), mantleProportion));
 
             // Rocky crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
@@ -184,78 +150,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var rock = 1 - metals;
 
-            Composition.Mixtures.Add(new Mixture(2, new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Aluminum,
-                    Phase = Phase.Solid,
-                    Proportion = aluminum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Copper,
-                    Phase = Phase.Solid,
-                    Proportion = copper,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Diamond,
-                    Phase = Phase.Solid,
-                    Proportion = diamond,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Gold,
-                    Phase = Phase.Solid,
-                    Proportion = gold,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = iron,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = nickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Platinum,
-                    Phase = Phase.Solid,
-                    Proportion = platinum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = rock,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Silver,
-                    Phase = Phase.Solid,
-                    Proportion = silver,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Steel,
-                    Phase = Phase.Solid,
-                    Proportion = steel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Titanium,
-                    Phase = Phase.Solid,
-                    Proportion = titanium,
-                },
-            })
-            {
-                Proportion = crustProportion,
-            });
+                { (Chemical.Aluminum, Phase.Solid), aluminum },
+                { (Chemical.Copper, Phase.Solid), copper },
+                { (Chemical.Diamond, Phase.Solid), diamond },
+                { (Chemical.Gold, Phase.Solid), gold },
+                { (Chemical.Iron, Phase.Solid), iron },
+                { (Chemical.Nickel, Phase.Solid), nickel },
+                { (Chemical.Platinum, Phase.Solid), platinum },
+                { (Chemical.Rock, Phase.Solid), rock },
+                { (Chemical.Silver, Phase.Solid), silver },
+                { (Chemical.Steel, Phase.Solid), steel },
+                { (Chemical.Titanium, Phase.Solid), titanium },
+            }), crustProportion));
+
+            Substance = new Substance() { Composition = new LayeredComposite(layers) };
+            GenerateShape();
         }
 
         /// <summary>

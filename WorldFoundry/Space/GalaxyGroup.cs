@@ -1,17 +1,17 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
 using WorldFoundry.Space.Galaxies;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// A collection of gravitationally-bound galaxies, mostly small dwarfs orbiting a few large galaxies.
     /// </summary>
-    public class GalaxyGroup : CelestialObject
+    public class GalaxyGroup : CelestialRegion
     {
         internal new static string baseTypeName = "Galaxy Group";
         /// <summary>
@@ -25,45 +25,44 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
-            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+        internal static IList<(Type type, float proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type, float proportion, object[] constructorParameters)>
             {
-                { typeof(DwarfGalaxy), (1, null) },
+                (typeof(DwarfGalaxy), 1, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        [NotMapped]
-        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/>.
         /// </summary>
-        public GalaxyGroup() { }
+        public GalaxyGroup() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxyGroup"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyGroup"/> is located.
         /// </param>
-        public GalaxyGroup(CelestialObject parent) : base(parent) { }
+        public GalaxyGroup(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxyGroup"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyGroup"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxyGroup"/>.</param>
-        public GalaxyGroup(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public GalaxyGroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         private void GenerateChildren()
         {
             var amount = Randomizer.Static.Next(1, 6);
             Vector3 position;
             var counter = 0;
-            for (int i = 0; i < amount; i++)
+            for (var i = 0; i < amount; i++)
             {
                 // Pick a random spot, but make sure it isn't outside local space, and not already occupied.
 
@@ -87,20 +86,17 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>
-        /// General average; 1.0e14 solar masses.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = 2.0e44;
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <remarks>
-        /// ~500–1000 kpc
-        /// </remarks>
-        private protected override void GenerateShape() => SetShape(new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23)));
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
+                Mass = 2.0e44, // general average; 1.0e14 solar masses
+            };
+            SetShape(new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23))); // ~500–1000 kpc
+        }
 
         /// <summary>
         /// Generates an appropriate population of child objects in local space, in an area around
@@ -115,7 +111,7 @@ namespace WorldFoundry.Space
         {
             if (!IsGridSpacePopulated(Vector3.Zero))
             {
-                GetGridSpace(Vector3.Zero, true).Populated = true;
+                GridSpaces[Vector3.Zero] = true;
                 GenerateChildren();
             }
 

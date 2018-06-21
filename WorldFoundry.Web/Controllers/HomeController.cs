@@ -1,8 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using System;
+using System.Linq;
+using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
+using WorldFoundry.Space;
 using WorldFoundry.Web.ViewModels;
 using WorldFoundry.WorldGrids;
 
@@ -22,9 +26,25 @@ namespace WorldFoundry.Web.Controllers
             int radius = TerrestrialPlanetParams.DefaultRadius,
             double rotationalPeriod = TerrestrialPlanetParams.DefaultRotationalPeriod,
             float waterRatio = TerrestrialPlanetParams.DefaultWaterRatio,
-            int gridSize = WorldGrid.DefaultGridSize) => throw new NotImplementedException();
+            int gridSize = WorldGrid.DefaultGridSize)
+        {
+            var system = new StarSystem(null, Vector3.Zero, typeof(Star), SpectralClass.G, LuminosityClass.V);
+            var star = system.Stars.FirstOrDefault();
+            var planet = new TerrestrialPlanet(
+                star.Parent,
+                Vector3.Zero,
+                TerrestrialPlanetParams.FromDefaults(
+                    atmosphericPressure,
+                    axialTilt: axialTilt,
+                    gridSize: gridSize,
+                    radius: radius,
+                    rotationalPeriod: rotationalPeriod,
+                    waterRatio: waterRatio));
+            planet.GenerateOrbit(star);
+            return planet;
+        }
 
-        private TerrestrialPlanet LoadPlanet(Guid id) => throw new NotImplementedException();
+        private TerrestrialPlanet LoadPlanet(Guid id) => CreatePlanet();
 
         private TerrestrialPlanet GetCachedPlanet(string key)
         {
@@ -35,12 +55,12 @@ namespace WorldFoundry.Web.Controllers
             }
             return _cache.GetOrCreate(key, entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromMinutes(3);
+                entry.SlidingExpiration = TimeSpan.FromMinutes(10);
                 return LoadPlanet(guid);
             });
         }
 
-        public PlanetData GetPlanet(
+        public IActionResult GetPlanet(
             float atmosphericPressure = TerrestrialPlanetParams.DefaultAtmosphericPressure,
             float axialTilt = TerrestrialPlanetParams.DefaultAxialTilt,
             int radius = TerrestrialPlanetParams.DefaultRadius,
@@ -65,7 +85,7 @@ namespace WorldFoundry.Web.Controllers
                     waterRatio,
                     gridSize);
             });
-            return new PlanetData { Planet = planet, Key = id };
+            return Json(new PlanetData { Planet = planet, Key = id });
         }
 
         public Season GetSeason(string key, int amount, int index)

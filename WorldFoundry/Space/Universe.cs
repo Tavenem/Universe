@@ -1,15 +1,16 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// The Universe is the top-level celestial "object" in a hierarchy.
     /// </summary>
-    public class Universe : CelestialObject
+    public class Universe : CelestialRegion
     {
         internal new static string baseTypeName = "Universe";
         /// <summary>
@@ -23,16 +24,15 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
-            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+        internal static IList<(Type type,float proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type,float proportion, object[] constructorParameters)>
             {
-                { typeof(GalaxySupercluster), (1, null) },
+                (typeof(GalaxySupercluster), 1, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        [NotMapped]
-        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbiter"/>.
@@ -41,7 +41,6 @@ namespace WorldFoundry.Space
         /// The universe has no velocity. This will always return <see cref="Vector3.Zero"/>, and
         /// setting it will have no effect.
         /// </remarks>
-        [NotMapped]
         public override Vector3 Velocity
         {
             get => Vector3.Zero;
@@ -51,32 +50,24 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Universe"/>.
         /// </summary>
-        public Universe() { }
+        public Universe() : base() { }
 
         /// <summary>
-        /// Determines whether this <see cref="CelestialObject"/> contains the <see cref="Position"/> of
-        /// the specified <see cref="CelestialObject"/>.
+        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of
+        /// the specified <see cref="CelestialRegion"/>.
         /// </summary>
-        /// <param name="other">The <see cref="CelestialObject"/> to test for inclusion within this one.</param>
+        /// <param name="other">The <see cref="CelestialRegion"/> to test for inclusion within this one.</param>
         /// <returns>
-        /// True if this <see cref="CelestialObject"/> contains the <see cref="Position"/> of the specified one.
+        /// True if this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of the specified one.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <remarks>
         /// The universe contains everything, removing the need for any calculations.
         /// </remarks>
-        internal override bool ContainsObject(CelestialObject other) => true;
+        internal override bool ContainsObject(CelestialRegion other) => true;
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <remarks>
-        /// The mass of the universe is infinite.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = double.PositiveInfinity;
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
@@ -86,12 +77,15 @@ namespace WorldFoundry.Space
         /// (although this would require exhaustive "exploration" to populate so many grid spaces).
         /// This makes the universe effectively infinite in scope, if not in linear dimensions.
         /// </remarks>
-        private protected override void GenerateShape() => SetShape(new Sphere(1.89214e33));
-
-        /// <summary>
-        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
-        /// </summary>
-        /// <remarks>The ambient temperature of the universe is 2.73 K.</remarks>
-        private protected override void GenerateTemperature() => Temperature = 2.73f;
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
+                Mass = double.PositiveInfinity,
+                Temperature = 2.73f,
+            };
+            SetShape(new Sphere(1.89214e33));
+        }
     }
 }

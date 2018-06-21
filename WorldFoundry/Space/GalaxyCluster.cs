@@ -1,16 +1,16 @@
-﻿using System;
+﻿using MathAndScience.MathUtil.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// A large structure of gravitationally-bound galaxies.
     /// </summary>
-    public class GalaxyCluster : CelestialObject
+    public class GalaxyCluster : CelestialRegion
     {
         internal new static string baseTypeName = "Galaxy Cluster";
         /// <summary>
@@ -24,53 +24,49 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
-            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+        internal static IList<(Type type,float proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type,float proportion, object[] constructorParameters)>
             {
-                { typeof(GalaxyGroup), (1, null) },
+                (typeof(GalaxyGroup), 1, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        [NotMapped]
-        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyCluster"/>.
         /// </summary>
-        public GalaxyCluster() { }
+        public GalaxyCluster() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyCluster"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxyCluster"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyCluster"/> is located.
         /// </param>
-        public GalaxyCluster(CelestialObject parent) : base(parent) { }
+        public GalaxyCluster(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyCluster"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxyCluster"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyCluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxyCluster"/>.</param>
-        public GalaxyCluster(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public GalaxyCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <remarks>
-        /// General average; 1.0e15–1.0e16 solar masses.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e45, 2.0e46);
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <remarks>
-        /// ~1–5 Mpc
-        /// </remarks>
-        private protected override void GenerateShape() => SetShape(new Sphere(Randomizer.Static.NextDouble(3.0e23, 1.5e24)));
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
+                Mass = Randomizer.Static.NextDouble(2.0e45, 2.0e46), // general average; 1.0e15–1.0e16 solar masses
+            };
+            SetShape(new Sphere(Randomizer.Static.NextDouble(3.0e23, 1.5e24))); // ~1–5 Mpc
+        }
     }
 }

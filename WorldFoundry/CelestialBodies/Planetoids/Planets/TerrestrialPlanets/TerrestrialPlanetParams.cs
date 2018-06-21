@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Substances;
+using System.Collections.Generic;
 using WorldFoundry.Climate;
-using WorldFoundry.Substances;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -67,7 +67,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// All atmospheric requirements.
         /// </summary>
-        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
+        public IList<Requirement> AtmosphericRequirements { get; set; }
 
         /// <summary>
         /// The target axial tilt, in radians.
@@ -124,7 +124,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public TerrestrialPlanetParams(
             float? atmosphericPressure = null,
-            List<ComponentRequirement> atmosphericRequirements = null,
+            List<Requirement> atmosphericRequirements = null,
             float? axialTilt = null,
             float? eccentricity = null,
             int? gridSize = null,
@@ -155,7 +155,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public static TerrestrialPlanetParams FromDefaults(
             float? atmosphericPressure = DefaultAtmosphericPressure,
-            List<ComponentRequirement> atmosphericRequirements = null,
+            List<Requirement> atmosphericRequirements = null,
             float? axialTilt = DefaultAxialTilt,
             float? eccentricity = DefaultEccentricity,
             int? gridSize = WorldGrid.DefaultGridSize,

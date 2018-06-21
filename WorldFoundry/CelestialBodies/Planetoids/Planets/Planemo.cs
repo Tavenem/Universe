@@ -1,13 +1,12 @@
-﻿using System;
+﻿using ExtensionLib;
+using MathAndScience.MathUtil;
+using MathAndScience.MathUtil.Shapes;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
 using System.Text;
-using WorldFoundry.Extensions;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets
 {
@@ -55,18 +54,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// The eccentricity of this <see cref="Planemo"/>'s orbit.
         /// </summary>
-        [NotMapped]
         private protected float Eccentricity
         {
             get => GetProperty(ref _eccentricity, GenerateEccentricity) ?? 0;
             set => _eccentricity = value;
         }
 
-        private ICollection<PlanetaryRing> _rings;
-        public ICollection<PlanetaryRing> Rings
+        private List<PlanetaryRing> _rings;
+        public IList<PlanetaryRing> Rings
         {
             get => GetProperty(ref _rings, GenerateRings);
-            private set => _rings = value;
+            private set => _rings = (List<PlanetaryRing>)value;
         }
 
         /// <summary>
@@ -102,47 +100,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/>.
         /// </summary>
-        public Planemo() { }
+        public Planemo() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
-        public Planemo(CelestialObject parent) : base(parent) { }
+        public Planemo(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        public Planemo(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public Planemo(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        public Planemo(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public Planemo(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        public Planemo(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Randomly determines an eccentricity for this <see cref="Planemo"/>.
@@ -172,9 +170,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 GetDistanceToTarget(orbitedObject),
                 Eccentricity,
                 (float)Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
@@ -184,7 +182,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         {
             if (_rings == null)
             {
-                _rings = new HashSet<PlanetaryRing>();
+                _rings = new List<PlanetaryRing>();
             }
 
             var innerLimit = Atmosphere == null ? 0 : Atmosphere.AtmosphericHeight;
@@ -244,7 +242,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// A predetermined radius for the <see cref="Planemo"/>. May be left null to randomly
         /// determine an appropriate radius.
         /// </param>
-        private protected void GenerateShape(float? knownRadius)
+        private protected void GenerateShape(float? knownRadius = null)
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
@@ -252,11 +250,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var flattening = Randomizer.Static.NextDouble(0.1);
             SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateShape() => GenerateShape(null);
 
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
@@ -286,7 +279,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
         internal float GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
 
-        private float GetRadiusForMass(double mass) => (float)Math.Pow((mass / Density) / Utilities.MathUtil.Constants.FourThirdsPI, 1.0 / 3.0);
+        private float GetRadiusForMass(double mass) => (float)Math.Pow((mass / Density) / MathConstants.FourThirdsPI, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rings of the given density may be found, in meters.
@@ -342,7 +335,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
         /// <returns>A latitude, as an angle in radians from the equator.</returns>
-        internal float VectorToLatitude(Vector3 v) => (float)(Utilities.MathUtil.Constants.HalfPI - Axis.GetAngle(v));
+        internal float VectorToLatitude(Vector3 v) => (float)(MathConstants.HalfPI - Axis.GetAngle(v));
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a longitude, in radians.

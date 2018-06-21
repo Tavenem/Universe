@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MathAndScience.MathUtil;
+using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
@@ -6,8 +8,6 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
@@ -29,7 +29,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         internal static int maxDensity = 1650;
         private protected int MaxDensity => maxDensity;
 
-        private static double maxMassForType = 2.5e28;
+        private static readonly double maxMassForType = 2.5e28;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -48,7 +48,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private static double minMassForType = 6.0e25;
+        private static readonly double minMassForType = 6.0e25;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -66,47 +66,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/>.
         /// </summary>
-        public GiantPlanet() { }
+        public GiantPlanet() : base() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
         /// </param>
-        public GiantPlanet(CelestialObject parent) : base(parent) { }
+        public GiantPlanet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="GiantPlanet"/> during random generation, in kg.
         /// </param>
-        public GiantPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public GiantPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GiantPlanet"/>.</param>
-        public GiantPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public GiantPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GiantPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GiantPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="GiantPlanet"/> during random generation, in kg.
         /// </param>
-        public GiantPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public GiantPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -122,11 +122,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </remarks>
         private protected override void GenerateAtmosphere()
         {
-            Atmosphere = new Atmosphere(this, 1000)
-            {
-                Mixtures = new HashSet<Mixture>()
-            };
-
             var trace = (float)Math.Round(Randomizer.Static.NextDouble(0.025), 4);
 
             var h = (float)Math.Round(Randomizer.Static.NextDouble(0.75, 0.97), 4);
@@ -178,7 +173,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             var nh4sh = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
             traceTotal += nh4sh;
 
-            float ratio = trace / traceTotal;
+            var ratio = trace / traceTotal;
             c2h6 *= ratio;
             nh3 *= ratio;
             waterVapor *= ratio;
@@ -190,188 +185,81 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             nh3Ice *= ratio;
             nh4sh *= ratio;
 
-            var firstLayer = new Mixture(new MixtureComponent[]
+            var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Hydrogen,
-                    Phase = Phase.Gas,
-                    Proportion = h,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Helium,
-                    Phase = Phase.Gas,
-                    Proportion = he,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Gas,
-                    Proportion = ch4,
-                },
-            })
-            {
-                Proportion = 1,
-            };
+                { (Chemical.Hydrogen, Phase.Gas), h },
+                { (Chemical.Helium, Phase.Gas), he },
+                { (Chemical.Methane, Phase.Gas), ch4 },
+            });
             if (c2h6 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ethane,
-                    Phase = Phase.Gas,
-                    Proportion = c2h6,
-                });
+                atmosphere.Components[(Chemical.Ethane, Phase.Gas)] = c2h6;
             }
             if (nh3 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Gas,
-                    Proportion = nh3,
-                });
+                atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
             if (waterVapor > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Gas,
-                    Proportion = waterVapor,
-                });
+                atmosphere.Components[(Chemical.Water, Phase.Gas)] = waterVapor;
             }
             if (water > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Liquid,
-                    Proportion = water,
-                });
+                atmosphere.Components[(Chemical.Water, Phase.Liquid)] = water;
             }
             if (ice > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = ice,
-                });
+                atmosphere.Components[(Chemical.Water, Phase.Solid)] = ice;
             }
             if (ch4Liquid > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Liquid,
-                    Proportion = ch4Liquid,
-                });
+                atmosphere.Components[(Chemical.Methane, Phase.Liquid)] = ch4Liquid;
             }
             if (ch4Ice > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Solid,
-                    Proportion = ch4Ice,
-                });
+                atmosphere.Components[(Chemical.Methane, Phase.Solid)] = ch4Ice;
             }
             if (nh3Liquid > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Liquid,
-                    Proportion = nh3Liquid,
-                });
+                atmosphere.Components[(Chemical.Ammonia, Phase.Liquid)] = nh3Liquid;
             }
             if (nh3Ice> 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Solid,
-                    Proportion = nh3Ice,
-                });
+                atmosphere.Components[(Chemical.Ammonia, Phase.Solid)] = nh3Ice;
             }
             if (nh4sh > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.AmmoniumHydrosulfide,
-                    Phase = Phase.Solid,
-                    Proportion = nh4sh,
-                });
+                atmosphere.Components[(Chemical.AmmoniumHydrosulfide, Phase.Solid)] = nh4sh;
             }
-            Atmosphere.Mixtures.Add(firstLayer);
+
+            Atmosphere = new Atmosphere(this, atmosphere, 1000);
         }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
+            var layers = new List<(IComposition substance, float proportion)>();
 
             // Iron-nickel inner core.
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
             var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = 1 - coreNickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = coreNickel,
-                },
-            })
-            {
-                Proportion = innerCoreProportion,
-            });
+                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
+                { (Chemical.Nickel, Phase.Solid), coreNickel },
+            }), innerCoreProportion));
 
             // Molten rock outer core.
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = coreProportion - innerCoreProportion,
-            });
+            layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
 
             // Metallic hydrogen lower mantle
-            var layer = 2;
             var metalH = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.1, 0.55)), 2);
             if (metalH > 0)
             {
-                Composition.Mixtures.Add(new Mixture(layer, new MixtureComponent[]
-                {
-                    new MixtureComponent
-                    {
-                        Chemical = Chemical.Hydrogen_Metallic,
-                        Phase = Phase.Liquid,
-                        Proportion = 1,
-                    },
-                })
-                {
-                    Proportion = metalH,
-                });
-                layer++;
+                layers.Add((new Material(Chemical.Hydrogen_Metallic, Phase.Liquid), metalH));
             }
 
             // Supercritical fluid upper layer (blends seamlessly with lower atmosphere)
@@ -389,67 +277,36 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             water = Math.Max(0, water - nh4);
             var c2h6 = (float)Math.Round(Randomizer.Static.NextDouble(water), 4);
             water = Math.Max(0, water - c2h6);
-            var upperLayer = new Mixture(layer, new MixtureComponent[]
+            var upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Hydrogen,
-                    Phase = Phase.Liquid,
-                    Proportion = 0.71f,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Helium,
-                    Phase = Phase.Liquid,
-                    Proportion = 0.24f,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Neon,
-                    Phase = Phase.Liquid,
-                    Proportion = ne,
-                },
-            })
-            {
-                Proportion = upperLayerProportion,
-            };
+                { (Chemical.Hydrogen, Phase.Liquid), 0.71f },
+                { (Chemical.Helium, Phase.Liquid), 0.24f },
+                { (Chemical.Neon, Phase.Liquid), ne },
+            });
             if (ch4 > 0)
             {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Liquid,
-                    Proportion = ch4,
-                });
+                upperLayer.Components[(Chemical.Methane, Phase.Liquid)] = ch4;
             }
             if (nh4 > 0)
             {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Liquid,
-                    Proportion = nh4,
-                });
+                upperLayer.Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
             }
             if (c2h6 > 0)
             {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ethane,
-                    Phase = Phase.Liquid,
-                    Proportion = c2h6,
-                });
+                upperLayer.Components[(Chemical.Ethane, Phase.Liquid)] = c2h6;
             }
             if (water > 0)
             {
-                upperLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Liquid,
-                    Proportion = water,
-                });
+                upperLayer.Components[(Chemical.Water, Phase.Liquid)] = water;
             }
-            Composition.Mixtures.Add(upperLayer);
+            layers.Add((upperLayer, upperLayerProportion));
+
+            Substance = new Substance()
+            {
+                Composition = new LayeredComposite(layers),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>
@@ -471,9 +328,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="GiantPlanet"/>.
         /// </summary>
-        private protected override void GenerateMass() => Mass = Math.Round(Randomizer.Static.NextDouble(MinMass, MaxMass));
+        private protected virtual double GenerateMass() => Math.Round(Randomizer.Static.NextDouble(MinMass, MaxMass));
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
@@ -559,9 +416,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                     periapsis,
                     eccentricity,
                     (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
             }
 
             return satellite;

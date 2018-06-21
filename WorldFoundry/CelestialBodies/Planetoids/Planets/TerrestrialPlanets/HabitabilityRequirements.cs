@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using Substances;
+using System.Collections.Generic;
 using WorldFoundry.Climate;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -10,7 +10,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class HabitabilityRequirements
     {
-        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
+        public IList<Requirement> AtmosphericRequirements { get; set; }
         public float? MinimumTemperature { get; set; }
         public float? MaximumTemperature { get; set; }
         public float? MinimumPressure { get; set; }
@@ -19,7 +19,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public float? MaximumGravity { get; set; }
 
         public HabitabilityRequirements(
-            List<ComponentRequirement> atmosphericRequirements,
+            List<Requirement> atmosphericRequirements,
             float? minimumTemperature, float? maximumTemperature,
             float? minimumPressure, float? maximumPressure,
             float? minimumGravity, float? maximumGravity)

@@ -314,7 +314,7 @@ function getPlanet(btn?: RenderButton) {
     let radius = radiusNum.valueAsNumber * 1000;
     let rotation = rotationNum.valueAsNumber * 60;
     let grid = gridNum.valueAsNumber + 2;
-    let planetUrl = `/Home/GetPlanet?atmosphericPressure=${pressureNum.valueAsNumber}&axialTilt=${tiltNum.valueAsNumber}&radius=${radius}&rotationalPeriod=${rotation}&waterRatio=${waterNum.valueAsNumber}&gridSize=${grid}&seasonCount=${seasonCount}`;
+    let planetUrl = `/Home/GetPlanet?atmosphericPressure=${pressureNum.valueAsNumber}&axialTilt=${tiltNum.valueAsNumber}&radius=${radius}&rotationalPeriod=${rotation}&waterRatio=${waterNum.valueAsNumber}&gridSize=${grid}`;
     if (!!animationInfo.seed) {
         planetUrl += `&seed=${animationInfo.seed}`;
     }
