@@ -89,11 +89,11 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
         /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
         /// <param name="spectralClass">
-        /// The <see cref="Stars.SpectralClass"/> of the <see cref="Star"/> to include in this <see
+        /// The <see cref="SpectralClass"/> of the <see cref="Star"/> to include in this <see
         /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
         /// </param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of the <see cref="Star"/> to include in this <see
+        /// The <see cref="LuminosityClass"/> of the <see cref="Star"/> to include in this <see
         /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
         /// </param>
         /// <param name="populationII">
@@ -148,11 +148,11 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
         /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
         /// <param name="spectralClass">
-        /// The <see cref="Stars.SpectralClass"/> of the <see cref="Star"/> to include in this <see
+        /// The <see cref="SpectralClass"/> of the <see cref="Star"/> to include in this <see
         /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
         /// </param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of the <see cref="Star"/> to include in this <see
+        /// The <see cref="LuminosityClass"/> of the <see cref="Star"/> to include in this <see
         /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
         /// </param>
         public StarSystem(
@@ -186,6 +186,7 @@ namespace WorldFoundry.Space
         /// Adds a companion <see cref="Star"/> orbiting the specified <see cref="Star"/> in the
         /// collection, with the indicated period.
         /// </summary>
+        /// <param name="companions">A list of companion stars.</param>
         /// <param name="orbited">
         /// The existing <see cref="Star"/> in the collection which the new <see cref="Star"/> should orbit.
         /// </param>
@@ -896,7 +897,7 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Giants may get Trojan asteroid fields at their L4 & L5 Lagrangian points.
+        /// Giants may get Trojan asteroid fields at their L4 and L5 Lagrangian points.
         /// </summary>
         private void GenerateTrojans(Star star, GiantPlanet planet, double periapsis)
         {

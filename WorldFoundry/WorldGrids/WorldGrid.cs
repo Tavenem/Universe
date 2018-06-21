@@ -8,6 +8,9 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 
 namespace WorldFoundry.WorldGrids
 {
+    /// <summary>
+    /// A specialized data structure to describe the topopgrahy and contents of the surface of a <see cref="TerrestrialPlanet"/>.
+    /// </summary>
     public class WorldGrid
     {
         /// <summary>

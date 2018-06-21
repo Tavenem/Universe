@@ -33,6 +33,9 @@ namespace WorldFoundry.CelestialBodies
         }
 
         private float? _totalTemperatureAtApoapsis;
+        /// <summary>
+        /// The total temperature of this body when at the apoapsis of its orbit (if any).
+        /// </summary>
         public float TotalTemperatureAtApoapsis
         {
             get => GetProperty(ref _totalTemperatureAtApoapsis, GetTotalTemperatureAtApoapsis) ?? 0;
@@ -40,6 +43,9 @@ namespace WorldFoundry.CelestialBodies
         }
 
         private float? _totalTemperatureAtPeriapsis;
+        /// <summary>
+        /// The total temperature of this body when at the periapsis of its orbit (if any).
+        /// </summary>
         public float TotalTemperatureAtPeriapsis
         {
             get => GetProperty(ref _totalTemperatureAtPeriapsis, GetTotalTemperatureAtPeriapsis) ?? 0;
@@ -189,9 +195,6 @@ namespace WorldFoundry.CelestialBodies
         /// Calculates the temperature of the <see cref="CelestialBody"/>, averaged between periapsis
         /// and apoapsis, in K.
         /// </summary>
-        /// <param name="polar">
-        /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
-        /// </param>
         /// <returns>The average temperature of the <see cref="CelestialBody"/>.</returns>
         internal float GetTotalTemperatureAverageOrbital()
         {

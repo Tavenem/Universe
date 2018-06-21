@@ -159,12 +159,12 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of
+        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of
         /// the specified <see cref="CelestialRegion"/>.
         /// </summary>
         /// <param name="other">The <see cref="CelestialRegion"/> to test for inclusion within this one.</param>
         /// <returns>
-        /// True if this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of the specified one.
+        /// True if this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of the specified one.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <remarks>
@@ -360,14 +360,14 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <param name="type">
         /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="CelestialRegion"/> or <see cref="CelestialBody"/>.
+        /// types, but must be a subclass of <see cref="Orbiter"/>.
         /// </param>
         /// <param name="position">
         /// The location at which to generate the child. If null, a randomly-selected free space will
         /// be selected.
         /// </param>
-        /// <param name="orbitParameters">
-        /// An optional list of parameters which describe the child's orbit. May be null.
+        /// <param name="constructorParameters">
+        /// A list of parameters with which to call the child's constructor. May be null.
         /// </param>
         public virtual Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {
@@ -420,23 +420,23 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Finds the child <see cref="CelestialRegion"/> within local space whose own <see cref="Radius"/>
+        /// Finds the child <see cref="CelestialRegion"/> within local space whose own radius
         /// contains the specified position.
         /// </summary>
         /// <param name="position">The position to locate within a child.</param>
         /// <returns>
-        /// The child <see cref="CelestialRegion"/> which contains the given position within its <see
-        /// cref="Radius"/>, or null if no child does.
+        /// The child <see cref="CelestialRegion"/> which contains the given position within its
+        /// radius, or null if no child does.
         /// </returns>
         public CelestialRegion GetContainingChild(Vector3 position)
             => Children?.FirstOrDefault(c => c.GetType().IsSubclassOf(typeof(CelestialRegion)) && (c.Substance?.Shape?.IsPointWithin(c.Position, position) ?? false)) as CelestialRegion;
 
         /// <summary>
-        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="CelestialRegion"/>
-        /// for which it is contained (even partially) within that <see cref="Parent"/>'s local space.
+        /// Determines the nearest containing <see cref="CelestialEntity.Parent"/> of this <see cref="CelestialRegion"/>
+        /// for which it is contained (even partially) within that <see cref="CelestialEntity.Parent"/>'s local space.
         /// </summary>
         /// <returns>
-        /// The nearest containing <see cref="Parent"/> of this <see cref="CelestialRegion"/> which
+        /// The nearest containing <see cref="CelestialEntity.Parent"/> of this <see cref="CelestialRegion"/> which
         /// contains it within its local space (even partially); null if the object is outside the
         /// bounds of the hierarchy completely.
         /// </returns>
@@ -456,12 +456,12 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines the nearest containing <see cref="Parent"/> of this <see cref="CelestialRegion"/>
-        /// which contains the specified position within that <see cref="Parent"/>'s own local space
+        /// Determines the nearest containing <see cref="CelestialEntity.Parent"/> of this <see cref="CelestialRegion"/>
+        /// which contains the specified position within that <see cref="CelestialEntity.Parent"/>'s own local space
         /// (possibly this object itself if the position is not out of bounds).
         /// </summary>
         /// <returns>
-        /// The nearest containing <see cref="Parent"/> of this <see cref="CelestialRegion"/> which
+        /// The nearest containing <see cref="CelestialEntity.Parent"/> of this <see cref="CelestialRegion"/> which
         /// contains the position within its local space; null if the object is outside the bounds of
         /// the hierarchy completely.
         /// </returns>
@@ -542,7 +542,7 @@ namespace WorldFoundry.Space
         /// Converts set of grid coordinates to a collection of corner positions.
         /// </summary>
         /// <remarks>Grid space is 1-based, not 0-based.</remarks>
-        /// <param name="position">The grid space coordinates to convert.</param>
+        /// <param name="coordinates">The grid space coordinates to convert.</param>
         /// <returns>
         /// A list of the positions of the four corners of the grid space within local space.
         /// </returns>
@@ -737,7 +737,7 @@ namespace WorldFoundry.Space
 
         /// <summary>
         /// Sets the 'populated' flag for all grid coordinates overlapped (even
-        /// partially) by the region defined by the given <see cref="Utilities.MathUtil.Shapes.Shape"/>.
+        /// partially) by the region defined by the given shape.
         /// </summary>
         /// <param name="position">The center of the region to be marked as populated.</param>
         /// <param name="shape">The shape of the region to be marked as populated.</param>

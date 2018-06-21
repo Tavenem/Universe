@@ -221,10 +221,10 @@ namespace WorldFoundry.Orbits
             }
         }
 
+        private double? _semiMajorAxis;
         /// <summary>
         /// The semi-major axis of this <see cref="Orbit"/>.
         /// </summary>
-        private double? _semiMajorAxis;
         public double SemiMajorAxis
         {
             get
@@ -392,8 +392,8 @@ namespace WorldFoundry.Orbits
         /// Sets the orbit of the given <see cref="Orbiter"/> based on the orbiting object's current
         /// position and the given <paramref name="eccentricity"/>, and adjusts its velocity as necessary.
         /// </summary>
-        /// <param name="orbited">The celestial object to be orbited.</param>
-        /// <param name="orbiter">The celestial object which will be in orbit.</param>
+        /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+        /// <param name="orbitedObject">The celestial object to be orbited.</param>
         /// <param name="eccentricity">The degree to which the orbit is non-circular.</param>
         /// <remarks>
         /// The orbiting object's current position will be assumed to be on the desired orbit. An
@@ -483,8 +483,8 @@ namespace WorldFoundry.Orbits
         /// Sets the orbit of the given <see cref="Orbiter"/> according to the given orbital
         /// parameters, and adjusts its position and velocity as necessary.
         /// </summary>
-        /// <param name="orbited">The celestial object to be orbited.</param>
-        /// <param name="orbiter">The celestial object which will be in orbit.</param>
+        /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+        /// <param name="orbitedObject">The celestial object to be orbited.</param>
         /// <param name="periapsis">
         /// The distance between the objects at the closest point in the orbit.
         /// </param>
@@ -653,6 +653,10 @@ namespace WorldFoundry.Orbits
         public double GetSphereOfInfluenceRadius()
             => SemiMajorAxis * Math.Pow(OrbitingObject.Mass / OrbitedObject.Mass, 2.0 / 5.0);
 
+        /// <summary>
+        /// Given a true anomaly, calculates the state vectors of this orbit.
+        /// </summary>
+        /// <param name="trueAnomaly">A true anomaly.</param>
         public (Vector3 r, Vector3 v) GetStateVectorsForTrueAnomaly(float trueAnomaly)
         {
             var cosineAngleAscending = Math.Cos(_angleAscending.Value);

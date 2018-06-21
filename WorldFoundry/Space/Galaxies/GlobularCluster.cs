@@ -24,7 +24,7 @@ namespace WorldFoundry.Space.Galaxies
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public new static double childDensity = 1.3e-17;
+        private static readonly double childDensity = 1.3e-17;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

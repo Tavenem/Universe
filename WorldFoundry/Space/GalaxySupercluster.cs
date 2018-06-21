@@ -18,7 +18,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public static double childDensity = 1.0e-73;
+        private static readonly double childDensity = 1.0e-73;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

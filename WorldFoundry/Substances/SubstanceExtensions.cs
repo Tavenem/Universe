@@ -4,6 +4,9 @@ using System.Linq;
 
 namespace WorldFoundry.Substances
 {
+    /// <summary>
+    /// A set of <see cref="WorldFoundry"/>-specific extensions to <see cref="Substances"/> classes.
+    /// </summary>
     public static class SubstanceExtensions
     {
         /// <summary>

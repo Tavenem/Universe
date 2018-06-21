@@ -9,6 +9,7 @@
         /// Indicates an unset value, rather than zero humidity (which is indicated by <see cref="Superarid"/>).
         /// </summary>
         None,
+#pragma warning disable CS1591
         Superarid,
         Perarid,
         Arid,
@@ -17,5 +18,6 @@
         Humid,
         Perhumid,
         Superhumid
+#pragma warning restore CS1591
     }
 }

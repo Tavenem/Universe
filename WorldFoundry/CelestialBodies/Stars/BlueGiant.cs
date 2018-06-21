@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private static readonly float chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
+        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
         /// <remarks>

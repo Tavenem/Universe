@@ -3,8 +3,12 @@ using System.Collections.Generic;
 
 namespace WorldFoundry.Substances
 {
+    /// <summary>
+    /// A collection of <see cref="Substance"/>s specific to <see cref="WorldFoundry"/>.
+    /// </summary>
     public static class CosmicSubstances
     {
+#pragma warning disable CS1591
         public static readonly Chemical NeutronDegenerateMatter = new Chemical("Neutron Degenerate Matter")
         {
             AntoineMaximumTemperature = 0,
@@ -73,5 +77,6 @@ namespace WorldFoundry.Substances
             { (Chemical.Hydrogen, Phase.Plasma), 0.722f },
             { (Chemical.Helium, Phase.Plasma), 0.278f },
         });
+#pragma warning restore CS1591
     }
 }

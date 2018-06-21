@@ -25,7 +25,7 @@ namespace WorldFoundry.Space.AsteroidFields
     /// </remarks>
     public class AsteroidField : CelestialRegion
     {
-        public const string AsteroidBeltTypeName = "Asteroid Belt";
+        private const string AsteroidBeltTypeName = "Asteroid Belt";
 
         private readonly double? majorRadius;
         private readonly double? minorRadius;
@@ -36,7 +36,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public static double childDensity = 5.8e-26;
+        private static readonly double childDensity = 5.8e-26;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
@@ -118,14 +118,14 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         /// <param name="type">
         /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="CelestialRegion"/> or <see cref="CelestialBody"/>.
+        /// types, but must be a subclass of <see cref="Orbiter"/>.
         /// </param>
         /// <param name="position">
         /// The location at which to generate the child. If null, a randomly-selected free space will
         /// be selected.
         /// </param>
-        /// <param name="orbitParameters">
-        /// An optional list of parameters which describe the child's orbit. May be null.
+        /// <param name="constructorParameters">
+        /// A list of parameters with which the child's constructor will be called. May be null.
         /// </param>
         public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
         {

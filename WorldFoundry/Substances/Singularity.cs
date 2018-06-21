@@ -2,6 +2,9 @@
 
 namespace WorldFoundry.Substances
 {
+    /// <summary>
+    /// A <see cref="Substance"/> with infinite surface gravity.
+    /// </summary>
     public class Singularity : Substance
     {
         /// <summary>

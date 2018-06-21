@@ -18,7 +18,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        public static double childDensity = 1.5e-82;
+        private static readonly double childDensity = 1.5e-82;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
@@ -35,7 +35,7 @@ namespace WorldFoundry.Space
         public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
-        /// Specifies the velocity of the <see cref="Orbiter"/>.
+        /// Specifies the velocity of the <see cref="Orbits.Orbiter"/>.
         /// </summary>
         /// <remarks>
         /// The universe has no velocity. This will always return <see cref="Vector3.Zero"/>, and
@@ -53,12 +53,12 @@ namespace WorldFoundry.Space
         public Universe() : base() { }
 
         /// <summary>
-        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of
+        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of
         /// the specified <see cref="CelestialRegion"/>.
         /// </summary>
         /// <param name="other">The <see cref="CelestialRegion"/> to test for inclusion within this one.</param>
         /// <returns>
-        /// True if this <see cref="CelestialRegion"/> contains the <see cref="Position"/> of the specified one.
+        /// True if this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of the specified one.
         /// </returns>
         /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
         /// <remarks>

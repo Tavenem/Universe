@@ -10,14 +10,51 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class HabitabilityRequirements
     {
+        /// <summary>
+        /// Any requirements for the atmosphere.
+        /// </summary>
         public IList<Requirement> AtmosphericRequirements { get; set; }
+
+        /// <summary>
+        /// The minimum required temperature in K, if any.
+        /// </summary>
         public float? MinimumTemperature { get; set; }
+
+        /// <summary>
+        /// The maximum required temperature in K, if any.
+        /// </summary>
         public float? MaximumTemperature { get; set; }
+
+        /// <summary>
+        /// The minimum required pressure in kPa, if any.
+        /// </summary>
         public float? MinimumPressure { get; set; }
+
+        /// <summary>
+        /// The maximum required pressure in kPa, if any.
+        /// </summary>
         public float? MaximumPressure { get; set; }
+
+        /// <summary>
+        /// The minimum required gravity in N, if any.
+        /// </summary>
         public float? MinimumGravity { get; set; }
+
+        /// <summary>
+        /// The maximum required gravity in N, if any.
+        /// </summary>
         public float? MaximumGravity { get; set; }
 
+        /// <summary>
+        /// Initializes a new instance of <see cref="HabitabilityRequirements"/> with the given parameters. Any (or all) may be left null.
+        /// </summary>
+        /// <param name="atmosphericRequirements">Any requirements for the atmosphere.</param>
+        /// <param name="minimumTemperature">The minimum required temperature in K.</param>
+        /// <param name="maximumTemperature">The maximum required temperature in K.</param>
+        /// <param name="minimumPressure">The minimum required pressure in kPa.</param>
+        /// <param name="maximumPressure">The maximum required pressure in kPa.</param>
+        /// <param name="minimumGravity">The minimum required gravity in N.</param>
+        /// <param name="maximumGravity">The maximum required gravity in N.</param>
         public HabitabilityRequirements(
             List<Requirement> atmosphericRequirements,
             float? minimumTemperature, float? maximumTemperature,

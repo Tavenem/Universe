@@ -61,6 +61,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         private List<PlanetaryRing> _rings;
+        /// <summary>
+        /// The collection of <see cref="PlanetaryRing"/>s around this <see cref="Planemo"/>.
+        /// </summary>
         public IList<PlanetaryRing> Rings
         {
             get => GetProperty(ref _rings, GenerateRings);

@@ -20,7 +20,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private static readonly float chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
+        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
         /// <remarks>
@@ -31,7 +31,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private static readonly string designatorPrefix = "X";
         /// <summary>
-        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
+        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
         protected override string DesignatorPrefix => designatorPrefix;
 
@@ -59,7 +59,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         public NeutronStar(CelestialRegion parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
 
         /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
+        /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
         private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
 

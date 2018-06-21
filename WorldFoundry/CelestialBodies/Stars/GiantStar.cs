@@ -40,7 +40,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             bool populationII = false) : base(parent, position, null, luminosityClass, populationII) { }
 
         /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
+        /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
         private protected override void GenerateLuminosity()
         {

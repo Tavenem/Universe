@@ -1,4 +1,5 @@
-﻿// FastNoise.cs
+﻿#pragma warning disable CS1591
+// FastNoise.cs
 //
 // MIT License
 //
@@ -2381,3 +2382,4 @@ public class FastNoise
 	}
 
 }
+#pragma warning restore CS1591

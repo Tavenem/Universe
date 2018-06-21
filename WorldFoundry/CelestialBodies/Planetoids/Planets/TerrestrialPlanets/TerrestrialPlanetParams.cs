@@ -5,6 +5,9 @@ using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
+    /// <summary>
+    /// A set of parameters which constrains the random generation of a <see cref="TerrestrialPlanet"/>.
+    /// </summary>
     public class TerrestrialPlanetParams
     {
         /// <summary>

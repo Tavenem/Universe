@@ -87,8 +87,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// This planet's surface liquids and ices (not necessarily water).
         /// </summary>
         /// <remarks>
-        /// Represented as a separate <see cref="Mixture"/> rather than as a top layer of <see
-        /// cref="Planetoid.Composition"/> for ease of reference.
+        /// Represented as a separate <see cref="IComposition"/> rather than as a top layer of <see
+        /// cref="CelestialEntity.Substance"/> for ease of reference.
         /// </remarks>
         public IComposition Hydrosphere
         {
@@ -285,6 +285,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// habiltability requirements orbiting a Sol-like star in a new system in the given galaxy.
         /// </summary>
         /// <param name="galaxy">A galaxy in which to situate the new planet.</param>
+        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
         /// <returns>A human-habitable planet with default parameters.</returns>
         public static TerrestrialPlanet DefaultHumanPlanetForGalaxy(Galaxy galaxy, TerrestrialPlanetParams planetParams = null)
         {
@@ -298,6 +299,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// habiltability requirements orbiting a Sol-like star in a new spiral galaxy in the given universe.
         /// </summary>
         /// <param name="universe">A universe in which to situate the new planet.</param>
+        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
         /// <returns>A human-habitable planet with default parameters.</returns>
         public static TerrestrialPlanet DefaultHumanPlanetForUniverse(Universe universe, TerrestrialPlanetParams planetParams = null)
         {
@@ -313,6 +315,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// A shortcut constructor: generates a terrestrial planet with default parameters and human
         /// habiltability requirements orbiting a Sol-like star in a spiral galaxy in a new universe.
         /// </summary>
+        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
         /// <returns>A human-habitable planet with default parameters.</returns>
         public static TerrestrialPlanet DefaultHumanPlanetNewUniverse(TerrestrialPlanetParams planetParams = null) => DefaultHumanPlanetForUniverse(new Universe(), planetParams);
 
@@ -1504,7 +1507,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Generates a new <see cref="Topography"/> for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
-        /// <param name="size">The grid size (level of detail) for the <see cref="WorldGrid"/>.</param>
         private void GenerateTopography()
         {
             var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
@@ -1689,8 +1691,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// Calculates the radius required to produce the given surface gravity, if <see
-        /// cref="Orbits.Orbiter.Mass"/> is already defined.
+        /// Calculates the radius required to produce the given surface gravity, if mass is already defined.
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in m/s².</param>
         /// <returns>The radius required to produce the given surface gravity, in meters.</returns>

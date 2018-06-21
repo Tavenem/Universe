@@ -311,11 +311,6 @@ namespace WorldFoundry.Space
         /// <param name="generator">
         /// An optional generation method which will be invoked when the backing store is first initialized.
         /// </param>
-        /// <param name="condition">
-        /// An optional condition which will be evaluated when the backing store is null, which determines
-        /// whether to provide automatic initialization, or to allow the null return.
-        /// </param>
-        /// <returns></returns>
         protected T GetProperty<T>(ref T storage, Action generator = null)
         {
             if (storage == null || (storage is string s && string.IsNullOrEmpty(s)))

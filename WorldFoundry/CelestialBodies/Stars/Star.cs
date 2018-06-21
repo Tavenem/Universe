@@ -15,7 +15,7 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class Star : CelestialBody
     {
-        public const string RedDwarfTypeName = "Red Dwarf";
+        private const string RedDwarfTypeName = "Red Dwarf";
 
         internal new static string baseTypeName = "Star";
         /// <summary>
@@ -25,7 +25,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private string _designatorPrefix;
         /// <summary>
-        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
+        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
         protected override string DesignatorPrefix => GetProperty(ref _designatorPrefix, GenerateDesignatorPrefix);
 
@@ -372,7 +372,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         }
 
         /// <summary>
-        /// Determines <see cref="SpectralClass"/> from <see cref="ThermalBody.Temperature"/>.
+        /// Determines <see cref="SpectralClass"/> from temperature.
         /// </summary>
         /// <remarks>
         /// Only applies to the standard classes (excludes W).

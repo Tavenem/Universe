@@ -19,8 +19,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         public override string BaseTypeName => baseTypeName;
 
         private static readonly float chanceOfLife = 0;
-        /// <summary>
-        /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
+        /// <summary>The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
         /// <remarks>
@@ -55,7 +54,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         public WhiteDwarf(CelestialRegion parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
 
         /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
+        /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
         private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
 

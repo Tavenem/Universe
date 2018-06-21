@@ -14,7 +14,7 @@ using WorldFoundry.Substances;
 namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Represents a planetary atmosphere, represented as a <see cref="Mixture"/>.
+    /// Represents a planetary atmosphere, represented as a <see cref="Substance"/>.
     /// </summary>
     public class Atmosphere : Substance
     {
@@ -152,6 +152,7 @@ namespace WorldFoundry.Climate
         /// Initializes a new instance of <see cref="Atmosphere"/> with the given parameters.
         /// </summary>
         /// <param name="body">The <see cref="CelestialBodies.CelestialBody"/> this <see cref="Atmosphere"/> surrounds.</param>
+        /// <param name="composition">The <see cref="IComposition"/> which defines this <see cref="Atmosphere"/>.</param>
         /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
         public Atmosphere(CelestialBody body, IComposition composition, float pressure)
         {
