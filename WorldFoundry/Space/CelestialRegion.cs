@@ -420,6 +420,34 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
+        /// Populates the region around a set of grid coordinates, then enumerates the children in
+        /// that grid space.
+        /// </summary>
+        /// <param name="coordinates">A set of 1-based grid coordinates to search.</param>
+        /// <returns>
+        /// An enumeration of the child <see cref="CelestialEntity"/> objects in the given grid space.
+        /// </returns>
+        public IEnumerable<CelestialEntity> GetChildrenAtCoordinates(Vector3 coordinates)
+        {
+            Populate3x3GridRegion(coordinates);
+            if (Children != null)
+            {
+                foreach (var child in Children)
+                {
+                    var childCoordinates = PositionToGridCoords(child.Position);
+                    if (childCoordinates.X < coordinates.X - 1 || childCoordinates.X > coordinates.X + 1 ||
+                        childCoordinates.Y < coordinates.Y - 1 || childCoordinates.Y > coordinates.Y + 1 ||
+                        childCoordinates.Z < coordinates.Z - 1 || childCoordinates.Z > coordinates.Z + 1)
+                    {
+                        continue;
+                    }
+
+                    yield return child;
+                }
+            }
+        }
+
+        /// <summary>
         /// Finds the child <see cref="CelestialRegion"/> within local space whose own radius
         /// contains the specified position.
         /// </summary>
@@ -576,7 +604,7 @@ namespace WorldFoundry.Space
         /// If even the corner closest to the origin (the defining corner) is inside or tangent to
         /// the defined limit of local space, the grid space is considered in-bounds.
         /// </remarks>
-        private bool IsGridSpaceInBounds(Vector3 coordinates) => (coordinates * GridSize).Length() <= LocalSpaceScale;
+        public bool IsGridSpaceInBounds(Vector3 coordinates) => (coordinates * GridSize).Length() <= LocalSpaceScale;
 
         /// <summary>
         /// Determines if the specified grid coordinates have already been populated with children.
@@ -697,7 +725,7 @@ namespace WorldFoundry.Space
         /// <returns>
         /// The coordinates of the grid space where the position is located within local space.
         /// </returns>
-        private protected Vector3 PositionToGridCoords(Vector3 position)
+        public Vector3 PositionToGridCoords(Vector3 position)
         {
             var x = position.X / GridSize;
             if (x != x % 1)
