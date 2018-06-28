@@ -16,20 +16,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class GiantPlanet : Planemo
     {
-        internal new static string baseTypeName = "Gas Giant";
+        private const string baseTypeName = "Gas Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
+        private const bool hasFlatSurface = true;
+        /// <summary>
+        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
+        /// (i.e. is non-solid). Prevents generation of a height map during <see
+        /// cref="Planetoid.Topography"/> generation.
+        /// </summary>
+        public override bool HasFlatSurface => hasFlatSurface;
+
         internal static int subMinDensity = 600;
         private protected int SubMinDensity => subMinDensity;
+
         internal static int minDensity = 1100;
         private protected int MinDensity => minDensity;
+
         internal static int maxDensity = 1650;
         private protected int MaxDensity => maxDensity;
 
-        private static readonly double maxMassForType = 2.5e28;
+        private const double maxMassForType = 2.5e28;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -48,7 +58,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private static readonly double minMassForType = 6.0e25;
+        private const double minMassForType = 6.0e25;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.

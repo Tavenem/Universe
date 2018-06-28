@@ -35,16 +35,6 @@ namespace WorldFoundry.WorldGrids
         public float LakeDepth { get; set; }
 
         /// <summary>
-        /// The latitude of this <see cref="Corner"/>, as an angle in radians from the equator.
-        /// </summary>
-        public float Latitude { get; internal set; }
-
-        /// <summary>
-        /// The longitude of this <see cref="Corner"/>, as an angle in radians from the X-axis at 0 rotation.
-        /// </summary>
-        public float Longitude { get; internal set; }
-
-        /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Corner"/>.
         /// </summary>
         public TerrainType TerrainType { get; internal set; } = TerrainType.Land;

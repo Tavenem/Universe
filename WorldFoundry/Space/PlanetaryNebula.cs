@@ -14,7 +14,7 @@ namespace WorldFoundry.Space
     /// <remarks>Not actually a nebula. Gets its name from a quirk of history.</remarks>
     public class PlanetaryNebula : CelestialRegion
     {
-        internal new static string baseTypeName = "Planetary Nebula";
+        private const string baseTypeName = "Planetary Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

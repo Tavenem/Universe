@@ -30,13 +30,13 @@ namespace WorldFoundry.Space.AsteroidFields
         private readonly double? majorRadius;
         private readonly double? minorRadius;
 
-        internal new static string baseTypeName = "Asteroid Field";
+        private const string baseTypeName = "Asteroid Field";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static readonly double childDensity = 5.8e-26;
+        private const double childDensity = 5.8e-26;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

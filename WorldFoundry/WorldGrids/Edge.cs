@@ -11,11 +11,6 @@
         public int[] Corners { get; private set; }
 
         /// <summary>
-        /// The length of this <see cref="Edge"/>, in meters.
-        /// </summary>
-        public float Length { get; set; }
-
-        /// <summary>
         /// The index of the <see cref="Corner"/> towards which the river on this <see cref="Edge"/>
         /// flows. -1 if the <see cref="Edge"/> has no river.
         /// </summary>

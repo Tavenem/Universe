@@ -24,8 +24,15 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
+
+            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length}");
+            Console.WriteLine($"Radius: {planet.Radius / 1000} km");
+            Console.WriteLine($"Surface area: {planet.Topography.Tiles.Sum(x => x.Area) / 1000000} km²");
+            Console.WriteLine($"Tile area: {planet.Topography.Tiles[13].Area / 1000000} km²");
         }
 
         [TestMethod]
@@ -54,7 +61,9 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Save()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var stringData = SaveAsString(planet);
@@ -66,7 +75,9 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Save_Load()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var stringData = SaveAsString(planet);

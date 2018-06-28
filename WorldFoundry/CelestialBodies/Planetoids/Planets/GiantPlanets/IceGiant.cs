@@ -11,7 +11,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class IceGiant : GiantPlanet
     {
-        internal new static string baseTypeName = "Ice Giant";
+        private const string baseTypeName = "Ice Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

@@ -13,11 +13,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class OceanPlanet : TerrestrialPlanet
     {
-        internal new static string baseTypeName = "Ocean Planet";
+        private const string baseTypeName = "Ocean Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
+
+        private const bool hasFlatSurface = true;
+        /// <summary>
+        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
+        /// (i.e. is non-solid). Prevents generation of a height map during <see
+        /// cref="Planetoid.Topography"/> generation.
+        /// </summary>
+        public override bool HasFlatSurface => hasFlatSurface;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -28,7 +36,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override float MagnetosphereChanceFactor => 0.5f;
 
-        private static readonly string planemoClassPrefix = "Ocean";
+        private const string planemoClassPrefix = "Ocean";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

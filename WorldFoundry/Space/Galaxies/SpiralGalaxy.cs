@@ -10,7 +10,7 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class SpiralGalaxy : Galaxy
     {
-        internal new static string baseTypeName = "Spiral Galaxy";
+        private const string baseTypeName = "Spiral Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

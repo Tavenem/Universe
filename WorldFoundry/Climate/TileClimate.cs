@@ -73,24 +73,29 @@ namespace WorldFoundry.Climate
         /// </summary>
         public float Temperature { get; internal set; }
 
-        internal static int GetAirCellIndexOfNearlyZeroSaturationVaporPressure(TerrestrialPlanet planet, Tile t, TileClimate tc)
+        internal static int GetAirCellIndexOfNearlyZeroSaturationVaporPressure(TerrestrialPlanet planet, float elevation, float temperature)
         {
-            var height = planet.Atmosphere.GetHeightForTemperature(Atmosphere.TemperatureAtNearlyZeroSaturationVaporPressure, tc.Temperature, t.Elevation);
+            var height = planet.Atmosphere.GetHeightForTemperature(Atmosphere.TemperatureAtNearlyZeroSaturationVaporPressure, temperature, elevation);
             return (int)Math.Ceiling(height / AirCellLayerHeight);
         }
 
-        internal static float GetSaturationVaporPressure(int index, TerrestrialPlanet planet, Tile t, TileClimate tc)
+        internal static float GetSaturationVaporPressure(TerrestrialPlanet planet, float elevation, float temperature)
         {
-            var height = AirCellLayerHeight * index;
-            var temperature = index == 0
-                ? tc.Temperature
-                : planet.Atmosphere.GetTemperatureAtElevation(tc.Temperature, t.Elevation + height);
-            var pressure = planet.Atmosphere.GetAtmosphericPressure(temperature, t.Elevation + height);
+            var pressure = planet.Atmosphere.GetAtmosphericPressure(temperature, elevation);
             return Atmosphere.GetSaturationVaporPressure(temperature * planet.Atmosphere.Exner(pressure));
         }
 
-        internal static float GetSaturationMixingRatio(TerrestrialPlanet planet, Tile t, TileClimate tc)
-            => Atmosphere.GetSaturationMixingRatio(GetSaturationVaporPressure(0, planet, t, tc), tc.AtmosphericPressure);
+        internal static float GetSaturationVaporPressure(int index, TerrestrialPlanet planet, float elevation, float temperature)
+        {
+            var height = AirCellLayerHeight * index;
+            var temperatureAtElevation = index == 0
+                ? temperature
+                : planet.Atmosphere.GetTemperatureAtElevation(temperature, elevation + height);
+            return GetSaturationVaporPressure(planet, elevation + height, temperatureAtElevation);
+        }
+
+        internal static float GetSaturationMixingRatio(TerrestrialPlanet planet, TileClimate tc, float elevation)
+            => Atmosphere.GetSaturationMixingRatio(GetSaturationVaporPressure(0, planet, elevation, tc.Temperature), tc.AtmosphericPressure);
 
         internal static float GetAirCellHeight(TileClimate tc)
             => Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * AirCellLayerHeight * tc.AirCellLayers;

@@ -16,7 +16,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         internal override double DensityForType => densityForType;
 
-        private static readonly string planemoClassPrefix = "Rocky";
+        private const string planemoClassPrefix = "Rocky";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

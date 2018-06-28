@@ -1,5 +1,4 @@
-﻿using ExtensionLib;
-using MathAndScience.MathUtil;
+﻿using MathAndScience.MathUtil;
 using MathAndScience.MathUtil.Shapes;
 using System;
 using System.Collections.Generic;
@@ -262,13 +261,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private protected virtual float GetCoreProportion() => CoreProportion;
 
         /// <summary>
-        /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planemo"/>.
-        /// </summary>
-        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
-        /// <returns></returns>
-        internal float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
-
-        /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the crust of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
@@ -331,26 +323,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
 
             return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);
-        }
-
-        /// <summary>
-        /// Converts a <see cref="Vector3"/> to a latitude, in radians.
-        /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
-        /// <returns>A latitude, as an angle in radians from the equator.</returns>
-        internal float VectorToLatitude(Vector3 v) => (float)(MathConstants.HalfPI - Axis.GetAngle(v));
-
-        /// <summary>
-        /// Converts a <see cref="Vector3"/> to a longitude, in radians.
-        /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planemo"/>.</param>
-        /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
-        internal float VectorToLongitude(Vector3 v)
-        {
-            var u = Vector3.Transform(v, AxisRotation);
-            return u.X == 0 && u.Z == 0
-                ? 0
-                : (float)Math.Atan2(u.X, u.Z);
         }
     }
 }

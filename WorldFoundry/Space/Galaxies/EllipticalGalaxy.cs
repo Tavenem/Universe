@@ -16,7 +16,7 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class EllipticalGalaxy : Galaxy
     {
-        internal new static string baseTypeName = "Elliptical Galaxy";
+        private const string baseTypeName = "Elliptical Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

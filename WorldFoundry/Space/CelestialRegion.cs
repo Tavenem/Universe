@@ -21,7 +21,7 @@ namespace WorldFoundry.Space
         /// </summary>
         public virtual IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => null;
 
-        private static readonly double childDensity = 0;
+        private const double childDensity = 0;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

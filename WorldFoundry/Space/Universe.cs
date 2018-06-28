@@ -12,13 +12,13 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Universe : CelestialRegion
     {
-        internal new static string baseTypeName = "Universe";
+        private const string baseTypeName = "Universe";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static readonly double childDensity = 1.5e-82;
+        private const double childDensity = 1.5e-82;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

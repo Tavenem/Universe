@@ -12,7 +12,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
     /// </summary>
     public class BlackHole : CelestialBody
     {
-        internal new static string baseTypeName = "Black Hole";
+        private const string baseTypeName = "Black Hole";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

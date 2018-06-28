@@ -161,7 +161,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             List<Requirement> atmosphericRequirements = null,
             float? axialTilt = DefaultAxialTilt,
             float? eccentricity = DefaultEccentricity,
-            int? gridSize = WorldGrid.DefaultGridSize,
+            int? gridSize = null,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
@@ -173,6 +173,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             if (atmosphericRequirements == null)
             {
                 atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            }
+            if (gridSize == null)
+            {
+                gridSize = WorldGrid.DefaultGridSize;
             }
             return new TerrestrialPlanetParams(
                 atmosphericPressure,
