@@ -13,6 +13,17 @@ namespace WorldFoundry.WorldGrids
     /// </summary>
     public class WorldGrid
     {
+        /// <summary>
+        /// Indicates the desired radius for <see cref="Tile"/>s, in m. Null by default, which
+        /// indicates that the <see cref="DefaultGridSize"/> will be used instead.
+        /// </summary>
+        /// <remarks>
+        /// If this property is set, a <see cref="GridSize"/> will automatically be set based on a
+        /// <see cref="Planetoid"/>'s radius in order to produce <see cref="Tile"/>s with radii as
+        /// close to the intended value as possible.
+        /// </remarks>
+        public static double? DefaultDesiredTileRadius { get; set; }
+
         private static short _defaultGridSize = 6;
         /// <summary>
         /// The default grid size (level of detail). Initial value is 6; maximum is <see cref="MaxGridSize"/>.
@@ -46,6 +57,13 @@ namespace WorldFoundry.WorldGrids
             { (1.23824518242403e-7, 9.11480125925495e-7) },
             { (3.60144138460099e-8, 3.03826887009348e-7) },
         };
+        
+        /// <summary>
+        /// When generating a <see cref="GridSize"/> automatically (such as through <see
+        /// cref="DefaultDesiredTileRadius"/>), this property indicates an optional maximum size
+        /// allowable. Null by default, which indicates that the maximum is the absolute <see cref="MaxGridSize"/>.
+        /// </summary>
+        public static short? MaxGeneratedGridSize { get; set; }
 
         /// <summary>
         /// The maximum grid size (level of detail). Even values below this limit may be impractical,
@@ -103,6 +121,55 @@ namespace WorldFoundry.WorldGrids
         {
             Planet = planet;
             SubdivideGrid(size);
+        }
+
+        /// <summary>
+        /// Calculates the grid size which would most closely approximate the given <see
+        /// cref="Tile"/> radius, given a <see cref="Planetoid"/>'s radius squared.
+        /// </summary>
+        /// <param name="radiusSquared">A <see cref="Planetoid"/>'s radius squared, in m.</param>
+        /// <param name="tileRadius">The desired approximate <see cref="Tile"/> radius, in m.</param>
+        /// <param name="max">
+        /// An optional maximum grid size, which will not be exceeded by the calculation.
+        /// </param>
+        /// <returns>
+        /// The grid size which will produce <see cref="Tile"/>s with the nearest radius to the
+        /// desired value.
+        /// </returns>
+        public static short GetGridSizeForTileRadius(double radiusSquared, double tileRadius, int? max = null)
+        {
+            var prevDiff = 0.0;
+            for (short i = 0; i < gridAreas.Count; i++)
+            {
+                var tileArea = i == 0 ? gridAreas[i].fiveSided : gridAreas[i].sixSided;
+                tileArea *= radiusSquared;
+                var radius = Math.Sqrt(tileArea / Math.PI);
+
+                if (radius <= tileRadius || (max.HasValue && i >= max))
+                {
+                    if (i == 0)
+                    {
+                        return 0;
+                    }
+                    else
+                    {
+                        var diff = tileRadius - radius;
+                        if (diff < prevDiff)
+                        {
+                            return i;
+                        }
+                        else
+                        {
+                            return (short)(i - 1);
+                        }
+                    }
+                }
+                else
+                {
+                    prevDiff = radius - tileRadius;
+                }
+            }
+            return (short)(gridAreas.Count - 1);
         }
 
         private void AddCorner(int index, int[] tileIndexes)

@@ -526,7 +526,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         private protected virtual void GenerateTopography()
         {
-            Topography = new WorldGrid(this, WorldGrid.DefaultGridSize);
+            var size = WorldGrid.DefaultGridSize;
+
+            if (WorldGrid.DefaultDesiredTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value);
+            }
+
+            Topography = new WorldGrid(this, size);
 
             AddResources(Substance.Composition.GetSurface().GetChemicals(Phase.Solid).Where(x => x.chemical is Metal));
         }

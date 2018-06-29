@@ -16,6 +16,8 @@ namespace WorldFoundry.Test
     {
         private static TypeModel _compiledSerializer;
         private const int gridSize = 6;
+        private const double gridTileRadius = 160000;
+        private const int maxGridSize = 7;
         private const int numSeasons = 4;
 
         [ClassInitialize]
@@ -24,7 +26,8 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: gridTileRadius, maxGridSize: maxGridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
@@ -32,7 +35,7 @@ namespace WorldFoundry.Test
             Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length}");
             Console.WriteLine($"Radius: {planet.Radius / 1000} km");
             Console.WriteLine($"Surface area: {planet.Topography.Tiles.Sum(x => x.Area) / 1000000} km²");
-            Console.WriteLine($"Tile area: {planet.Topography.Tiles[13].Area / 1000000} km²");
+            Console.WriteLine($"Tile area: {(planet.Topography.Tiles.Length > 12 ? planet.Topography.Tiles[12].Area : planet.Topography.Tiles[11].Area) / 1000000} km²");
         }
 
         [TestMethod]

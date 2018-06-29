@@ -88,9 +88,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public int? GridSize { get; set; }
 
         /// <summary>
+        /// The target tile radius.
+        /// </summary>
+        public double? GridTileRadius { get; set; }
+
+        /// <summary>
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
         public bool? HasMagnetosphere { get; set; }
+
+        /// <summary>
+        /// The maximum generated grid size (level of detail).
+        /// </summary>
+        public int? MaxGridSize { get; set; }
 
         /// <summary>
         /// The target radius, in meters.
@@ -131,7 +141,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float? axialTilt = null,
             float? eccentricity = null,
             int? gridSize = null,
+            double? gridTileRadius = null,
             bool? hasMagnetosphere = null,
+            int? maxGridSize = null,
             int? radius = null,
             double? revolutionPeriod = null,
             double? rotationalPeriod = null,
@@ -144,7 +156,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
+            GridTileRadius = gridTileRadius;
             HasMagnetosphere = hasMagnetosphere;
+            MaxGridSize = maxGridSize;
             Radius = radius;
             RevolutionPeriod = revolutionPeriod;
             RotationalPeriod = rotationalPeriod;
@@ -162,6 +176,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             float? axialTilt = DefaultAxialTilt,
             float? eccentricity = DefaultEccentricity,
             int? gridSize = null,
+            double? gridTileRadius = null,
+            int? maxGridSize = null,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
@@ -184,7 +200,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 axialTilt,
                 eccentricity,
                 gridSize,
+                gridTileRadius,
                 hasMagnetosphere,
+                maxGridSize,
                 radius,
                 revolutionPeriod,
                 rotationalPeriod,

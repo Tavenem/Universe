@@ -1461,6 +1461,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private protected override void GenerateTopography()
         {
             var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
+
+            if (PlanetParams.GridTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+
             Topography = new WorldGrid(this, size);
 
             AddResources(Substance.Composition.GetSurface().GetChemicals(Phase.Solid).Where(x => x.chemical is Metal));
