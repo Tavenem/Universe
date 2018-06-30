@@ -339,50 +339,71 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </param>
         public Planetoid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
 
-        private protected void AddResource(Chemical chemical, int tileIndex, HashSet<int> chosenTiles, ref int numTiles)
+        private protected int AddResource(Chemical substance, float proportion, bool vein, bool perturb = false, int? seed = null)
         {
-            var tile = Topography.Tiles[tileIndex];
-            if (tile.Resources == null)
+            if (!seed.HasValue)
             {
-                tile.Resources = new HashSet<Chemical>();
+                seed = Randomizer.Static.NextInclusiveMaxValue();
             }
-            tile.Resources.Add(chemical);
-            chosenTiles.Add(tile.Index);
-            numTiles--;
-
-            // chance for each surrounding tile as well
-            for (var i = 0; i < tile.EdgeCount; i++)
+            var n = new FastNoise(seed.Value);
+            n.SetFractalLacunarity(3);
+            n.SetFractalGain(0.75f);
+            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            if (vein)
             {
-                var neighbor = tile.Tiles[i];
-                if (!chosenTiles.Contains(neighbor) && Randomizer.Static.NextDouble() <= 0.33333)
+                n.SetFractalType(FastNoise.FractalType.RigidMulti);
+            }
+            else
+            {
+                n.SetFractalType(FastNoise.FractalType.Billow);
+            }
+            if (perturb)
+            {
+                n.SetGradientPerturbAmp(20);
+            }
+
+            var modifier = proportion - 0.5f;
+            var ratio = 1 / (1 + modifier);
+            foreach (var tile in Topography.Tiles)
+            {
+                var x = tile.Vector.X;
+                var y = tile.Vector.Y;
+                var z = tile.Vector.Z;
+                if (perturb)
                 {
-                    AddResource(chemical, neighbor, chosenTiles, ref numTiles);
+                    n.GradientPerturbFractal(ref x, ref y, ref z);
+                }
+                var v = n.GetNoise(x, y, z);
+                if (vein)
+                {
+                    v = 1 - v;
+                }
+                var richness = v + modifier;
+                if (richness <= 0)
+                {
+                    if (tile.Resources?.ContainsKey(substance) ?? false)
+                    {
+                        tile.Resources.Remove(substance);
+                    }
+                }
+                else
+                {
+                    if (tile.Resources == null)
+                    {
+                        tile.Resources = new Dictionary<Chemical, float>();
+                    }
+                    tile.Resources.Add(substance, richness * ratio);
                 }
             }
+
+            return seed.Value;
         }
 
-        private protected void AddResources(IEnumerable<(Chemical substance, float proportion)> resources)
+        private protected void AddResources(IEnumerable<(Chemical substance, float proportion, bool vein)> resources)
         {
-            foreach (var (substance, proportion) in resources)
+            foreach (var (substance, proportion, vein) in resources)
             {
-                var numTiles = (int)Math.Max(1, Math.Round(Topography.Tiles.Length * proportion));
-
-                // Clear existing.
-                foreach (var tile in Topography.Tiles.Where(x => x.Resources?.Contains(substance) ?? false))
-                {
-                    tile.Resources.Remove(substance);
-                }
-
-                var chosenTiles = new HashSet<int>();
-                foreach (var tile in Randomizer.Static.DiscreteUniformSamples(0, Topography.Tiles.Length - 1))
-                {
-                    if (numTiles <= 0 || chosenTiles.Count >= Topography.Tiles.Length)
-                    {
-                        break;
-                    }
-
-                    AddResource(substance, tile, chosenTiles, ref numTiles);
-                }
+                AddResource(substance, proportion, vein);
             }
         }
 
@@ -535,7 +556,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             Topography = new WorldGrid(this, size);
 
-            AddResources(Substance.Composition.GetSurface().GetChemicals(Phase.Solid).Where(x => x.chemical is Metal));
+            AddResources(Substance.Composition.GetSurface()
+                .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
+                .Select(x => (x.chemical, x.proportion, true)));
         }
 
         /// <summary>

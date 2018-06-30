@@ -281,7 +281,7 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        public void SetGridSize0()
+        private void SetGridSize0()
         {
             SetNewGridSize(0);
             var x = -0.525731112119133606f;
@@ -417,7 +417,7 @@ namespace WorldFoundry.WorldGrids
             return (prevCorners, prevEdges, prevTiles);
         }
 
-        public void SubdivideGrid()
+        private void SubdivideGrid()
         {
             var (prevCorners, prevEdges, prevTiles) = SetNewGridSize((short)(GridSize + 1));
 

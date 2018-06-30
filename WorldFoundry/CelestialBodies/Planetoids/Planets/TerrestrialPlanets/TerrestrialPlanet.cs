@@ -26,12 +26,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const float TemperatureErrorTolerance = 0.5f;
 
-        private const string baseTypeName = "Terrestrial Planet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => baseTypeName;
-
         internal static bool canHaveOxygen = true;
         /// <summary>
         /// Used to allow or prevent oxygen in the atmosphere of a terrestrial planet.
@@ -149,10 +143,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public override string PlanemoClassPrefix => planemoClassPrefix;
 
         /// <summary>
-        /// The parameters specified on creation which control the random generation of this <see
+        /// The parameters which control the random generation of this <see
         /// cref="TerrestrialPlanet"/>'s characteristics.
         /// </summary>
-        private protected TerrestrialPlanetParams PlanetParams { get; set; }
+        public TerrestrialPlanetParams PlanetParams { get; set; }
 
         internal new static float ringChance = 10;
         /// <summary>
@@ -173,7 +167,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The collection of <see cref="Season"/>s which make up a year of this <see
         /// cref="TerrestrialPlanet"/>'s weather.
         /// </summary>
-        internal IList<Season> Seasons { get; private set; }
+        /// <remarks>
+        /// This collection should not be used directly. Instead, use <see cref="GetSeason(int,
+        /// int)"/> or <see cref="GetSeasons(int)"/>, both of which use this cached list when
+        /// possible, and generate new <see cref="Season"/>s when needed.
+        /// </remarks>
+        public IList<Season> Seasons { get; private set; }
 
         private float? _surfaceAlbedo;
         /// <summary>
@@ -873,45 +872,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // It is presumed that it is statistically likely that the current eon is not the first
             // with life, and therefore that some fossilized hydrocarbon deposits exist.
             var hydrocarbonProportion = (float)Randomizer.Static.NextDouble(0.05, 0.33333);
-            AddResources(new(Chemical, float)[]
-            {
-                (Chemical.Coal, hydrocarbonProportion),
-                (Chemical.Petroleum, hydrocarbonProportion),
-            });
+
+            AddResource(Chemical.Coal, hydrocarbonProportion, false);
+
+            var petroleumSeed = AddResource(Chemical.Petroleum, hydrocarbonProportion, false);
+
             // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
-            var numTiles = (int)Math.Max(1, Math.Round(Topography.Tiles.Length * hydrocarbonProportion));
-            // Clear existing.
-            foreach (var tile in Topography.Tiles.Where(x => x.Resources?.Contains(Chemical.Methane) ?? false))
-            {
-                tile.Resources.Remove(Chemical.Methane);
-            }
-
-            var petroleumTiles = new List<int>(Topography.Tiles.Where(x => x.Resources?.Contains(Chemical.Petroleum) ?? false).Select(x => x.Index));
-            var chosenTiles = new HashSet<int>();
-            // First attempt to select tiles with petroleum.
-            foreach (var index in Randomizer.Static.DiscreteUniformSamples(0, petroleumTiles.Count - 1))
-            {
-                if (numTiles <= 0 || chosenTiles.Count >= petroleumTiles.Count)
-                {
-                    break;
-                }
-
-                AddResource(Chemical.Methane, petroleumTiles[index], chosenTiles, ref numTiles);
-            }
-            // If tiles remain after all petroleum has been exhausted, select other tiles.
-            if (numTiles > 0)
-            {
-                var nonPetroleumTiles = Enumerable.Range(0, Topography.Tiles.Length).Except(petroleumTiles).ToList();
-                foreach (var index in Randomizer.Static.DiscreteUniformSamples(0, nonPetroleumTiles.Count - 1))
-                {
-                    if (numTiles <= 0 || chosenTiles.Count >= Topography.Tiles.Length)
-                    {
-                        break;
-                    }
-
-                    AddResource(Chemical.Methane, nonPetroleumTiles[index], chosenTiles, ref numTiles);
-                }
-            }
+            AddResource(Chemical.CarbonMonoxide, hydrocarbonProportion, false, true, petroleumSeed);
         }
 
         /// <summary>
@@ -1462,7 +1429,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
 
-            if (PlanetParams.GridTileRadius.HasValue)
+            if (PlanetParams?.GridTileRadius.HasValue ?? false)
             {
                 size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
             }
@@ -1473,7 +1440,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             Topography = new WorldGrid(this, size);
 
-            AddResources(Substance.Composition.GetSurface().GetChemicals(Phase.Solid).Where(x => x.chemical is Metal));
+            AddResources(Substance.Composition.GetSurface()
+                .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
+                .Select(x => (x.chemical, x.proportion, true)));
         }
 
         /// <summary>

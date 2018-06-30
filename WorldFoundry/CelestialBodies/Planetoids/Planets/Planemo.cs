@@ -18,6 +18,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private const float IcyRingDensity = 300.0f;
         private const float RockyRingDensity = 1380.0f;
 
+        private const string baseTypeName = "Planet";
+        /// <summary>
+        /// The base name for this type of <see cref="CelestialEntity"/>.
+        /// </summary>
+        public override string BaseTypeName => baseTypeName;
+
         /// <summary>
         /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
         /// </summary>

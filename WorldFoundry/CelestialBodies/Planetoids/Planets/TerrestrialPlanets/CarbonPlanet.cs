@@ -17,12 +17,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const float CoreProportion = 0.4f;
 
-        private const string baseTypeName = "Carbon Planet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => baseTypeName;
-
         internal new static bool canHaveOxygen = false;
         /// <summary>
         /// Used to allow or prevent oxygen in the composition and atmosphere of a terrestrial planet.
