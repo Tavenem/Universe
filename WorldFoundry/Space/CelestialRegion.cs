@@ -514,6 +514,19 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
+        /// Retrieves the approximate total number of grid spaces in local space.
+        /// </summary>
+        public int GetGridNumber()
+        {
+            if (double.IsInfinity(GridSize) || double.IsNaN(GridSize))
+            {
+                return 1;
+            }
+
+            return (int)Math.Ceiling(Substance.Shape.Volume / Math.Pow(GridSize * LocalScale, 3));
+        }
+
+        /// <summary>
         /// Retrieves the number of grid spaces from the center of local space to the edge of the grid.
         /// </summary>
         public int GetGridRange()
