@@ -26,7 +26,7 @@ namespace WorldFoundry.Web.Controllers
             int radius = TerrestrialPlanetParams.DefaultRadius,
             double rotationalPeriod = TerrestrialPlanetParams.DefaultRotationalPeriod,
             float waterRatio = TerrestrialPlanetParams.DefaultWaterRatio,
-            int gridSize = WorldGrid.DefaultGridSize)
+            int? gridSize = null)
         {
             var system = new StarSystem(null, Vector3.Zero, typeof(Star), SpectralClass.G, LuminosityClass.V);
             var star = system.Stars.FirstOrDefault();
@@ -66,7 +66,7 @@ namespace WorldFoundry.Web.Controllers
             int radius = TerrestrialPlanetParams.DefaultRadius,
             double rotationalPeriod = TerrestrialPlanetParams.DefaultRotationalPeriod,
             float waterRatio = TerrestrialPlanetParams.DefaultWaterRatio,
-            int gridSize = WorldGrid.DefaultGridSize,
+            int? gridSize = null,
             string id = null)
         {
             if (string.IsNullOrEmpty(id) || !Guid.TryParse(id, out var guid))

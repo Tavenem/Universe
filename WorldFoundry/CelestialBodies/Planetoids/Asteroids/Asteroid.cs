@@ -14,7 +14,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class Asteroid : Planetoid
     {
-        private static readonly double maxMassForType = 3.4e20;
+        private const double maxMassForType = 3.4e20;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -25,7 +25,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </remarks>
         internal override double? MaxMassForType => maxMassForType;
 
-        private static readonly double minMassForType = 5.9e8;
+        private const double minMassForType = 5.9e8;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.

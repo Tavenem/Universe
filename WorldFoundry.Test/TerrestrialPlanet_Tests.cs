@@ -1,10 +1,10 @@
+using Antmicro.Migrant;
+using Antmicro.Migrant.Customization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using ProtoBuf.Meta;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
@@ -14,18 +14,35 @@ namespace WorldFoundry.Test
     [TestClass]
     public class TerrestrialPlanet_Tests
     {
-        private static TypeModel _compiledSerializer;
+        private static Serializer _serializer;
+        private static Settings _serializerSettings;
         private const int gridSize = 6;
+        private const double gridTileRadius = 160000;
+        private const int maxGridSize = 7;
         private const int numSeasons = 4;
 
         [ClassInitialize]
-        public static void Init(TestContext context) => _compiledSerializer = GetTypeModel(typeof(TerrestrialPlanet));
+        public static void Init(TestContext context)
+        {
+            _serializer = new Serializer();
+            _serializer.ForObject<Type>().SetSurrogate(x => Activator.CreateInstance(typeof(TypeSurrogate<>).MakeGenericType(new[] { x })));
+            _serializer.ForSurrogate<ITypeSurrogate>().SetObject(x => x.Restore());
+            _serializerSettings = new Settings(versionTolerance: VersionToleranceLevel.AllowAssemblyVersionChange | VersionToleranceLevel.AllowFieldAddition | VersionToleranceLevel.AllowFieldRemoval);
+        }
 
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: gridTileRadius, maxGridSize: maxGridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
+
+            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length}");
+            Console.WriteLine($"Radius: {planet.Radius / 1000} km");
+            Console.WriteLine($"Surface area: {planet.Topography.Tiles.Sum(x => x.Area) / 1000000} km²");
+            Console.WriteLine($"Tile area: {(planet.Topography.Tiles.Length > 12 ? planet.Topography.Tiles[12].Area : planet.Topography.Tiles[11].Area) / 1000000} km²");
         }
 
         [TestMethod]
@@ -41,6 +58,8 @@ namespace WorldFoundry.Test
             var seasons = planet.GetSeasons(numSeasons)?.ToList();
             Assert.IsNotNull(seasons);
             Assert.AreEqual(numSeasons, seasons.Count);
+            Assert.IsNotNull(planet.Seasons);
+            Assert.AreEqual(numSeasons, planet.Seasons.Count);
 
             var sb = new StringBuilder();
 
@@ -54,7 +73,9 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Save()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var stringData = SaveAsString(planet);
@@ -66,14 +87,19 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Save_Load()
         {
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse();
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
+            Assert.IsNotNull(planet.PlanetParams);
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
 
             planet = LoadFromString(stringData);
             Assert.IsNotNull(planet);
+            Assert.IsNotNull(planet.PlanetParams);
+            Assert.AreEqual(gridSize, planet.PlanetParams.GridSize);
         }
 
         [TestMethod]
@@ -105,6 +131,9 @@ namespace WorldFoundry.Test
 
             planet = LoadFromString(stringData);
             Assert.IsNotNull(planet);
+
+            Assert.IsNotNull(planet.Seasons);
+            Assert.AreEqual(numSeasons, planet.Seasons.Count);
         }
 
         private static void AddClimateString(StringBuilder sb, TerrestrialPlanet planet)
@@ -354,118 +383,12 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 
-        private static void AddToTypeModel(RuntimeTypeModel typeModel, Type type, IEnumerable<Type> types)
-        {
-            if (typeModel == null)
-            {
-                throw new ArgumentNullException(nameof(typeModel));
-            }
-            if (type == null)
-            {
-                throw new ArgumentNullException(nameof(type));
-            }
-
-            if (typeModel.IsDefined(type))
-            {
-                return;
-            }
-
-            if (!type.IsPublic)
-            {
-                return;
-            }
-            if (type.IsGenericParameter)
-            {
-                return;
-            }
-
-            if (type.HasElementType) // T[]
-            {
-                AddToTypeModel(typeModel, type.GetElementType(), types);
-                return;
-            }
-            else if (type.IsGenericType) // List<T>
-            {
-                foreach (var t in type.GetGenericArguments())
-                {
-                    AddToTypeModel(typeModel, t, types);
-                }
-                return;
-            }
-
-            var metaType = typeModel.Add(type, false);
-            metaType.AsReferenceDefault = type.IsClass;
-
-            var i = 1;
-            if (types != null)
-            {
-                foreach (var s in types.Where(x => x.BaseType == type))
-                {
-                    metaType.AddSubType(i++, s);
-                }
-            }
-            var props = type
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                .Where(x => x.GetSetMethod() != null)
-                .ToArray();
-            Array.Sort(props, (x, y) => string.Compare(x.Name, y.Name, StringComparison.Ordinal));
-            foreach (var property in props)
-            {
-                metaType.AddField(i++, property.Name);
-
-                if (!typeModel.CanSerialize(property.PropertyType))
-                {
-                    AddToTypeModel(typeModel, property.PropertyType, types);
-                }
-            }
-        }
-
-        private static TypeModel GetTypeModel(Type type, string rootNamespace = null)
-        {
-            if (type == null)
-            {
-                throw new ArgumentNullException(nameof(type));
-            }
-
-            if (rootNamespace == null)
-            {
-                var dotIndex = type.Namespace?.IndexOf('.') ?? -1;
-                if (dotIndex == -1)
-                {
-                    rootNamespace = type.Namespace;
-                }
-                else
-                {
-                    rootNamespace = type.Namespace.Substring(0, dotIndex);
-                }
-                if (string.IsNullOrEmpty(rootNamespace))
-                {
-                    throw new ArgumentException($"Namespace of provided type cannot be empty if no {nameof(rootNamespace)} is provided.", nameof(type));
-                }
-            }
-
-            var typeModel = TypeModel.Create();
-
-            var types = Assembly.GetAssembly((type))
-                .GetTypes().Where(x =>
-                    (x.Namespace?.StartsWith(rootNamespace) ?? false)
-                    && x.IsPublic
-                    && !x.IsInterface
-                    && !x.IsAbstract)
-                .ToList();
-            foreach (var t in types)
-            {
-                AddToTypeModel(typeModel, t, types);
-            }
-            return typeModel.Compile();
-        }
-
         private static TerrestrialPlanet LoadFromString(string data)
         {
             TerrestrialPlanet planet;
             using (var ms = new MemoryStream(Convert.FromBase64String(data)))
             {
-                planet = _compiledSerializer.Deserialize(ms, null, typeof(TerrestrialPlanet)) as TerrestrialPlanet;
+                planet = _serializer.Deserialize<TerrestrialPlanet>(ms);
             }
             return planet;
         }
@@ -475,7 +398,8 @@ namespace WorldFoundry.Test
             string stringData;
             using (var ms = new MemoryStream())
             {
-                _compiledSerializer.Serialize(ms, planet);
+                _serializer.Serialize(planet, ms);
+
                 stringData = Convert.ToBase64String(ms.ToArray());
             }
             return stringData;

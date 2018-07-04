@@ -12,13 +12,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class WhiteDwarf : Star
     {
-        internal new static string baseTypeName = "White Dwarf";
+        private const string baseTypeName = "White Dwarf";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static readonly float chanceOfLife = 0;
+        private const float chanceOfLife = 0;
         /// <summary>The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>

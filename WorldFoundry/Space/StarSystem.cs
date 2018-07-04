@@ -23,7 +23,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class StarSystem : CelestialRegion
     {
-        internal new static string baseTypeName = "Star System";
+        private const string baseTypeName = "Star System";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

@@ -78,9 +78,10 @@ namespace WorldFoundry.WorldGrids
         internal float North { get; set; }
 
         /// <summary>
-        /// The resources which can be found in this <see cref="Tile"/>.
+        /// The resources which can be found in this <see cref="Tile"/>, along with a value from 0 to
+        /// 1 (inclusive) indicating the relative richness of the resource in that location.
         /// </summary>
-        public HashSet<Chemical> Resources { get; internal set; }
+        public Dictionary<Chemical, float> Resources { get; internal set; }
 
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Tile"/>.

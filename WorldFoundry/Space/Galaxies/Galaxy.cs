@@ -18,13 +18,13 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class Galaxy : CelestialRegion
     {
-        internal new static string baseTypeName = "Galaxy";
+        private const string baseTypeName = "Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static readonly double childDensity = 4.0e-50;
+        private const double childDensity = 4.0e-50;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>

@@ -95,6 +95,29 @@ namespace WorldFoundry.Climate
         private static float GetSnowMelt(float temperature, double time)
             => (float)(2.44e-6 * (temperature - Chemical.Water.MeltingPoint) * time);
 
+        private float GetCachedSaturationVaporPressure(
+            Dictionary<(float, float), float> elevationTemperatures,
+            Dictionary<(float, float), float> saturationVaporPressures,
+            int layer,
+            float elevation,
+            float temperature)
+        {
+            var height = elevation + TileClimate.AirCellLayerHeight * layer;
+            if (!elevationTemperatures.TryGetValue((temperature, height), out var tempAtElevation))
+            {
+                tempAtElevation = Planet.Atmosphere.GetTemperatureAtElevation(temperature, height);
+                elevationTemperatures.Add((temperature, height), tempAtElevation);
+            }
+
+            if (!saturationVaporPressures.TryGetValue((tempAtElevation, height), out var saturationVaporPressure))
+            {
+                saturationVaporPressure = TileClimate.GetSaturationVaporPressure(Planet, height, tempAtElevation);
+                saturationVaporPressures.Add((tempAtElevation, height), saturationVaporPressure);
+            }
+
+            return saturationVaporPressure;
+        }
+
         private void SetGroundWater(double time, Season previous)
         {
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
@@ -168,7 +191,7 @@ namespace WorldFoundry.Climate
                 }
 
                 var mixingRatio = relativeHumidity > 1
-                    ? TileClimate.GetSaturationMixingRatio(Planet, t, tc) * relativeHumidity
+                    ? TileClimate.GetSaturationMixingRatio(Planet, tc, t.Elevation) * relativeHumidity
                     : 0;
 
                 if (!TMath.IsZero(mixingRatio))
@@ -292,23 +315,50 @@ namespace WorldFoundry.Climate
             var equatorialTemp = Planet.Atmosphere.GetSurfaceTemperatureAtPosition(position);
             var polarTemp = Planet.Atmosphere.GetSurfaceTemperatureAtPosition(position, true);
 
-            var temperatures = new Dictionary<float, float>();
+            var latitudeTemperatures = new Dictionary<float, float>();
+            var elevationTemperatures = new Dictionary<(float, float), float>();
+            var elevationPressures = new Dictionary<(float, float), float>();
+            var saturationVaporPressures = new Dictionary<(float, float), float>();
+            var zeroSVPIndexes = new Dictionary<(float, float), int>();
+
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
             {
                 var t = Planet.Topography.Tiles[i];
                 var tc = TileClimates[i];
                 var lat = Math.Abs(tc.Latitude);
-                if (!temperatures.TryGetValue(lat, out var surfaceTemp))
+                if (!latitudeTemperatures.TryGetValue(lat, out var surfaceTemp))
                 {
                     surfaceTemp = CelestialBody.GetTemperatureAtLatitude(equatorialTemp, polarTemp, lat);
-                    temperatures.Add(lat, surfaceTemp);
+                    latitudeTemperatures.Add(lat, surfaceTemp);
                 }
-                tc.Temperature = Planet.Atmosphere.GetTemperatureAtElevation(surfaceTemp, t.Elevation);
-                tc.AtmosphericPressure = Planet.Atmosphere.GetAtmosphericPressure(tc.Temperature, t.Elevation);
+
+                var roundedElevation = (float)Math.Round(t.Elevation / 100) * 100;
+                if (!elevationTemperatures.TryGetValue((surfaceTemp, roundedElevation), out var tempAtElevation))
+                {
+                    tempAtElevation = Planet.Atmosphere.GetTemperatureAtElevation(surfaceTemp, roundedElevation);
+                    elevationTemperatures.Add((surfaceTemp, roundedElevation), tempAtElevation);
+                }
+                tc.Temperature = tempAtElevation;
+
+                var roundedTemperature = (float)Math.Round(tempAtElevation / 3) * 3;
+                if (!elevationPressures.TryGetValue((roundedTemperature, roundedElevation), out var pressureAtElevation))
+                {
+                    pressureAtElevation = Planet.Atmosphere.GetAtmosphericPressure(roundedTemperature, roundedElevation);
+                    elevationPressures.Add((roundedTemperature, roundedElevation), pressureAtElevation);
+                }
+                tc.AtmosphericPressure = pressureAtElevation;
 
                 var layers = (int)Math.Max(1, Math.Floor((Planet.Atmosphere.AtmosphericHeight - t.Elevation) / TileClimate.AirCellLayerHeight));
-                tc.AirCellLayers = Math.Max(1, Math.Min(layers, TileClimate.GetAirCellIndexOfNearlyZeroSaturationVaporPressure(Planet, t, tc)));
-                while (tc.AirCellLayers < layers && !TMath.IsZero(TileClimate.GetSaturationVaporPressure(tc.AirCellLayers - 1, Planet, t, tc)))
+                var nearestLayerHeight = (float)Math.Round(t.Elevation / TileClimate.AirCellLayerHeight) * TileClimate.AirCellLayerHeight;
+                if (!zeroSVPIndexes.TryGetValue((nearestLayerHeight, roundedTemperature), out var layerIndex))
+                {
+                    layerIndex = TileClimate.GetAirCellIndexOfNearlyZeroSaturationVaporPressure(Planet, nearestLayerHeight, roundedTemperature);
+                    zeroSVPIndexes.Add((nearestLayerHeight, roundedTemperature), layerIndex);
+                }
+                tc.AirCellLayers = Math.Max(1, Math.Min(layers, layerIndex));
+
+                while (tc.AirCellLayers < layers
+                    && !TMath.IsZero(GetCachedSaturationVaporPressure(elevationTemperatures, saturationVaporPressures, tc.AirCellLayers - 1, nearestLayerHeight, roundedTemperature)))
                 {
                     tc.AirCellLayers++;
                 }

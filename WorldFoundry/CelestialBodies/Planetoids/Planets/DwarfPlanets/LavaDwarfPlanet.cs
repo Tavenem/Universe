@@ -28,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </remarks>
         public override int MaxSatellites => maxSatellites;
 
-        private static readonly string planemoClassPrefix = "Lava";
+        private const string planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

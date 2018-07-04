@@ -18,7 +18,7 @@ namespace WorldFoundry.Space
         /// </summary>
         internal const int LocalSpaceScale = 1000000;
 
-        internal static string baseTypeName = "Celestial Object";
+        private const string baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

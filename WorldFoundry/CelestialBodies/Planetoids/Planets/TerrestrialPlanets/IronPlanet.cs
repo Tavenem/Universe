@@ -11,12 +11,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const float CoreProportion = 0.4f;
 
-        internal new static string baseTypeName = "Iron Planet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => baseTypeName;
-
         internal new static bool canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
@@ -47,7 +41,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         internal new static float minDensity = 5250;
         private protected override float MinDensity => minDensity;
 
-        private static readonly string planemoClassPrefix = "Iron";
+        private const string planemoClassPrefix = "Iron";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>

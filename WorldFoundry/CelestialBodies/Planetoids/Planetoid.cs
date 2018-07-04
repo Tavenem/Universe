@@ -1,9 +1,14 @@
-﻿using MathAndScience.MathUtil;
+﻿using ExtensionLib;
+using MathAndScience.MathUtil;
+using Substances;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
+using WorldFoundry.Substances;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
@@ -146,7 +151,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private static readonly int extremeRotationalPeriod = 1100000;
+        private const double densityForType = 0;
+        /// <summary>
+        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// </summary>
+        internal virtual double DensityForType => densityForType;
+
+        private const int extremeRotationalPeriod = 1100000;
         private protected virtual int ExtremeRotationalPeriod => extremeRotationalPeriod;
 
         private bool? _hasMagnetosphere;
@@ -158,6 +169,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             get => GetProperty(ref _hasMagnetosphere, GenerateMagnetosphere) ?? false;
             protected set => _hasMagnetosphere = value;
         }
+
+        private const bool hasFlatSurface = false;
+        /// <summary>
+        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
+        /// (i.e. is non-solid). Prevents generation of a height map during <see cref="Topography"/> generation.
+        /// </summary>
+        public virtual bool HasFlatSurface => hasFlatSurface;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -190,7 +208,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
         internal virtual double? MaxMassForType => null;
 
-        private static readonly int maxRotationalPeriod = 100000;
+        private const int maxRotationalPeriod = 100000;
         private protected virtual int MaxRotationalPeriod => maxRotationalPeriod;
 
         internal static int maxSatellites = 1;
@@ -229,7 +247,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
         internal virtual double? MinMassForType => null;
 
-        private static readonly int minRotationalPeriod = 8000;
+        private const int minRotationalPeriod = 8000;
         private protected virtual int MinRotationalPeriod => minRotationalPeriod;
 
         private double? _minSatellitePeriapsis;
@@ -266,11 +284,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public IList<Planetoid> Satellites { get; private set; }
 
-        private static readonly double densityForType = 0;
+        private WorldGrid _topography;
         /// <summary>
-        /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
+        /// The <see cref="WorldGrid"/> which describes this <see cref="Planetoid"/>'s surface.
         /// </summary>
-        internal virtual double DensityForType => densityForType;
+        public WorldGrid Topography
+        {
+            get => GetProperty(ref _topography, GenerateTopography);
+            private protected set => _topography = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -316,6 +338,74 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
         /// </param>
         public Planetoid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
+
+        private protected int AddResource(Chemical substance, float proportion, bool vein, bool perturb = false, int? seed = null)
+        {
+            if (!seed.HasValue)
+            {
+                seed = Randomizer.Static.NextInclusiveMaxValue();
+            }
+            var n = new FastNoise(seed.Value);
+            n.SetFractalLacunarity(3);
+            n.SetFractalGain(0.75f);
+            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
+            if (vein)
+            {
+                n.SetFractalType(FastNoise.FractalType.RigidMulti);
+            }
+            else
+            {
+                n.SetFractalType(FastNoise.FractalType.Billow);
+            }
+            if (perturb)
+            {
+                n.SetGradientPerturbAmp(20);
+            }
+
+            var modifier = proportion - 0.5f;
+            var ratio = 1 / (1 + modifier);
+            foreach (var tile in Topography.Tiles)
+            {
+                var x = tile.Vector.X;
+                var y = tile.Vector.Y;
+                var z = tile.Vector.Z;
+                if (perturb)
+                {
+                    n.GradientPerturbFractal(ref x, ref y, ref z);
+                }
+                var v = n.GetNoise(x, y, z);
+                if (vein)
+                {
+                    v = 1 - v;
+                }
+                var richness = v + modifier;
+                if (richness <= 0)
+                {
+                    if (tile.Resources?.ContainsKey(substance) ?? false)
+                    {
+                        tile.Resources.Remove(substance);
+                    }
+                }
+                else
+                {
+                    if (tile.Resources == null)
+                    {
+                        tile.Resources = new Dictionary<Chemical, float>();
+                    }
+                    tile.Resources.Add(substance, richness * ratio);
+                }
+            }
+
+            return seed.Value;
+        }
+
+        private protected void AddResources(IEnumerable<(Chemical substance, float proportion, bool vein)> resources)
+        {
+            foreach (var (substance, proportion, vein) in resources)
+            {
+                AddResource(substance, proportion, vein);
+            }
+        }
 
         /// <summary>
         /// Determines an angle between the Y-axis and the axis of rotation for this <see cref="Planetoid"/>.
@@ -453,6 +543,31 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Generates a new <see cref="Topography"/> for this <see cref="Planetoid"/>.
+        /// </summary>
+        private protected virtual void GenerateTopography()
+        {
+            var size = WorldGrid.DefaultGridSize;
+
+            if (WorldGrid.DefaultDesiredTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value);
+            }
+
+            Topography = new WorldGrid(this, size);
+
+            AddResources(Substance.Composition.GetSurface()
+                .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
+                .Select(x => (x.chemical, x.proportion, true)));
+        }
+
+        /// <summary>
+        /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
+        internal float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
+
+        /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
         /// position, in K.
         /// </summary>
@@ -516,6 +631,41 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var q = Quaternion.CreateFromAxisAngle(precessionVector, AngleOfRotation);
             _axis = Vector3.Transform(Vector3.UnitY, q);
             _axisRotation = Quaternion.Conjugate(q);
+        }
+
+        /// <summary>
+        /// Changes the <see cref="WorldGrid.GridSize"/> of this <see cref="Planetoid"/>'s
+        /// <see cref="WorldGrid"/>.
+        /// </summary>
+        /// <param name="gridSize">
+        /// The desired <see cref="WorldGrid.GridSize"/> (level of detail). Must be between 0 and
+        /// <see cref="WorldGrid.MaxGridSize"/>.
+        /// </param>
+        /// <param name="preserveShape">
+        /// If true, the same random seed will be used for elevation generation as before, resulting
+        /// in the same height map (can be used to maintain a similar look when changing <see
+        /// cref="WorldGrid.GridSize"/>, rather than an entirely new geography).
+        /// </param>
+        public virtual void SetGridSize(short gridSize, bool preserveShape = true) => Topography.SubdivideGrid(gridSize, preserveShape);
+
+        /// <summary>
+        /// Converts a <see cref="Vector3"/> to a latitude, in radians.
+        /// </summary>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <returns>A latitude, as an angle in radians from the equator.</returns>
+        internal float VectorToLatitude(Vector3 v) => (float)(MathConstants.HalfPI - Axis.GetAngle(v));
+
+        /// <summary>
+        /// Converts a <see cref="Vector3"/> to a longitude, in radians.
+        /// </summary>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
+        internal float VectorToLongitude(Vector3 v)
+        {
+            var u = Vector3.Transform(v, AxisRotation);
+            return u.X == 0 && u.Z == 0
+                ? 0
+                : (float)Math.Atan2(u.X, u.Z);
         }
     }
 }

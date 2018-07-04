@@ -11,7 +11,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Nebula : CelestialRegion
     {
-        internal new static string baseTypeName = "Nebula";
+        private const string baseTypeName = "Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>

@@ -11,13 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class MTypeAsteroid : Asteroid
     {
-        internal new static string baseTypeName = "M-Type Asteroid";
+        private const string baseTypeName = "M-Type Asteroid";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private static readonly double densityForType = 5320;
+        private const double densityForType = 5320;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>

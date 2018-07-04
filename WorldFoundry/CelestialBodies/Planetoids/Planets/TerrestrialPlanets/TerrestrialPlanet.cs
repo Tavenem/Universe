@@ -26,12 +26,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const float TemperatureErrorTolerance = 0.5f;
 
-        internal new static string baseTypeName = "Terrestrial Planet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => baseTypeName;
-
         internal static bool canHaveOxygen = true;
         /// <summary>
         /// Used to allow or prevent oxygen in the atmosphere of a terrestrial planet.
@@ -52,7 +46,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected virtual bool CanHaveWater => canHaveWater;
 
-        private static readonly int extremeRotationalPeriod = 22000000;
+        private const int extremeRotationalPeriod = 22000000;
         private protected override int ExtremeRotationalPeriod => extremeRotationalPeriod;
 
         /// <summary>
@@ -116,7 +110,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         internal override double? MaxMassForType => maxMassForType;
 
-        private static readonly int maxRotationalPeriod = 6500000;
+        private const int maxRotationalPeriod = 6500000;
         private protected override int MaxRotationalPeriod => maxRotationalPeriod;
 
         internal static float metalProportion = 0.05f;
@@ -139,20 +133,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         internal override double? MinMassForType => minMassForType;
 
-        private static readonly int minRotationalPeriod = 40000;
+        private const int minRotationalPeriod = 40000;
         private protected override int MinRotationalPeriod => minRotationalPeriod;
 
-        private static readonly string planemoClassPrefix = "Terrestrial";
+        private const string planemoClassPrefix = "Terrestrial";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
         public override string PlanemoClassPrefix => planemoClassPrefix;
 
         /// <summary>
-        /// The parameters specified on creation which control the random generation of this <see
+        /// The parameters which control the random generation of this <see
         /// cref="TerrestrialPlanet"/>'s characteristics.
         /// </summary>
-        private protected TerrestrialPlanetParams PlanetParams { get; set; }
+        public TerrestrialPlanetParams PlanetParams { get; set; }
 
         internal new static float ringChance = 10;
         /// <summary>
@@ -173,7 +167,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The collection of <see cref="Season"/>s which make up a year of this <see
         /// cref="TerrestrialPlanet"/>'s weather.
         /// </summary>
-        internal IList<Season> Seasons { get; private set; }
+        /// <remarks>
+        /// This collection should not be used directly. Instead, use <see cref="GetSeason(int,
+        /// int)"/> or <see cref="GetSeasons(int)"/>, both of which use this cached list when
+        /// possible, and generate new <see cref="Season"/>s when needed.
+        /// </remarks>
+        public IList<Season> Seasons { get; private set; }
 
         private float? _surfaceAlbedo;
         /// <summary>
@@ -184,16 +183,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             get => GetProperty(ref _surfaceAlbedo, GenerateAlbedo) ?? 0;
             internal set => _surfaceAlbedo = value;
-        }
-
-        private WorldGrid _topography;
-        /// <summary>
-        /// The <see cref="WorldGrid"/> which describes this <see cref="TerrestrialPlanet"/>'s surface.
-        /// </summary>
-        public WorldGrid Topography
-        {
-            get => GetProperty(ref _topography, GenerateTopography);
-            private set => _topography = value;
         }
 
         /// <summary>
@@ -318,51 +307,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
         /// <returns>A human-habitable planet with default parameters.</returns>
         public static TerrestrialPlanet DefaultHumanPlanetNewUniverse(TerrestrialPlanetParams planetParams = null) => DefaultHumanPlanetForUniverse(new Universe(), planetParams);
-
-        private void AddResource(Chemical chemical, int tileIndex, HashSet<int> remTiles, HashSet<int> selTiles, ref int numTiles)
-        {
-            var tile = Topography.Tiles[tileIndex];
-            if (tile.Resources == null)
-            {
-                tile.Resources = new HashSet<Chemical>();
-            }
-            tile.Resources.Add(chemical);
-            remTiles.Remove(tile.Index);
-            selTiles.Add(tile.Index);
-            numTiles--;
-
-            // chance for each surrounding tile as well
-            for (var i = 0; i < tile.EdgeCount; i++)
-            {
-                var neighbor = tile.Tiles[i];
-                if (remTiles.Contains(neighbor) && Randomizer.Static.NextDouble() <= 0.33333)
-                {
-                    AddResource(chemical, neighbor, remTiles, selTiles, ref numTiles);
-                }
-            }
-        }
-
-        private void AddResources(IEnumerable<(Chemical substance, float proportion)> resources)
-        {
-            foreach (var (substance, proportion) in resources)
-            {
-                var numTiles = (int)Math.Max(1, Math.Round(Topography.Tiles.Length * proportion));
-
-                // Clear existing.
-                foreach (var tile in Topography.Tiles.Where(x => x.Resources?.Contains(substance) ?? false))
-                {
-                    tile.Resources.Remove(substance);
-                }
-
-                var remTiles = new HashSet<int>(Enumerable.Range(0, Topography.Tiles.Length));
-                var selTiles = new HashSet<int>();
-                while (numTiles > 0 && remTiles.Count > 0)
-                {
-                    var tile = Randomizer.Static.Choice(remTiles);
-                    AddResource(substance, tile, remTiles, selTiles, ref numTiles);
-                }
-            }
-        }
 
         private void AdjustOrbitForTemperature(Star star, double? semiMajorAxis, float trueAnomaly, float targetTemp)
         {
@@ -928,39 +872,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // It is presumed that it is statistically likely that the current eon is not the first
             // with life, and therefore that some fossilized hydrocarbon deposits exist.
             var hydrocarbonProportion = (float)Randomizer.Static.NextDouble(0.05, 0.33333);
-            AddResources(new(Chemical, float)[]
-            {
-                (Chemical.Coal, hydrocarbonProportion),
-                (Chemical.Petroleum, hydrocarbonProportion),
-            });
+
+            AddResource(Chemical.Coal, hydrocarbonProportion, false);
+
+            var petroleumSeed = AddResource(Chemical.Petroleum, hydrocarbonProportion, false);
+
             // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
-            var numTiles = (int)Math.Max(1, Math.Round(Topography.Tiles.Length * hydrocarbonProportion));
-            // Clear existing.
-            foreach (var tile in Topography.Tiles.Where(x => x.Resources?.Contains(Chemical.Methane) ?? false))
-            {
-                tile.Resources.Remove(Chemical.Methane);
-            }
-            var remTiles = new HashSet<int>(Enumerable.Range(0, Topography.Tiles.Length));
-            var petroleumTiles = new HashSet<int>(Topography.Tiles.Where(x => x.Resources?.Contains(Chemical.Petroleum) ?? false).Select(x => x.Index));
-            var selTiles = new HashSet<int>();
-            while (numTiles > 0 && remTiles.Count > 0)
-            {
-                var tile = -1;
-
-                // First attempt to select a tile with petroleum.
-                petroleumTiles.ExceptWith(selTiles);
-                if (petroleumTiles.Count > 0)
-                {
-                    tile = Randomizer.Static.Choice(petroleumTiles);
-                }
-                // If no tiles with petroleum remain, select another tile.
-                else
-                {
-                    tile = Randomizer.Static.Choice(remTiles);
-                }
-
-                AddResource(Chemical.Methane, tile, remTiles, selTiles, ref numTiles);
-            }
+            AddResource(Chemical.CarbonMonoxide, hydrocarbonProportion, false, true, petroleumSeed);
         }
 
         /// <summary>
@@ -1473,16 +1391,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var iron = metals - nickel - aluminum - titanium;
 
-            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var copper = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= copper;
 
-            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var silver = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= silver;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var gold = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= gold;
 
-            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var platinum = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= platinum;
 
             var rock = 1 - metals;
@@ -1505,14 +1423,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// Generates a new <see cref="Topography"/> for this <see cref="TerrestrialPlanet"/>.
+        /// Generates a new <see cref="Planetoid.Topography"/> for this <see cref="Planetoid"/>.
         /// </summary>
-        private void GenerateTopography()
+        private protected override void GenerateTopography()
         {
             var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
+
+            if (PlanetParams?.GridTileRadius.HasValue ?? false)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+
             Topography = new WorldGrid(this, size);
 
-            AddResources(Substance.Composition.GetSurface().GetChemicals(Phase.Solid).Where(x => x.chemical is Metal));
+            AddResources(Substance.Composition.GetSurface()
+                .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
+                .Select(x => (x.chemical, x.proportion, true)));
         }
 
         /// <summary>
@@ -1911,16 +1841,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// Changes the <see cref="WorldGrid.GridSize"/> of this <see cref="TerrestrialPlanet"/>'s
+        /// Changes the <see cref="WorldGrid.GridSize"/> of this <see cref="Planetoid"/>'s
         /// <see cref="WorldGrid"/>.
         /// </summary>
-        /// <param name="gridSize">The desired <see cref="WorldGrid.GridSize"/> (level of detail).</param>
+        /// <param name="gridSize">
+        /// The desired <see cref="WorldGrid.GridSize"/> (level of detail). Must be between 0 and
+        /// <see cref="WorldGrid.MaxGridSize"/>.
+        /// </param>
         /// <param name="preserveShape">
         /// If true, the same random seed will be used for elevation generation as before, resulting
         /// in the same height map (can be used to maintain a similar look when changing <see
         /// cref="WorldGrid.GridSize"/>, rather than an entirely new geography).
         /// </param>
-        public void SetGridSize(short gridSize, bool preserveShape = true)
+        public override void SetGridSize(short gridSize, bool preserveShape = true)
         {
             Topography.SubdivideGrid(gridSize, preserveShape);
             GenerateHydrosphere();

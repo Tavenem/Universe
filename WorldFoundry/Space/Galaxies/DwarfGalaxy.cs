@@ -11,7 +11,7 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class DwarfGalaxy : Galaxy
     {
-        internal new static string baseTypeName = "Dwarf Galaxy";
+        private const string baseTypeName = "Dwarf Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
