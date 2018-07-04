@@ -1,0 +1,94 @@
+﻿@inherits BlazorLayoutComponent
+@implements IDisposable
+
+@using WorldFoundry.Blazor.Client.Services
+
+@inject IAlertService AlertService
+
+<header>
+    <AppBar />
+</header>
+
+<main role="main" class="container-fluid">
+    @Body
+</main>
+
+<footer class="container">
+    <div id="errorAlert" class="alert alert-danger alert-dismissible collapse" role="alert" aria-expanded="false">
+        <span><strong>ERROR:</strong> @ErrorMessage</span>
+        <button class="close" data-toggle="collapse" data-target="errorAlert" aria-label="Close" aria-controls="errorAlert"><span aria-hidden="true">$times;</span></button>
+    </div>
+    <div id="infoAlert" class="alert alert-danger alert-dismissible collapse" role="alert" aria-expanded="false">
+        <span>@InfoMessage</span>
+        <button class="close" data-toggle="collapse" data-target="infoAlert" aria-label="Close" aria-controls="infoAlert"><span aria-hidden="true">$times;</span></button>
+    </div>
+    <div id="successAlert" class="alert alert-success alert-dismissible collapse" role="alert" aria-expanded="false">
+        <span>@SuccessMessage</span>
+        <button class="close" data-toggle="collapse" data-target="successAlert" aria-label="Close" aria-controls="successAlert"><span aria-hidden="true">$times;</span></button>
+    </div>
+    <div id="warningAlert" class="alert alert-warning alert-dismissible collapse" role="alert" aria-expanded="false">
+        <span><strong>Warning:</strong> @WarningMessage</span>
+        <button class="close" data-toggle="collapse" data-target="warningAlert" aria-label="Close" aria-controls="warningAlert"><span aria-hidden="true">$times;</span></button>
+    </div>
+</footer>
+
+@functions {
+    private const int alertTimeout_ms = 5000;
+
+    public string ErrorMessage { get; set; }
+    public string InfoMessage { get; set; }
+    public string SuccessMessage { get; set; }
+    public string WarningMessage { get; set; }
+
+    protected override void OnInit()
+    {
+        AlertService.Error += OnError;
+        AlertService.Info += OnInfo;
+        AlertService.Success += OnSuccess;
+        AlertService.Warning += OnWarning;
+    }
+
+    public void Dispose()
+    {
+        AlertService.Error -= OnError;
+        AlertService.Info -= OnInfo;
+        AlertService.Success -= OnSuccess;
+        AlertService.Warning -= OnWarning;
+    }
+
+    private void OnError(object sender, AlertEventArgs e)
+    {
+        ErrorMessage = e.Message;
+        Bootstrap.CollapseHide("#infoAlert");
+        Bootstrap.CollapseHide("#successAlert");
+        Bootstrap.CollapseHide("#warningAlert");
+        Bootstrap.CollapseShowTimed("#errorAlert", alertTimeout_ms);
+    }
+
+    private void OnInfo(object sender, AlertEventArgs e)
+    {
+        InfoMessage = e.Message;
+        Bootstrap.CollapseHide("#errorAlert");
+        Bootstrap.CollapseHide("#successAlert");
+        Bootstrap.CollapseHide("#warningAlert");
+        Bootstrap.CollapseShowTimed("#infoAlert", alertTimeout_ms);
+    }
+
+    private void OnSuccess(object sender, AlertEventArgs e)
+    {
+        SuccessMessage = e.Message;
+        Bootstrap.CollapseHide("#errorAlert");
+        Bootstrap.CollapseHide("#infoAlert");
+        Bootstrap.CollapseHide("#warningAlert");
+        Bootstrap.CollapseShowTimed("#successAlert", alertTimeout_ms);
+    }
+
+    private void OnWarning(object sender, AlertEventArgs e)
+    {
+        WarningMessage = e.Message;
+        Bootstrap.CollapseHide("#errorAlert");
+        Bootstrap.CollapseHide("#infoAlert");
+        Bootstrap.CollapseHide("#successAlert");
+        Bootstrap.CollapseShowTimed("#warningAlert", alertTimeout_ms);
+    }
+}

@@ -1,0 +1,17 @@
+﻿@import "theme";
+
+main {
+    padding-top: calc(48px + 1em);
+    padding-bottom: 66px;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    width: auto;
+    max-width: 680px;
+    height: 66px;
+    padding: 0 15px;
+}
+
+@import "../Shared/spinner.scss";

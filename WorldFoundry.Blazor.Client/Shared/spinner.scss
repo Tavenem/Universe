@@ -1,0 +1,53 @@
+﻿@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(359deg);
+    }
+}
+
+@keyframes spin_reverse {
+    from {
+        transform: rotate(359deg);
+    }
+
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+.spin-container {
+    display: inline-block;
+    height: 1em;
+    width: 1em;
+    vertical-align: bottom;
+    vertical-align: text-bottom;
+}
+
+.spin-container * {
+    position: absolute;
+}
+
+.spin-2 {
+    filter: saturate(50%) brightness(150%);
+}
+
+.spin-3 {
+    filter: saturate(125%);
+}
+
+.spin {
+    .spin-1 {
+        animation: spin 2s infinite linear;
+    }
+
+    .spin-2 {
+        animation: spin_reverse 2s infinite linear;
+    }
+
+    .spin-3 {
+        animation: spin_reverse 2.33s infinite linear;
+    }
+}

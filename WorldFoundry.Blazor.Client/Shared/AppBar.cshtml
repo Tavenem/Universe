@@ -1,0 +1,9 @@
+﻿<nav class="navbar navbar-dark fixed-top bg-dark shadow">
+    <NavLink class="navbar-brand" href="/">WorldFoundry</NavLink>
+    <span class="flex-grow-1"></span>
+    <span class="text-muted small">v 0.1.0</span>
+</nav>
+
+@functions {
+    protected override void OnAfterRender() => Bootstrap.EnableTooltips();
+}
