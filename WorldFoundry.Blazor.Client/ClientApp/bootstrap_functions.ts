@@ -1,4 +1,6 @@
-﻿(window as any).rogueBlazorFunctions = {
+﻿import $ from 'jquery';
+
+export const rogueBlazorFunctions = {
 
     bsCollapseHide: function (selector: string) {
         $(selector).collapse('hide');
@@ -27,3 +29,5 @@
         return true;
     },
 };
+
+(window as any).rogueBlazorFunctions = rogueBlazorFunctions;

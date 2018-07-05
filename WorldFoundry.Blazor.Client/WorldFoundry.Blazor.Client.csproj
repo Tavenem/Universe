@@ -9,23 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="ClientApp\boot.ts" />
-    <None Remove="ClientApp\bootstrap_functions.ts" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.5.0-preview1-10328" />
-    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.5.0-preview1-10328" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <TypeScriptCompile Include="ClientApp\boot.ts" />
-    <TypeScriptCompile Include="ClientApp\bootstrap_functions.ts" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Utilities\" />
-    <Folder Include="Services\" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.5.0-preview1-10332" />
+    <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.5.0-preview1-10332" />
   </ItemGroup>
 
   <Target Name="DebugRunWebpackClient" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And Exists('wwwroot\dist') ">

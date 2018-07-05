@@ -1,7 +1,8 @@
-﻿import * as glM from 'gl-matrix';
-import { show } from '../util';
-import * as PlanetData from '../planet-data';
-import * as PlanetColor from '../planet-color';
+﻿import $ from 'jquery';
+import * as glM from 'gl-matrix';
+import { rogueBlazorFunctions } from '../bootstrap_functions';
+import * as PlanetData from './planet-data';
+import * as PlanetColor from './planet-color';
 
 export interface AttribLocations {
     vertexPosition: number;
@@ -116,7 +117,7 @@ export function loadShader(gl: WebGLRenderingContext, type: number, source: stri
     gl.compileShader(shader);
 
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        show("#webgl-alert");
+        webGLError();
         gl.deleteShader(shader);
         return null;
     }
@@ -134,9 +135,17 @@ export function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, f
     gl.linkProgram(shaderProgram);
 
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-        show("#webgl-alert");
+        webGLError();
         return null;
     }
 
     return shaderProgram;
+}
+
+function webGLError() {
+    rogueBlazorFunctions.bsCollapseHide("#infoAlert");
+    rogueBlazorFunctions.bsCollapseHide("#successAlert");
+    rogueBlazorFunctions.bsCollapseHide("#warningAlert");
+    rogueBlazorFunctions.bsCollapseHide("#errorAlert");
+    rogueBlazorFunctions.bsCollapseShowTimed("#webGLErrorAlert", 5000);
 }

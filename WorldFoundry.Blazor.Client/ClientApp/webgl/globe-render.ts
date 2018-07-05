@@ -1,7 +1,7 @@
 ﻿import * as glM from 'gl-matrix';
 import * as WebGLUtil from './util';
-import * as PlanetData from '../planet-data';
-import * as PlanetColor from '../planet-color';
+import * as PlanetData from './planet-data';
+import * as PlanetColor from './planet-color';
 
 const TwoPI = 2 * Math.PI;
 

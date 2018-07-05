@@ -9,7 +9,6 @@ export enum PlanetColorMode {
     Elevation,
     Temperature,
     Precipitation,
-    Wind,
 }
 
 export interface Color {
@@ -103,14 +102,6 @@ export class PlanetColors {
     ];
     private static temperature_limits = [-50, -15, -5, 0, 5, 12, 20, 30, 37];
 
-    private static colors_wind: Color[] = [
-        [0.0, 0.0, 0.0, 1.0],
-        [1.0, 0.0, 0.0, 1.0],
-        [1.0, 1.0, 0.0, 1.0],
-        [0.0, 1.0, 0.0, 1.0],
-        [0.0, 0.0, 1.0, 1.0],
-    ];
-
     private static high_snow = 8000;
 
     tileColors: Color[][];
@@ -134,9 +125,6 @@ export class PlanetColors {
             case PlanetColorMode.Temperature:
                 this.getTemperatureColors(planet, season);
                 break;
-            case PlanetColorMode.Wind:
-                this.getWindColors(planet, season);
-                break;
             default:
                 this.getVegetationColors(planet, season);
                 break;
@@ -157,10 +145,10 @@ export class PlanetColors {
     }
 
     private getPrecipitationColors(planet: PlanetData.Planet, s: number) {
-        let q1 = 135;
-        let q2minusQ1 = 612;
-        let q3minusQ2 = 883;
-        let q90minusQ3 = 966;
+        let q1 = 65;
+        let q2minusQ1 = 415;
+        let q3minusQ2 = 1720;
+        let q90minusQ3 = 800;
         for (let i = 0; i < planet.tiles.length; i++) {
             let t = planet.tiles[i];
             if (t.terrainType == PlanetData.TerrainType.Water) {
@@ -177,9 +165,9 @@ export class PlanetColors {
                 } else {
                     color = PlanetColors.interpolate(PlanetColors.colors_precipitation[3], PlanetColors.colors_precipitation[4], Math.min(1, (prec - q3minusQ2) / q90minusQ3));
                 }
-                let snow = planet.seasons[s].tileClimates[i].snow * planet.seasons.length;
-                if (snow > 0) {
-                    this.tileColors[s][i] = PlanetColors.interpolate(color, PlanetColors.color_snow, Math.min(1, snow / PlanetColors.high_snow));
+                let snowFall = planet.seasons[s].tileClimates[i].snowFall * planet.seasons.length;
+                if (snowFall > 0) {
+                    this.tileColors[s][i] = PlanetColors.interpolate(color, PlanetColors.color_snow, Math.min(1, snowFall / PlanetColors.high_snow));
                 } else {
                     this.tileColors[s][i] = color;
                 }
@@ -295,36 +283,10 @@ export class PlanetColors {
                     default:
                 }
                 let color = PlanetColors.interpolate(PlanetColors.colors_biome[c][e], PlanetColors.color_land_high, (maxE - t.elevation) / (maxE * 2));
-                if (climate.snow > 0) {
-                    color = PlanetColors.interpolate(color, PlanetColors.color_snow, Math.min(1, climate.snow * planet.seasons.length / PlanetColors.high_snow));
+                if (climate.snowCover > 0) {
+                    color = PlanetColors.interpolate(color, PlanetColors.color_snow, Math.min(1, climate.snowCover * planet.seasons.length / PlanetColors.high_snow));
                 }
                 this.tileColors[s][i] = color;
-            }
-        }
-    }
-
-    private getWindColors(planet: PlanetData.Planet, s: number) {
-        let max = planet.seasons.reduce((ps, cs) => {
-            let cws = cs.tileClimates.reduce((p, c) => c.windSpeed > p ? c.windSpeed : p, 0);
-            return cws > ps ? cws : ps;
-        }, 0);
-        for (let i = 0; i < planet.tiles.length; i++) {
-            let dir = planet.seasons[s].tileClimates[i].windDirection;
-            let speed = planet.seasons[s].tileClimates[i].windSpeed;
-            if (speed === 0) {
-                this.tileColors[s][i] = PlanetColors.colors_wind[0];
-            } else {
-                let c: Color;
-                if (dir <= halfPI) {
-                    c = PlanetColors.interpolate(PlanetColors.colors_wind[1], PlanetColors.colors_wind[2], dir / halfPI);
-                } else if (dir <= Math.PI) {
-                    c = PlanetColors.interpolate(PlanetColors.colors_wind[2], PlanetColors.colors_wind[3], (dir - halfPI) / halfPI);
-                } else if (dir <= threeHalvesPI) {
-                    c = PlanetColors.interpolate(PlanetColors.colors_wind[3], PlanetColors.colors_wind[4], (dir - Math.PI) / halfPI);
-                } else {
-                    c = PlanetColors.interpolate(PlanetColors.colors_wind[4], PlanetColors.colors_wind[1], (dir - threeHalvesPI) / halfPI);
-                }
-                this.tileColors[s][i] = PlanetColors.interpolate(PlanetColors.colors_wind[0], c, speed / max);
             }
         }
     }

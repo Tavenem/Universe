@@ -500,6 +500,12 @@ namespace WorldFoundry.WorldGrids
                 SubdivideGrid();
             }
 
+            foreach (var c in Corners)
+            {
+                c.Latitude = Planet.VectorToLatitude(c.Vector);
+                c.Longitude = Planet.VectorToLongitude(c.Vector);
+            }
+
             foreach (var t in Tiles)
             {
                 t.Area = (float)(Planet.RadiusSquared * (t.EdgeCount == 5 ? gridAreas[size].fiveSided : gridAreas[size].sixSided));

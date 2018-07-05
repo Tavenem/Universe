@@ -1,6 +1,6 @@
 ﻿import * as glM from 'gl-matrix';
 import * as WebGLUtil from './util';
-import * as PlanetData from '../planet-data';
+import * as PlanetData from './planet-data';
 
 const vsSource = `
         attribute vec4 aVertexPosition;

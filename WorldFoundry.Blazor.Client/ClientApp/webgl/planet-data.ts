@@ -1,6 +1,6 @@
 ﻿import * as glM from 'gl-matrix';
 import * as PlanetColor from './planet-color';
-import * as WebGLUtil from './webgl/util';
+import * as WebGLUtil from './util';
 
 export enum ClimateType {
     None,
@@ -105,15 +105,13 @@ export interface TileData {
 export interface TileClimate {
     precipitation: number;
     seaIce: number;
-    snow: number;
+    snowCover: number;
+    snowFall: number;
     temperature: number;
-    windDirection: number;
-    windSpeed: number;
 }
 
 export interface Season {
     edgeRiverFlows: number[];
-    edgeAirFlows: number[];
     tileClimates: TileClimate[];
 }
 
@@ -124,26 +122,24 @@ export interface Planet {
     corners: Corner[];
     edges: Edge[];
     hammerTiles?: HammerTile[];
-    key: string;
     lakeBuffers?: WebGLUtil.BufferData;
     oceanBuffers?: WebGLUtil.BufferData[];
     seasons: Season[];
-    seed: string;
+    elevationSeed: number;
     tileBuffers?: WebGLUtil.BufferData;
     tiles: Tile[];
 }
 
-export interface PlanetObjData {
-    axis: PlanetVector;
+export interface Topography {
     corners: CornerData[];
     edges: Edge[];
-    seed: string;
+    elevationSeed: number;
     tiles: TileData[];
 }
 
 export interface PlanetData {
-    planet: PlanetObjData;
-    key: string;
+    axis: PlanetVector;
+    topography: Topography;
 }
 
 function glMVec3FromPlanetVector(v: PlanetVector) {
@@ -193,13 +189,12 @@ function tilesFromData(tiles: TileData[]) {
 
 export function planetFromData(data: PlanetData): Planet {
     return {
-        axis: glMVec3FromPlanetVector(data.planet.axis),
+        axis: glMVec3FromPlanetVector(data.axis),
         buffers: [],
-        corners: cornersFromData(data.planet.corners),
-        edges: data.planet.edges,
-        key: data.key,
+        corners: cornersFromData(data.topography.corners),
+        edges: data.topography.edges,
         seasons: [],
-        seed: data.planet.seed,
-        tiles: tilesFromData(data.planet.tiles),
+        elevationSeed: data.topography.elevationSeed,
+        tiles: tilesFromData(data.topography.tiles),
     };
 }

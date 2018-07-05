@@ -1,10 +1,38 @@
-﻿import { $, disable, enable, hide, hideLoading, show, showLoading } from './util';
-import * as WebGLUtil from './webgl/util';
-import * as PlanetData from './planet-data';
-import * as PlanetColor from './planet-color';
+﻿import * as WebGLUtil from './webgl/util';
+import * as PlanetData from './webgl/planet-data';
+import * as PlanetColor from './webgl/planet-color';
 import * as Cube from './webgl/cube-render';
 import * as Globe from './webgl/globe-render';
 import * as Hammer from './webgl/hammer-render';
+
+function $(selectors: string, container?: Element): Element {
+    return (container || document).querySelector(selectors);
+}
+
+const loadingBar = $("#loading-bar");
+const loadingMsg = $("#loading-msg");
+
+function showLoading(message: string): void {
+    loadingBar.classList.remove("invisible");
+    loadingMsg.innerHTML = message || "";
+}
+function hideLoading(): void {
+    loadingBar.classList.add("invisible");
+}
+
+export function disable(element: Element): void {
+    element.setAttribute("disabled", "disabled");
+}
+export function enable(element: Element): void {
+    element.removeAttribute("disabled");
+}
+
+export function hide(selectors: string, container?: Element): void {
+    $(selectors, container).classList.add("hidden");
+}
+export function show(selectors: string, container?: Element): void {
+    $(selectors, container).classList.remove("hidden");
+}
 
 let animationInfo = {
     frame: 0,
@@ -17,7 +45,7 @@ let animationInfo = {
     renderBtn: undefined as RenderButton,
     renderColor: undefined as ColorRadio,
     renderInfo: undefined as WebGLUtil.RenderInfo,
-    seed: undefined as string,
+    elevationSeed: undefined as number,
     suspendUpdates: false,
     time: 0,
 };
@@ -65,10 +93,6 @@ const colorRadios = {
     precipitation: {
         rad: $("#precipitation-radio") as HTMLInputElement,
         mode: PlanetColor.PlanetColorMode.Precipitation,
-    } as ColorRadio,
-    wind: {
-        rad: $("#wind-radio") as HTMLInputElement,
-        mode: PlanetColor.PlanetColorMode.Wind,
     } as ColorRadio,
 }
 
@@ -182,7 +206,7 @@ function initControls() {
     });
 
     planetButton.addEventListener("click", (ev) => {
-        animationInfo.seed = undefined;
+        animationInfo.elevationSeed = undefined;
         getPlanet();
     });
 
@@ -315,8 +339,8 @@ function getPlanet(btn?: RenderButton) {
     let rotation = rotationNum.valueAsNumber * 60;
     let grid = gridNum.valueAsNumber + 2;
     let planetUrl = `/Home/GetPlanet?atmosphericPressure=${pressureNum.valueAsNumber}&axialTilt=${tiltNum.valueAsNumber}&radius=${radius}&rotationalPeriod=${rotation}&waterRatio=${waterNum.valueAsNumber}&gridSize=${grid}`;
-    if (!!animationInfo.seed) {
-        planetUrl += `&seed=${animationInfo.seed}`;
+    if (!!animationInfo.elevationSeed) {
+        planetUrl += `&seed=${animationInfo.elevationSeed}`;
     }
     return fetch(planetUrl)
         .then(response => {
@@ -328,7 +352,7 @@ function getPlanet(btn?: RenderButton) {
         })
         .then(data => {
             planet = PlanetData.planetFromData(data);
-            animationInfo.seed = planet.seed;
+            animationInfo.elevationSeed = planet.elevationSeed;
 
             getSeasons(0, seasonCount, btn);
         })
@@ -342,7 +366,7 @@ function getPlanet(btn?: RenderButton) {
 }
 
 function getSeasons(n: number, total: number, btn?: RenderButton) {
-    let seasonUrl = `/Home/GetSeason?key=${planet.key}&amount=${total}&index=${n}`;
+    let seasonUrl = `/Home/GetSeason?key=${planet.elevationSeed}&amount=${total}&index=${n}`;
     if (n === 0) {
         showLoading("Loading climate data...");
     }

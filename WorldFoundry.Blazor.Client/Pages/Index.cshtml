@@ -2,6 +2,135 @@
 @page "/Home"
 @page "/Index"
 
-<h1>Hello, world!</h1>
+<div id="loading-bar" class="progress invisible">
+    <div id="loading-msg" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">Loading...</div>
+</div>
 
-Welcome to your new app.
+<div class="row">
+    <div class="col-md-2 d-flex flex-column align-items-start">
+        <div class="card">
+            <h3 class="card-header">Planet Parameters</h3>
+            <div class="card-body">
+                <div class="card-text">
+                    <span><small>Updating or generating a planet can take a long time, depending on the detail level.</small></span>
+                    <div class="input-group">
+                        <input type="number" min="0" max="9300" step="0.001" value="101.325" />
+                        <label for="pressure-num">Atmospheric Pressure (kPa)</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="0" max="3.14" step="0.01" value="0.4" />
+                        <label for="tilt-num">Axial Tilt (rad)</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="473" max="9556" step="1" value="6371" />
+                        <label for="radius-num">Radius (km)</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="0" step="1" value="1440" />
+                        <label for="rotation-num">Rotational Period (min)</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="0" max="1" step="0.05" value="0.65" />
+                        <label for="water-num">Water Ratio</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="1" max="6" step="1" value="4" />
+                        <label for="grid-num">Detail Level</label>
+                    </div>
+                    <div class="input-group">
+                        <button class="btn btn-info" type="button" disabled="disabled">Adjust Parameters</button>
+                        <span><small>Update Current</small></span>
+                    </div>
+                    <div class="input-group">
+                        <button class="btn btn-primary" type="button">New Planet</button>
+                        <span><small>Generate New</small></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <canvas width="600" height="600" class="d-block mx-auto"></canvas>
+    </div>
+    <div class="col-md-2 d-flex flex-column align-items-start">
+        <div class="card">
+            <h3 class="card-header">Seasons</h3>
+            <div class="card-body">
+                <div class="card-text">
+                    <div class="input-group">
+                        <input type="number" min="1" max="256" step="1" value="12" />
+                        <label for="season-total">Total</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="1" max="256" step="1" value="1" />
+                        <label for="season-num">Current</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="checkbox" checked="checked" />
+                        <label for="autoseason-check">Auto-Advance?</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3 class="card-header">Color Mode</h3>
+            <div class="card-body">
+                <div class="card-text d-flex flex-column align-items-start">
+                    <label for="vegetation-radio">
+                        <input type="radio" class="btn btn-default" name="color-radios" checked="checked" />Vegetation
+                    </label>
+                    <label for="elevation-radio">
+                        <input type="radio" class="btn btn-default" name="color-radios" />Elevation
+                    </label>
+                    <label for="temperature-radio">
+                        <input type="radio" class="btn btn-default" name="color-radios" />Temperature
+                    </label>
+                    <label for="precipitation-radio">
+                        <input type="radio" class="btn btn-default" name="color-radios" />Precipitation
+                    </label>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3 class="card-header">Display Mode</h3>
+            <div class="card-body">
+                <div class="card-text d-flex flex-column align-items-start">
+                    <button type="button" class="btn btn-default" disabled="disabled" style="display: none">Cube</button>
+                    <button type="button" class="btn btn-default" disabled="disabled">Globe</button>
+                    <button type="button" class="btn btn-default" disabled="disabled">Map</button>
+                    <div class="input-group">
+                        <input type="checkbox" checked="checked" />
+                        <label for="rotate-check">Auto-Rotate?</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="number" min="0.1" max="10" step="0.1" value="1" />
+                        <label for="scale-num">Zoom</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="checkbox" />
+                        <label for="smooth-check">Smooth?</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@functions {
+    private bool IsLoading { get; set; }
+
+    private string LoadingMessage { get; set; } = "Loading...";
+
+    private void ShowLoadingMessage(bool value = true, string message = null)
+    {
+        if (string.IsNullOrEmpty(message))
+        {
+            LoadingMessage = "Loading...";
+        }
+        else
+        {
+            LoadingMessage = message;
+        }
+        IsLoading = value;
+    }
+}
