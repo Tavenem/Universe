@@ -9,8 +9,22 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="ClientApp\blazor.d.ts" />
+    <None Remove="ClientApp\dotnet_interop.ts" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.5.0-preview1-10332" />
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Build" Version="0.5.0-preview1-10332" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WorldFoundry\WorldFoundry.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TypeScriptCompile Include="ClientApp\blazor.d.ts" />
+    <TypeScriptCompile Include="ClientApp\dotnet_interop.ts" />
   </ItemGroup>
 
   <Target Name="DebugRunWebpackClient" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And Exists('wwwroot\dist') ">

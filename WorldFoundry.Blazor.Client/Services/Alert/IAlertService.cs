@@ -5,10 +5,10 @@ namespace WorldFoundry.Blazor.Client.Services
 {
     public interface IAlertService
     {
-        event EventHandler<AlertEventArgs> Error;
-        event EventHandler<AlertEventArgs> Info;
-        event EventHandler<AlertEventArgs> Success;
-        event EventHandler<AlertEventArgs> Warning;
+        event EventHandler<MessageEventArgs> Error;
+        event EventHandler<MessageEventArgs> Info;
+        event EventHandler<MessageEventArgs> Success;
+        event EventHandler<MessageEventArgs> Warning;
 
         void ShowError(string message);
         void ShowInfo(string message);

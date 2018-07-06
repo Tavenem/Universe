@@ -5,16 +5,16 @@ namespace WorldFoundry.Blazor.Client.Services
 {
     public class AlertService : IAlertService
     {
-        public event EventHandler<AlertEventArgs> Error;
-        public event EventHandler<AlertEventArgs> Info;
-        public event EventHandler<AlertEventArgs> Success;
-        public event EventHandler<AlertEventArgs> Warning;
+        public event EventHandler<MessageEventArgs> Error;
+        public event EventHandler<MessageEventArgs> Info;
+        public event EventHandler<MessageEventArgs> Success;
+        public event EventHandler<MessageEventArgs> Warning;
 
         public void ShowError(string message)
         {
             if (!string.IsNullOrWhiteSpace(message))
             {
-                OnError(new AlertEventArgs { Message = message });
+                OnError(new MessageEventArgs { Message = message });
             }
         }
 
@@ -22,7 +22,7 @@ namespace WorldFoundry.Blazor.Client.Services
         {
             if (!string.IsNullOrWhiteSpace(message))
             {
-                OnInfo(new AlertEventArgs { Message = message });
+                OnInfo(new MessageEventArgs { Message = message });
             }
         }
 
@@ -30,7 +30,7 @@ namespace WorldFoundry.Blazor.Client.Services
         {
             if (!string.IsNullOrWhiteSpace(reason))
             {
-                OnError(new AlertEventArgs { Message = $"{(int)status} {status} - {reason}" });
+                OnError(new MessageEventArgs { Message = $"{(int)status} {status} - {reason}" });
             }
         }
 
@@ -41,7 +41,7 @@ namespace WorldFoundry.Blazor.Client.Services
         {
             if (!string.IsNullOrWhiteSpace(message))
             {
-                OnSuccess(new AlertEventArgs { Message = message });
+                OnSuccess(new MessageEventArgs { Message = message });
             }
         }
 
@@ -49,13 +49,13 @@ namespace WorldFoundry.Blazor.Client.Services
         {
             if (!string.IsNullOrWhiteSpace(message))
             {
-                OnWarning(new AlertEventArgs { Message = message });
+                OnWarning(new MessageEventArgs { Message = message });
             }
         }
 
-        protected virtual void OnError(AlertEventArgs e) => Error?.Invoke(this, e);
-        protected virtual void OnInfo(AlertEventArgs e) => Error?.Invoke(this, e);
-        protected virtual void OnSuccess(AlertEventArgs e) => Error?.Invoke(this, e);
-        protected virtual void OnWarning(AlertEventArgs e) => Error?.Invoke(this, e);
+        protected virtual void OnError(MessageEventArgs e) => Error?.Invoke(this, e);
+        protected virtual void OnInfo(MessageEventArgs e) => Error?.Invoke(this, e);
+        protected virtual void OnSuccess(MessageEventArgs e) => Error?.Invoke(this, e);
+        protected virtual void OnWarning(MessageEventArgs e) => Error?.Invoke(this, e);
     }
 }

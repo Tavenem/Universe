@@ -2,8 +2,16 @@
 @page "/Home"
 @page "/Index"
 
-<div id="loading-bar" class="progress invisible">
-    <div id="loading-msg" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">Loading...</div>
+@implements IDisposable
+
+@using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+@using WorldFoundry.Blazor.Client.Services
+
+@inject ILoadingBarService LoadingBarService
+@inject ISeasonService SeasonService
+
+<div id="loading-bar" class="progress @((IsLoading ? "invisible" : ""))">
+    <div id="loading-msg" class="progress-bar progress-bar-striped active" role="progressbar" style="width: 100%">@LoadingMessage</div>
 </div>
 
 <div class="row">
@@ -12,62 +20,74 @@
             <h3 class="card-header">Planet Parameters</h3>
             <div class="card-body">
                 <div class="card-text">
-                    <span><small>Updating or generating a planet can take a long time, depending on the detail level.</small></span>
-                    <div class="input-group">
-                        <input type="number" min="0" max="9300" step="0.001" value="101.325" />
-                        <label for="pressure-num">Atmospheric Pressure (kPa)</label>
+                    <h6 class="card-subtitle mb-2 text-muted">Updating or generating a planet can take a long time, depending on the detail level.</h6>
+                    <div class="form-group row">
+                        <label for="pressure-num" class="col-sm-2 col-form-label">Atmospheric Pressure (kPa)</label>
+                        <div class="col-sm-10">
+                            <input id="pressure-num" type="number" min="0" max="9300" step="0.001" bind="@AtmosphericPressure" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="0" max="3.14" step="0.01" value="0.4" />
-                        <label for="tilt-num">Axial Tilt (rad)</label>
+                    <div class="form-group row">
+                        <label for="tilt-num" class="col-sm-2 col-form-label">Axial Tilt (rad)</label>
+                        <div class="col-sm-10">
+                            <input id="tilt-num" type="number" min="0" max="3.14" step="0.01" bind="@AxialTilt" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="473" max="9556" step="1" value="6371" />
-                        <label for="radius-num">Radius (km)</label>
+                    <div class="form-group row">
+                        <label for="radius-num" class="col-sm-2 col-form-label">Radius (km)</label>
+                        <div class="col-sm-10">
+                            <input id="radius-num" type="number" min="473" max="9556" step="1" bind="@Radius" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="0" step="1" value="1440" />
-                        <label for="rotation-num">Rotational Period (min)</label>
+                    <div class="form-group row">
+                        <label for="rotation-num" class="col-sm-2 col-form-label">Rotational Period (min)</label>
+                        <div class="col-sm-10">
+                            <input id="rotation-num" type="number" min="0" step="1" bind="@RotationalPeriod" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="0" max="1" step="0.05" value="0.65" />
-                        <label for="water-num">Water Ratio</label>
+                    <div class="form-group row">
+                        <label for="water-num" class="col-sm-2 col-form-label">Water Ratio</label>
+                        <div class="col-sm-10">
+                            <input id="water-num" type="number" min="0" max="1" step="0.05" bind="@WaterRatio" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="1" max="6" step="1" value="4" />
-                        <label for="grid-num">Detail Level</label>
+                    <div class="form-group row">
+                        <label for="grid-num" class="col-sm-2 col-form-label">Detail Level</label>
+                        <div class="col-sm-10">
+                            <input id="grid-num" type="number" min="0" max="8" step="1" bind="@GridSize" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <button class="btn btn-info" type="button" disabled="disabled">Adjust Parameters</button>
-                        <span><small>Update Current</small></span>
-                    </div>
-                    <div class="input-group">
-                        <button class="btn btn-primary" type="button">New Planet</button>
-                        <span><small>Generate New</small></span>
-                    </div>
+                    <button onclick="@UpdatePlanet" class="btn btn-info" type="button" disabled="@(WebGLFail || IsGenerating || !UpdateParamEnabled)" data-toggle="tooltip" data-placement="top" title="Updates the current planet">Update</button>
+                    <button onclick="@NewPlanet" class="btn btn-primary" type="button" disabled="@(WebGLFail || IsGenerating)">New Planet</button>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-md-8">
-        <canvas width="600" height="600" class="d-block mx-auto"></canvas>
+        <canvas id="planet-canvas" width="600" height="600" class="d-block mx-auto"></canvas>
     </div>
     <div class="col-md-2 d-flex flex-column align-items-start">
         <div class="card">
             <h3 class="card-header">Seasons</h3>
             <div class="card-body">
                 <div class="card-text">
-                    <div class="input-group">
-                        <input type="number" min="1" max="256" step="1" value="12" />
-                        <label for="season-total">Total</label>
+                    <div class="form-group row">
+                        <label for="season-total" class="col-sm-2 col-form-label">Total</label>
+                        <div class="col-sm-10">
+                            <input id="season-total" type="number" min="1" max="256" step="1" bind="@SeasonTotal" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="1" max="256" step="1" value="1" />
-                        <label for="season-num">Current</label>
+                    <div class="form-group row">
+                        <label for="season-num" class="col-sm-2 col-form-label">Current</label>
+                        <div class="col-sm-10">
+                            <input id="season-num" type="number" min="1" max="256" step="1" bind="@Season" />
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <input type="checkbox" checked="checked" />
-                        <label for="autoseason-check">Auto-Advance?</label>
+                    <div class="form-group row">
+                        <label for="autoseason-check" class="col-sm-2 col-form-label">Auto-Advance?</label>
+                        <div class="col-sm-10">
+                            <input id="autoseason-check" type="checkbox" checked="checked" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -76,18 +96,22 @@
             <h3 class="card-header">Color Mode</h3>
             <div class="card-body">
                 <div class="card-text d-flex flex-column align-items-start">
-                    <label for="vegetation-radio">
-                        <input type="radio" class="btn btn-default" name="color-radios" checked="checked" />Vegetation
-                    </label>
-                    <label for="elevation-radio">
-                        <input type="radio" class="btn btn-default" name="color-radios" />Elevation
-                    </label>
-                    <label for="temperature-radio">
-                        <input type="radio" class="btn btn-default" name="color-radios" />Temperature
-                    </label>
-                    <label for="precipitation-radio">
-                        <input type="radio" class="btn btn-default" name="color-radios" />Precipitation
-                    </label>
+                    <div class="form-check">
+                        <input id="vegetation-radio" type="radio" name="color-radios" bind="@ColorModeVegetation" />
+                        <label for="vegetation-radio">Vegetation</label>
+                    </div>
+                    <div class="form-check">
+                        <input id="elevation-radio" type="radio" name="color-radios" bind="@ColorModeElevation" />
+                        <label for="elevation-radio">Elevation</label>
+                    </div>
+                    <div class="form-check">
+                        <input id="temperature-radio" type="radio" name="color-radios" bind="@ColorModeTemperature" />
+                        <label for="temperature-radio">Temperature</label>
+                    </div>
+                    <div class="form-check">
+                        <input id="precipitation-radio" type="radio" name="color-radios" bind="@ColorModePrecipitation" />
+                        <label for="precipitation-radio">Precipitation</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -95,19 +119,18 @@
             <h3 class="card-header">Display Mode</h3>
             <div class="card-body">
                 <div class="card-text d-flex flex-column align-items-start">
-                    <button type="button" class="btn btn-default" disabled="disabled" style="display: none">Cube</button>
-                    <button type="button" class="btn btn-default" disabled="disabled">Globe</button>
-                    <button type="button" class="btn btn-default" disabled="disabled">Map</button>
-                    <div class="input-group">
-                        <input type="checkbox" checked="checked" />
+                    <button onclick="@(e => ChangeRenderMode(RenderMode.Globe))" type="button" class="btn btn-default" disabled="@(WebGLFail || IsGenerating || Planet == null || RenderMode == RenderMode.Globe)">Globe</button>
+                    <button onclick="@(e => ChangeRenderMode(RenderMode.Hammer))" type="button" class="btn btn-default" disabled="@(WebGLFail || IsGenerating || Planet == null || RenderMode == RenderMode.Hammer)">Map</button>
+                    <div class="form-check">
+                        <input id="rotate-check" type="checkbox" bind="@AutoRotate" />
                         <label for="rotate-check">Auto-Rotate?</label>
                     </div>
-                    <div class="input-group">
-                        <input type="number" min="0.1" max="10" step="0.1" value="1" />
+                    <div class="form-check">
+                        <input id="scale-num" type="number" min="0.1" max="10" step="0.1" bind="@Scale" />
                         <label for="scale-num">Zoom</label>
                     </div>
-                    <div class="input-group">
-                        <input type="checkbox" />
+                    <div class="form-check">
+                        <input id="smooth-check" type="checkbox" bind="@Smooth" />
                         <label for="smooth-check">Smooth?</label>
                     </div>
                 </div>
@@ -117,20 +140,265 @@
 </div>
 
 @functions {
+
+    private float AtmosphericPressure { get; set; } = 101.325f;
+
+    private float AxialTilt { get; set; } = 0.4f;
+
+    private bool AutoRotate { get; set; } = true;
+
+    private bool _autoSeason = true;
+    private bool AutoSeason
+    {
+        get => _autoSeason;
+        set
+        {
+            if (_autoSeason != value)
+            {
+                _autoSeason = value;
+                PlanetDisplay.AutoSeason(PlanetId, value);
+            }
+        }
+    }
+
+    private bool _colorModeElevation;
+    private bool ColorModeElevation
+    {
+        get => _colorModeElevation;
+        set
+        {
+            if (_colorModeElevation != value)
+            {
+                _colorModeVegetation = value;
+                ChangeColorMode(PlanetColorMode.Elevation);
+            }
+        }
+    }
+
+    private bool _colorModePrecipitation;
+    private bool ColorModePrecipitation
+    {
+        get => _colorModePrecipitation;
+        set
+        {
+            if (_colorModePrecipitation != value)
+            {
+                _colorModeVegetation = value;
+                ChangeColorMode(PlanetColorMode.Precipitation);
+            }
+        }
+    }
+
+    private bool _colorModeTemperature;
+    private bool ColorModeTemperature
+    {
+        get => _colorModeTemperature;
+        set
+        {
+            if (_colorModeTemperature != value)
+            {
+                _colorModeVegetation = value;
+                ChangeColorMode(PlanetColorMode.Temperature);
+            }
+        }
+    }
+
+    private bool _colorModeVegetation = true;
+    private bool ColorModeVegetation
+    {
+        get => _colorModeVegetation;
+        set
+        {
+            if (_colorModeVegetation != value)
+            {
+                _colorModeVegetation = value;
+                ChangeColorMode(PlanetColorMode.Vegetation);
+            }
+        }
+    }
+
+    private bool WebGLFail { get; set; }
+
+    private int _gridSize = 6;
+    private int GridSize
+    {
+        get => _gridSize;
+        set
+        {
+            _gridSize = value;
+            if (Planet != null)
+            {
+                UpdateParamEnabled = true;
+            }
+        }
+    }
+
+    private bool IsGenerating { get; set; }
+
     private bool IsLoading { get; set; }
 
-    private string LoadingMessage { get; set; } = "Loading...";
+    private string LoadingMessage { get; set; }
 
-    private void ShowLoadingMessage(bool value = true, string message = null)
+    private TerrestrialPlanet Planet { get; set; }
+
+    private string PlanetId { get; set; }
+
+    private int Radius { get; set; } = 6371;
+
+    private RenderMode RenderMode { get; set; }
+
+    private int RotationalPeriod { get; set; } = 1440;
+
+    private float _scale = 1;
+    private float Scale
     {
-        if (string.IsNullOrEmpty(message))
+        get => _scale;
+        set
         {
-            LoadingMessage = "Loading...";
+            if (_scale != value)
+            {
+                _scale = value;
+                PlanetDisplay.Scale(PlanetId, value);
+            }
         }
-        else
+    }
+
+    private int _season = 1;
+    private int Season
+    {
+        get => _season;
+        set
         {
-            LoadingMessage = message;
+            if (_season != value)
+            {
+                _season = value;
+                PlanetDisplay.ChangeSeason(PlanetId, value);
+            }
         }
-        IsLoading = value;
+    }
+
+    private int _seasonTotal = 12;
+    private int SeasonTotal
+    {
+        get => _seasonTotal;
+        set
+        {
+            _seasonTotal = value;
+            if (Planet != null)
+            {
+                UpdateParamEnabled = true;
+            }
+        }
+    }
+
+    private bool _smooth;
+    private bool Smooth
+    {
+        get => _smooth;
+        set
+        {
+            if (_smooth != value)
+            {
+                _smooth = value;
+                PlanetDisplay.Smooth(PlanetId, value);
+            }
+        }
+    }
+
+    private float WaterRatio { get; set; } = 0.65f;
+
+    private bool UpdateParamEnabled { get; set; }
+
+    protected override async Task OnInitAsync()
+    {
+        LoadingBarService.Loading += OnLoading;
+        LoadingBarService.DoneLoading += OnDoneLoading;
+
+        SeasonService.SeasonChange += OnSeasonChanged;
+
+        await InitPlanetDisplayAsync();
+    }
+
+    public void Dispose()
+    {
+        LoadingBarService.Loading -= OnLoading;
+        LoadingBarService.DoneLoading -= OnDoneLoading;
+
+        SeasonService.SeasonChange -= OnSeasonChanged;
+    }
+
+    private void ChangeColorMode(PlanetColorMode mode)
+    {
+        PlanetDisplay.ChangeColorMode(PlanetId, mode);
+    }
+
+    private void ChangeRenderMode(RenderMode mode)
+    {
+        RenderMode = mode;
+        PlanetDisplay.ChangeRenderMode(PlanetId, mode);
+    }
+
+    private async Task InitPlanetDisplayAsync()
+    {
+        PlanetId = Guid.NewGuid().ToString();
+        var success = await PlanetDisplay.Create(PlanetId, "planet-canvas");
+        if (!success)
+        {
+            WebGLFail = true;
+        }
+    }
+
+    private void NewPlanet(UIMouseEventArgs e)
+    {
+        IsGenerating = true;
+        ShowLoadingMessage("Generating planet data...");
+
+        Planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(TerrestrialPlanetParams.FromDefaults(
+                atmosphericPressure: AtmosphericPressure,
+                axialTilt: AxialTilt,
+                gridSize: GridSize,
+                radius: Radius * 1000,
+                rotationalPeriod: RotationalPeriod * 60,
+                waterRatio: WaterRatio));
+        SetPlanet();
+    }
+
+    private void OnLoading(object sender, MessageEventArgs e)
+    {
+        ShowLoadingMessage(e.Message);
+    }
+
+    private void OnDoneLoading(object sender, EventArgs e)
+    {
+        IsLoading = false;
+    }
+
+    private void OnSeasonChanged(object sender, IntEventArgs e)
+    {
+        Season = e.Value;
+    }
+
+    private void SetPlanet()
+    {
+        Planet.GetSeasons(SeasonTotal).ToList();
+
+        PlanetDisplay.SetPlanet(PlanetId, Planet);
+
+        IsGenerating = false;
+    }
+
+    private void ShowLoadingMessage(string message)
+    {
+        LoadingMessage = message;
+        IsLoading = true;
+    }
+
+    private void UpdatePlanet(UIMouseEventArgs e)
+    {
+        IsGenerating = true;
+        ShowLoadingMessage("Generating planet data...");
+
+        Planet.SetGridSize((short)GridSize, true);
+        SetPlanet();
     }
 }

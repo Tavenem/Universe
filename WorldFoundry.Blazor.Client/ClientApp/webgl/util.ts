@@ -1,8 +1,7 @@
-﻿import $ from 'jquery';
-import * as glM from 'gl-matrix';
-import { rogueBlazorFunctions } from '../bootstrap_functions';
+﻿import * as glM from 'gl-matrix';
 import * as PlanetData from './planet-data';
 import * as PlanetColor from './planet-color';
+import * as DotNetInterop from '../dotnet_interop';
 
 export interface AttribLocations {
     vertexPosition: number;
@@ -24,6 +23,7 @@ export interface ParamInitData {
     longitude?: number;
     season: number;
     scale: number;
+    smooth: boolean;
 }
 
 export interface RendererParams {
@@ -33,6 +33,7 @@ export interface RendererParams {
     planet: PlanetData.Planet;
     season: number;
     scale: number;
+    smooth: boolean;
 }
 export interface InitParams {
     (planet: PlanetData.Planet, data: ParamInitData): RendererParams;
@@ -46,6 +47,7 @@ initParams = function (planet: PlanetData.Planet, data: ParamInitData): Renderer
         planet: planet,
         season: data.season,
         scale: data.scale,
+        smooth: data.smooth,
     };
 }
 
@@ -143,9 +145,5 @@ export function initShaderProgram(gl: WebGLRenderingContext, vsSource: string, f
 }
 
 function webGLError() {
-    rogueBlazorFunctions.bsCollapseHide("#infoAlert");
-    rogueBlazorFunctions.bsCollapseHide("#successAlert");
-    rogueBlazorFunctions.bsCollapseHide("#warningAlert");
-    rogueBlazorFunctions.bsCollapseHide("#errorAlert");
-    rogueBlazorFunctions.bsCollapseShowTimed("#webGLErrorAlert", 5000);
+    DotNetInterop.showError("WebGL wasn't able to load correctly in your browser.");
 }

@@ -112,6 +112,7 @@ export interface TileClimate {
 
 export interface Season {
     edgeRiverFlows: number[];
+    index: number;
     tileClimates: TileClimate[];
 }
 
@@ -140,6 +141,7 @@ export interface Topography {
 export interface PlanetData {
     axis: PlanetVector;
     topography: Topography;
+    seasons: Season[];
 }
 
 function glMVec3FromPlanetVector(v: PlanetVector) {
@@ -188,13 +190,15 @@ function tilesFromData(tiles: TileData[]) {
 }
 
 export function planetFromData(data: PlanetData): Planet {
-    return {
+    var planet = {
         axis: glMVec3FromPlanetVector(data.axis),
         buffers: [],
         corners: cornersFromData(data.topography.corners),
         edges: data.topography.edges,
-        seasons: [],
+        seasons: data.seasons,
         elevationSeed: data.topography.elevationSeed,
         tiles: tilesFromData(data.topography.tiles),
     };
+    planet.seasons.sort((a, b) => a.index - b.index);
+    return planet;
 }

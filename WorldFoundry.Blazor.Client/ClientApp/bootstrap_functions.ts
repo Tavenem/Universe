@@ -1,6 +1,6 @@
 ﻿import $ from 'jquery';
 
-export const rogueBlazorFunctions = {
+export const bootstrapBlazorFunctions = {
 
     bsCollapseHide: function (selector: string) {
         $(selector).collapse('hide');
@@ -30,4 +30,4 @@ export const rogueBlazorFunctions = {
     },
 };
 
-(window as any).rogueBlazorFunctions = rogueBlazorFunctions;
+(window as any).bootstrapBlazorFunctions = bootstrapBlazorFunctions;

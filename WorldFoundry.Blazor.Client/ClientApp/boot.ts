@@ -1,4 +1,6 @@
 ﻿import 'bootstrap';
 import './site.scss';
 
-import './bootstrap_functions';
+import { bootstrapBlazorFunctions } from './bootstrap_functions';
+
+bootstrapBlazorFunctions.bsEnableTooltips();

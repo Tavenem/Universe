@@ -2,7 +2,7 @@
 
 namespace WorldFoundry.Blazor.Client.Services
 {
-    public class AlertEventArgs : EventArgs
+    public class MessageEventArgs : EventArgs
     {
         public string Message { get; set; }
     }

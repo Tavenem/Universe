@@ -14,10 +14,6 @@
 </main>
 
 <footer class="container">
-    <div id="webGLErrorAlert" class="alert alert-danger alert-dismissible collapse" role="alert" aria-expanded="false">
-        <span><strong>ERROR:</strong> WebGL wasn't able to load correctly in your browser.</span>
-        <button class="close" data-toggle="collapse" data-target="errorAlert" aria-label="Close" aria-controls="errorAlert"><span aria-hidden="true">$times;</span></button>
-    </div>
     <div id="errorAlert" class="alert alert-danger alert-dismissible collapse" role="alert" aria-expanded="false">
         <span><strong>ERROR:</strong> @ErrorMessage</span>
         <button class="close" data-toggle="collapse" data-target="errorAlert" aria-label="Close" aria-controls="errorAlert"><span aria-hidden="true">$times;</span></button>
@@ -60,43 +56,39 @@
         AlertService.Warning -= OnWarning;
     }
 
-    private void OnError(object sender, AlertEventArgs e)
+    private void OnError(object sender, MessageEventArgs e)
     {
         ErrorMessage = e.Message;
         Bootstrap.CollapseHide("#infoAlert");
         Bootstrap.CollapseHide("#successAlert");
         Bootstrap.CollapseHide("#warningAlert");
-        Bootstrap.CollapseHide("#webGLErrorAlert");
         Bootstrap.CollapseShowTimed("#errorAlert", alertTimeout_ms);
     }
 
-    private void OnInfo(object sender, AlertEventArgs e)
+    private void OnInfo(object sender, MessageEventArgs e)
     {
         InfoMessage = e.Message;
         Bootstrap.CollapseHide("#errorAlert");
         Bootstrap.CollapseHide("#successAlert");
         Bootstrap.CollapseHide("#warningAlert");
-        Bootstrap.CollapseHide("#webGLErrorAlert");
         Bootstrap.CollapseShowTimed("#infoAlert", alertTimeout_ms);
     }
 
-    private void OnSuccess(object sender, AlertEventArgs e)
+    private void OnSuccess(object sender, MessageEventArgs e)
     {
         SuccessMessage = e.Message;
         Bootstrap.CollapseHide("#errorAlert");
         Bootstrap.CollapseHide("#infoAlert");
         Bootstrap.CollapseHide("#warningAlert");
-        Bootstrap.CollapseHide("#webGLErrorAlert");
         Bootstrap.CollapseShowTimed("#successAlert", alertTimeout_ms);
     }
 
-    private void OnWarning(object sender, AlertEventArgs e)
+    private void OnWarning(object sender, MessageEventArgs e)
     {
         WarningMessage = e.Message;
         Bootstrap.CollapseHide("#errorAlert");
         Bootstrap.CollapseHide("#infoAlert");
         Bootstrap.CollapseHide("#successAlert");
-        Bootstrap.CollapseHide("#webGLErrorAlert");
         Bootstrap.CollapseShowTimed("#warningAlert", alertTimeout_ms);
     }
 }
