@@ -17,6 +17,11 @@
         public int RiverDirection { get; internal set; } = -1;
 
         /// <summary>
+        /// The average volume of water flowing in the river along this <see cref="Edge"/>, in m³/s.
+        /// </summary>
+        public FloatRange RiverFlow { get; internal set; }
+
+        /// <summary>
         /// The index of the <see cref="Corner"/> from which the river on this <see cref="Edge"/>
         /// flows. -1 if the <see cref="Edge"/> has no river.
         /// </summary>

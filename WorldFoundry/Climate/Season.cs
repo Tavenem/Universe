@@ -23,7 +23,8 @@ namespace WorldFoundry.Climate
         private const float PrecipitationTempScale = 0.027f;
 
         /// <summary>
-        /// The climate of each <see cref="Edge"/> during this <see cref="Season"/>.
+        /// The volume of water flowing in the river along each <see cref="Edge"/> during this <see
+        /// cref="Season"/>, in m³/s.
         /// </summary>
         public float[] EdgeRiverFlows { get; private set; }
 

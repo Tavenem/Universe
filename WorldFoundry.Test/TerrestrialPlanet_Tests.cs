@@ -294,7 +294,7 @@ namespace WorldFoundry.Test
         {
             sb.AppendLine("Precipitation (annual average, land):");
             var list = planet.Topography.Tiles.Where(x => x.TerrainType != TerrainType.Water)
-                .Select(x => seasons.Select(y => y.TileClimates[x.Index].Precipitation).Sum())
+                .Select(x => x.Precipitation)
                 .ToList();
             if (list.Any())
             {
@@ -323,19 +323,19 @@ namespace WorldFoundry.Test
 
             sb.AppendLine("  Selected Tiles:");
             sb.AppendFormat("    [1]:                 {0} mm ({1})",
-                seasons.Sum(s => s.TileClimates[1].Precipitation),
+                planet.Topography.Tiles[1].Precipitation,
                 planet.Topography.Tiles[1].TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [2]:                 {0} mm ({1})",
-                seasons.Sum(s => s.TileClimates[2].Precipitation),
+                planet.Topography.Tiles[2].Precipitation,
                 planet.Topography.Tiles[2].TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [3]:                 {0} mm ({1})",
-                seasons.Sum(s => s.TileClimates[3].Precipitation),
+                planet.Topography.Tiles[3].Precipitation,
                 planet.Topography.Tiles[3].TerrainType);
             sb.AppendLine();
             sb.AppendFormat("    [4]:                 {0} mm ({1})",
-                seasons.Sum(s => s.TileClimates[4].Precipitation),
+                planet.Topography.Tiles[4].Precipitation,
                 planet.Topography.Tiles[4].TerrainType);
             sb.AppendLine();
         }
@@ -343,43 +343,41 @@ namespace WorldFoundry.Test
         private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet, List<Season> seasons)
         {
             sb.AppendLine("Temp:");
-            sb.AppendFormat("  Avg:                     {0} K", seasons.Average(s => s.TileClimates.Average(t => t.Temperature)));
+            sb.AppendFormat("  Avg:                     {0} K", planet.Topography.Tiles.Average(x => x.Temperature.Avg));
             sb.AppendLine();
 
             var water = planet.Topography.Tiles.Any(x => x.TerrainType == TerrainType.Water);
             var min = water ? planet.Topography.Tiles
                 .Where(x => x.TerrainType == TerrainType.Water)
-                .Select(x => seasons.Select(y => y.TileClimates[x.Index].Temperature).Min()).Min()
+                .Min(x => x.Temperature.Min)
                 : 0;
             sb.AppendFormat("  Min Sea-Level:           {0} K", min);
             sb.AppendLine();
 
             var avg = water ? planet.Topography.Tiles
                 .Where(x => x.TerrainType == TerrainType.Water)
-                .Select(x => seasons.Select(y => y.TileClimates[x.Index].Temperature).Average()).Average()
+                .Average(x => x.Temperature.Avg)
                 : 0;
             sb.AppendFormat("  Avg Sea-Level:           {0} K", avg);
             sb.AppendLine();
 
-            sb.AppendFormat("  Max:                     {0} K", seasons.Max(s => s.TileClimates.Max(t => t.Temperature)));
+            sb.AppendFormat("  Max:                     {0} K", planet.Topography.Tiles.Max(x => x.Temperature.Max));
             sb.AppendLine();
 
-            var maxAvg = planet.Topography.Tiles
-                .Select(x => seasons.Select(y => y.TileClimates[x.Index].Temperature).Average())
-                .Max();
+            var maxAvg = planet.Topography.Tiles.Max(x => x.Temperature.Avg);
             sb.AppendFormat("  Max Avg:          {0} K", maxAvg);
             sb.AppendLine();
 
             var (minMaxTemp, minMaxIndex) = water ? planet.Topography.Tiles
                 .Where(x => x.TerrainType == TerrainType.Water)
-                .Select(x => (temp: seasons.Select(y => y.TileClimates[x.Index].Temperature).Max(), x.Index))
+                .Select(x => (temp: x.Temperature.Max, x.Index))
                 .OrderBy(x => x.temp)
                 .First()
                 : (0, 0);
             sb.AppendFormat("  Min Max (water):  {0} K [{1}]", minMaxTemp, minMaxIndex);
             sb.AppendLine();
 
-            sb.AppendFormat("Avg Surface Pressure:      {0} kPa", seasons.Average(s => s.TileClimates.Average(t => t.AtmosphericPressure)));
+            sb.AppendFormat("Avg Surface Pressure:      {0} kPa", planet.Topography.Tiles.Average(x => x.AtmosphericPressure.Avg));
             sb.AppendLine();
         }
 

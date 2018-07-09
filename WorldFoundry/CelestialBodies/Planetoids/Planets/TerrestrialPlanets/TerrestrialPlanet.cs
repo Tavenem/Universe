@@ -1844,9 +1844,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             for (var i = 0; i < Topography.Tiles.Length; i++)
             {
-                Topography.Tiles[i].SetClimate(
-                    seasons.Average(s => s.TileClimates[i].Temperature),
-                    seasons.Sum(s => s.TileClimates[i].Precipitation));
+                Topography.Tiles[i].SetClimate(seasons);
+            }
+
+            for (var i = 0; i < Topography.Edges.Length; i++)
+            {
+                Topography.Edges[i].RiverFlow = new FloatRange(
+                    seasons.Min(x => x.EdgeRiverFlows[i]),
+                    seasons.Average(x => x.EdgeRiverFlows[i]),
+                    seasons.Max(x => x.EdgeRiverFlows[i]));
             }
 
             return season;

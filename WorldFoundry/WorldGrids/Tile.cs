@@ -19,6 +19,11 @@ namespace WorldFoundry.WorldGrids
         public float Area { get; internal set; }
 
         /// <summary>
+        /// The average atmospheric pressure in this <see cref="Tile"/>, in kPa.
+        /// </summary>
+        public FloatRange AtmosphericPressure { get; internal set; }
+
+        /// <summary>
         /// The <see cref="Climate.BiomeType"/> of this <see cref="Tile"/>.
         /// </summary>
         public BiomeType BiomeType { get; internal set; }
@@ -78,10 +83,38 @@ namespace WorldFoundry.WorldGrids
         internal float North { get; set; }
 
         /// <summary>
+        /// The average annual precipitation in this <see cref="Tile"/>, in mm. Counts all forms of
+        /// precipitation, including the water-equivalent amount of snowfall (even though snow is
+        /// also reported separately).
+        /// </summary>
+        public float Precipitation { get; internal set; }
+
+        /// <summary>
         /// The resources which can be found in this <see cref="Tile"/>, along with a value from 0 to
         /// 1 (inclusive) indicating the relative richness of the resource in that location.
         /// </summary>
         public Dictionary<Chemical, float> Resources { get; internal set; }
+
+        /// <summary>
+        /// The average thickness of sea ice in this <see cref="Tile"/>, in meters.
+        /// </summary>
+        public FloatRange SeaIce { get; internal set; }
+
+        /// <summary>
+        /// The average depth of persistent snow cover in this <see cref="Tile"/>, in mm. Assumes a
+        /// typical ratio of 1mm water-equivalent = 13mm snow.
+        /// </summary>
+        public FloatRange SnowCover { get; internal set; }
+
+        /// <summary>
+        /// The average annual amount of snow which falls in this <see cref="Tile"/>, in mm.
+        /// </summary>
+        public float SnowFall { get; set; }
+
+        /// <summary>
+        /// The average temperature in this <see cref="Tile"/>, in K.
+        /// </summary>
+        public FloatRange Temperature { get; internal set; }
 
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Tile"/>.
@@ -130,42 +163,61 @@ namespace WorldFoundry.WorldGrids
 
         internal int IndexOfTile(int tileIndex) => Array.IndexOf(Tiles, tileIndex);
 
-        internal void SetClimate(float bioTemperature, float annualPrecipitation)
+        internal void SetClimate(IEnumerable<Season> seasons)
         {
-            SetHumidityType(annualPrecipitation);
+            AtmosphericPressure = new FloatRange(
+                seasons.Min(s => s.TileClimates[Index].AtmosphericPressure),
+                seasons.Average(s => s.TileClimates[Index].AtmosphericPressure),
+                seasons.Max(s => s.TileClimates[Index].AtmosphericPressure));
+            Temperature = new FloatRange(
+                seasons.Min(s => s.TileClimates[Index].Temperature),
+                seasons.Average(s => s.TileClimates[Index].Temperature),
+                seasons.Max(s => s.TileClimates[Index].Temperature));
+            Precipitation = seasons.Sum(s => s.TileClimates[Index].Precipitation);
+            SeaIce = new FloatRange(
+                seasons.Min(s => s.TileClimates[Index].SeaIce),
+                seasons.Average(s => s.TileClimates[Index].SeaIce),
+                seasons.Max(s => s.TileClimates[Index].SeaIce));
+            SnowCover = new FloatRange(
+                seasons.Min(s => s.TileClimates[Index].SnowCover),
+                seasons.Average(s => s.TileClimates[Index].SnowCover),
+                seasons.Max(s => s.TileClimates[Index].SnowCover));
+            SnowFall = seasons.Sum(s => s.TileClimates[Index].SnowFall);
 
-            SetClimateType(bioTemperature);
+            SetHumidityType(Precipitation);
+
+            SetClimateType(Temperature.Avg);
 
             SetEcologyType();
         }
 
-        private void SetClimateType(float bioTemperature)
+        private void SetClimateType(float temperature)
         {
-            if (bioTemperature <= Chemical.Water.MeltingPoint + 1.5)
+            if (temperature <= Chemical.Water.MeltingPoint + 1.5)
             {
                 ClimateType = ClimateType.Polar;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 3)
+            else if (temperature <= Chemical.Water.MeltingPoint + 3)
             {
                 ClimateType = ClimateType.Subpolar;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 6)
+            else if (temperature <= Chemical.Water.MeltingPoint + 6)
             {
                 ClimateType = ClimateType.Boreal;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 12)
+            else if (temperature <= Chemical.Water.MeltingPoint + 12)
             {
                 ClimateType = ClimateType.CoolTemperate;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 18)
+            else if (temperature <= Chemical.Water.MeltingPoint + 18)
             {
                 ClimateType = ClimateType.WarmTemperate;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 24)
+            else if (temperature <= Chemical.Water.MeltingPoint + 24)
             {
                 ClimateType = ClimateType.Subtropical;
             }
-            else if (bioTemperature <= Chemical.Water.MeltingPoint + 36)
+            else if (temperature <= Chemical.Water.MeltingPoint + 36)
             {
                 ClimateType = ClimateType.Tropical;
             }
