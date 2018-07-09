@@ -133,6 +133,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= copper;
 
+            var lead = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= lead;
+
+            var uranium = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= uranium;
+
+            var tin = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= tin;
+
             var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= silver;
 
@@ -146,17 +155,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
             {
-                { (Chemical.Aluminum, Phase.Solid), aluminum },
+                { (Chemical.Aluminium, Phase.Solid), aluminum },
                 { (Chemical.Copper, Phase.Solid), copper },
                 { (Chemical.Diamond, Phase.Solid), diamond },
                 { (Chemical.Gold, Phase.Solid), gold },
                 { (Chemical.Iron, Phase.Solid), iron },
+                { (Chemical.Lead, Phase.Solid), lead },
                 { (Chemical.Nickel, Phase.Solid), nickel },
                 { (Chemical.Platinum, Phase.Solid), platinum },
                 { (Chemical.Rock, Phase.Solid), rock },
                 { (Chemical.Silver, Phase.Solid), silver },
                 { (Chemical.Steel, Phase.Solid), steel },
+                { (Chemical.Tin, Phase.Solid), tin },
                 { (Chemical.Titanium, Phase.Solid), titanium },
+                { (Chemical.Uranium, Phase.Solid), uranium },
             }), crustProportion));
 
             Substance = new Substance() { Composition = new LayeredComposite(layers) };
