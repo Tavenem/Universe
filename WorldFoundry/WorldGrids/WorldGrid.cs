@@ -57,7 +57,7 @@ namespace WorldFoundry.WorldGrids
             { (1.23824518242403e-7, 9.11480125925495e-7) },
             { (3.60144138460099e-8, 3.03826887009348e-7) },
         };
-        
+
         /// <summary>
         /// When generating a <see cref="GridSize"/> automatically (such as through <see
         /// cref="DefaultDesiredTileRadius"/>), this property indicates an optional maximum size
@@ -258,6 +258,47 @@ namespace WorldFoundry.WorldGrids
                 c.Elevation -= lowest;
                 c.Elevation *= scale;
             }
+        }
+
+        /// <summary>
+        /// Finds the closest <see cref="Tile"/> to the given <see cref="Vector3"/>.
+        /// </summary>
+        /// <param name="vector">A <see cref="Vector3"/> representing a position on this <see cref="WorldGrid"/>.</param>
+        /// <returns>
+        /// The <see cref="Tile"/> whose position on the grid most closely matches the given <see
+        /// cref="Vector3"/>; or null, if this grid has not yet been initialized.
+        /// </returns>
+        public Tile GetClosestTile(Vector3 vector)
+        {
+            if (Tiles.Length == 0)
+            {
+                return null;
+            }
+            var shortestDistance = float.PositiveInfinity;
+            Tile closestTile = null;
+            for (int i = 0; i < 12; i++)
+            {
+                var distanceSq = (Tiles[i].Vector - vector).LengthSquared();
+                if (distanceSq < shortestDistance)
+                {
+                    shortestDistance = distanceSq;
+                    closestTile = Tiles[i];
+                }
+            }
+            return GetClosestTile(closestTile, vector, shortestDistance);
+        }
+
+        private Tile GetClosestTile(Tile tile, Vector3 vector, float distanceSq)
+        {
+            for (int i = 0; i < 12; i++)
+            {
+                var dSq = (Tiles[i].Vector - vector).LengthSquared();
+                if (dSq < distanceSq)
+                {
+                    return GetClosestTile(Tiles[i], vector, dSq);
+                }
+            }
+            return tile;
         }
 
         private float GetNorth(Tile t, Quaternion rotation)

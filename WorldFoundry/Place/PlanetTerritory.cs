@@ -1,0 +1,45 @@
+﻿using System.Collections.Generic;
+using System.Linq;
+using WorldFoundry.CelestialBodies.Planetoids;
+
+namespace WorldFoundry.Place
+{
+    /// <summary>
+    /// A <see cref="Territory"/> on the surface of a <see cref="Planetoid"/>.
+    /// </summary>
+    public class PlanetTerritory : Territory
+    {
+        /// <summary>
+        /// This <see cref="PlanetTerritory"/>'s <see cref="Place.Entity"/>, as a <see cref="Planetoid"/>.
+        /// </summary>
+        public Planetoid Planet => Entity as Planetoid;
+
+        /// <summary>
+        /// The indexes of <see cref="WorldGrids.Tile"/>s included in this <see cref="PlanetTerritory"/>.
+        /// </summary>
+        public HashSet<int> TileIndexes { get; set; }
+
+        /// <summary>
+        /// Gets a shallow copy of this <see cref="Place"/>.
+        /// </summary>
+        public override Place GetCopy()
+        {
+            var territory = new PlanetTerritory { Entity = Entity };
+            if (TileIndexes?.Count > 0)
+            {
+                territory.TileIndexes = new HashSet<int>(TileIndexes);
+            }
+            return territory;
+        }
+
+        /// <summary>
+        /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
+        /// </summary>
+        public override bool Includes(Place place)
+            => Entity == place.Entity
+            && ((place is PlanetTerritory pt
+            && ((TileIndexes == null && pt.TileIndexes == null)
+            || (TileIndexes?.IsSupersetOf(pt?.TileIndexes ?? Enumerable.Empty<int>()) ?? false)))
+            || (place is PlanetLocation pl && pl.Tile != null && (TileIndexes?.Contains(pl.Tile.Index) ?? false)));
+    }
+}

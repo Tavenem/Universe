@@ -649,6 +649,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public virtual void SetGridSize(short gridSize, bool preserveShape = true) => Topography.SubdivideGrid(gridSize, preserveShape);
 
         /// <summary>
+        /// Converts latitude and longitude to a <see cref="Vector3"/>.
+        /// </summary>
+        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
+        /// <param name="longitude">A longitude, as an angle in radians from the X-axis at 0 rotation.</param>
+        /// <returns>A <see cref="Vector3"/> representing a position on the surface of this <see cref="Planetoid"/>.</returns>
+        internal Vector3 LatitudeAndLongitudeToVector(float latitude, float longitude)
+        {
+            var cosLat = Math.Cos(latitude);
+            return Vector3.Transform(
+                new Vector3(
+                    (float)(cosLat * Math.Sin(longitude)),
+                    (float)Math.Sin(latitude),
+                    (float)(cosLat * Math.Cos(longitude))),
+                Quaternion.Inverse(AxisRotation));
+        }
+
+        /// <summary>
         /// Converts a <see cref="Vector3"/> to a latitude, in radians.
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
