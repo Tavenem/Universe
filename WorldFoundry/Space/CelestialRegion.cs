@@ -580,6 +580,17 @@ namespace WorldFoundry.Space
         private float GetTotalChildren(string typeName) => Children?.Count(c => c.GetType().FullName == typeName) ?? 0;
 
         /// <summary>
+        /// Finds the position at the center of a set of grid coordinates.
+        /// </summary>
+        /// <remarks>Grid space is 1-based, not 0-based.</remarks>
+        /// <param name="coordinates">The grid space coordinates to convert.</param>
+        /// <returns>
+        /// The position of the center of the grid space within local space.
+        /// </returns>
+        public Vector3 GridCoordsToPosition(Vector3 coordinates)
+            => new Vector3(coordinates.X - 0.5f, coordinates.Y - 0.5f, coordinates.Z - 0.5f) * GridSize;
+
+        /// <summary>
         /// Converts set of grid coordinates to a collection of corner positions.
         /// </summary>
         /// <remarks>Grid space is 1-based, not 0-based.</remarks>
