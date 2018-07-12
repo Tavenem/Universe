@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
-    <Version>0.1.10</Version>
+    <Version>0.1.11</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -18,7 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Substance" Version="0.1.2" />
+    <PackageReference Include="Substance" Version="0.1.3" />
     <PackageReference Include="System.Numerics.Vectors" Version="4.5.0" />
     <PackageReference Include="Troschuetz.Random" Version="4.3.0" />
   </ItemGroup>
