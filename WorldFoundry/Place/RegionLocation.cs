@@ -15,6 +15,15 @@ namespace WorldFoundry.Place
         public CelestialRegion Region => Entity as CelestialRegion;
 
         /// <summary>
+        /// Finds the coordinates of the grid space which contains <see cref="Location.Position"/>.
+        /// </summary>
+        /// <remarks>
+        /// Returns <see cref="Vector3.Zero"/> (invalid as grid coordinates) if <see cref="Region"/>
+        /// is null.
+        /// </remarks>
+        public Vector3 GridSpace => Region?.PositionToGridCoords(Position) ?? Vector3.Zero;
+
+        /// <summary>
         /// Gets a <see cref="Territory"/> which is equivalent to this <see cref="Location"/>.
         /// </summary>
         public override Territory ToTerritory()

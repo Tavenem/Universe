@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using WorldFoundry.CelestialBodies.Planetoids;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.Place
 {
@@ -18,6 +19,16 @@ namespace WorldFoundry.Place
         /// The indexes of <see cref="WorldGrids.Tile"/>s included in this <see cref="PlanetTerritory"/>.
         /// </summary>
         public HashSet<int> TileIndexes { get; set; }
+
+        /// <summary>
+        /// Enumerates the <see cref="Tile"/>s referenced by the <see cref="TileIndexes"/> of this
+        /// <see cref="PlanetTerritory"/>.
+        /// </summary>
+        public IEnumerable<Tile> Tiles => (Planet?.Topography == null || TileIndexes == null)
+            ? Enumerable.Empty<Tile>()
+            : TileIndexes
+                .Where(x => x >= 0 && x < Planet.Topography.Tiles.Length)
+                .Select(x => Planet.Topography.Tiles[x]);
 
         /// <summary>
         /// Gets a shallow copy of this <see cref="Place"/>.
