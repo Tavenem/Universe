@@ -276,7 +276,7 @@ namespace WorldFoundry.WorldGrids
             }
             var shortestDistance = float.PositiveInfinity;
             Tile closestTile = null;
-            for (int i = 0; i < 12; i++)
+            for (var i = 0; i < 12; i++)
             {
                 var distanceSq = (Tiles[i].Vector - vector).LengthSquared();
                 if (distanceSq < shortestDistance)
@@ -290,7 +290,7 @@ namespace WorldFoundry.WorldGrids
 
         private Tile GetClosestTile(Tile tile, Vector3 vector, float distanceSq)
         {
-            for (int i = 0; i < 12; i++)
+            for (var i = 0; i < 12; i++)
             {
                 var dSq = (Tiles[i].Vector - vector).LengthSquared();
                 if (dSq < distanceSq)
