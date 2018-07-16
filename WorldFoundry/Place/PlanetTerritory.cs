@@ -52,5 +52,15 @@ namespace WorldFoundry.Place
             && ((TileIndexes == null && pt.TileIndexes == null)
             || (TileIndexes?.IsSupersetOf(pt?.TileIndexes ?? Enumerable.Empty<int>()) ?? false)))
             || (place is PlanetLocation pl && pl.Tile != null && (TileIndexes?.Contains(pl.Tile.Index) ?? false)));
+
+        /// <summary>
+        /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
+        /// </summary>
+        public override bool Overlaps(Place place)
+            => Entity == place.Entity
+            && ((place is PlanetTerritory pt
+            && ((TileIndexes == null && pt.TileIndexes == null)
+            || (TileIndexes?.Overlaps(pt?.TileIndexes ?? Enumerable.Empty<int>()) ?? false)))
+            || (place is PlanetLocation pl && pl.Tile != null && (TileIndexes?.Contains(pl.Tile.Index) ?? false)));
     }
 }

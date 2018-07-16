@@ -50,5 +50,23 @@ namespace WorldFoundry.Place
                 return Entity != null && place.Entity?.FindCommonParent(Entity) == Entity;
             }
         }
+
+        /// <summary>
+        /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
+        /// </summary>
+        public override bool Overlaps(Place place)
+        {
+            if (Entity == place.Entity)
+            {
+                return (place is RegionTerritory crt
+                    && ((GridSpaces == null && crt.GridSpaces == null)
+                    || (GridSpaces?.Overlaps(crt.GridSpaces ?? Enumerable.Empty<Vector3>()) ?? false)))
+                    || (place is Location l && (GridSpaces?.Contains(l.Position) ?? false));
+            }
+            else
+            {
+                return Entity != null && place.Entity?.FindCommonParent(Entity) == Entity;
+            }
+        }
     }
 }

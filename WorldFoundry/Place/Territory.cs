@@ -9,5 +9,10 @@
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
         /// </summary>
         public virtual bool Includes(Place place) => Entity == place?.Entity;
+
+        /// <summary>
+        /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
+        /// </summary>
+        public virtual bool Overlaps(Place place) => Entity == place?.Entity;
     }
 }
