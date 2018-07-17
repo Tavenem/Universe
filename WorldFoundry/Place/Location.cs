@@ -13,6 +13,20 @@ namespace WorldFoundry.Place
         public virtual Vector3 Position { get; set; }
 
         /// <summary>
+        /// Gets a deep clone of this <see cref="Place"/>.
+        /// </summary>
+        public override Place GetDeepClone() => new Location
+        {
+            Entity = Entity,
+            Position = Position,
+        };
+
+        /// <summary>
+        /// Gets a deep clone of this <see cref="Location"/>.
+        /// </summary>
+        public Location GetDeepCopy() => GetDeepClone() as Location;
+
+        /// <summary>
         /// Indicates whether this <see cref="Location"/> refers to the same <see cref="Place"/> as
         /// the given one.
         /// </summary>

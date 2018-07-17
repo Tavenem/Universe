@@ -51,14 +51,19 @@ namespace WorldFoundry.Place
         }
 
         /// <summary>
-        /// Gets a shallow copy of this <see cref="Place"/>.
+        /// Gets a deep clone of this <see cref="Place"/>.
         /// </summary>
-        public override Place GetCopy() => new PlanetLocation
+        public override Place GetDeepClone() => new PlanetLocation
         {
             Entity = Entity,
             _position = _position,
             _tile = _tile,
         };
+
+        /// <summary>
+        /// Gets a deep clone of this <see cref="PlanetLocation"/>.
+        /// </summary>
+        public new PlanetLocation GetDeepCopy() => GetDeepClone() as PlanetLocation;
 
         /// <summary>
         /// Indicates whether this <see cref="Location"/> refers to the same <see cref="Place"/> as

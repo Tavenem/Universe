@@ -13,8 +13,8 @@ namespace WorldFoundry.Place
         public CelestialEntity Entity { get; set; }
 
         /// <summary>
-        /// Gets a shallow copy of this <see cref="Place"/>.
+        /// Gets a deep clone of this <see cref="Place"/>.
         /// </summary>
-        public virtual Place GetCopy() => new Place { Entity = Entity };
+        public virtual Place GetDeepClone() => new Place { Entity = Entity };
     }
 }

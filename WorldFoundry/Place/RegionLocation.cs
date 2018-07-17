@@ -24,6 +24,11 @@ namespace WorldFoundry.Place
         public Vector3 GridSpace => Region?.PositionToGridCoords(Position) ?? Vector3.Zero;
 
         /// <summary>
+        /// Gets a deep clone of this <see cref="RegionLocation"/>.
+        /// </summary>
+        public new RegionLocation GetDeepCopy() => GetDeepClone() as RegionLocation;
+
+        /// <summary>
         /// Gets a <see cref="Territory"/> which is equivalent to this <see cref="Location"/>.
         /// </summary>
         public override Territory ToTerritory()

@@ -31,17 +31,21 @@ namespace WorldFoundry.Place
                 .Select(x => Planet.Topography.Tiles[x]);
 
         /// <summary>
-        /// Gets a shallow copy of this <see cref="Place"/>.
+        /// Gets a deep clone of this <see cref="Place"/>.
         /// </summary>
-        public override Place GetCopy()
+        public override Place GetDeepClone()
         {
-            var territory = new PlanetTerritory { Entity = Entity };
+            var territory = base.GetDeepClone() as PlanetTerritory;
             if (TileIndexes?.Count > 0)
             {
                 territory.TileIndexes = new HashSet<int>(TileIndexes);
             }
             return territory;
         }
+        /// <summary>
+        /// Gets a deep clone of this <see cref="PlanetTerritory"/>.
+        /// </summary>
+        public new PlanetTerritory GetDeepCopy() => GetDeepClone() as PlanetTerritory;
 
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.

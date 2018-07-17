@@ -21,17 +21,21 @@ namespace WorldFoundry.Place
         public CelestialRegion Region => Entity as CelestialRegion;
 
         /// <summary>
-        /// Gets a shallow copy of this <see cref="Place"/>.
+        /// Gets a deep clone of this <see cref="Place"/>.
         /// </summary>
-        public override Place GetCopy()
+        public override Place GetDeepClone()
         {
-            var territory = new RegionTerritory { Entity = Entity };
+            var territory = base.GetDeepClone() as RegionTerritory;
             if (GridSpaces?.Count > 0)
             {
                 territory.GridSpaces = new HashSet<Vector3>(GridSpaces);
             }
             return territory;
         }
+        /// <summary>
+        /// Gets a deep clone of this <see cref="RegionTerritory"/>.
+        /// </summary>
+        public new RegionTerritory GetDeepCopy() => GetDeepClone() as RegionTerritory;
 
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.

@@ -6,6 +6,11 @@
     public class Territory : Place
     {
         /// <summary>
+        /// Gets a deep clone of this <see cref="Territory"/>.
+        /// </summary>
+        public Territory GetDeepCopy() => GetDeepClone() as Territory;
+
+        /// <summary>
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
         /// </summary>
         public virtual bool Includes(Place place) => Entity == place?.Entity;
