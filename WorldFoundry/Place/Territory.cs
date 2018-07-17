@@ -16,6 +16,16 @@
         public virtual bool Includes(Place place) => Entity == place?.Entity;
 
         /// <summary>
+        /// Determines whether the specified <see cref="Place"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Place"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Place obj) => obj is Territory territory && base.Matches(territory);
+
+        /// <summary>
         /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
         /// </summary>
         public virtual bool Overlaps(Place place) => Entity == place?.Entity;

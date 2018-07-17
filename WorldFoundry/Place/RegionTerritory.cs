@@ -56,6 +56,30 @@ namespace WorldFoundry.Place
         }
 
         /// <summary>
+        /// Determines whether the specified <see cref="Place"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Place"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Place obj) => obj is RegionTerritory location && Matches(location);
+
+        /// <summary>
+        /// Determines whether the specified <see cref="RegionTerritory"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="RegionTerritory"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public bool Matches(RegionTerritory obj)
+            => base.Matches(obj)
+            && (GridSpaces == null) == (obj.GridSpaces == null)
+            && (GridSpaces == null
+            || GridSpaces.SetEquals(obj.GridSpaces));
+
+        /// <summary>
         /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
         /// </summary>
         public override bool Overlaps(Place place)

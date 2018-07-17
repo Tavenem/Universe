@@ -58,6 +58,30 @@ namespace WorldFoundry.Place
             || (place is PlanetLocation pl && pl.Tile != null && (TileIndexes?.Contains(pl.Tile.Index) ?? false)));
 
         /// <summary>
+        /// Determines whether the specified <see cref="Place"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Place"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Place obj) => obj is PlanetTerritory location && Matches(location);
+
+        /// <summary>
+        /// Determines whether the specified <see cref="PlanetTerritory"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="PlanetTerritory"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public bool Matches(PlanetTerritory obj)
+            => base.Matches(obj)
+            && (TileIndexes == null) == (obj.TileIndexes == null)
+            && (TileIndexes == null
+            || TileIndexes.SetEquals(obj.TileIndexes));
+
+        /// <summary>
         /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
         /// </summary>
         public override bool Overlaps(Place place)

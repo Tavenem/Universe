@@ -29,6 +29,16 @@ namespace WorldFoundry.Place
         public new RegionLocation GetDeepCopy() => GetDeepClone() as RegionLocation;
 
         /// <summary>
+        /// Determines whether the specified <see cref="Location"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Location"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Location obj) => obj is RegionLocation location && base.Matches(obj);
+
+        /// <summary>
         /// Gets a <see cref="Territory"/> which is equivalent to this <see cref="Location"/>.
         /// </summary>
         public override Territory ToTerritory()

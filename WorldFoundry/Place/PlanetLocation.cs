@@ -66,11 +66,14 @@ namespace WorldFoundry.Place
         public new PlanetLocation GetDeepCopy() => GetDeepClone() as PlanetLocation;
 
         /// <summary>
-        /// Indicates whether this <see cref="Location"/> refers to the same <see cref="Place"/> as
-        /// the given one.
+        /// Determines whether the specified <see cref="Location"/> is equivalent to the current object.
         /// </summary>
-        public override bool Matches(Location other)
-            => base.Matches(other) && other is PlanetLocation location && _position == location._position;
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Location"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Location obj) => obj is PlanetLocation location && base.Matches(obj);
 
         /// <summary>
         /// Gets a <see cref="Territory"/> which is equivalent to this <see cref="Location"/>.

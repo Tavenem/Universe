@@ -27,10 +27,24 @@ namespace WorldFoundry.Place
         public Location GetDeepCopy() => GetDeepClone() as Location;
 
         /// <summary>
-        /// Indicates whether this <see cref="Location"/> refers to the same <see cref="Place"/> as
-        /// the given one.
+        /// Determines whether the specified <see cref="Place"/> is equivalent to the current object.
         /// </summary>
-        public virtual bool Matches(Location other) => Entity == other?.Entity && Position == other?.Position;
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Place"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Matches(Place obj) => obj is Location location && Matches(location);
+
+        /// <summary>
+        /// Determines whether the specified <see cref="Location"/> is equivalent to the current object.
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Location"/> is equivalent to the
+        /// current object; otherwise, <see langword="false"/>.
+        /// </returns>
+        public virtual bool Matches(Location obj) => base.Matches(obj) && Position == obj.Position;
 
         /// <summary>
         /// Gets a <see cref="Territory"/> which is equivalent to this <see cref="Location"/>.
