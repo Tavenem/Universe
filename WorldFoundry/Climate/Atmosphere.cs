@@ -470,7 +470,7 @@ namespace WorldFoundry.Climate
                 {
                     vaporProportion = 0;
                     Composition = Composition.RemoveComponent(chemical, Phase.Any);
-                    if (Composition == Material.Empty)
+                    if (Composition.IsEmpty())
                     {
                         adjustedAtmosphericPressure = 0;
                     }

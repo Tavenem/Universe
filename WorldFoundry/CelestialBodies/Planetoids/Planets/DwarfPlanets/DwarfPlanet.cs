@@ -217,7 +217,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             if (!anyIces)
             {
-                Atmosphere = new Atmosphere(this, Material.Empty.GetDeepCopy(), 0);
+                Atmosphere = new Atmosphere(this, Material.Empty(), 0);
                 return;
             }
 

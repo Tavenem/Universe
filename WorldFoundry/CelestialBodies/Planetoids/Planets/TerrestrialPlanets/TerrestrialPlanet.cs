@@ -799,7 +799,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // presumed lost to atmospheric escape entirely, and no atmosphere at all is indicated.
             if (total == 0)
             {
-                Atmosphere = new Atmosphere(this, Material.Empty.GetDeepCopy(), 0);
+                Atmosphere = new Atmosphere(this, Material.Empty(), 0);
             }
             else
             {
@@ -908,7 +908,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
             if (_hydrosphere == null)
             {
-                _hydrosphere = Material.Empty.GetDeepCopy();
+                _hydrosphere = Material.Empty();
             }
             ClassifyTerrain();
         }
