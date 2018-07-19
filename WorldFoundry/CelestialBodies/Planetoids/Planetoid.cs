@@ -17,7 +17,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Planetoid : CelestialBody
     {
-        private float? _angleOfRotation;
+        private double? _angleOfRotation;
         /// <summary>
         /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
         /// Values greater than half Pi indicate clockwise rotation.
@@ -27,7 +27,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// is in orbit then <see cref="AxialTilt"/> is relative to the <see cref="Planetoid"/>'s
         /// orbital plane.
         /// </remarks>
-        public float AngleOfRotation
+        public double AngleOfRotation
         {
             get => GetProperty(ref _angleOfRotation, GenerateAngleOfRotation) ?? 0;
             internal set
@@ -35,11 +35,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 var angle = value;
                 while (angle > Math.PI)
                 {
-                    angle -= (float)Math.PI;
+                    angle -= Math.PI;
                 }
                 while (angle < 0)
                 {
-                    angle += (float)Math.PI;
+                    angle += Math.PI;
                 }
                 _angleOfRotation = angle;
                 SetAxis();
@@ -66,11 +66,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             protected set => _atmosphere = value;
         }
 
-        private protected float? _axialPrecession;
+        private protected double? _axialPrecession;
         /// <summary>
         /// The angle between the X-axis and the orbital vector at which the first equinox occurs.
         /// </summary>
-        public float AxialPrecession
+        public double AxialPrecession
         {
             get => GetProperty(ref _axialPrecession, GenerateAngleOfRotation) ?? 0;
             internal set
@@ -78,11 +78,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 var angle = value;
                 while (angle > Math.PI)
                 {
-                    angle -= (float)Math.PI;
+                    angle -= Math.PI;
                 }
                 while (angle < 0)
                 {
-                    angle += (float)Math.PI;
+                    angle += Math.PI;
                 }
                 _axialPrecession = angle;
                 SetAxis();
@@ -97,7 +97,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>
         /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as <see cref="AngleOfRotation"/>.
         /// </remarks>
-        public float AxialTilt => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
+        public double AxialTilt => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
 
         private Vector3? _axis;
         /// <summary>
@@ -180,7 +180,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
         /// </summary>
-        public virtual float MagnetosphereChanceFactor => 1;
+        public virtual double MagnetosphereChanceFactor => 1;
 
         private double? _maxMass;
         /// <summary>
@@ -263,7 +263,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// The approximate rigidity of this <see cref="Planetoid"/>.
         /// </summary>
-        public virtual float Rigidity => 3.0e10f;
+        public virtual double Rigidity => 3.0e10;
 
         private double? _rotationalPeriod;
         /// <summary>
@@ -339,7 +339,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </param>
         public Planetoid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
 
-        private protected int AddResource(Chemical substance, float proportion, bool vein, bool perturb = false, int? seed = null)
+        private protected int AddResource(Chemical substance, double proportion, bool vein, bool perturb = false, int? seed = null)
         {
             if (!seed.HasValue)
             {
@@ -362,7 +362,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 n.SetGradientPerturbAmp(20);
             }
 
-            var modifier = proportion - 0.5f;
+            var modifier = proportion - 0.5;
             var ratio = 1 / (1 + modifier);
             foreach (var tile in Topography.Tiles)
             {
@@ -392,14 +392,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     {
                         tile.Resources = new Dictionary<Chemical, float>();
                     }
-                    tile.Resources.Add(substance, richness * ratio);
+                    tile.Resources.Add(substance, (float)(richness * ratio));
                 }
             }
 
             return seed.Value;
         }
 
-        private protected void AddResources(IEnumerable<(Chemical substance, float proportion, bool vein)> resources)
+        private protected void AddResources(IEnumerable<(Chemical substance, double proportion, bool vein)> resources)
         {
             foreach (var (substance, proportion, vein) in resources)
             {
@@ -412,14 +412,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         private protected virtual void GenerateAngleOfRotation()
         {
-            _axialPrecession = (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4);
+            _axialPrecession = Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4);
             if (Randomizer.Static.NextDouble() <= 0.2) // low chance of an extreme tilt
             {
-                AngleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.QuarterPI, Math.PI), 4);
+                AngleOfRotation = Math.Round(Randomizer.Static.NextDouble(MathConstants.QuarterPI, Math.PI), 4);
             }
             else
             {
-                AngleOfRotation = (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.QuarterPI), 4);
+                AngleOfRotation = Math.Round(Randomizer.Static.NextDouble(MathConstants.QuarterPI), 4);
             }
         }
 
@@ -473,7 +473,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 // Invent an orbit age. Precision isn't important here, and some inaccuracy and
                 // inconsistency between satellites is desirable. The age of the Solar system is used
                 // as an arbitrary norm.
-                var years = (float)(Randomizer.Static.Lognormal(0, 1) * 4.6e9);
+                var years = Randomizer.Static.Lognormal(0, 1) * 4.6e9;
                 if (GetIsTidallyLockedAfter(years))
                 {
                     RotationalPeriod = Orbit.Period;
@@ -496,7 +496,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         /// <remarks>Returns null in the base class; subclasses are expected to override.</remarks>
-        private protected virtual Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass) => null;
+        private protected virtual Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass) => null;
 
         /// <summary>
         /// Generates a set of natural satellites for this celestial body.
@@ -521,8 +521,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 var periapsis = Math.Round(Randomizer.Static.NextDouble(minPeriapsis, maxApoapsis));
 
-                var maxEccentricity = (float)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
-                var eccentricity = (float)Math.Round(Math.Min(Math.Abs(Randomizer.Static.Normal(0, 0.05)), maxEccentricity), 4);
+                var maxEccentricity = (maxApoapsis - periapsis) / (maxApoapsis + periapsis);
+                var eccentricity = Math.Round(Math.Min(Math.Abs(Randomizer.Static.Normal(0, 0.05)), maxEccentricity), 4);
 
                 var semiLatusRectum = periapsis * (1 + eccentricity);
                 var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -565,7 +565,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Calculates the Coriolis coefficient for the given latitude on this <see cref="Planetoid"/>.
         /// </summary>
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
-        internal float GetCoriolisCoefficient(float latitude) => (float)(2 * AngularVelocity * Math.Sin(latitude));
+        internal double GetCoriolisCoefficient(double latitude) => 2 * AngularVelocity * Math.Sin(latitude);
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -579,7 +579,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        private protected override float GetInsolationHeat(Vector3 position)
+        private protected override double GetInsolationHeat(Vector3 position)
         {
             var heat = base.GetInsolationHeat(position);
 
@@ -610,7 +610,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 areaRatio = 0.5;
             }
 
-            return (float)(heat * Math.Pow(areaRatio, 0.25));
+            return heat * Math.Pow(areaRatio, 0.25);
         }
 
         /// <summary>
@@ -619,16 +619,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="years">The timescale for tidal locking to have occurred, in years. Usually the approximate age of the local system.</param>
         /// <returns>true if this body will have become tidally locked; false otherwise.</returns>
-        public bool GetIsTidallyLockedAfter(float years)
+        public bool GetIsTidallyLockedAfter(double years)
             => Orbit == null
             ? false
             : Math.Pow(((years / 6.0e11) * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2)) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
 
         private void SetAxis()
         {
-            var precession = Quaternion.CreateFromYawPitchRoll(AxialPrecession, 0, 0);
+            var precession = Quaternion.CreateFromYawPitchRoll((float)AxialPrecession, 0, 0);
             var precessionVector = Vector3.Transform(Vector3.UnitX, precession);
-            var q = Quaternion.CreateFromAxisAngle(precessionVector, AngleOfRotation);
+            var q = Quaternion.CreateFromAxisAngle(precessionVector, (float)AngleOfRotation);
             _axis = Vector3.Transform(Vector3.UnitY, q);
             _axisRotation = Quaternion.Conjugate(q);
         }
@@ -654,7 +654,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
         /// <param name="longitude">A longitude, as an angle in radians from the X-axis at 0 rotation.</param>
         /// <returns>A <see cref="Vector3"/> representing a position on the surface of this <see cref="Planetoid"/>.</returns>
-        internal Vector3 LatitudeAndLongitudeToVector(float latitude, float longitude)
+        internal Vector3 LatitudeAndLongitudeToVector(double latitude, double longitude)
         {
             var cosLat = Math.Cos(latitude);
             return Vector3.Transform(

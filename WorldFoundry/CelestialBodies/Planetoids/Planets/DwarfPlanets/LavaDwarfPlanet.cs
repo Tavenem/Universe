@@ -91,16 +91,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             var crustProportion = GetCrustProportion();
 
             // molten rock mantle
-            var mantleProportion = 1.0f - coreProportion - crustProportion;
+            var mantleProportion = 1.0 - coreProportion - crustProportion;
             var mantle = new Material(Chemical.Rock, Phase.Liquid);
 
             // rocky crust
             // 50% chance of dust
-            var dust = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var dust = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             IComposition crust = null;
             if (dust > 0)
             {
-                crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
                     { (Chemical.Rock, Phase.Solid), 1 - dust },
                     { (Chemical.Dust, Phase.Solid), dust },
@@ -113,7 +113,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             Substance = new Substance()
             {
-                Composition = new LayeredComposite(new List<(IComposition substance, float proportion)>
+                Composition = new LayeredComposite(new List<(IComposition substance, double proportion)>
                 {
                     (core, coreProportion),
                     (mantle, mantleProportion),

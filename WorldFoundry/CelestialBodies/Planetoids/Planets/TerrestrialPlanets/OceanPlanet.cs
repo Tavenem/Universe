@@ -28,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The cores of ocean planets are liable to cool more rapidly than other planets of similar
         /// size, reducing the chances of producing the required dynamo effect.
         /// </remarks>
-        public override float MagnetosphereChanceFactor => 0.5f;
+        public override double MagnetosphereChanceFactor => 0.5;
 
         private const string planemoClassPrefix = "Ocean";
         /// <summary>
@@ -86,12 +86,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var layers = new List<(IComposition substance, float proportion)>();
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
                 { (Chemical.Nickel, Phase.Solid), coreNickel },
@@ -102,44 +102,44 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var mantleProportion = 1 - coreProportion - crustProportion;
 
             // Thin magma mantle
-            var magmaMantle = mantleProportion * 0.1f;
+            var magmaMantle = mantleProportion * 0.1;
             layers.Add((new Material(Chemical.Rock, Phase.Liquid), magmaMantle));
 
             // Rocky crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = (float)Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+            var metals = Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = (float)Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
 
-            var titanium = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
+            var titanium = Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
 
             var iron = metals - nickel - aluminum - titanium;
 
-            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var copper = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= copper;
 
-            var lead = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var lead = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= lead;
 
-            var uranium = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var uranium = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= uranium;
 
-            var tin = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var tin = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= tin;
 
-            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var silver = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= silver;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var gold = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= gold;
 
-            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= platinum;
 
             var rock = 1 - metals;
 
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Aluminium, Phase.Solid), aluminum },
                 { (Chemical.Copper, Phase.Solid), copper },
@@ -156,7 +156,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }), crustProportion));
 
             // Ice mantle
-            var iceMantle = mantleProportion * 0.4f;
+            var iceMantle = mantleProportion * 0.4;
             layers.Add((new Material(Chemical.Water, Phase.Solid), iceMantle));
 
             Substance = new Substance() { Composition = new LayeredComposite(layers) };
@@ -166,8 +166,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // Hydrosphere makes up the bulk of the planet, and therefore is generated as part of Composition.
             HydrosphereProportion = mantleProportion / 2;
             // Surface water is mostly salt water.
-            var saltWater = (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
-            _hydrosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var saltWater = Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
+            _hydrosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Water, Phase.Liquid), 1 - saltWater },
                 { (Chemical.Water_Salt, Phase.Liquid), saltWater },

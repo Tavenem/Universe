@@ -19,7 +19,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public virtual IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => null;
+        public virtual IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => null;
 
         private const double childDensity = 0;
         /// <summary>
@@ -32,15 +32,15 @@ namespace WorldFoundry.Space
         /// </summary>
         public IList<CelestialEntity> Children { get; set; }
 
-        private Dictionary<string, float> _childTotals;
+        private Dictionary<string, double> _childTotals;
         /// <summary>
         /// Get the total number of children within this <see cref="CelestialRegion"/>, based on its
         /// child density.
         /// </summary>
-        public IDictionary<string, float> ChildTotals
+        public IDictionary<string, double> ChildTotals
         {
             get => GetProperty(ref _childTotals, CalculateChildTotals);
-            private set => _childTotals = value as Dictionary<string, float>;
+            private set => _childTotals = value as Dictionary<string, double>;
         }
 
         private Dictionary<Vector3, bool> _gridSpaces;
@@ -100,7 +100,7 @@ namespace WorldFoundry.Space
         {
             if (_childTotals == null)
             {
-                _childTotals = new Dictionary<string, float>();
+                _childTotals = new Dictionary<string, double>();
             }
 
             if (!(ChildPossibilities?.Any() ?? false))
@@ -115,15 +115,15 @@ namespace WorldFoundry.Space
             // Find the amount of each child type.
             foreach (var (type, proportion, constructorParameters) in ChildPossibilities)
             {
-                var amount = (float)Math.Round(totalNumChildren * proportion);
+                var amount = Math.Round(totalNumChildren * proportion);
                 if (amount == 0)
                 {
                     continue;
                 }
 
-                if (float.IsInfinity(amount))
+                if (double.IsInfinity(amount))
                 {
-                    amount = float.MaxValue;
+                    amount = double.MaxValue;
                 }
 
                 // Any existing children establish a minimum for the totals.
@@ -300,7 +300,7 @@ namespace WorldFoundry.Space
             // Adjust type probabilities based on existing counts.
             var effectiveProbabilityTypes = new List<Type>();
             var effectiveProbabilities =
-                new Dictionary<Type, (float proportion, object[] constructorParameters)>();
+                new Dictionary<Type, (double proportion, object[] constructorParameters)>();
             if (ChildPossibilities != null)
             {
                 foreach (var (type, proportion, constructorParameters) in ChildPossibilities)
@@ -577,7 +577,7 @@ namespace WorldFoundry.Space
             }
         }
 
-        private float GetTotalChildren(string typeName) => Children?.Count(c => c.GetType().FullName == typeName) ?? 0;
+        private double GetTotalChildren(string typeName) => Children?.Count(c => c.GetType().FullName == typeName) ?? 0;
 
         /// <summary>
         /// Finds the position at the center of a set of grid coordinates.
@@ -754,7 +754,7 @@ namespace WorldFoundry.Space
             var x = position.X / GridSize;
             if (x != x % 1)
             {
-                x = (float)(Math.Ceiling(Math.Abs(x)) * Math.Sign(x));
+                x = (float)Math.Ceiling(Math.Abs(x)) * Math.Sign(x);
             }
 
             if (x == 0)
@@ -765,7 +765,7 @@ namespace WorldFoundry.Space
             var y = position.Y / GridSize;
             if (y != y % 1)
             {
-                y = (float)(Math.Ceiling(Math.Abs(y)) * Math.Sign(y));
+                y = (float)Math.Ceiling(Math.Abs(y)) * Math.Sign(y);
             }
 
             if (y == 0)
@@ -776,7 +776,7 @@ namespace WorldFoundry.Space
             var z = position.Z / GridSize;
             if (z != z % 1)
             {
-                z = (float)(Math.Ceiling(Math.Abs(z)) * Math.Sign(z));
+                z = (float)Math.Ceiling(Math.Abs(z)) * Math.Sign(z);
             }
 
             if (z == 0)

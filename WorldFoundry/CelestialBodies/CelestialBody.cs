@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies
         internal const double PolarLatitude = 1.5277247828211;
         internal const double CosPolarLatitude = 0.04305822778985774;
 
-        private float? _albedo;
+        private double? _albedo;
         /// <summary>
         /// The average albedo of the <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
@@ -26,27 +26,27 @@ namespace WorldFoundry.CelestialBodies
         /// This refers to the total albedo of the body, including any atmosphere, not just
         /// the surface albedo of the main body.
         /// </remarks>
-        public virtual float Albedo
+        public virtual double Albedo
         {
             get => GetProperty(ref _albedo, GenerateAlbedo) ?? 0;
             internal set => _albedo = value;
         }
 
-        private float? _totalTemperatureAtApoapsis;
+        private double? _totalTemperatureAtApoapsis;
         /// <summary>
         /// The total temperature of this body when at the apoapsis of its orbit (if any).
         /// </summary>
-        public float TotalTemperatureAtApoapsis
+        public double TotalTemperatureAtApoapsis
         {
             get => GetProperty(ref _totalTemperatureAtApoapsis, GetTotalTemperatureAtApoapsis) ?? 0;
             private set => _totalTemperatureAtApoapsis = value;
         }
 
-        private float? _totalTemperatureAtPeriapsis;
+        private double? _totalTemperatureAtPeriapsis;
         /// <summary>
         /// The total temperature of this body when at the periapsis of its orbit (if any).
         /// </summary>
-        public float TotalTemperatureAtPeriapsis
+        public double TotalTemperatureAtPeriapsis
         {
             get => GetProperty(ref _totalTemperatureAtPeriapsis, GetTotalTemperatureAtPeriapsis) ?? 0;
             private set => _totalTemperatureAtPeriapsis = value;
@@ -82,8 +82,8 @@ namespace WorldFoundry.CelestialBodies
         /// <param name="polarTemp">The temperature at <see cref="PolarLatitude"/>, in K.</param>
         /// <param name="latitude">A latitude at which to calculate the temperature.</param>
         /// <returns></returns>
-        internal static float GetTemperatureAtLatitude(float equatorialTemp, float polarTemp, float latitude)
-            => (float)(polarTemp + (equatorialTemp - polarTemp) * Math.Cos(latitude * 0.8));
+        internal static double GetTemperatureAtLatitude(double equatorialTemp, double polarTemp, double latitude)
+            => polarTemp + (equatorialTemp - polarTemp) * Math.Cos(latitude * 0.8);
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
@@ -97,7 +97,7 @@ namespace WorldFoundry.CelestialBodies
         /// Calculates the escape velocity from this body, in m/s.
         /// </summary>
         /// <returns>The escape velocity from this body, in m/s.</returns>
-        public float GetEscapeVelocity() => (float)Math.Sqrt((ScienceConstants.TwoG * Mass) / Radius);
+        public double GetEscapeVelocity() => Math.Sqrt((ScienceConstants.TwoG * Mass) / Radius);
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -111,7 +111,7 @@ namespace WorldFoundry.CelestialBodies
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        private protected virtual float GetInsolationHeat(Vector3 position)
+        private protected virtual double GetInsolationHeat(Vector3 position)
         {
             // Nearby stars within the same parent may provide heat.
             // Other stars are ignored, presumed to be far enough away that
@@ -133,14 +133,14 @@ namespace WorldFoundry.CelestialBodies
                 totalInsolation += star.Luminosity / (MathConstants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
             }
 
-            return (float)Math.Pow((totalInsolation * (1 - Albedo)) / ScienceConstants.FourSigma, 0.25);
+            return Math.Pow((totalInsolation * (1 - Albedo)) / ScienceConstants.FourSigma, 0.25);
         }
 
         /// <summary>
         /// Calculates the temperature of the <see cref="CelestialBody"/>, in K.
         /// </summary>
         /// <returns>The temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        public float GetTotalTemperature() => GetTotalTemperatureFromPosition(Position);
+        public double GetTotalTemperature() => GetTotalTemperatureFromPosition(Position);
 
         /// <summary>
         /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
@@ -196,7 +196,7 @@ namespace WorldFoundry.CelestialBodies
         /// and apoapsis, in K.
         /// </summary>
         /// <returns>The average temperature of the <see cref="CelestialBody"/>.</returns>
-        internal float GetTotalTemperatureAverageOrbital()
+        internal double GetTotalTemperatureAverageOrbital()
         {
             // Only bother calculating twice if the body is actually in orbit.
             if (Orbit == null)
@@ -205,7 +205,7 @@ namespace WorldFoundry.CelestialBodies
             }
             else
             {
-                return (TotalTemperatureAtPeriapsis + TotalTemperatureAtApoapsis) / 2.0f;
+                return (TotalTemperatureAtPeriapsis + TotalTemperatureAtApoapsis) / 2.0;
             }
         }
 
@@ -222,7 +222,7 @@ namespace WorldFoundry.CelestialBodies
         /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
         /// in K.
         /// </returns>
-        internal float GetTotalTemperatureFromPosition(Vector3 position) => (Temperature ?? 0) + GetInsolationHeat(position);
+        internal double GetTotalTemperatureFromPosition(Vector3 position) => (Temperature ?? 0) + GetInsolationHeat(position);
 
         internal virtual void ResetCachedTemperatures()
         {

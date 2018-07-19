@@ -13,11 +13,11 @@ namespace WorldFoundry.Substances
         /// Determines the proportion of liquids and solids in this <see cref="IComposition"/>. If
         /// layered, the highest proportion among all layers is given, since cloud cover is cumulative.
         /// </summary>
-        public static float GetCloudCover(this IComposition composition)
+        public static double GetCloudCover(this IComposition composition)
         {
             if (composition is LayeredComposite lc)
             {
-                float clouds = 0;
+                double clouds = 0;
                 foreach (var (substance, proportion) in lc.Layers)
                 {
                     clouds = Math.Max(clouds, substance.GetChemicals(Phase.Liquid | Phase.Solid).Sum(x => x.proportion));
@@ -33,11 +33,11 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// Determines the greenhouse potential of all components in this <see cref="IComposition"/>.
         /// </summary>
-        public static float GetGreenhousePotential(this IComposition composition)
+        public static double GetGreenhousePotential(this IComposition composition)
         {
             if (composition is LayeredComposite lc)
             {
-                float value = 0;
+                double value = 0;
                 foreach (var (substance, proportion) in lc.Layers)
                 {
                     value += substance.GetGreenhousePotential();

@@ -18,18 +18,18 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Atmosphere : Substance
     {
-        internal static readonly float TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure((float)TMath.Tolerance);
+        internal static readonly double TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure(TMath.Tolerance);
 
         /// <summary>
         /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
         /// </summary>
         public double AtmosphericHeight => Shape.ContainingRadius;
 
-        private float _atmosphericPressure;
+        private double _atmosphericPressure;
         /// <summary>
         /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
         /// </summary>
-        public float AtmosphericPressure
+        public double AtmosphericPressure
         {
             get => Composition.IsEmpty() ? 0 : _atmosphericPressure;
             set
@@ -42,11 +42,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _atmosphericScaleHeight;
+        private double? _atmosphericScaleHeight;
         /// <summary>
         /// Specifies the average scale height of this <see cref="Atmosphere"/>, in meters.
         /// </summary>
-        public float AtmosphericScaleHeight
+        public double AtmosphericScaleHeight
         {
             get
             {
@@ -63,11 +63,11 @@ namespace WorldFoundry.Climate
         /// </summary>
         public CelestialBody CelestialBody { get; private set; }
 
-        private float? _dryLapseRate;
+        private double? _dryLapseRate;
         /// <summary>
         /// Specifies the dry adiabatic lapse rate within this <see cref="Atmosphere"/>, in K/m.
         /// </summary>
-        public float DryLapseRate
+        public double DryLapseRate
         {
             get
             {
@@ -79,11 +79,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _greenhouseEffect;
+        private double? _greenhouseEffect;
         /// <summary>
         /// The total greenhouse effect for this <see cref="Atmosphere"/>, in K.
         /// </summary>
-        internal float GreenhouseEffect
+        internal double GreenhouseEffect
         {
             get
             {
@@ -95,11 +95,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _greenhouseFactor;
+        private double? _greenhouseFactor;
         /// <summary>
         /// The total greenhouse factor for this <see cref="Atmosphere"/>.
         /// </summary>
-        internal float GreenhouseFactor
+        internal double GreenhouseFactor
         {
             get
             {
@@ -111,11 +111,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _insolationFactor_Equatorial;
+        private double? _insolationFactor_Equatorial;
         /// <summary>
         /// The insolation factor to be used at the equator.
         /// </summary>
-        private float InsolationFactor_Equatorial
+        private double InsolationFactor_Equatorial
         {
             get
             {
@@ -127,11 +127,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private float? _insolationFactor_Polar;
+        private double? _insolationFactor_Polar;
         /// <summary>
         /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
         /// </summary>
-        private float InsolationFactor_Polar
+        private double InsolationFactor_Polar
         {
             get
             {
@@ -154,7 +154,7 @@ namespace WorldFoundry.Climate
         /// <param name="body">The <see cref="CelestialBodies.CelestialBody"/> this <see cref="Atmosphere"/> surrounds.</param>
         /// <param name="composition">The <see cref="IComposition"/> which defines this <see cref="Atmosphere"/>.</param>
         /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
-        public Atmosphere(CelestialBody body, IComposition composition, float pressure)
+        public Atmosphere(CelestialBody body, IComposition composition, double pressure)
         {
             CelestialBody = body;
             Composition = composition;
@@ -169,8 +169,8 @@ namespace WorldFoundry.Climate
         /// <param name="pressure">A pressure, in kPa.</param>
         /// <param name="temperature">A temperature, in K.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        internal static float GetAtmosphericDensity(float temperature, float pressure)
-            => pressure * 1000 / (287.058f * temperature);
+        internal static double GetAtmosphericDensity(double temperature, double pressure)
+            => pressure * 1000 / (287.058 * temperature);
 
         /// <summary>
         /// Calculates the saturation mixing ratio of water under the given conditions.
@@ -178,14 +178,14 @@ namespace WorldFoundry.Climate
         /// <param name="vaporPressure">A vapor pressure, in Pa.</param>
         /// <param name="pressure">The total pressure, in kPa.</param>
         /// <returns>The saturation mixing ratio of water under the given conditions.</returns>
-        internal static float GetSaturationMixingRatio(float vaporPressure, float pressure)
+        internal static double GetSaturationMixingRatio(double vaporPressure, double pressure)
         {
             var vp = vaporPressure / 1000;
             if (vp >= pressure)
             {
-                vp = pressure * 0.99999f;
+                vp = pressure * 0.99999;
             }
-            return 0.6219907f * vp / (pressure - vp);
+            return 0.6219907 * vp / (pressure - vp);
         }
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="temperature">A temperature, in K.</param>
         /// <returns>The saturation vapor pressure of water at the given temperature, in Pa.</returns>
-        internal static float GetSaturationVaporPressure(float temperature)
+        internal static double GetSaturationVaporPressure(double temperature)
         {
             var a = temperature > Chemical.Water.MeltingPoint
                 ? 611.21
@@ -208,19 +208,19 @@ namespace WorldFoundry.Climate
                 ? 257.14
                 : 279.82;
             var t = temperature - Chemical.Water.MeltingPoint;
-            return (float)(a * Math.Exp((b - (t / c)) * (t / (d + t))));
+            return a * Math.Exp((b - (t / c)) * (t / (d + t)));
         }
 
-        internal static float GetTemperatureAtSaturationVaporPressure(float satVaporPressure)
-            => (float)((237.3 / (7.5 / Math.Log10(satVaporPressure / 611.15) - 1)) + Chemical.Water.MeltingPoint);
+        internal static double GetTemperatureAtSaturationVaporPressure(double satVaporPressure)
+            => (237.3 / (7.5 / Math.Log10(satVaporPressure / 611.15) - 1)) + Chemical.Water.MeltingPoint;
 
         internal void CalculateGasPhaseMix(
             bool canHaveOxygen,
             Chemical chemical,
-            float surfaceTemp,
-            float polarTemp,
-            ref float hydrosphereAtmosphereRatio,
-            ref float adjustedAtmosphericPressure)
+            double surfaceTemp,
+            double polarTemp,
+            ref double hydrosphereAtmosphereRatio,
+            ref double adjustedAtmosphericPressure)
         {
             var hydrosphere = (CelestialBody as TerrestrialPlanet).Hydrosphere;
             var proportionInHydrosphere = hydrosphere.GetProportion(chemical, Phase.Any);
@@ -277,9 +277,9 @@ namespace WorldFoundry.Climate
         /// </remarks>
         internal void CalculatePhases(
             bool canHaveOxygen,
-            float surfaceTemp,
-            ref float hydrosphereAtmosphereRatio,
-            ref float adjustedAtmosphericPressure)
+            double surfaceTemp,
+            ref double hydrosphereAtmosphereRatio,
+            ref double adjustedAtmosphericPressure)
         {
             var polarTemp = GetSurfaceTemperatureAverageOrbital(true);
 
@@ -308,7 +308,7 @@ namespace WorldFoundry.Climate
         /// At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
         /// carbon-silicate cycle.
         /// </remarks>
-        private void CheckCO2Reduction(float vaporPressure)
+        private void CheckCO2Reduction(double vaporPressure)
         {
             if (Composition is LayeredComposite layeredComposite
                 && layeredComposite.Layers?.Count > 0
@@ -329,7 +329,7 @@ namespace WorldFoundry.Climate
 
                     var component = layeredComposite.Layers[i].substance;
 
-                    co2 = (float)Randomizer.Static.NextDouble(1.5e-5, 1.0e-3);
+                    co2 = Randomizer.Static.NextDouble(1.5e-5, 1.0e-3);
 
                     // Replace most of the CO2 with inert gases.
                     var n2 = component.GetProportion(Chemical.Nitrogen, Phase.Gas) + component.GetProportion(Chemical.CarbonDioxide, Phase.Any) - co2;
@@ -338,21 +338,21 @@ namespace WorldFoundry.Climate
                     component = component.AddComponent(Chemical.CarbonDioxide, Phase.Gas, co2);
 
                     // Some portion of the N2 may be Ar instead.
-                    var ar = (float)Math.Max(component.GetProportion(Chemical.Argon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-0.02, 0.04));
+                    var ar = Math.Max(component.GetProportion(Chemical.Argon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-0.02, 0.04));
                     component = component.AddComponent(Chemical.Argon, Phase.Gas, ar);
                     n2 -= ar;
 
                     // An even smaller fraction may be Kr.
-                    var kr = (float)Math.Max(component.GetProportion(Chemical.Krypton, Phase.Gas), n2 * Randomizer.Static.NextDouble(-2.5e-4, 5.0e-4));
+                    var kr = Math.Max(component.GetProportion(Chemical.Krypton, Phase.Gas), n2 * Randomizer.Static.NextDouble(-2.5e-4, 5.0e-4));
                     component = component.AddComponent(Chemical.Krypton, Phase.Gas, kr);
                     n2 -= kr;
 
                     // An even smaller fraction may be Xe or Ne.
-                    var xe = (float)Math.Max(component.GetProportion(Chemical.Xenon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
+                    var xe = Math.Max(component.GetProportion(Chemical.Xenon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
                     component = component.AddComponent(Chemical.Xenon, Phase.Gas, xe);
                     n2 -= xe;
 
-                    var ne = (float)Math.Max(component.GetProportion(Chemical.Neon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
+                    var ne = Math.Max(component.GetProportion(Chemical.Neon, Phase.Gas), n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
                     component = component.AddComponent(Chemical.Neon, Phase.Gas, ne);
                     n2 -= ne;
 
@@ -367,13 +367,13 @@ namespace WorldFoundry.Climate
         private void CondenseAtmosphericComponent(
             bool canHaveOxygen,
             Chemical chemical,
-            float surfaceTemp,
-            float polarTemp,
-            float proportionInHydrosphere,
-            float vaporProportion,
-            float vaporPressure,
-            ref float hydrosphereAtmosphereRatio,
-            ref float adjustedAtmosphericPressure)
+            double surfaceTemp,
+            double polarTemp,
+            double proportionInHydrosphere,
+            double vaporProportion,
+            double vaporPressure,
+            ref double hydrosphereAtmosphereRatio,
+            ref double adjustedAtmosphericPressure)
         {
             if (surfaceTemp <= Chemical.Water.MeltingPoint) // Below freezing point; add ice.
             {
@@ -401,10 +401,10 @@ namespace WorldFoundry.Climate
             // surface of bodies of liquid, and should decrease exponentially with altitude, an
             // approximation of 25% average humidity overall is used.
             vaporProportion = (proportionInHydrosphere + vaporProportion) * pressureRatio;
-            vaporProportion *= 0.25f;
+            vaporProportion *= 0.25;
             if (!TMath.IsZero(vaporProportion))
             {
-                float previousGasFraction = 0;
+                double previousGasFraction = 0;
                 var gasFraction = vaporProportion;
                 Composition = Composition.AddComponent(chemical, Phase.Gas, vaporProportion);
 
@@ -413,7 +413,7 @@ namespace WorldFoundry.Climate
                 {
                     var o2 = Composition.GetProportion(Chemical.Oxygen, Phase.Gas);
                     previousGasFraction += o2;
-                    o2 = (float)Math.Max(o2, Math.Round(vaporProportion * 0.0001, 5));
+                    o2 = Math.Max(o2, Math.Round(vaporProportion * 0.0001, 5));
                     gasFraction += o2;
                     Composition = Composition.AddComponent(Chemical.Oxygen, Phase.Gas, o2);
                 }
@@ -422,7 +422,7 @@ namespace WorldFoundry.Climate
             }
 
             // Add clouds.
-            var clouds = vaporProportion * 0.2f;
+            var clouds = vaporProportion * 0.2;
             if (!TMath.IsZero(clouds))
             {
                 var troposphere = GetTroposphere();
@@ -445,18 +445,18 @@ namespace WorldFoundry.Climate
 
         private void CondenseAtmosphericIce(
             Chemical chemical,
-            float surfaceTemp,
-            float proportionInHydrosphere,
-            ref float vaporProportion,
-            ref float hydrosphereAtmosphereRatio,
-            ref float adjustedAtmosphericPressure)
+            double surfaceTemp,
+            double proportionInHydrosphere,
+            ref double vaporProportion,
+            ref double hydrosphereAtmosphereRatio,
+            ref double adjustedAtmosphericPressure)
         {
             var ice = proportionInHydrosphere;
 
             // A subsurface liquid water ocean may persist if it's deep enough.
             if (chemical == Chemical.Water && (CelestialBody as TerrestrialPlanet).HydrosphereProportion >= 0.01)
             {
-                ice = (0.01f / (CelestialBody as TerrestrialPlanet).HydrosphereProportion) * proportionInHydrosphere;
+                ice = (0.01 / (CelestialBody as TerrestrialPlanet).HydrosphereProportion) * proportionInHydrosphere;
             }
 
             // Liquid fully precipitates out of the atmosphere when below the minimum; if no liquid
@@ -532,10 +532,10 @@ namespace WorldFoundry.Climate
 
         private void CondenseAtmosphericLiquid(
             Chemical chemical,
-            float polarTemp,
-            ref float proportionInHydrosphere,
-            float vaporProportion,
-            float hydrosphereAtmosphereRatio)
+            double polarTemp,
+            ref double proportionInHydrosphere,
+            double vaporProportion,
+            double hydrosphereAtmosphereRatio)
         {
             // If the hydrosphere was a surface of water ice with a subsurface ocean, melt the
             // surface and return to a single layer.
@@ -556,7 +556,7 @@ namespace WorldFoundry.Climate
                 (CelestialBody as TerrestrialPlanet).Hydrosphere = (CelestialBody as TerrestrialPlanet).Hydrosphere.Homogenize();
             }
 
-            var saltWaterProportion = chemical == Chemical.Water ? (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3) : 0;
+            var saltWaterProportion = chemical == Chemical.Water ? Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3) : 0;
             var liquidProportion = 1 - saltWaterProportion;
 
             // If there is no liquid on the surface, condense from the atmosphere.
@@ -577,7 +577,7 @@ namespace WorldFoundry.Climate
             // Create icecaps.
             if (polarTemp <= Chemical.Water.MeltingPoint)
             {
-                var iceCaps = proportionInHydrosphere * 0.28f;
+                var iceCaps = proportionInHydrosphere * 0.28;
                 SetHydrosphereProportion(chemical, Phase.Solid, iceCaps * liquidProportion, ref hydrosphereAtmosphereRatio);
                 if (chemical == Chemical.Water)
                 {
@@ -634,10 +634,10 @@ namespace WorldFoundry.Climate
         private void EvaporateAtmosphericComponent(
             bool canHaveOxygen,
             Chemical chemical,
-            float hydrosphereProportion,
-            float vaporProportion,
-            ref float hydrosphereAtmosphereRatio,
-            ref float adjustedAtmosphericPressure)
+            double hydrosphereProportion,
+            double vaporProportion,
+            ref double hydrosphereAtmosphereRatio,
+            ref double adjustedAtmosphericPressure)
         {
             if (TMath.IsZero(hydrosphereProportion))
             {
@@ -661,11 +661,11 @@ namespace WorldFoundry.Climate
                 // It is presumed that photodissociation will eventually reduce the amount of water
                 // vapor to a trace gas (the H2 will be lost due to atmospheric escape, and the
                 // oxygen will be lost to surface oxidation).
-                var waterVapor = Math.Min(gasProportion, (float)Math.Round(Randomizer.Static.NextDouble(0.001), 4));
+                var waterVapor = Math.Min(gasProportion, Math.Round(Randomizer.Static.NextDouble(0.001), 4));
                 gasProportion = waterVapor;
 
                 previousGasProportion += Composition.GetProportion(Chemical.Oxygen, Phase.Gas);
-                var o2 = (float)Math.Round(gasProportion * 0.0001, 5);
+                var o2 = Math.Round(gasProportion * 0.0001, 5);
                 gasProportion += o2;
 
                 if (Composition is LayeredComposite lc)
@@ -703,7 +703,7 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="pressure">A pressure, in kPa.</param>
         /// <returns>The non-dimensionalized pressure.</returns>
-        internal float Exner(float pressure) => (float)Math.Pow(pressure / AtmosphericPressure, ScienceConstants.RSpecificOverCpDryAir);
+        internal double Exner(double pressure) => Math.Pow(pressure / AtmosphericPressure, ScienceConstants.RSpecificOverCpDryAir);
 
         /// <summary>
         /// Calculates the air mass coefficient at the given latitude and elevation.
@@ -714,13 +714,13 @@ namespace WorldFoundry.Climate
         /// Optionally, the cosine of the given latitude. If omitted, it will be calculated.
         /// </param>
         /// <returns>The air mass coefficient at the given latitude.</returns>
-        private float GetAirMass(double latitude, float elevation, double? cosLatitude = null)
+        private double GetAirMass(double latitude, double elevation, double? cosLatitude = null)
         {
             var r = CelestialBody.Radius / AtmosphericScaleHeight;
             var cosLat = cosLatitude ?? Math.Cos(latitude);
             var c = elevation / AtmosphericScaleHeight;
             var rPlusCcosLat = (r + c) * cosLat;
-            return (float)(Math.Sqrt(rPlusCcosLat * rPlusCcosLat + (2 * r + 1 + c) * (1 - c)) - rPlusCcosLat);
+            return Math.Sqrt(rPlusCcosLat * rPlusCcosLat + (2 * r + 1 + c) * (1 - c)) - rPlusCcosLat;
         }
 
         /// <summary>
@@ -736,8 +736,8 @@ namespace WorldFoundry.Climate
         /// accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public float GetAtmosphericDrag(float density, float speed) =>
-            (float)(0.235 * density * speed * speed * CelestialBody.Radius);
+        public double GetAtmosphericDrag(double density, double speed) =>
+            0.235 * density * speed * speed * CelestialBody.Radius;
 
         /// <summary>
         /// Calculates the total height of the <see cref="Atmosphere"/>, defined as the point at
@@ -748,8 +748,8 @@ namespace WorldFoundry.Climate
         /// Uses the molar mass of air on Earth, which is clearly not correct for other atmospheres,
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
-        private float GetAtmosphericHeight()
-            => (float)((Math.Log(1.0e-5 / AtmosphericPressure) * ScienceConstants.R * GetSurfaceTemperatureAverageOrbital()) / (-CelestialBody.SurfaceGravity * ScienceConstants.MAir));
+        private double GetAtmosphericHeight()
+            => (Math.Log(1.0e-5 / AtmosphericPressure) * ScienceConstants.R * GetSurfaceTemperatureAverageOrbital()) / (-CelestialBody.SurfaceGravity * ScienceConstants.MAir);
 
         /// <summary>
         /// Calculates the total mass of this <see cref="Atmosphere"/>, in kg.
@@ -775,7 +775,7 @@ namespace WorldFoundry.Climate
         /// which is clearly not correct for other atmospheres, but is considered "close enough" for
         /// the purposes of this library.
         /// </remarks>
-        internal float GetAtmosphericPressure(float temperature, float elevation)
+        internal double GetAtmosphericPressure(double temperature, double elevation)
         {
             if (elevation <= 0)
             {
@@ -783,7 +783,7 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return (float)(AtmosphericPressure * Math.Exp((CelestialBody.SurfaceGravity * ScienceConstants.MAir * elevation) / (ScienceConstants.R * temperature)));
+                return AtmosphericPressure * Math.Exp((CelestialBody.SurfaceGravity * ScienceConstants.MAir * elevation) / (ScienceConstants.R * temperature));
             }
         }
 
@@ -799,14 +799,14 @@ namespace WorldFoundry.Climate
         /// effective temperature, allowing the more sensitive and accurate properties to be
         /// calculated with the more accurate temperature values.
         /// </remarks>
-        private float GetAtmosphericScaleHeight()
-            => (float)((AtmosphericPressure * 1000) / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(CelestialBody.GetTotalTemperature(), AtmosphericPressure)));
+        private double GetAtmosphericScaleHeight()
+            => (AtmosphericPressure * 1000) / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(CelestialBody.GetTotalTemperature(), AtmosphericPressure));
 
         /// <summary>
         /// Calculates the total greenhouse effect for this <see cref="Atmosphere"/>, in K.
         /// </summary>
         /// <returns>The total greenhouse effect for this <see cref="Atmosphere"/>, in K.</returns>
-        private float GetGreenhouseEffect()
+        private double GetGreenhouseEffect()
         {
             var avgTemp = CelestialBody.GetTotalTemperatureAverageOrbital();
             return avgTemp * InsolationFactor_Equatorial * GreenhouseFactor - avgTemp;
@@ -825,7 +825,7 @@ namespace WorldFoundry.Climate
         /// temperature based on changing proportions in an existing atmosphere is well-studied, and
         /// relies on unique formulas for each gas, which is impractical for this library.
         /// </remarks>
-        private float GetGreenhouseFactor()
+        private double GetGreenhouseFactor()
         {
             var total = Composition.GetGreenhousePotential();
             if (TMath.IsZero(total))
@@ -834,11 +834,11 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return (float)(0.933835 + 0.0441533 * Math.Exp(1.79077 * total) * (1.11169 + Math.Log(AtmosphericPressure)));
+                return 0.933835 + 0.0441533 * Math.Exp(1.79077 * total) * (1.11169 + Math.Log(AtmosphericPressure));
             }
         }
 
-        internal float GetHeightForTemperature(float temperature, float surfaceTemp, float elevation)
+        internal double GetHeightForTemperature(double temperature, double surfaceTemp, double elevation)
             => ((surfaceTemp - temperature) / GetLapseRate(surfaceTemp)) - elevation;
 
         /// <summary>
@@ -847,12 +847,12 @@ namespace WorldFoundry.Climate
         /// <returns>
         /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
         /// </returns>
-        private float GetInsolationFactor(bool polar = false)
+        private double GetInsolationFactor(bool polar = false)
         {
             var airMass = GetAirMass(polar ? CelestialBody.PolarLatitude : 0, 0, polar ? CelestialBody.CosPolarLatitude : 1);
 
             var atmMassRatio = Mass / CelestialBody.Mass;
-            return (float)Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
+            return Math.Pow(1320000 * atmMassRatio * Math.Pow(0.7, Math.Pow(airMass, 0.678)), 0.25);
         }
 
         /// <summary>
@@ -865,13 +865,13 @@ namespace WorldFoundry.Climate
         /// Uses the specific heat and gas constant of dry air on Earth, which is clearly not correct
         /// for other atmospheres, but is considered "close enough" for the purposes of this library.
         /// </remarks>
-        private float GetLapseRate(float surfaceTemp) => Composition.ContainsSubstance(Chemical.Water, Phase.Gas) ? GetLapseRateMoist(surfaceTemp) : DryLapseRate;
+        private double GetLapseRate(double surfaceTemp) => Composition.ContainsSubstance(Chemical.Water, Phase.Gas) ? GetLapseRateMoist(surfaceTemp) : DryLapseRate;
 
         /// <summary>
         /// Calculates the dry adiabatic lapse rate near the surface of this <see cref="Atmosphere"/>, in K/m.
         /// </summary>
         /// <returns>The dry adiabatic lapse rate near the surface of this <see cref="Atmosphere"/>, in K/m.</returns>
-        private float GetLapseRateDry() => (float)(CelestialBody.SurfaceGravity / ScienceConstants.CpDryAir);
+        private double GetLapseRateDry() => CelestialBody.SurfaceGravity / ScienceConstants.CpDryAir;
 
         /// <summary>
         /// Calculates the moist adiabatic lapse rate near the surface of this <see
@@ -885,7 +885,7 @@ namespace WorldFoundry.Climate
         /// Uses the specific heat and gas constant of dry air on Earth, which is clearly not correct
         /// for other atmospheres, but is considered "close enough" for the purposes of this library.
         /// </remarks>
-        private float GetLapseRateMoist(float surfaceTemp)
+        private double GetLapseRateMoist(double surfaceTemp)
         {
             var surfaceTemp2 = surfaceTemp * surfaceTemp;
             var gasConstantSurfaceTemp2 = ScienceConstants.RSpecificDryAir * surfaceTemp2;
@@ -896,7 +896,7 @@ namespace WorldFoundry.Climate
             var denominator = ScienceConstants.CpTimesRSpecificDryAir * surfaceTemp2
                 + ScienceConstants.DeltaHvapWaterSquared * waterRatio * ScienceConstants.RSpecificRatioOfDryAirToWater;
 
-            return (float)(CelestialBody.SurfaceGravity * (numerator / denominator));
+            return CelestialBody.SurfaceGravity * (numerator / denominator);
         }
 
         /// <summary>
@@ -911,7 +911,7 @@ namespace WorldFoundry.Climate
         /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        internal float GetSurfaceTemperature(bool polar = false)
+        internal double GetSurfaceTemperature(bool polar = false)
             => CelestialBody.GetTotalTemperature() * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
@@ -925,7 +925,7 @@ namespace WorldFoundry.Climate
         /// If true, calculates the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        internal float GetSurfaceTemperatureAtPosition(Vector3 position, bool polar = false)
+        internal double GetSurfaceTemperatureAtPosition(Vector3 position, bool polar = false)
             => CelestialBody.GetTotalTemperatureFromPosition(position) * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
@@ -936,7 +936,7 @@ namespace WorldFoundry.Climate
         /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The effective surface temperature at apoapsis, in K.</returns>
-        internal float GetSurfaceTemperatureAtApoapsis(bool polar = false)
+        internal double GetSurfaceTemperatureAtApoapsis(bool polar = false)
             => CelestialBody.TotalTemperatureAtApoapsis * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
@@ -947,7 +947,7 @@ namespace WorldFoundry.Climate
         /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The effective surface temperature at periapsis, in K.</returns>
-        internal float GetSurfaceTemperatureAtPeriapsis(bool polar = false)
+        internal double GetSurfaceTemperatureAtPeriapsis(bool polar = false)
             => CelestialBody.TotalTemperatureAtPeriapsis * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
@@ -958,7 +958,7 @@ namespace WorldFoundry.Climate
         /// If true, gets the approximate temperature at the <see cref="CelestialBody"/>'s poles.
         /// </param>
         /// <returns>The average effective surface temperature.</returns>
-        internal float GetSurfaceTemperatureAverageOrbital(bool polar = false)
+        internal double GetSurfaceTemperatureAverageOrbital(bool polar = false)
         {
             // If the body is not actually in orbit, return its current temperature.
             if (CelestialBody.Orbit == null)
@@ -967,7 +967,7 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return (GetSurfaceTemperatureAtPeriapsis(polar) + GetSurfaceTemperatureAtApoapsis(polar)) / 2.0f;
+                return (GetSurfaceTemperatureAtPeriapsis(polar) + GetSurfaceTemperatureAtApoapsis(polar)) / 2.0;
             }
         }
 
@@ -985,7 +985,7 @@ namespace WorldFoundry.Climate
         /// exoplanetary atmospheres, so a simplified formula is used, which should be "close enough"
         /// for low elevations.
         /// </remarks>
-        internal float GetTemperatureAtElevation(float surfaceTemp, float elevation)
+        internal double GetTemperatureAtElevation(double surfaceTemp, double elevation)
         {
             // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
             if (elevation >= AtmosphericHeight)
@@ -1020,7 +1020,7 @@ namespace WorldFoundry.Climate
             else
             {
                 // Separate troposphere from upper atmosphere if undifferentiated.
-                Composition = Composition.Split(0.8f, 0.2f);
+                Composition = Composition.Split(0.8, 0.2);
 
                 return (Composition as LayeredComposite).Layers[0].substance;
             }
@@ -1063,8 +1063,8 @@ namespace WorldFoundry.Climate
         private void SetHydrosphereProportion(
             Chemical chemical,
             Phase phase,
-            float proportion,
-            ref float hydrosphereAtmosphereRatio)
+            double proportion,
+            ref double hydrosphereAtmosphereRatio)
         {
             var newTotalProportion = proportion;
             if ((CelestialBody as TerrestrialPlanet).Hydrosphere is LayeredComposite lc)
@@ -1095,16 +1095,16 @@ namespace WorldFoundry.Climate
         /// </summary>
         public static List<Requirement> HumanBreathabilityRequirements = new List<Requirement>()
         {
-            new Requirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07f, MaximumProportion = 0.53f, Phase = Phase.Gas },
-            new Requirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005f },
-            new Requirement { Chemical = Chemical.AmmoniumHydrosulfide, MaximumProportion = 0.000001f },
-            new Requirement { Chemical = Chemical.CarbonMonoxide, MaximumProportion = 0.00005f },
-            new Requirement { Chemical = Chemical.CarbonDioxide, MaximumProportion = 0.005f },
-            new Requirement { Chemical = Chemical.HydrogenSulfide, MaximumProportion = 0.0f },
-            new Requirement { Chemical = Chemical.Methane, MaximumProportion = 0.001f },
-            new Requirement { Chemical = Chemical.Ozone, MaximumProportion = 0.0000001f },
-            new Requirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003f },
-            new Requirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002f },
+            new Requirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07, MaximumProportion = 0.53, Phase = Phase.Gas },
+            new Requirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005 },
+            new Requirement { Chemical = Chemical.AmmoniumHydrosulfide, MaximumProportion = 0.000001 },
+            new Requirement { Chemical = Chemical.CarbonMonoxide, MaximumProportion = 0.00005 },
+            new Requirement { Chemical = Chemical.CarbonDioxide, MaximumProportion = 0.005 },
+            new Requirement { Chemical = Chemical.HydrogenSulfide, MaximumProportion = 0.0 },
+            new Requirement { Chemical = Chemical.Methane, MaximumProportion = 0.001 },
+            new Requirement { Chemical = Chemical.Ozone, MaximumProportion = 0.0000001 },
+            new Requirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003 },
+            new Requirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002 },
         };
     }
 }

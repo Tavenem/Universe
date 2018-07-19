@@ -9,7 +9,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class IronPlanet : TerrestrialPlanet
     {
-        private const float CoreProportion = 0.4f;
+        private const double CoreProportion = 0.4;
 
         internal new static bool canHaveWater = false;
         /// <summary>
@@ -27,19 +27,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Iron planets, with their large nickel-iron cores, can much more readily produce the
         /// required dynamo effect.
         /// </remarks>
-        public override float MagnetosphereChanceFactor => 5;
+        public override double MagnetosphereChanceFactor => 5;
 
-        internal new static float maxDensity = 8000;
-        private protected override float MaxDensity => maxDensity;
+        internal new static double maxDensity = 8000;
+        private protected override double MaxDensity => maxDensity;
 
-        internal new static float metalProportion = 0.25f;
+        internal new static double metalProportion = 0.25;
         /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
-        private protected override float MetalProportion => metalProportion;
+        private protected override double MetalProportion => metalProportion;
 
-        internal new static float minDensity = 5250;
-        private protected override float MinDensity => minDensity;
+        internal new static double minDensity = 5250;
+        private protected override double MinDensity => minDensity;
 
         private const string planemoClassPrefix = "Iron";
         /// <summary>
@@ -96,6 +96,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        private protected override float GetCoreProportion() => CoreProportion;
+        private protected override double GetCoreProportion() => CoreProportion;
     }
 }

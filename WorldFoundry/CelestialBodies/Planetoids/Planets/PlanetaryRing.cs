@@ -8,7 +8,7 @@
         /// <summary>
         /// The inner radius of the <see cref="PlanetaryRing"/>.
         /// </summary>
-        public float InnerRadius { get; set; }
+        public double InnerRadius { get; set; }
 
         /// <summary>
         /// Indicates that the <see cref="PlanetaryRing"/> is icy (rather than rocky).
@@ -18,7 +18,7 @@
         /// <summary>
         /// The outer radius of the <see cref="PlanetaryRing"/>.
         /// </summary>
-        public float OuterRadius { get; set; }
+        public double OuterRadius { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryRing"/>.
@@ -28,7 +28,7 @@
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryRing"/> with the given parameters.
         /// </summary>
-        public PlanetaryRing(bool icy, float innerRadius, float outerRadius)
+        public PlanetaryRing(bool icy, double innerRadius, double outerRadius)
         {
             Icy = icy;
             InnerRadius = innerRadius;

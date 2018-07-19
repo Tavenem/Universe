@@ -24,15 +24,15 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IList<(Type type,float proportion, object[] constructorParameters)> childPossibilities =
-            new List<(Type type,float proportion, object[] constructorParameters)>
+        internal static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type,double proportion, object[] constructorParameters)>
             {
                 (typeof(GalaxySupercluster), 1, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbits.Orbiter"/>.
@@ -83,7 +83,7 @@ namespace WorldFoundry.Space
             {
                 Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
                 Mass = double.PositiveInfinity,
-                Temperature = 2.73f,
+                Temperature = 2.73,
             };
             SetShape(new Sphere(1.89214e33));
         }

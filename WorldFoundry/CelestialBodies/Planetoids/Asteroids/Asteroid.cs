@@ -133,10 +133,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 this,
                 orbitedObject,
                 GetDistanceToTarget(orbitedObject),
-                (float)Math.Round(Randomizer.Static.NextDouble(0.4), 2),
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(0.4), 2),
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 0);
         }
 
@@ -146,22 +146,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         private protected void GenerateShape()
         {
             var axis = Math.Pow((Mass * 0.75) / (Density * Math.PI), 1.0 / 3.0);
-            var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
+            var irregularity = Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
             SetShape(new Ellipsoid(axis, irregularity));
         }
 
         /// <summary>
         /// Sets an appropriate orbit for the satellite of an asteroid.
         /// </summary>
-        private protected void SetAsteroidSatelliteOrbit(Orbiter satellite, double periapsis, float eccentricity)
+        private protected void SetAsteroidSatelliteOrbit(Orbiter satellite, double periapsis, double eccentricity)
             => Orbit.SetOrbit(
                 satellite,
                 this,
                 periapsis,
                 eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
     }
 }

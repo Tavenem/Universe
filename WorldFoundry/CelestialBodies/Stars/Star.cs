@@ -273,32 +273,32 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected virtual float GenerateTemperature()
+        private protected virtual double GenerateTemperature()
         {
             switch (SpectralClass)
             {
                 case SpectralClass.O:
-                    return (float)Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 6666)));
+                    return Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 6666)));
                 case SpectralClass.B:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(10000, 30000));
+                    return Math.Round(Randomizer.Static.NextDouble(10000, 30000));
                 case SpectralClass.A:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(7500, 10000));
+                    return Math.Round(Randomizer.Static.NextDouble(7500, 10000));
                 case SpectralClass.F:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(6000, 7500));
+                    return Math.Round(Randomizer.Static.NextDouble(6000, 7500));
                 case SpectralClass.G:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(5200, 6000));
+                    return Math.Round(Randomizer.Static.NextDouble(5200, 6000));
                 case SpectralClass.K:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(3700, 5200));
+                    return Math.Round(Randomizer.Static.NextDouble(3700, 5200));
                 case SpectralClass.M:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(2400, 3700));
+                    return Math.Round(Randomizer.Static.NextDouble(2400, 3700));
                 case SpectralClass.L:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(1300, 2400));
+                    return Math.Round(Randomizer.Static.NextDouble(1300, 2400));
                 case SpectralClass.T:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(500, 1300));
+                    return Math.Round(Randomizer.Static.NextDouble(500, 1300));
                 case SpectralClass.Y:
-                    return (float)Math.Round(Randomizer.Static.NextDouble(250, 500));
+                    return Math.Round(Randomizer.Static.NextDouble(250, 500));
                 case SpectralClass.W:
-                    return (float)Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 56666)));
+                    return Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 56666)));
                 default: // No way to know what 'None' or 'Other' should be.
                     return 0;
             }
@@ -377,7 +377,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// Only applies to the standard classes (excludes W).
         /// </remarks>
-        private protected SpectralClass GetSpectralClassFromTemperature(float temperature)
+        private protected SpectralClass GetSpectralClassFromTemperature(double temperature)
         {
             if (temperature < 500)
             {

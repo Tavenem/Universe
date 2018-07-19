@@ -13,69 +13,69 @@ namespace WorldFoundry.Substances
         {
             AntoineMaximumTemperature = 0,
             IsConductive = true,
-            MeltingPoint = float.PositiveInfinity,
+            MeltingPoint = double.PositiveInfinity,
         };
 
         public static readonly Chemical Fuzzball = new Chemical("Fuzzball")
         {
             AntoineMaximumTemperature = 0,
-            MeltingPoint = float.PositiveInfinity,
+            MeltingPoint = double.PositiveInfinity,
         };
 
-        public static readonly Composite StellarMaterial = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+        public static readonly Composite StellarMaterial = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
         {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.711f },
-            { (Chemical.Helium, Phase.Plasma), 0.274f },
-            { (Chemical.Oxygen, Phase.Gas), 0.008f },
-            { (Chemical.Carbon, Phase.Gas), 0.003f },
-            { (Chemical.Neon, Phase.Gas), 0.002f },
-            { (Chemical.Iron, Phase.Gas), 0.002f },
+            { (Chemical.Hydrogen, Phase.Plasma), 0.711 },
+            { (Chemical.Helium, Phase.Plasma), 0.274 },
+            { (Chemical.Oxygen, Phase.Gas), 0.008 },
+            { (Chemical.Carbon, Phase.Gas), 0.003 },
+            { (Chemical.Neon, Phase.Gas), 0.002 },
+            { (Chemical.Iron, Phase.Gas), 0.002 },
         });
-        public static readonly Composite StellarMaterialPopulationII = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+        public static readonly Composite StellarMaterialPopulationII = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
         {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.72f },
-            { (Chemical.Helium, Phase.Plasma), 0.27985f },
-            { (Chemical.Oxygen, Phase.Gas), 0.0001f },
-            { (Chemical.Carbon, Phase.Gas), 0.00003f },
-            { (Chemical.Neon, Phase.Gas), 0.00002f },
-        });
-
-        public static readonly Composite InterplanetaryMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
-        {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.711f },
-            { (Chemical.Helium, Phase.Plasma), 0.274f },
-            { (Chemical.Oxygen, Phase.Gas), 0.008f },
-            { (Chemical.Carbon, Phase.Solid), 0.003f },
-            { (Chemical.Neon, Phase.Gas), 0.002f },
-            { (Chemical.Iron, Phase.Solid), 0.002f },
+            { (Chemical.Hydrogen, Phase.Plasma), 0.72 },
+            { (Chemical.Helium, Phase.Plasma), 0.27985 },
+            { (Chemical.Oxygen, Phase.Gas), 0.0001 },
+            { (Chemical.Carbon, Phase.Gas), 0.00003 },
+            { (Chemical.Neon, Phase.Gas), 0.00002 },
         });
 
-        public static readonly Composite InterstellarMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+        public static readonly Composite InterplanetaryMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
         {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.534f },
-            { (Chemical.Helium, Phase.Plasma), 0.206f },
-            { (Chemical.Hydrogen, Phase.Gas), 0.177f },
-            { (Chemical.Helium, Phase.Gas), 0.068f },
-            { (Chemical.Oxygen, Phase.Gas), 0.008f },
-            { (Chemical.Carbon, Phase.Solid), 0.003f },
-            { (Chemical.Neon, Phase.Gas), 0.002f },
-            { (Chemical.Iron, Phase.Solid), 0.002f },
+            { (Chemical.Hydrogen, Phase.Plasma), 0.711 },
+            { (Chemical.Helium, Phase.Plasma), 0.274 },
+            { (Chemical.Oxygen, Phase.Gas), 0.008 },
+            { (Chemical.Carbon, Phase.Solid), 0.003 },
+            { (Chemical.Neon, Phase.Gas), 0.002 },
+            { (Chemical.Iron, Phase.Solid), 0.002 },
         });
 
-        public static readonly Composite IntraclusterMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+        public static readonly Composite InterstellarMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
         {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.718f },
-            { (Chemical.Helium, Phase.Plasma), 0.277f },
-            { (Chemical.Oxygen, Phase.Gas), 0.00266f },
-            { (Chemical.Carbon, Phase.Solid), 0.001f },
-            { (Chemical.Neon, Phase.Gas), 0.00067f },
-            { (Chemical.Iron, Phase.Solid), 0.00067f },
+            { (Chemical.Hydrogen, Phase.Plasma), 0.534 },
+            { (Chemical.Helium, Phase.Plasma), 0.206 },
+            { (Chemical.Hydrogen, Phase.Gas), 0.177 },
+            { (Chemical.Helium, Phase.Gas), 0.068 },
+            { (Chemical.Oxygen, Phase.Gas), 0.008 },
+            { (Chemical.Carbon, Phase.Solid), 0.003 },
+            { (Chemical.Neon, Phase.Gas), 0.002 },
+            { (Chemical.Iron, Phase.Solid), 0.002 },
         });
 
-        public static readonly Composite IntergalacticMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+        public static readonly Composite IntraclusterMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
         {
-            { (Chemical.Hydrogen, Phase.Plasma), 0.722f },
-            { (Chemical.Helium, Phase.Plasma), 0.278f },
+            { (Chemical.Hydrogen, Phase.Plasma), 0.718 },
+            { (Chemical.Helium, Phase.Plasma), 0.277 },
+            { (Chemical.Oxygen, Phase.Gas), 0.00266 },
+            { (Chemical.Carbon, Phase.Solid), 0.001 },
+            { (Chemical.Neon, Phase.Gas), 0.00067 },
+            { (Chemical.Iron, Phase.Solid), 0.00067 },
+        });
+
+        public static readonly Composite IntergalacticMedium = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
+        {
+            { (Chemical.Hydrogen, Phase.Plasma), 0.722 },
+            { (Chemical.Helium, Phase.Plasma), 0.278 },
         });
 #pragma warning restore CS1591
     }

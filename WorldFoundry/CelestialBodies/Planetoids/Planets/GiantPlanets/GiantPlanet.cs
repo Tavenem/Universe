@@ -66,12 +66,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>Below this limit the planet will not have sufficient mass to retain hydrogen, and will be a terrestrial planet.</remarks>
         internal override double? MinMassForType => minMassForType;
 
-        internal new static float ringChance = 90;
+        internal new static double ringChance = 90;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
         /// <remarks>Giants are almost guaranteed to have rings.</remarks>
-        protected override float RingChance => ringChance;
+        protected override double RingChance => ringChance;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/>.
@@ -121,7 +121,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.275, 0.35), 3);
+        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.275, 0.35), 3);
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
@@ -132,55 +132,55 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </remarks>
         private protected override void GenerateAtmosphere()
         {
-            var trace = (float)Math.Round(Randomizer.Static.NextDouble(0.025), 4);
+            var trace = Math.Round(Randomizer.Static.NextDouble(0.025), 4);
 
-            var h = (float)Math.Round(Randomizer.Static.NextDouble(0.75, 0.97), 4);
+            var h = Math.Round(Randomizer.Static.NextDouble(0.75, 0.97), 4);
             var he = 1 - h - trace;
 
-            var ch4 = (float)Math.Round(Randomizer.Static.NextDouble(trace), 4);
+            var ch4 = Math.Round(Randomizer.Static.NextDouble(trace), 4);
             trace -= ch4;
 
             // 50% chance not to have each of these components
-            var c2h6 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
+            var c2h6 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
             var traceTotal = c2h6;
-            var nh3 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
+            var nh3 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
             traceTotal += nh3;
-            var waterVapor = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
+            var waterVapor = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 5);
             traceTotal += waterVapor;
 
             var surfaceTemp = GetTotalTemperature();
 
-            float water = 0, ice = 0;
+            double water = 0, ice = 0;
             if (surfaceTemp < Chemical.Water.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Water.AntoineMaximumTemperature &&
                 Chemical.Water.CalculateVaporPressure(surfaceTemp) <= 1000))
             {
-                water = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
-                ice = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
+                water = Math.Round(Randomizer.Static.NextDouble(), 5);
+                ice = Math.Round(Randomizer.Static.NextDouble(), 5);
                 traceTotal += water + ice;
             }
 
-            float ch4Liquid = 0, ch4Ice = 0;
+            double ch4Liquid = 0, ch4Ice = 0;
             if (surfaceTemp < Chemical.Methane.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Methane.AntoineMaximumTemperature &&
                 Chemical.Methane.CalculateVaporPressure(surfaceTemp) <= 1000))
             {
-                ch4Liquid = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
-                ch4Ice = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
+                ch4Liquid = Math.Round(Randomizer.Static.NextDouble(), 5);
+                ch4Ice = Math.Round(Randomizer.Static.NextDouble(), 5);
                 traceTotal += ch4Liquid + ch4Ice;
             }
 
-            float nh3Liquid = 0, nh3Ice = 0;
+            double nh3Liquid = 0, nh3Ice = 0;
             if (surfaceTemp < Chemical.Ammonia.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Ammonia.AntoineMaximumTemperature &&
                 Chemical.Ammonia.CalculateVaporPressure(surfaceTemp) <= 1000))
             {
-                nh3Liquid = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
-                nh3Ice = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
+                nh3Liquid = Math.Round(Randomizer.Static.NextDouble(), 5);
+                nh3Ice = Math.Round(Randomizer.Static.NextDouble(), 5);
                 traceTotal += nh3Liquid + nh3Ice;
             }
 
-            var nh4sh = (float)Math.Round(Randomizer.Static.NextDouble(), 5);
+            var nh4sh = Math.Round(Randomizer.Static.NextDouble(), 5);
             traceTotal += nh4sh;
 
             var ratio = trace / traceTotal;
@@ -195,7 +195,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             nh3Ice *= ratio;
             nh4sh *= ratio;
 
-            var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Hydrogen, Phase.Gas), h },
                 { (Chemical.Helium, Phase.Gas), he },
@@ -250,13 +250,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var layers = new List<(IComposition substance, float proportion)>();
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron-nickel inner core.
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
                 { (Chemical.Nickel, Phase.Solid), coreNickel },
@@ -266,7 +266,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
 
             // Metallic hydrogen lower mantle
-            var metalH = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.1, 0.55)), 2);
+            var metalH = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.1, 0.55)), 2);
             if (metalH > 0)
             {
                 layers.Add((new Material(Chemical.Hydrogen_Metallic, Phase.Liquid), metalH));
@@ -275,22 +275,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             // Supercritical fluid upper layer (blends seamlessly with lower atmosphere)
             var upperLayerProportion = 1 - coreProportion - metalH;
             var water = upperLayerProportion;
-            var fluidH = water * 0.71f;
+            var fluidH = water * 0.71;
             water -= fluidH;
-            var fluidHe = water * 0.24f;
+            var fluidHe = water * 0.24;
             water -= fluidHe;
-            var ne = (float)Math.Round(Randomizer.Static.NextDouble(water), 4);
+            var ne = Math.Round(Randomizer.Static.NextDouble(water), 4);
             water -= ne;
-            var ch4 = (float)Math.Round(Randomizer.Static.NextDouble(water), 4);
+            var ch4 = Math.Round(Randomizer.Static.NextDouble(water), 4);
             water = Math.Max(0, water - ch4);
-            var nh4 = (float)Math.Round(Randomizer.Static.NextDouble(water), 4);
+            var nh4 = Math.Round(Randomizer.Static.NextDouble(water), 4);
             water = Math.Max(0, water - nh4);
-            var c2h6 = (float)Math.Round(Randomizer.Static.NextDouble(water), 4);
+            var c2h6 = Math.Round(Randomizer.Static.NextDouble(water), 4);
             water = Math.Max(0, water - c2h6);
-            var upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
-                { (Chemical.Hydrogen, Phase.Liquid), 0.71f },
-                { (Chemical.Helium, Phase.Liquid), 0.24f },
+                { (Chemical.Hydrogen, Phase.Liquid), 0.71 },
+                { (Chemical.Helium, Phase.Liquid), 0.24 },
                 { (Chemical.Neon, Phase.Liquid), ne },
             });
             if (ch4 > 0)
@@ -346,7 +346,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
             double chance;
@@ -425,10 +425,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                     this,
                     periapsis,
                     eccentricity,
-                    (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                    Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
             }
 
             return satellite;
@@ -442,6 +442,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <remarks>
         /// Cannot be less than the minimum required to become a gas giant rather than a terrestrial planet.
         /// </remarks>
-        private protected override float GetCoreProportion() => (float)Math.Min(Randomizer.Static.NextDouble(0.02, 0.2), (MinMassForType ?? 0) / Mass);
+        private protected override double GetCoreProportion() => Math.Min(Randomizer.Static.NextDouble(0.02, 0.2), (MinMassForType ?? 0) / Mass);
     }
 }

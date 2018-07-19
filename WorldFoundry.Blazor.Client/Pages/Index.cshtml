@@ -141,9 +141,9 @@
 
 @functions {
 
-    private float AtmosphericPressure { get; set; } = 101.325f;
+    private double AtmosphericPressure { get; set; } = 101.325;
 
-    private float AxialTilt { get; set; } = 0.4f;
+    private double AxialTilt { get; set; } = 0.4;
 
     private bool AutoRotate { get; set; } = true;
 
@@ -249,8 +249,8 @@
 
     private int RotationalPeriod { get; set; } = 1440;
 
-    private float _scale = 1;
-    private float Scale
+    private double _scale = 1;
+    private double Scale
     {
         get => _scale;
         set
@@ -305,7 +305,7 @@
         }
     }
 
-    private float WaterRatio { get; set; } = 0.65f;
+    private double WaterRatio { get; set; } = 0.65;
 
     private bool UpdateParamEnabled { get; set; }
 

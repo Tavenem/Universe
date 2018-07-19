@@ -18,7 +18,7 @@ namespace WorldFoundry.Blazor.Client
 
         public static Task<bool> Create(string planetId, string canvasId) => JSRuntime.Current.InvokeAsync<bool>("planetBlazorFunctions.create", planetId, canvasId);
 
-        public static Task<bool> Scale(string planetId, float value) => JSRuntime.Current.InvokeAsync<bool>("planetBlazorFunctions.scale", planetId, value);
+        public static Task<bool> Scale(string planetId, double value) => JSRuntime.Current.InvokeAsync<bool>("planetBlazorFunctions.scale", planetId, value);
 
         public static Task<bool> SetPlanet(string planetId, TerrestrialPlanet planet) => JSRuntime.Current.InvokeAsync<bool>("planetBlazorFunctions.setPlanet", planetId, planet);
 

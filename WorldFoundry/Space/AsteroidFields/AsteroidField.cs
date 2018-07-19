@@ -42,20 +42,20 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IList<(Type type, float proportion, object[] constructorParameters)> childPossibilities =
-            new List<(Type type, float proportion, object[] constructorParameters)>
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type, double proportion, object[] constructorParameters)>
             {
-                (typeof(CTypeAsteroid), 0.74f, null),
-                (typeof(STypeAsteroid), 0.14f, null),
-                (typeof(MTypeAsteroid), 0.1f, null),
-                (typeof(Comet), 0.0199999996f, null),
-                (typeof(DwarfPlanet), 3.0e-10f, null),
-                (typeof(RockyDwarfPlanet), 1.0e-10f, null),
+                (typeof(CTypeAsteroid), 0.74, null),
+                (typeof(STypeAsteroid), 0.14, null),
+                (typeof(MTypeAsteroid), 0.1, null),
+                (typeof(Comet), 0.0199999996, null),
+                (typeof(DwarfPlanet), 3.0e-10, null),
+                (typeof(RockyDwarfPlanet), 1.0e-10, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.

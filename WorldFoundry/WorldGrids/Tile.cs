@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using WorldFoundry.Climate;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -16,7 +15,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The area of this <see cref="Tile"/>, in square meters.
         /// </summary>
-        public float Area { get; internal set; }
+        public double Area { get; internal set; }
 
         /// <summary>
         /// The average atmospheric pressure in this <see cref="Tile"/>, in kPa.

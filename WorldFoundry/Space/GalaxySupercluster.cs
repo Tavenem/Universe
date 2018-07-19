@@ -24,16 +24,16 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IList<(Type type, float proportion, object[] constructorParameters)> childPossibilities =
-            new List<(Type type, float proportion, object[] constructorParameters)>
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type, double proportion, object[] constructorParameters)>
             {
-                (typeof(GalaxyCluster), 1.0f / 3.0f, null),
-                (typeof(GalaxyGroup), 2.0f / 3.0f, null),
+                (typeof(GalaxyCluster), 1.0 / 3.0, null),
+                (typeof(GalaxyGroup), 2.0 / 3.0, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/>.

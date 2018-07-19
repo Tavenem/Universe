@@ -14,9 +14,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
     /// </summary>
     public class Planemo : Planetoid
     {
-        private const float CoreProportion = 0.15f;
-        private const float IcyRingDensity = 300.0f;
-        private const float RockyRingDensity = 1380.0f;
+        private const double CoreProportion = 0.15;
+        private const double IcyRingDensity = 300.0;
+        private const double RockyRingDensity = 1380.0;
 
         private const string baseTypeName = "Planet";
         /// <summary>
@@ -48,18 +48,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </remarks>
         public virtual string PlanemoClassPrefix => null;
 
-        internal static float ringChance = 0;
+        internal static double ringChance = 0;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
         /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
-        protected virtual float RingChance => ringChance;
+        protected virtual double RingChance => ringChance;
 
-        private float? _eccentricity;
+        private double? _eccentricity;
         /// <summary>
         /// The eccentricity of this <see cref="Planemo"/>'s orbit.
         /// </summary>
-        private protected float Eccentricity
+        private protected double Eccentricity
         {
             get => GetProperty(ref _eccentricity, GenerateEccentricity) ?? 0;
             set => _eccentricity = value;
@@ -156,7 +156,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <remarks>
         /// High eccentricity is unusual for a <see cref="Planemo"/>. Gaussian distribution with most values between 0.0 and 0.1.
         /// </remarks>
-        private void GenerateEccentricity() => Eccentricity = (float)Math.Abs(Math.Round(Randomizer.Static.Normal(0, 0.05), 4));
+        private void GenerateEccentricity() => Eccentricity = Math.Abs(Math.Round(Randomizer.Static.Normal(0, 0.05), 4));
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -177,10 +177,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 orbitedObject,
                 GetDistanceToTarget(orbitedObject),
                 Eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.9), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Icy = GetRingDistance_Icy();
             if (Orbit != null)
             {
-                outerLimit_Icy = (float)Math.Min(outerLimit_Icy, Orbit.GetHillSphereRadius() / 3.0);
+                outerLimit_Icy = Math.Min(outerLimit_Icy, Orbit.GetHillSphereRadius() / 3.0);
             }
             if (innerLimit >= outerLimit_Icy)
             {
@@ -208,7 +208,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Rocky = GetRingDistance_Rocky();
             if (Orbit != null)
             {
-                outerLimit_Rocky = (float)Math.Min(outerLimit_Rocky, Orbit.GetHillSphereRadius() / 3.0);
+                outerLimit_Rocky = Math.Min(outerLimit_Rocky, Orbit.GetHillSphereRadius() / 3.0);
             }
 
             var ringChance = RingChance;
@@ -216,7 +216,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             {
                 if (innerLimit < outerLimit_Rocky && Randomizer.Static.NextBoolean())
                 {
-                    var innerRadius = (float)Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Rocky));
+                    var innerRadius = Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Rocky));
 
                     Rings.Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
 
@@ -228,7 +228,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 }
                 else
                 {
-                    var innerRadius = (float)Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Icy));
+                    var innerRadius = Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Icy));
 
                     Rings.Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
 
@@ -239,7 +239,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                     }
                 }
 
-                ringChance *= 0.5f;
+                ringChance *= 0.5;
             }
         }
 
@@ -250,13 +250,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// A predetermined radius for the <see cref="Planemo"/>. May be left null to randomly
         /// determine an appropriate radius.
         /// </param>
-        private protected void GenerateShape(float? knownRadius = null)
+        private protected void GenerateShape(double? knownRadius = null)
         {
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
             var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, GetRadiusForMass(Mass)));
             var flattening = Randomizer.Static.NextDouble(0.1);
-            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
+            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), 1));
         }
 
         /// <summary>
@@ -264,41 +264,41 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        private protected virtual float GetCoreProportion() => CoreProportion;
+        private protected virtual double GetCoreProportion() => CoreProportion;
 
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the crust of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>Smaller <see cref="Planemo"/>s have thicker crusts due to faster proto-planetary cooling.</remarks>
-        private protected float GetCrustProportion() => (float)(400000.0 / Math.Pow(Radius, 1.6));
+        private protected double GetCrustProportion() => 400000.0 / Math.Pow(Radius, 1.6);
 
         /// <summary>
         /// Determines the maximum radius allowed for this <see cref="Planemo"/>, given its <see
         /// cref="Planetoid.Density"/> and maximum mass.
         /// </summary>
         /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
-        internal float GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
+        internal double GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
 
-        private float GetRadiusForMass(double mass) => (float)Math.Pow((mass / Density) / MathConstants.FourThirdsPI, 1.0 / 3.0);
+        private double GetRadiusForMass(double mass) => Math.Pow((mass / Density) / MathConstants.FourThirdsPI, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rings of the given density may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which rings of the given density may be found, in meters.</returns>
-        private float GetRingDistance(float density) => (float)(1.26 * Radius * Math.Pow(Density / density, 1.0 / 3.0));
+        private double GetRingDistance(double density) => 1.26 * Radius * Math.Pow(Density / density, 1.0 / 3.0);
 
         /// <summary>
         /// Calculates the approximate outer distance at which ice rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which ice rings may be found, in meters.</returns>
-        private protected float GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
+        private protected double GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
 
         /// <summary>
         /// Calculates the approximate outer distance at which rocky rings may be found, in meters.
         /// </summary>
         /// <returns>The approximate outer distance at which rocky rings may be found, in meters.</returns>
-        private protected float GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
+        private protected double GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
 
         /// <summary>
         /// Calculates the mass at which the Stern-Levison parameter for this <see cref="Planemo"/>

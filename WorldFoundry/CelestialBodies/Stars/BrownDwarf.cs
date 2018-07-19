@@ -16,7 +16,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const float chanceOfLife = 0;
+        private const double chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -26,7 +26,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// cooling, and intersect soon with severe tidal forces, making it unlikely that life could
         /// develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/>.

@@ -18,32 +18,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The minimum required temperature in K, if any.
         /// </summary>
-        public float? MinimumTemperature { get; set; }
+        public double? MinimumTemperature { get; set; }
 
         /// <summary>
         /// The maximum required temperature in K, if any.
         /// </summary>
-        public float? MaximumTemperature { get; set; }
+        public double? MaximumTemperature { get; set; }
 
         /// <summary>
         /// The minimum required pressure in kPa, if any.
         /// </summary>
-        public float? MinimumPressure { get; set; }
+        public double? MinimumPressure { get; set; }
 
         /// <summary>
         /// The maximum required pressure in kPa, if any.
         /// </summary>
-        public float? MaximumPressure { get; set; }
+        public double? MaximumPressure { get; set; }
 
         /// <summary>
         /// The minimum required gravity in N, if any.
         /// </summary>
-        public float? MinimumGravity { get; set; }
+        public double? MinimumGravity { get; set; }
 
         /// <summary>
         /// The maximum required gravity in N, if any.
         /// </summary>
-        public float? MaximumGravity { get; set; }
+        public double? MaximumGravity { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HabitabilityRequirements"/> with the given parameters. Any (or all) may be left null.
@@ -57,9 +57,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maximumGravity">The maximum required gravity in N.</param>
         public HabitabilityRequirements(
             List<Requirement> atmosphericRequirements,
-            float? minimumTemperature, float? maximumTemperature,
-            float? minimumPressure, float? maximumPressure,
-            float? minimumGravity, float? maximumGravity)
+            double? minimumTemperature, double? maximumTemperature,
+            double? minimumPressure, double? maximumPressure,
+            double? minimumGravity, double? maximumGravity)
         {
             AtmosphericRequirements = atmosphericRequirements;
             MinimumTemperature = minimumTemperature;
@@ -86,9 +86,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 Atmosphere.HumanBreathabilityRequirements,
                 minimumTemperature: 236,
                 maximumTemperature: 308,
-                minimumPressure: 6.18f,
+                minimumPressure: 6.18,
                 maximumPressure: 4980,
                 minimumGravity: 0,
-                maximumGravity: 14.7f);
+                maximumGravity: 14.7);
     }
 }

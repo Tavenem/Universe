@@ -78,13 +78,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var layers = new List<(IComposition substance, float proportion)>();
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron-nickel inner core.
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
                 { (Chemical.Nickel, Phase.Solid), coreNickel },
@@ -94,11 +94,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
 
             var diamond = 1 - coreProportion;
-            var water = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var water = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
             diamond -= water;
-            var nh4 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var nh4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
             diamond -= nh4;
-            var ch4 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var ch4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
             diamond -= ch4;
 
             // Liquid diamond mantle
@@ -111,7 +111,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             IComposition upperLayer = null;
             if (ch4 >0 || nh4 > 0)
             {
-                upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
                     { (Chemical.Water, Phase.Liquid), water },
                 });

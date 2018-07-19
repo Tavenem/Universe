@@ -1,9 +1,10 @@
 ﻿namespace WorldFoundry
 {
     /// <summary>
-    /// A float value which specifies an average, and optionally a range (minimum to maximum), and a total (sum).
+    /// A floating-point value which specifies an average, and optionally a range (minimum to maximum), and a total (sum).
     /// </summary>
     public struct FloatRange
+
     {
         /// <summary>
         /// The average value.

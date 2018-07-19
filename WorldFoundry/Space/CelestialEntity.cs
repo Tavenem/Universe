@@ -35,7 +35,7 @@ namespace WorldFoundry.Space
         /// organisms. The lowest value in a world's parent hierarchy is used, which allows parent
         /// objects to override children to reflect inhospitable conditions (e.g. excessive radiation).
         /// </remarks>
-        public virtual float? ChanceOfLife => null;
+        public virtual double? ChanceOfLife => null;
 
         private string _designation;
         /// <summary>
@@ -145,7 +145,7 @@ namespace WorldFoundry.Space
         /// The average temperature of this <see cref="CelestialEntity"/>, in K.
         /// </summary>
         /// <remarks>No less than <see cref="Parent"/>'s ambient temperature.</remarks>
-        public float? Temperature => Math.Max(Substance?.Temperature ?? 0, Parent?.Temperature ?? 0);
+        public double? Temperature => Math.Max(Substance?.Temperature ?? 0, Parent?.Temperature ?? 0);
 
         /// <summary>
         /// The <see cref="CelestialEntity"/>'s <see cref="Name"/>, if it has one; otherwise its <see cref="Designation"/>.
@@ -223,7 +223,7 @@ namespace WorldFoundry.Space
         /// The chance that this <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable: a value between 0.0 and 1.0.
         /// </returns>
-        internal float GetChanceOfLife() => Math.Min(Parent?.GetChanceOfLife() ?? 1.0f, ChanceOfLife ?? 1.0f);
+        internal double GetChanceOfLife() => Math.Min(Parent?.GetChanceOfLife() ?? 1.0, ChanceOfLife ?? 1.0);
 
         /// <summary>
         /// Calculates the distance between the given position in local space to the
@@ -242,7 +242,7 @@ namespace WorldFoundry.Space
         /// The two <see cref="CelestialEntity"/> objects must be part of the same hierarchy (i.e.
         /// share a common parent).
         /// </exception>
-        internal float GetDistanceFromPositionToTarget(Vector3 position, CelestialEntity other)
+        internal double GetDistanceFromPositionToTarget(Vector3 position, CelestialEntity other)
         {
             if (other == null)
             {
@@ -289,7 +289,7 @@ namespace WorldFoundry.Space
         /// The two <see cref="CelestialEntity"/> objects must be part of the same hierarchy (i.e.
         /// share a common parent).
         /// </exception>
-        internal float GetDistanceToTarget(CelestialEntity other) => GetDistanceFromPositionToTarget(Position, other);
+        internal double GetDistanceToTarget(CelestialEntity other) => GetDistanceFromPositionToTarget(Position, other);
 
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.
@@ -300,7 +300,7 @@ namespace WorldFoundry.Space
             {
                 return null;
             }
-            return (float?)(Radius / LocalSpaceScale);
+            return (float)(Radius / LocalSpaceScale);
         }
 
         /// <summary>

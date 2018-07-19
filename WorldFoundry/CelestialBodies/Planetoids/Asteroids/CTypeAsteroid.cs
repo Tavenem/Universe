@@ -76,24 +76,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
+        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
 
         /// <summary>
         /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var rock = 1.0f;
+            var rock = 1.0;
 
-            var clay = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 3);
+            var clay = Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 3);
             rock -= clay;
 
-            var ice = (float)Math.Round(Randomizer.Static.NextDouble(0.22), 3);
+            var ice = Math.Round(Randomizer.Static.NextDouble(0.22), 3);
             rock -= ice;
 
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
                     { (Chemical.Rock, Phase.Solid), rock },
                     { (Chemical.Clay, Phase.Solid), clay },
@@ -108,7 +108,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             var satellite = new CTypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);

@@ -26,16 +26,16 @@ namespace WorldFoundry.Space
         /// </summary>
         public override double ChildDensity => childDensity;
 
-        internal static IList<(Type type,float proportion, object[] constructorParameters)> childPossibilities =
-            new List<(Type type,float proportion, object[] constructorParameters)>
+        internal static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type,double proportion, object[] constructorParameters)>
             {
-                (typeof(DwarfGalaxy), 0.26f, null),
-                (typeof(GlobularCluster), 0.74f, null),
+                (typeof(DwarfGalaxy), 0.26, null),
+                (typeof(GlobularCluster), 0.74, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         private Galaxy _mainGalaxy;
         /// <summary>
@@ -91,7 +91,7 @@ namespace WorldFoundry.Space
             Orbit.SetOrbit(
                 child,
                 MainGalaxy,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.1), 3));
+                Math.Round(Randomizer.Static.NextDouble(0.1), 3));
 
             return child;
         }

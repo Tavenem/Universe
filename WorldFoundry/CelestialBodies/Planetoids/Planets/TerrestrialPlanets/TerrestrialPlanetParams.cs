@@ -13,17 +13,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The default atmospheric pressure, used if none is specified, in kPa.
         /// </summary>
-        public const float DefaultAtmosphericPressure = 101.325f;
+        public const double DefaultAtmosphericPressure = 101.325;
 
         /// <summary>
         /// The default axial tilt, used if none is specified, in radians.
         /// </summary>
-        public const float DefaultAxialTilt = 0.41f;
+        public const double DefaultAxialTilt = 0.41;
 
         /// <summary>
         /// The default orbital eccentricity, used if none is specified.
         /// </summary>
-        public const float DefaultEccentricity = 0.0167f;
+        public const double DefaultEccentricity = 0.0167;
 
         /// <summary>
         /// The default planetary radius, used if none is specified, in meters.
@@ -43,7 +43,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The default surface gravity, used if none is specified, in m/s².
         /// </summary>
-        public const float DefaultSurfaceGravity = 9.807f;
+        public const double DefaultSurfaceGravity = 9.807;
 
         /// <summary>
         /// The default surface temperature, used if none is specified, in K.
@@ -55,17 +55,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// experimentation, this value was determined to result in planets whose actual average
         /// surface temperature, after taking topography into account, is close to 289.15K.
         /// </remarks>
-        public const float DefaultSurfaceTemperature = 289;
+        public const double DefaultSurfaceTemperature = 289;
 
         /// <summary>
         /// The default ratio of water coverage, used if none is specified.
         /// </summary>
-        public const float DefaultWaterRatio = 0.65f;
+        public const double DefaultWaterRatio = 0.65;
 
         /// <summary>
         /// The target atmospheric pressure, in kPa.
         /// </summary>
-        public float? AtmosphericPressure { get; set; }
+        public double? AtmosphericPressure { get; set; }
 
         /// <summary>
         /// All atmospheric requirements.
@@ -75,12 +75,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The target axial tilt, in radians.
         /// </summary>
-        public float? AxialTilt { get; set; }
+        public double? AxialTilt { get; set; }
 
         /// <summary>
         /// The target orbital eccentricity.
         /// </summary>
-        public float? Eccentricity { get; set; }
+        public double? Eccentricity { get; set; }
 
         /// <summary>
         /// The target grid size (level of detail).
@@ -120,26 +120,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The target surface gravity, in m/s².
         /// </summary>
-        public float? SurfaceGravity { get; set; }
+        public double? SurfaceGravity { get; set; }
 
         /// <summary>
         /// The target surface temperature, in K.
         /// </summary>
-        public float? SurfaceTemperature { get; set; }
+        public double? SurfaceTemperature { get; set; }
 
         /// <summary>
         /// The target ratio of water to land on the surface.
         /// </summary>
-        public float? WaterRatio { get; set; }
+        public double? WaterRatio { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
         public TerrestrialPlanetParams(
-            float? atmosphericPressure = null,
+            double? atmosphericPressure = null,
             List<Requirement> atmosphericRequirements = null,
-            float? axialTilt = null,
-            float? eccentricity = null,
+            double? axialTilt = null,
+            double? eccentricity = null,
             int? gridSize = null,
             double? gridTileRadius = null,
             bool? hasMagnetosphere = null,
@@ -147,9 +147,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             int? radius = null,
             double? revolutionPeriod = null,
             double? rotationalPeriod = null,
-            float? surfaceGravity = null,
-            float? surfaceTemperature = null,
-            float? waterRatio = null)
+            double? surfaceGravity = null,
+            double? surfaceTemperature = null,
+            double? waterRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
             AtmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
@@ -171,10 +171,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Generates a new instance of <see cref="TerrestrialPlanetParams"/> with either the given or default values.
         /// </summary>
         public static TerrestrialPlanetParams FromDefaults(
-            float? atmosphericPressure = DefaultAtmosphericPressure,
+            double? atmosphericPressure = DefaultAtmosphericPressure,
             List<Requirement> atmosphericRequirements = null,
-            float? axialTilt = DefaultAxialTilt,
-            float? eccentricity = DefaultEccentricity,
+            double? axialTilt = DefaultAxialTilt,
+            double? eccentricity = DefaultEccentricity,
             int? gridSize = null,
             double? gridTileRadius = null,
             int? maxGridSize = null,
@@ -182,9 +182,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
             double? rotationalPeriod = DefaultRotationalPeriod,
-            float? surfaceGravity = DefaultSurfaceGravity,
-            float? surfaceTemperature = DefaultSurfaceTemperature,
-            float? waterRatio = DefaultWaterRatio)
+            double? surfaceGravity = DefaultSurfaceGravity,
+            double? surfaceTemperature = DefaultSurfaceTemperature,
+            double? waterRatio = DefaultWaterRatio)
         {
             if (atmosphericRequirements == null)
             {

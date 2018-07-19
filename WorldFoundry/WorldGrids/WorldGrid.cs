@@ -251,7 +251,7 @@ namespace WorldFoundry.WorldGrids
             {
                 t.Elevation -= lowest;
                 t.Elevation *= scale;
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : t.Elevation * 6.667e-9f + 0.000025f; // 0.000045 at 3000
+                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)(t.Elevation * 6.667e-9 + 0.000025); // 0.000045 at 3000
             }
             foreach (var c in Corners)
             {
@@ -274,7 +274,7 @@ namespace WorldFoundry.WorldGrids
             {
                 return null;
             }
-            var shortestDistance = float.PositiveInfinity;
+            var shortestDistance = double.PositiveInfinity;
             Tile closestTile = null;
             for (var i = 0; i < 12; i++)
             {
@@ -288,7 +288,7 @@ namespace WorldFoundry.WorldGrids
             return GetClosestTile(closestTile, vector, shortestDistance);
         }
 
-        private Tile GetClosestTile(Tile tile, Vector3 vector, float distanceSq)
+        private Tile GetClosestTile(Tile tile, Vector3 vector, double distanceSq)
         {
             for (var i = 0; i < 12; i++)
             {
@@ -309,7 +309,7 @@ namespace WorldFoundry.WorldGrids
 
         internal void SetCoriolisCoefficients()
         {
-            var coriolisCoefficients = new Dictionary<float, float>();
+            var coriolisCoefficients = new Dictionary<double, double>();
             foreach (var t in Tiles)
             {
                 if (!coriolisCoefficients.ContainsKey(t.Latitude))
@@ -317,7 +317,7 @@ namespace WorldFoundry.WorldGrids
                     coriolisCoefficients.Add(t.Latitude, Planet.GetCoriolisCoefficient(t.Latitude));
                 }
 
-                var wind = (float)(Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI + 1) / 2;
+                var wind = (Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI + 1) / 2;
                 t.WindFactor = (float)(0.5 + (wind - 0.5) * 0.5); // lessen impact
             }
         }
@@ -549,7 +549,7 @@ namespace WorldFoundry.WorldGrids
 
             foreach (var t in Tiles)
             {
-                t.Area = (float)(Planet.RadiusSquared * (t.EdgeCount == 5 ? gridAreas[size].fiveSided : gridAreas[size].sixSided));
+                t.Area = Planet.RadiusSquared * (t.EdgeCount == 5 ? gridAreas[size].fiveSided : gridAreas[size].sixSided);
                 t.Latitude = Planet.VectorToLatitude(t.Vector);
                 t.Longitude = Planet.VectorToLongitude(t.Vector);
                 var rotation = Planet.AxisRotation.GetReferenceRotation(t.Vector);

@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const float chanceOfLife = 0;
+        private const double chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -27,7 +27,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// 0 for Neutron stars, due to their excessive ionizing radiation, which makes the
         /// development of life nearby highly unlikely.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => chanceOfLife;
 
         private const string designatorPrefix = "X";
         /// <summary>
@@ -77,7 +77,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             {
                 Composition = new Material(CosmicSubstances.NeutronDegenerateMatter, Phase.Plasma),
                 Mass = Randomizer.Static.Normal(4.4178e30, 5.174e29), // between 1.44 and 3 times solar mass
-                Temperature = (float)Math.Round(Randomizer.Static.Normal(600000, 133333)),
+                Temperature = Math.Round(Randomizer.Static.Normal(600000, 133333)),
             };
 
             var radius = Math.Round(Randomizer.Static.NextDouble(1000, 2000));

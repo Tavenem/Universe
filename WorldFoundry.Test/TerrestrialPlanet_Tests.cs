@@ -144,9 +144,9 @@ namespace WorldFoundry.Test
             }
 
             sb.AppendLine("Climates:");
-            sb.AppendFormat("  % Desert (land):         {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0f / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
+            sb.AppendFormat("  % Desert (land):         {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
             sb.AppendLine();
-            sb.AppendFormat("  % Rain Forest (land):    {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0f / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
+            sb.AppendFormat("  % Rain Forest (land):    {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0 / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
             sb.AppendLine();
             sb.AppendFormat("  Polar:                   {0}", planet.Topography.Tiles.Count(t => t.ClimateType == ClimateType.Polar));
             sb.AppendLine();
@@ -250,9 +250,9 @@ namespace WorldFoundry.Test
             }
 
             sb.AppendLine("Climates:");
-            sb.AppendFormat("  % Desert (land):         {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0f / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
+            sb.AppendFormat("  % Desert (land):         {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
             sb.AppendLine();
-            sb.AppendFormat("  % Rain Forest (land):    {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0f / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
+            sb.AppendFormat("  % Rain Forest (land):    {0}%", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0 / planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water));
             sb.AppendLine();
             sb.AppendFormat("  Polar:                   {0}", planet.Topography.Tiles.Count(t => t.BiomeType == BiomeType.Polar));
             sb.AppendLine();
@@ -290,7 +290,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 
-        static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet, List<Season> seasons, float seasonsInYear)
+        static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet, List<Season> seasons, double seasonsInYear)
         {
             sb.AppendLine("Precipitation (annual average, land):");
             var list = planet.Topography.Tiles.Where(x => x.TerrainType != TerrainType.Water)

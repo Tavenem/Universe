@@ -81,7 +81,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             Substance = new Substance()
             {
-                Composition = new LayeredComposite(new List<(IComposition substance, float proportion)>
+                Composition = new LayeredComposite(new List<(IComposition substance, double proportion)>
                 {
                     (core, 1 - crustProportion),
                     (crust, crustProportion),

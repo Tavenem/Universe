@@ -24,7 +24,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// The approximate rigidity of this <see cref="Planetoid"/>.
         /// </summary>
-        public override float Rigidity => 4.0e9f;
+        public override double Rigidity => 4.0e9;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/>.
@@ -52,44 +52,44 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
         private protected override void GenerateAlbedo()
-            => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
+            => Albedo = Math.Round(Randomizer.Static.NextDouble(0.025, 0.055), 3);
 
         /// <summary>
         /// Generates an atmosphere for this <see cref="Planetoid"/>.
         /// </summary>
         private protected override void GenerateAtmosphere()
         {
-            var dust = 1.0f;
+            var dust = 1.0;
 
-            var water = (float)Math.Round(Randomizer.Static.NextDouble(0.75, 0.9), 3);
+            var water = Math.Round(Randomizer.Static.NextDouble(0.75, 0.9), 3);
             dust -= water;
 
-            var co = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.15), 3);
+            var co = Math.Round(Randomizer.Static.NextDouble(0.05, 0.15), 3);
             dust -= co;
 
             if (dust < 0)
             {
-                water -= 0.1f;
-                dust += 0.1f;
+                water -= 0.1;
+                dust += 0.1;
             }
 
-            var co2 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var co2 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= co2;
 
-            var nh3 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var nh3 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= nh3;
 
-            var ch4 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var ch4 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= ch4;
 
-            var h2s = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 4);
+            var h2s = Math.Round(Randomizer.Static.NextDouble(0.01), 4);
             dust -= h2s;
 
-            var so2 = (float)Math.Round(Randomizer.Static.NextDouble(0.001), 4);
+            var so2 = Math.Round(Randomizer.Static.NextDouble(0.001), 4);
             dust -= so2;
 
             Atmosphere = new Atmosphere(this,
-                new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
                     { (Chemical.Water, Phase.Gas), water },
                     { (Chemical.Dust, Phase.Solid), dust },
@@ -100,7 +100,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     { (Chemical.HydrogenSulfide, Phase.Gas), h2s },
                     { (Chemical.SulphurDioxide, Phase.Gas), so2 },
                 }),
-                1e-8f);
+                1e-8);
         }
 
         /// <summary>
@@ -108,35 +108,35 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var dust = 1.0f;
+            var dust = 1.0;
 
-            var water = (float)Math.Round(Randomizer.Static.NextDouble(0.35, 0.45), 3);
+            var water = Math.Round(Randomizer.Static.NextDouble(0.35, 0.45), 3);
             dust -= water;
 
-            var co = (float)Math.Round(Randomizer.Static.NextDouble(0.04, 0.1), 3);
+            var co = Math.Round(Randomizer.Static.NextDouble(0.04, 0.1), 3);
             dust -= co;
 
             if (dust >= 0.5)
             {
-                water -= 0.08f;
-                dust += 0.08f;
+                water -= 0.08;
+                dust += 0.08;
             }
 
-            var co2 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var co2 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= co2;
 
-            var nh3 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var nh3 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= nh3;
 
-            var ch4 = (float)Math.Round(Randomizer.Static.NextDouble(0.01), 3);
+            var ch4 = Math.Round(Randomizer.Static.NextDouble(0.01), 3);
             dust -= ch4;
 
-            var rock = (float)Math.Round(Randomizer.Static.NextDouble(0.05), 3);
+            var rock = Math.Round(Randomizer.Static.NextDouble(0.05), 3);
             dust -= rock;
 
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
                     { (Chemical.Water, Phase.Solid), water },
                     { (Chemical.Dust, Phase.Solid), dust },
@@ -149,7 +149,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             // Gaussian distribution with most values between 1km and 19km.
             var axis = Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 4500)));
-            var irregularity = (float)Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
+            var irregularity = Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
             var shape = new Ellipsoid(axis, irregularity);
 
             Substance.Mass = shape.Volume * Density;
@@ -161,7 +161,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
         private protected override void GenerateDensity()
-            => Density = (float)Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
+            => Density = Math.Round(Randomizer.Static.NextDouble(300, 700), 2);
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -176,7 +176,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
             // and have eccentricities which may either leave them there, or send them into the inner solar system.
-            var eccentricity = (float)Math.Round(Randomizer.Static.NextDouble(), 2);
+            var eccentricity = Math.Round(Randomizer.Static.NextDouble(), 2);
             var periapsis = ((1 - eccentricity) / (1 + eccentricity)) * GetDistanceToTarget(orbitedObject);
 
             Orbit.SetOrbit(
@@ -184,10 +184,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 orbitedObject,
                 periapsis,
                 eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.PI);
+                Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.PI);
         }
     }
 }

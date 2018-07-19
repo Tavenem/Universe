@@ -15,7 +15,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class CarbonPlanet : TerrestrialPlanet
     {
-        private const float CoreProportion = 0.4f;
+        private const double CoreProportion = 0.4;
 
         internal new static bool canHaveOxygen = false;
         /// <summary>
@@ -91,13 +91,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var layers = new List<(IComposition substance, float proportion)>();
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
             var coreProportion = GetCoreProportion();
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            var coreSteel = (float)Math.Round(Randomizer.Static.NextDouble(1 - coreNickel), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            var coreSteel = Math.Round(Randomizer.Static.NextDouble(1 - coreNickel), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Iron, Phase.Solid), 1 - coreNickel - coreSteel },
                 { (Chemical.Nickel, Phase.Solid), coreNickel },
@@ -108,8 +108,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
             var mantleProportion = 1 - coreProportion - crustProportion;
-            var diamond = (float)Math.Round(Randomizer.Static.NextDouble(0.01, 0.05), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var diamond = Math.Round(Randomizer.Static.NextDouble(0.01, 0.05), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Diamond, Phase.Solid), diamond },
                 { (Chemical.Rock, Phase.Liquid), 1 - diamond },
@@ -117,43 +117,43 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // Rocky crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = (float)Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+            var metals = Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = (float)Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
 
-            var titanium = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
+            var titanium = Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
 
             var iron = metals - nickel - aluminum - titanium;
-            diamond = (float)Math.Round(iron * Randomizer.Static.NextDouble(0.01, 0.05), 4);
+            diamond = Math.Round(iron * Randomizer.Static.NextDouble(0.01, 0.05), 4);
             iron -= diamond;
-            var steel = (float)Math.Round(Randomizer.Static.NextDouble(iron), 4);
+            var steel = Math.Round(Randomizer.Static.NextDouble(iron), 4);
             iron -= steel;
 
-            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var copper = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= copper;
 
-            var lead = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var lead = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= lead;
 
-            var uranium = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var uranium = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= uranium;
 
-            var tin = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var tin = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= tin;
 
-            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var silver = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= silver;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var gold = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= gold;
 
-            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= platinum;
 
             var rock = 1 - metals;
 
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Aluminium, Phase.Solid), aluminum },
                 { (Chemical.Copper, Phase.Solid), copper },
@@ -179,7 +179,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
             var chance = Randomizer.Static.NextDouble();
@@ -254,10 +254,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     this,
                     periapsis,
                     eccentricity,
-                    (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4));
+                    Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
+                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
+                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4));
             }
 
             return satellite;

@@ -58,7 +58,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// There is a low chance of most planets having substantial rings; 10 for <see
         /// cref="DwarfPlanet"/>s.
         /// </remarks>
-        protected new static float RingChance => 10;
+        protected new static double RingChance => 10;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.
@@ -110,29 +110,29 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         private protected virtual IComposition GetIcyCrust()
         {
-            var dust = (float)Math.Round(Randomizer.Static.NextDouble(), 3);
+            var dust = Math.Round(Randomizer.Static.NextDouble(), 3);
             var total = dust;
 
             // 50% chance of not including the following:
-            var waterIce = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var waterIce = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += waterIce;
 
-            var n2 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var n2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += n2;
 
-            var ch4 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var ch4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += ch4;
 
-            var co = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var co = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += co;
 
-            var co2 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var co2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += co2;
 
-            var nh3 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var nh3 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += nh3;
 
-            var ratio = 1.0f / total;
+            var ratio = 1.0 / total;
             dust *= ratio;
             waterIce *= ratio;
             n2 *= ratio;
@@ -141,7 +141,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             co2 *= ratio;
             nh3 *= ratio;
 
-            var crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Dust, Phase.Solid), dust },
             });
@@ -178,14 +178,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         private protected override void GenerateAlbedo()
         {
             var surface = Substance.Composition.GetSurface();
-            var surfaceIce = 0f;
+            var surfaceIce = 0.0;
             if (surface != null)
             {
                 surfaceIce = surface.GetChemicals(Phase.Solid).Sum(x => x.proportion);
             }
 
-            var albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
-            Albedo = (albedo * (1.0f - surfaceIce)) + (0.9f * surfaceIce);
+            var albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
+            Albedo = (albedo * (1.0 - surfaceIce)) + (0.9 * surfaceIce);
         }
 
         /// <summary>
@@ -246,7 +246,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
-            Atmosphere = new Atmosphere(this, atmosphere, (float)Math.Round(Randomizer.Static.NextDouble(2.5)));
+            Atmosphere = new Atmosphere(this, atmosphere, Math.Round(Randomizer.Static.NextDouble(2.5)));
         }
 
         /// <summary>
@@ -261,9 +261,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             var crustProportion = GetCrustProportion();
 
             // water-ice mantle
-            var mantleProportion = 1.0f - coreProportion - crustProportion;
-            var mantleIce = (float)Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
-            var mantle = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var mantleProportion = 1.0 - coreProportion - crustProportion;
+            var mantleIce = Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
+            var mantle = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Water, Phase.Solid), mantleIce },
                 { (Chemical.Water, Phase.Liquid), 1 - mantleIce },
@@ -273,7 +273,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             Substance = new Substance()
             {
-                Composition = new LayeredComposite(new List<(IComposition substance, float proportion)>
+                Composition = new LayeredComposite(new List<(IComposition substance, double proportion)>
                 {
                     (core, coreProportion),
                     (mantle, mantleProportion),
@@ -324,17 +324,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 orbitedObject,
                 GetDistanceToTarget(orbitedObject),
                 Eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.9), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
 
@@ -366,10 +366,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 this,
                 periapsis,
                 eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
 
             return satellite;
         }
@@ -378,6 +378,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        private protected override float GetCoreProportion() => (float)Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
+        private protected override double GetCoreProportion() => Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
     }
 }

@@ -166,7 +166,7 @@ namespace WorldFoundry.Space
             List<(
             Star star,
             Star orbited,
-            float eccentricity,
+            double eccentricity,
             double semiMajorAxis,
             double periapsis,
             double apoapsis)> companions,
@@ -197,13 +197,13 @@ namespace WorldFoundry.Space
         private (
             Star star,
             Star orbited,
-            float eccentricity,
+            double eccentricity,
             double semiMajorAxis,
             double periapsis,
             double apoapsis) AddCompanionStar(List<(
             Star star,
             Star orbited,
-            float eccentricity,
+            double eccentricity,
             double semiMajorAxis,
             double periapsis,
             double apoapsis)> companions, Star orbited, double period)
@@ -245,7 +245,7 @@ namespace WorldFoundry.Space
             }
 
             // Eccentricity tends to be low but increase with longer periods.
-            var eccentricity = (float)Math.Round(Math.Abs(Randomizer.Static.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
+            var eccentricity = Math.Round(Math.Abs(Randomizer.Static.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
 
             // Assuming an effective 2-body system, the period lets us determine the semi-major axis.
             var semiMajorAxis = Math.Pow(Math.Pow(period / MathConstants.TwoPI, 2) * ScienceConstants.G * (orbited.Mass + star.Mass), 1.0 / 3.0);
@@ -292,12 +292,12 @@ namespace WorldFoundry.Space
         private List<(
             Star star,
             Star orbited,
-            float eccentricity,
+            double eccentricity,
             double semiMajorAxis,
             double periapsis,
             double apoapsis)> AddCompanionStars(int amount)
         {
-            var companions = new List<(Star star, Star orbited, float eccentricity, double semiMajorAxis, double periapsis, double apoapsis)>();
+            var companions = new List<(Star star, Star orbited, double eccentricity, double semiMajorAxis, double periapsis, double apoapsis)>();
             if (Stars?.Count != 1 || amount <= 0)
             {
                 return companions;
@@ -456,7 +456,7 @@ namespace WorldFoundry.Space
                     && (periapsis < (planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis)
                     || (maxApoapsis.HasValue && periapsis > maxApoapsis)))
                 {
-                    periapsis = (float)Randomizer.Static.Lognormal(0, mean);
+                    periapsis = Randomizer.Static.Lognormal(0, mean);
                     count++;
                 }
                 if (count == 100)
@@ -853,10 +853,10 @@ namespace WorldFoundry.Space
                     orbited,
                     periapsis,
                     eccentricity,
-                    (float)Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                    Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
 
                 Stars.Add(star);
             }
@@ -903,35 +903,35 @@ namespace WorldFoundry.Space
         {
             var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
             var asteroids = new AsteroidField(this, (-Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
-            var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755f; // +60°
+            var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755; // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
-                trueAnomaly -= (float)MathConstants.TwoPI;
+                trueAnomaly -= MathConstants.TwoPI;
             }
-            Orbits.Orbit.SetOrbit(
+            Orbit.SetOrbit(
                 asteroids,
                 star,
                 periapsis,
                 planet.Orbit.Eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
 
             asteroids = new AsteroidField(this, (Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
-            trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755f; // -60°
+            trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755; // -60°
             while (trueAnomaly < 0)
             {
-                trueAnomaly += (float)MathConstants.TwoPI;
+                trueAnomaly += MathConstants.TwoPI;
             }
-            Orbits.Orbit.SetOrbit(
+            Orbit.SetOrbit(
                 asteroids,
                 star,
                 periapsis,
                 planet.Orbit.Eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
         }
 

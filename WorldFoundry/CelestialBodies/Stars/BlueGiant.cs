@@ -16,7 +16,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const float chanceOfLife = 0;
+        private const double chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -26,7 +26,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// in the same place long enough for life to develop before the star evolves into another
         /// type, or dies.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/>.
@@ -95,6 +95,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected override float GenerateTemperature() => (float)Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 13333)));
+        private protected override double GenerateTemperature() => Math.Round(10000 + Math.Abs(Randomizer.Static.Normal(0, 13333)));
     }
 }

@@ -35,7 +35,7 @@
     <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
 
     <!-- Ensure webpack is installed -->
-    <Exec Command="node node_modules/webpack/bin/webpack.js -v" ContinueOnError="true">
+    <Exec Command="node node_modules/webpack/bin/webpack.js --version" ContinueOnError="true">
       <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
     </Exec>
     <Error Condition="'$(ErrorCode)' != '0'" Text="Webpack and the Webpack Command CLI must be installed to build and run this project. To continue, please install Webpack using this command: 'yarn add webpack webpack-command --dev' (yarn must also be installed; see https://yarnpkg.com/en/docs/install), and then restart your command prompt or IDE." />
@@ -59,7 +59,7 @@
     <Error Condition="'$(ErrorCode)' != '0'" Text="Node.js is required to build and run this project. To continue, please install Node.js from https://nodejs.org/, and then restart your command prompt or IDE." />
 
     <!-- Ensure webpack is installed -->
-    <Exec Command="node node_modules/webpack/bin/webpack.js -v" ContinueOnError="true">
+    <Exec Command="node node_modules/webpack/bin/webpack.js --version" ContinueOnError="true">
       <Output TaskParameter="ExitCode" PropertyName="ErrorCode" />
     </Exec>
     <Error Condition="'$(ErrorCode)' != '0'" Text="Webpack and the Webpack Command CLI must be installed to build and run this project. To continue, please install Webpack using this command: 'yarn add webpack webpack-command --dev' (yarn must also be installed; see https://yarnpkg.com/en/docs/install), and then restart your command prompt or IDE." />

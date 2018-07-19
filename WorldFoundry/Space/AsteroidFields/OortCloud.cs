@@ -24,18 +24,18 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        internal new static IList<(Type type, float proportion, object[] constructorParameters)> childPossibilities =
-            new List<(Type type, float proportion, object[] constructorParameters)>
+        internal new static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+            new List<(Type type, double proportion, object[] constructorParameters)>
             {
-                (typeof(Comet), 0.85f, null),
-                (typeof(CTypeAsteroid), 0.11f, null),
-                (typeof(STypeAsteroid), 0.025f, null),
-                (typeof(MTypeAsteroid), 0.015f, null),
+                (typeof(Comet), 0.85, null),
+                (typeof(CTypeAsteroid), 0.11, null),
+                (typeof(STypeAsteroid), 0.025, null),
+                (typeof(MTypeAsteroid), 0.015, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
 
         private const double childDensity = 8.31e-38;
         /// <summary>

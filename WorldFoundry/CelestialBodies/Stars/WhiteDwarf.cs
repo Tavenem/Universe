@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => baseTypeName;
 
-        private const float chanceOfLife = 0;
+        private const double chanceOfLife = 0;
         /// <summary>The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
@@ -28,7 +28,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// radiation is expected in early stages at the close distances where a habitable zone could
         /// be expected, making it unlikely that life could develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/>.
@@ -70,13 +70,13 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                 {
-                    { (Chemical.Oxygen, Phase.Gas), 0.8f },
-                    { (Chemical.Carbon, Phase.Gas), 0.3f },
+                    { (Chemical.Oxygen, Phase.Gas), 0.8 },
+                    { (Chemical.Carbon, Phase.Gas), 0.3 },
                 }),
                 Mass = Randomizer.Static.Normal(1.194e30, 9.95e28),
-                Temperature = (float)Math.Round(Randomizer.Static.Normal(16850, 600)),
+                Temperature = Math.Round(Randomizer.Static.Normal(16850, 600)),
             };
 
             var radius = Math.Round(Math.Pow(1.8986e27 / Mass, 1.0 / 3.0) * 69911000);

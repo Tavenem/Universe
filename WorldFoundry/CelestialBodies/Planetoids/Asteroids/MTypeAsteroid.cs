@@ -76,28 +76,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 2);
+        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 2);
 
         /// <summary>
         /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var iron = 0.95f;
+            var iron = 0.95;
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.25), 3);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.05, 0.25), 3);
             iron -= nickel;
 
-            var rock = (float)Math.Round(Randomizer.Static.NextDouble(0.2), 3);
+            var rock = Math.Round(Randomizer.Static.NextDouble(0.2), 3);
             iron -= rock;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(0.05), 3);
+            var gold = Math.Round(Randomizer.Static.NextDouble(0.05), 3);
 
-            var platinum = 0.05f - gold;
+            var platinum = 0.05 - gold;
 
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
                     {
                     { (Chemical.Rock, Phase.Solid), rock },
                     { (Chemical.Iron, Phase.Solid), iron },
@@ -114,7 +114,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             var satellite = new MTypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);

@@ -88,12 +88,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         private protected override void GenerateSubstance()
         {
-            var layers = new List<(IComposition substance, float proportion)>();
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
                 { (Chemical.Nickel, Phase.Solid), coreNickel },
@@ -107,39 +107,39 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // Molten crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = (float)Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+            var metals = Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = (float)Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
 
-            var titanium = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
+            var titanium = Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
 
             var iron = metals - nickel - aluminum - titanium;
 
-            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var copper = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= copper;
 
-            var lead = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var lead = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= lead;
 
-            var uranium = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var uranium = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= uranium;
 
-            var tin = titanium > 0 ? (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            var tin = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= tin;
 
-            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var silver = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= silver;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var gold = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= gold;
 
-            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= platinum;
 
             var rock = 1 - metals;
 
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), float>
+            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
             {
                 { (Chemical.Aluminium, Phase.Liquid), aluminum },
                 { (Chemical.Copper, Phase.Liquid), copper },
@@ -158,7 +158,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             Substance = new Substance()
             {
                 Composition = new LayeredComposite(layers),
-                Temperature = (float)Randomizer.Static.NextDouble(974.15, 1574.15),
+                Temperature = Randomizer.Static.NextDouble(974.15, 1574.15),
             };
             GenerateShape();
         }

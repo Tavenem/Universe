@@ -96,7 +96,7 @@ namespace WorldFoundry.Orbits
             var scale = (float)(-ScienceConstants.G * ((Mass * other.Mass) / (distance * distance)));
 
             // Get the unit vector
-            var unit = (other.Position - Position) / distance;
+            var unit = (other.Position - Position) / (float)distance;
 
             return unit * scale;
         }

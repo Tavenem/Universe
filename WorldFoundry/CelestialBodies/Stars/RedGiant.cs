@@ -71,6 +71,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected override float GenerateTemperature() => (float)Math.Round(Randomizer.Static.Normal(3800, 466));
+        private protected override double GenerateTemperature() => Math.Round(Randomizer.Static.Normal(3800, 466));
     }
 }
