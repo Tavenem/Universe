@@ -231,7 +231,7 @@ namespace WorldFoundry.Climate
 
             var vaporProportion = Composition.GetProportion(chemical, Phase.Gas);
 
-            var vaporPressure = Chemical.Water.CalculateVaporPressure(surfaceTemp);
+            var vaporPressure = Chemical.Water.GetVaporPressure(surfaceTemp);
 
             if (surfaceTemp < Chemical.Water.AntoineMinimumTemperature ||
                 (surfaceTemp <= Chemical.Water.AntoineMaximumTemperature &&
@@ -541,19 +541,9 @@ namespace WorldFoundry.Climate
             // surface and return to a single layer.
             if (chemical == Chemical.Water && (CelestialBody as TerrestrialPlanet).Hydrosphere is LayeredComposite layeredComposite)
             {
-                var hydrosphereIndex = layeredComposite.Layers.Count - 1;
-                var hydrosphereSurface = layeredComposite.Layers[hydrosphereIndex].substance;
-
-                var ice = hydrosphereSurface.GetProportion(Chemical.Water, Phase.Solid);
-                layeredComposite.RemoveComponentFromLayer(hydrosphereIndex, Chemical.Water, Phase.Solid);
-
-                var saltIce = hydrosphereSurface.GetProportion(Chemical.Water_Salt, Phase.Solid);
-                layeredComposite.RemoveComponentFromLayer(hydrosphereIndex, Chemical.Water_Salt, Phase.Solid);
-
-                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, ice, ref hydrosphereAtmosphereRatio);
-                SetHydrosphereProportion(Chemical.Water_Salt, Phase.Liquid, saltIce, ref hydrosphereAtmosphereRatio);
-
-                (CelestialBody as TerrestrialPlanet).Hydrosphere = (CelestialBody as TerrestrialPlanet).Hydrosphere.Homogenize();
+                layeredComposite.SetPhase(Chemical.Water, Phase.Liquid);
+                layeredComposite.SetPhase(Chemical.Water_Salt, Phase.Liquid);
+                (CelestialBody as TerrestrialPlanet).Hydrosphere = layeredComposite.Homogenize();
             }
 
             var saltWaterProportion = chemical == Chemical.Water ? Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3) : 0;

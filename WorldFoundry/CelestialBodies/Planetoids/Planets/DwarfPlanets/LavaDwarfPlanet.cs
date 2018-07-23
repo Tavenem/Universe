@@ -100,11 +100,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             IComposition crust = null;
             if (dust > 0)
             {
-                crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Rock, Phase.Solid), 1 - dust },
-                    { (Chemical.Dust, Phase.Solid), dust },
-                });
+                crust = new Composite(
+                    (Chemical.Rock, Phase.Solid, 1 - dust),
+                    (Chemical.Dust, Phase.Solid, dust));
             }
             else
             {
@@ -113,12 +111,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             Substance = new Substance()
             {
-                Composition = new LayeredComposite(new List<(IComposition substance, double proportion)>
-                {
+                Composition = new LayeredComposite(
                     (core, coreProportion),
                     (mantle, mantleProportion),
-                    (crust, crustProportion),
-                }),
+                    (crust, crustProportion)),
                 Mass = GenerateMass(),
             };
             GenerateShape();

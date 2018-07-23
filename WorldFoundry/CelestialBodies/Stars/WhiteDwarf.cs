@@ -70,11 +70,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Oxygen, Phase.Gas), 0.8 },
-                    { (Chemical.Carbon, Phase.Gas), 0.3 },
-                }),
+                Composition = new Composite(
+                    (Chemical.Oxygen, Phase.Gas, 0.8),
+                    (Chemical.Carbon, Phase.Gas, 0.3)),
                 Mass = Randomizer.Static.Normal(1.194e30, 9.95e28),
                 Temperature = Math.Round(Randomizer.Static.Normal(16850, 600)),
             };

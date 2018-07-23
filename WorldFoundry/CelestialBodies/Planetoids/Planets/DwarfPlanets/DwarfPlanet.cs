@@ -141,10 +141,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             co2 *= ratio;
             nh3 *= ratio;
 
-            var crust = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Dust, Phase.Solid), dust },
-            });
+            var crust = new Composite((Chemical.Dust, Phase.Solid, dust));
             if (waterIce > 0)
             {
                 crust.Components[(Chemical.Water, Phase.Solid)] = waterIce;
@@ -263,22 +260,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             // water-ice mantle
             var mantleProportion = 1.0 - coreProportion - crustProportion;
             var mantleIce = Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
-            var mantle = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Water, Phase.Solid), mantleIce },
-                { (Chemical.Water, Phase.Liquid), 1 - mantleIce },
-            });
+            var mantle = new Composite(
+                (Chemical.Water, Phase.Solid, mantleIce),
+                (Chemical.Water, Phase.Liquid, 1 - mantleIce));
 
             var crust = GetIcyCrust();
 
             Substance = new Substance()
             {
-                Composition = new LayeredComposite(new List<(IComposition substance, double proportion)>
-                {
+                Composition = new LayeredComposite(
                     (core, coreProportion),
                     (mantle, mantleProportion),
-                    (crust, crustProportion),
-                }),
+                    (crust, crustProportion)),
                 Mass = GenerateMass(),
             };
             GenerateShape();

@@ -90,18 +90,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 
             var gold = Math.Round(Randomizer.Static.NextDouble(0.005), 3);
 
-            var platinum = 0.005 - gold;
-
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Rock, Phase.Solid), 0.427 },
-                    { (Chemical.Iron, Phase.Solid), iron },
-                    { (Chemical.Nickel, Phase.Solid), nickel },
-                    { (Chemical.Gold, Phase.Solid), gold },
-                    { (Chemical.Platinum, Phase.Solid), platinum },
-                }),
+                Composition = new Composite(
+                    (Chemical.Rock, Phase.Solid, 0.427),
+                    (Chemical.Iron, Phase.Solid, iron),
+                    (Chemical.Nickel, Phase.Solid, nickel),
+                    (Chemical.Gold, Phase.Solid, gold),
+                    (Chemical.Platinum, Phase.Solid, 0.005 - gold)),
                 Mass = GenerateMass(),
             };
             GenerateShape();

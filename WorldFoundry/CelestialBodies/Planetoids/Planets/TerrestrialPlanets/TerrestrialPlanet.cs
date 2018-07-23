@@ -485,7 +485,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 || Atmosphere.Composition.ContainsSubstance(Chemical.Water, Phase.Any))
             {
                 var polarTemp = surfaceTemp;
-                var vaporPressure = Chemical.Water.CalculateVaporPressure(surfaceTemp);
+                var vaporPressure = Chemical.Water.GetVaporPressure(surfaceTemp);
 
                 // First calculate water phases at effective temp, to establish a baseline
                 // for the presence of water and its effect on CO2.
@@ -683,13 +683,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var ne = Math.Max(0, n2 * Randomizer.Static.NextDouble(-1.8e-5, 3.5e-5));
             n2 -= ne;
 
-            var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.CarbonDioxide, Phase.Gas), co2 },
-                { (Chemical.Helium, Phase.Gas), he },
-                { (Chemical.Hydrogen, Phase.Gas), h },
-                { (Chemical.Nitrogen, Phase.Gas), n2 },
-            });
+            var atmosphere = new Composite(
+                (Chemical.CarbonDioxide, Phase.Gas, co2),
+                (Chemical.Helium, Phase.Gas, he),
+                (Chemical.Hydrogen, Phase.Gas, h),
+                (Chemical.Nitrogen, Phase.Gas, n2));
             if (ar > 0)
             {
                 atmosphere.Components[(Chemical.Argon, Phase.Gas)] = ar;
@@ -803,11 +801,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
             else
             {
-                var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Helium, Phase.Gas), he },
-                    { (Chemical.Hydrogen, Phase.Gas), h },
-                });
+                var atmosphere = new Composite(
+                    (Chemical.Helium, Phase.Gas, he),
+                    (Chemical.Hydrogen, Phase.Gas, h));
                 if (ar > 0)
                 {
                     atmosphere.Components[(Chemical.Argon, Phase.Gas)] = ar;
@@ -899,11 +895,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 {
                     // Surface water is mostly salt water.
                     var saltWater = Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
-                    _hydrosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                    {
-                        { (Chemical.Water, Phase.Liquid), 1 - saltWater },
-                        { (Chemical.Water_Salt, Phase.Liquid), saltWater },
-                    });
+                    _hydrosphere = new Composite(
+                        (Chemical.Water, Phase.Liquid, 1 - saltWater),
+                        (Chemical.Water_Salt, Phase.Liquid, saltWater));
                 }
             }
             if (_hydrosphere == null)
@@ -1366,11 +1360,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
             var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
-                { (Chemical.Nickel, Phase.Solid), coreNickel },
-            }), coreProportion));
+            layers.Add((new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
+                (Chemical.Nickel, Phase.Solid, coreNickel)),
+                coreProportion));
 
             var crustProportion = GetCrustProportion();
 
@@ -1412,21 +1405,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var rock = 1 - metals;
 
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Aluminium, Phase.Solid), aluminum },
-                { (Chemical.Copper, Phase.Solid), copper },
-                { (Chemical.Gold, Phase.Solid), gold },
-                { (Chemical.Iron, Phase.Solid), iron },
-                { (Chemical.Lead, Phase.Solid), lead },
-                { (Chemical.Nickel, Phase.Solid), nickel },
-                { (Chemical.Platinum, Phase.Solid), platinum },
-                { (Chemical.Rock, Phase.Solid), rock },
-                { (Chemical.Silver, Phase.Solid), silver },
-                { (Chemical.Tin, Phase.Solid), tin },
-                { (Chemical.Titanium, Phase.Solid), titanium },
-                { (Chemical.Uranium, Phase.Solid), uranium },
-            }), crustProportion));
+            layers.Add((new Composite(
+                (Chemical.Aluminium, Phase.Solid, aluminum),
+                (Chemical.Copper, Phase.Solid, copper),
+                (Chemical.Gold, Phase.Solid, gold),
+                (Chemical.Iron, Phase.Solid, iron),
+                (Chemical.Lead, Phase.Solid, lead),
+                (Chemical.Nickel, Phase.Solid, nickel),
+                (Chemical.Platinum, Phase.Solid, platinum),
+                (Chemical.Rock, Phase.Solid, rock),
+                (Chemical.Silver, Phase.Solid, silver),
+                (Chemical.Tin, Phase.Solid, tin),
+                (Chemical.Titanium, Phase.Solid, titanium),
+                (Chemical.Uranium, Phase.Solid, uranium)),
+                crustProportion));
 
             Substance = new Substance() { Composition = new LayeredComposite(layers) };
             GenerateShape();

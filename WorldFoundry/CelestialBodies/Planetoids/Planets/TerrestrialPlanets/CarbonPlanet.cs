@@ -97,23 +97,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var coreProportion = GetCoreProportion();
             var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
             var coreSteel = Math.Round(Randomizer.Static.NextDouble(1 - coreNickel), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Iron, Phase.Solid), 1 - coreNickel - coreSteel },
-                { (Chemical.Nickel, Phase.Solid), coreNickel },
-                { (Chemical.Steel, Phase.Solid), coreSteel },
-            }), coreProportion));
+            layers.Add((new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel - coreSteel),
+                (Chemical.Nickel, Phase.Solid, coreNickel),
+                (Chemical.Steel, Phase.Solid, coreSteel)),
+                coreProportion));
 
             var crustProportion = GetCrustProportion();
 
             // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
             var mantleProportion = 1 - coreProportion - crustProportion;
             var diamond = Math.Round(Randomizer.Static.NextDouble(0.01, 0.05), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Diamond, Phase.Solid), diamond },
-                { (Chemical.Rock, Phase.Liquid), 1 - diamond },
-            }), mantleProportion));
+            layers.Add((new Composite(
+                (Chemical.Diamond, Phase.Solid, diamond),
+                (Chemical.Rock, Phase.Liquid, 1 - diamond)),
+                mantleProportion));
 
             // Rocky crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
@@ -153,23 +151,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var rock = 1 - metals;
 
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Aluminium, Phase.Solid), aluminum },
-                { (Chemical.Copper, Phase.Solid), copper },
-                { (Chemical.Diamond, Phase.Solid), diamond },
-                { (Chemical.Gold, Phase.Solid), gold },
-                { (Chemical.Iron, Phase.Solid), iron },
-                { (Chemical.Lead, Phase.Solid), lead },
-                { (Chemical.Nickel, Phase.Solid), nickel },
-                { (Chemical.Platinum, Phase.Solid), platinum },
-                { (Chemical.Rock, Phase.Solid), rock },
-                { (Chemical.Silver, Phase.Solid), silver },
-                { (Chemical.Steel, Phase.Solid), steel },
-                { (Chemical.Tin, Phase.Solid), tin },
-                { (Chemical.Titanium, Phase.Solid), titanium },
-                { (Chemical.Uranium, Phase.Solid), uranium },
-            }), crustProportion));
+            layers.Add((new Composite(
+                (Chemical.Aluminium, Phase.Solid, aluminum),
+                (Chemical.Copper, Phase.Solid, copper),
+                (Chemical.Diamond, Phase.Solid, diamond),
+                (Chemical.Gold, Phase.Solid, gold),
+                (Chemical.Iron, Phase.Solid, iron),
+                (Chemical.Lead, Phase.Solid, lead),
+                (Chemical.Nickel, Phase.Solid, nickel),
+                (Chemical.Platinum, Phase.Solid, platinum),
+                (Chemical.Rock, Phase.Solid, rock),
+                (Chemical.Silver, Phase.Solid, silver),
+                (Chemical.Steel, Phase.Solid, steel),
+                (Chemical.Tin, Phase.Solid, tin),
+                (Chemical.Titanium, Phase.Solid, titanium),
+                (Chemical.Uranium, Phase.Solid, uranium)),
+                crustProportion));
 
             Substance = new Substance() { Composition = new LayeredComposite(layers) };
             GenerateShape();

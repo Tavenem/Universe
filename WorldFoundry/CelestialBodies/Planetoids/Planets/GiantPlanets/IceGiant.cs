@@ -84,11 +84,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
             var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
-                { (Chemical.Nickel, Phase.Solid), coreNickel },
-            }), innerCoreProportion));
+            layers.Add((new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
+                (Chemical.Nickel, Phase.Solid, coreNickel)),
+                innerCoreProportion));
 
             // Molten rock outer core.
             layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
@@ -111,10 +110,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             IComposition upperLayer = null;
             if (ch4 >0 || nh4 > 0)
             {
-                upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Water, Phase.Liquid), water },
-                });
+                upperLayer = new Composite((Chemical.Water, Phase.Liquid, water));
                 if (ch4 > 0)
                 {
                     (upperLayer as Composite).Components[(Chemical.Methane, Phase.Liquid)] = ch4;

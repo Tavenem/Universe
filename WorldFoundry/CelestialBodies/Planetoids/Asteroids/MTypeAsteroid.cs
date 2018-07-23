@@ -97,14 +97,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                    {
-                    { (Chemical.Rock, Phase.Solid), rock },
-                    { (Chemical.Iron, Phase.Solid), iron },
-                    { (Chemical.Nickel, Phase.Solid), nickel },
-                    { (Chemical.Gold, Phase.Solid), gold },
-                    { (Chemical.Platinum, Phase.Solid), platinum },
-                }),
+                Composition = new Composite(
+                    (Chemical.Rock, Phase.Solid, rock),
+                    (Chemical.Iron, Phase.Solid, iron),
+                    (Chemical.Nickel, Phase.Solid, nickel),
+                    (Chemical.Gold, Phase.Solid, gold),
+                    (Chemical.Platinum, Phase.Solid, platinum)),
                 Mass = GenerateMass(),
             };
             GenerateShape();

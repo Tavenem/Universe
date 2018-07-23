@@ -89,17 +89,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             dust -= so2;
 
             Atmosphere = new Atmosphere(this,
-                new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Water, Phase.Gas), water },
-                    { (Chemical.Dust, Phase.Solid), dust },
-                    { (Chemical.CarbonMonoxide, Phase.Gas), co },
-                    { (Chemical.CarbonDioxide, Phase.Gas), co2 },
-                    { (Chemical.Ammonia, Phase.Gas), nh3 },
-                    { (Chemical.Methane, Phase.Gas), ch4 },
-                    { (Chemical.HydrogenSulfide, Phase.Gas), h2s },
-                    { (Chemical.SulphurDioxide, Phase.Gas), so2 },
-                }),
+                new Composite(
+                    (Chemical.Water, Phase.Gas, water),
+                    (Chemical.Dust, Phase.Solid, dust),
+                    (Chemical.CarbonMonoxide, Phase.Gas, co),
+                    (Chemical.CarbonDioxide, Phase.Gas, co2),
+                    (Chemical.Ammonia, Phase.Gas, nh3),
+                    (Chemical.Methane, Phase.Gas, ch4),
+                    (Chemical.HydrogenSulfide, Phase.Gas, h2s),
+                    (Chemical.SulphurDioxide, Phase.Gas, so2)),
                 1e-8);
         }
 
@@ -136,15 +134,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
             Substance = new Substance
             {
-                Composition = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-                {
-                    { (Chemical.Water, Phase.Solid), water },
-                    { (Chemical.Dust, Phase.Solid), dust },
-                    { (Chemical.CarbonMonoxide, Phase.Solid), co },
-                    { (Chemical.CarbonDioxide, Phase.Solid), co2 },
-                    { (Chemical.Ammonia, Phase.Solid), nh3 },
-                    { (Chemical.Methane, Phase.Solid), ch4 },
-                })
+                Composition = new Composite(
+                    (Chemical.Water, Phase.Solid, water),
+                    (Chemical.Dust, Phase.Solid, dust),
+                    (Chemical.CarbonMonoxide, Phase.Solid, co),
+                    (Chemical.CarbonDioxide, Phase.Solid, co2),
+                    (Chemical.Ammonia, Phase.Solid, nh3),
+                    (Chemical.Methane, Phase.Solid, ch4))
             };
 
             // Gaussian distribution with most values between 1km and 19km.

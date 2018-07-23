@@ -153,7 +153,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             double water = 0, ice = 0;
             if (surfaceTemp < Chemical.Water.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Water.AntoineMaximumTemperature &&
-                Chemical.Water.CalculateVaporPressure(surfaceTemp) <= 1000))
+                Chemical.Water.GetVaporPressure(surfaceTemp) <= 1000))
             {
                 water = Math.Round(Randomizer.Static.NextDouble(), 5);
                 ice = Math.Round(Randomizer.Static.NextDouble(), 5);
@@ -163,7 +163,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             double ch4Liquid = 0, ch4Ice = 0;
             if (surfaceTemp < Chemical.Methane.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Methane.AntoineMaximumTemperature &&
-                Chemical.Methane.CalculateVaporPressure(surfaceTemp) <= 1000))
+                Chemical.Methane.GetVaporPressure(surfaceTemp) <= 1000))
             {
                 ch4Liquid = Math.Round(Randomizer.Static.NextDouble(), 5);
                 ch4Ice = Math.Round(Randomizer.Static.NextDouble(), 5);
@@ -173,7 +173,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             double nh3Liquid = 0, nh3Ice = 0;
             if (surfaceTemp < Chemical.Ammonia.AntoineMinimumTemperature ||
                 (surfaceTemp < Chemical.Ammonia.AntoineMaximumTemperature &&
-                Chemical.Ammonia.CalculateVaporPressure(surfaceTemp) <= 1000))
+                Chemical.Ammonia.GetVaporPressure(surfaceTemp) <= 1000))
             {
                 nh3Liquid = Math.Round(Randomizer.Static.NextDouble(), 5);
                 nh3Ice = Math.Round(Randomizer.Static.NextDouble(), 5);
@@ -195,12 +195,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             nh3Ice *= ratio;
             nh4sh *= ratio;
 
-            var atmosphere = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Hydrogen, Phase.Gas), h },
-                { (Chemical.Helium, Phase.Gas), he },
-                { (Chemical.Methane, Phase.Gas), ch4 },
-            });
+            var atmosphere = new Composite(
+                (Chemical.Hydrogen, Phase.Gas, h),
+                (Chemical.Helium, Phase.Gas, he),
+                (Chemical.Methane, Phase.Gas, ch4));
             if (c2h6 > 0)
             {
                 atmosphere.Components[(Chemical.Ethane, Phase.Gas)] = c2h6;
@@ -256,11 +254,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             var coreProportion = GetCoreProportion();
             var innerCoreProportion = base.GetCoreProportion() * coreProportion;
             var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Iron, Phase.Solid), 1 - coreNickel },
-                { (Chemical.Nickel, Phase.Solid), coreNickel },
-            }), innerCoreProportion));
+            layers.Add((new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
+                (Chemical.Nickel, Phase.Solid, coreNickel)),
+                innerCoreProportion));
 
             // Molten rock outer core.
             layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
@@ -287,12 +284,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             water = Math.Max(0, water - nh4);
             var c2h6 = Math.Round(Randomizer.Static.NextDouble(water), 4);
             water = Math.Max(0, water - c2h6);
-            var upperLayer = new Composite(new Dictionary<(Chemical chemical, Phase phase), double>
-            {
-                { (Chemical.Hydrogen, Phase.Liquid), 0.71 },
-                { (Chemical.Helium, Phase.Liquid), 0.24 },
-                { (Chemical.Neon, Phase.Liquid), ne },
-            });
+            var upperLayer = new Composite(
+                (Chemical.Hydrogen, Phase.Liquid, 0.71),
+                (Chemical.Helium, Phase.Liquid, 0.24),
+                (Chemical.Neon, Phase.Liquid, ne));
             if (ch4 > 0)
             {
                 upperLayer.Components[(Chemical.Methane, Phase.Liquid)] = ch4;
