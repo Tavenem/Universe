@@ -12,13 +12,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class NeutronStar : Star
     {
-        private const string baseTypeName = "Neutron Star";
+        private const string _baseTypeName = "Neutron Star";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -27,7 +27,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// 0 for Neutron stars, due to their excessive ionizing radiation, which makes the
         /// development of life nearby highly unlikely.
         /// </remarks>
-        public override double? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         private const string designatorPrefix = "X";
         /// <summary>
@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/>.
         /// </summary>
-        public NeutronStar() : base() { }
+        public NeutronStar() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/> with the given parameters.

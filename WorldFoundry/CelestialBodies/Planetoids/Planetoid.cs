@@ -151,14 +151,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private const double densityForType = 0;
+        private const double _densityForType = 0;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal virtual double DensityForType => densityForType;
+        internal virtual double DensityForType => _densityForType;
 
-        private const int extremeRotationalPeriod = 1100000;
-        private protected virtual int ExtremeRotationalPeriod => extremeRotationalPeriod;
+        private const int _extremeRotationalPeriod = 1100000;
+        private protected virtual int ExtremeRotationalPeriod => _extremeRotationalPeriod;
 
         private bool? _hasMagnetosphere;
         /// <summary>
@@ -170,12 +170,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             protected set => _hasMagnetosphere = value;
         }
 
-        private const bool hasFlatSurface = false;
+        private const bool _hasFlatSurface = false;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
         /// (i.e. is non-solid). Prevents generation of a height map during <see cref="Topography"/> generation.
         /// </summary>
-        public virtual bool HasFlatSurface => hasFlatSurface;
+        public virtual bool HasFlatSurface => _hasFlatSurface;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -208,10 +208,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
         internal virtual double? MaxMassForType => null;
 
-        private const int maxRotationalPeriod = 100000;
-        private protected virtual int MaxRotationalPeriod => maxRotationalPeriod;
+        private const int _maxRotationalPeriod = 100000;
+        private protected virtual int MaxRotationalPeriod => _maxRotationalPeriod;
 
-        internal static int maxSatellites = 1;
+        internal static int _maxSatellites = 1;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -219,7 +219,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>
         /// Set to 1 on the base class; subclasses are expected to set a higher value when appropriate.
         /// </remarks>
-        public virtual int MaxSatellites => maxSatellites;
+        public virtual int MaxSatellites => _maxSatellites;
 
         private double? _minMass;
         /// <summary>
@@ -247,8 +247,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>Null in the base class; subclasses are expected to override.</remarks>
         internal virtual double? MinMassForType => null;
 
-        private const int minRotationalPeriod = 8000;
-        private protected virtual int MinRotationalPeriod => minRotationalPeriod;
+        private const int _minRotationalPeriod = 8000;
+        private protected virtual int MinRotationalPeriod => _minRotationalPeriod;
 
         private double? _minSatellitePeriapsis;
         /// <summary>
@@ -297,7 +297,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
         /// </summary>
-        public Planetoid() : base() { }
+        public Planetoid() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
@@ -388,11 +388,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 }
                 else
                 {
-                    if (tile.Resources == null)
-                    {
-                        tile.Resources = new Dictionary<Chemical, float>();
-                    }
-                    tile.Resources.Add(substance, (float)(richness * ratio));
+                    (tile.Resources ?? (tile.Resources = new Dictionary<Chemical, float>())).Add(substance, (float)(richness * ratio));
                 }
             }
 
@@ -494,6 +490,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         /// <remarks>Returns null in the base class; subclasses are expected to override.</remarks>
         private protected virtual Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass) => null;

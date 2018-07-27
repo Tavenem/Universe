@@ -17,34 +17,34 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const double CoreProportion = 0.4;
 
-        internal new static bool canHaveOxygen = false;
+        internal new static bool _canHaveOxygen;
         /// <summary>
         /// Used to allow or prevent oxygen in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have oxygen due to its high reactivity with carbon compounds.
         /// </remarks>
-        protected override bool CanHaveOxygen => canHaveOxygen;
+        protected override bool CanHaveOxygen => _canHaveOxygen;
 
-        internal new static bool canHaveWater = false;
+        internal new static bool _canHaveWater;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have water due to its high reactivity with carbon compounds.
         /// </remarks>
-        protected override bool CanHaveWater => canHaveWater;
+        protected override bool CanHaveWater => _canHaveWater;
 
-        private const string planemoClassPrefix = "Carbon";
+        private const string _planemoClassPrefix = "Carbon";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/>.
         /// </summary>
-        public CarbonPlanet() : base() { }
+        public CarbonPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
@@ -175,6 +175,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
@@ -182,7 +185,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var chance = Randomizer.Static.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > minMassForType && Randomizer.Static.NextBoolean())
+            if (maxMass > _minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -191,7 +194,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(maxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(Parent, maxMass);
                 }
@@ -210,10 +213,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet.minMassForType && Randomizer.Static.NextBoolean())
+            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Static.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet.densityForType) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(Parent, maxMass);
                 }
@@ -259,5 +262,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             return satellite;
         }
+
+        /// <summary>
+        /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
+        /// </summary>
+        /// <returns>A proportion, from 0.0 to 1.0.</returns>
+        /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
+        private protected override double GetCoreProportion() => CoreProportion;
     }
 }

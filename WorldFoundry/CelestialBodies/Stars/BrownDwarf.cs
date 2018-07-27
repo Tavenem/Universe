@@ -10,13 +10,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class BrownDwarf : Star
     {
-        private const string baseTypeName = "Brown Dwarf";
+        private const string _baseTypeName = "Brown Dwarf";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -26,12 +26,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// cooling, and intersect soon with severe tidal forces, making it unlikely that life could
         /// develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override double? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/>.
         /// </summary>
-        public BrownDwarf() : base() { }
+        public BrownDwarf() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/> with the given parameters.
@@ -64,6 +64,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         private protected override double GenerateMass(Shape shape) => Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>

@@ -16,13 +16,13 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class EllipticalGalaxy : Galaxy
     {
-        private const string baseTypeName = "Elliptical Galaxy";
+        private const string _baseTypeName = "Elliptical Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        internal new static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+        internal new static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type, double proportion, object[] constructorParameters)>
             {
                 // Rogue planets, 60% overall.
@@ -72,12 +72,12 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="EllipticalGalaxy"/>.
         /// </summary>
-        public EllipticalGalaxy() : base() { }
+        public EllipticalGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="EllipticalGalaxy"/> with the given parameters.

@@ -14,19 +14,19 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySubgroup : CelestialRegion
     {
-        private const string baseTypeName = "Galaxy Subgroup";
+        private const string _baseTypeName = "Galaxy Subgroup";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 1.0e-70;
+        private const double _childDensity = 1.0e-70;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type,double proportion, object[] constructorParameters)>
             {
                 (typeof(DwarfGalaxy), 0.26, null),
@@ -35,7 +35,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         private Galaxy _mainGalaxy;
         /// <summary>
@@ -51,7 +51,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/>.
         /// </summary>
-        public GalaxySubgroup() : base() { }
+        public GalaxySubgroup() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/> with the given parameters.

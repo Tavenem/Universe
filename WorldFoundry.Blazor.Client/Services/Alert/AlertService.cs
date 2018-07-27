@@ -30,7 +30,7 @@ namespace WorldFoundry.Blazor.Client.Services
         {
             if (!string.IsNullOrWhiteSpace(reason))
             {
-                OnError(new MessageEventArgs { Message = $"{(int)status} {status} - {reason}" });
+                OnError(new MessageEventArgs { Message = $"{((int)status).ToString()} {status.ToString()} - {reason}" });
             }
         }
 

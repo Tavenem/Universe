@@ -33,10 +33,7 @@ namespace WorldFoundry.Blazor.Server
                 app.UseDeveloperExceptionPage();
             }
 
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(name: "default", template: "{controller}/{action}/{id?}");
-            });
+            app.UseMvc(routes => routes.MapRoute(name: "default", template: "{controller}/{action}/{id?}"));
 
             app.UseBlazor<Client.Program>();
         }

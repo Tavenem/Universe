@@ -12,13 +12,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class WhiteDwarf : Star
     {
-        private const string baseTypeName = "White Dwarf";
+        private const string _baseTypeName = "White Dwarf";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
@@ -28,12 +28,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// radiation is expected in early stages at the close distances where a habitable zone could
         /// be expected, making it unlikely that life could develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override double? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/>.
         /// </summary>
-        public WhiteDwarf() : base() { }
+        public WhiteDwarf() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/> with the given parameters.

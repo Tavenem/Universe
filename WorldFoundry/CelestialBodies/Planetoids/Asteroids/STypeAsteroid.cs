@@ -11,17 +11,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class STypeAsteroid : Asteroid
     {
-        private const string baseTypeName = "S-Type Asteroid";
+        private const string _baseTypeName = "S-Type Asteroid";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double densityForType = 2710;
+        private const double _densityForType = 2710;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
@@ -31,7 +31,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/>.
         /// </summary>
-        public STypeAsteroid() : base() { }
+        public STypeAsteroid() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
@@ -106,6 +106,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {

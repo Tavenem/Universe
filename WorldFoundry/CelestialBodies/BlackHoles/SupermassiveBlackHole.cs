@@ -8,16 +8,16 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
     /// </summary>
     public class SupermassiveBlackHole : BlackHole
     {
-        private const string baseTypeName = "Supermassive Black Hole";
+        private const string _baseTypeName = "Supermassive Black Hole";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="SupermassiveBlackHole"/>.
         /// </summary>
-        public SupermassiveBlackHole() : base() { }
+        public SupermassiveBlackHole() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SupermassiveBlackHole"/> with the given parameters.

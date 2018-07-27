@@ -10,13 +10,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class BlueGiant : GiantStar
     {
-        private const string baseTypeName = "Blue Giant";
+        private const string _baseTypeName = "Blue Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
@@ -26,12 +26,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// in the same place long enough for life to develop before the star evolves into another
         /// type, or dies.
         /// </remarks>
-        public override double? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/>.
         /// </summary>
-        public BlueGiant() : base() { }
+        public BlueGiant() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/> with the given parameters.
@@ -61,6 +61,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         private protected override double GenerateMass(Shape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero) // Hypergiants

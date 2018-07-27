@@ -25,7 +25,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/>.
         /// </summary>
-        public Orbiter() : base() { }
+        public Orbiter() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.

@@ -12,12 +12,12 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The indexes of the <see cref="Corner"/>s to which this one is connected.
         /// </summary>
-        public int[] Corners { get; private set; }
+        public int[] Corners { get; }
 
         /// <summary>
         /// The indexes of the <see cref="Edge"/>s to which this <see cref="Corner"/> is connected.
         /// </summary>
-        public int[] Edges { get; private set; }
+        public int[] Edges { get; }
 
         /// <summary>
         /// The elevation above sea level of this <see cref="Corner"/>, in meters.
@@ -52,7 +52,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.
         /// </summary>
-        public int[] Tiles { get; private set; }
+        public int[] Tiles { get; }
 
         /// <summary>
         /// The <see cref="Vector3"/> which defines the position of this <see cref="Corner"/>.
@@ -67,6 +67,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
+        /// <param name="index">The <see cref="Index"/> of the <see cref="Corner"/>.</param>
         internal Corner(int index)
         {
             Index = index;

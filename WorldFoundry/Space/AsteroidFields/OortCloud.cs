@@ -18,13 +18,13 @@ namespace WorldFoundry.Space.AsteroidFields
     {
         private readonly double? starSystemRadius;
 
-        private const string baseTypeName = "Oort Cloud";
+        private const string _baseTypeName = "Oort Cloud";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        internal new static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+        internal new static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type, double proportion, object[] constructorParameters)>
             {
                 (typeof(Comet), 0.85, null),
@@ -35,18 +35,18 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
-        private const double childDensity = 8.31e-38;
+        private const double _childDensity = 8.31e-38;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
         /// <summary>
         /// Initializes a new instance of <see cref="OortCloud"/>.
         /// </summary>
-        public OortCloud() : base() { }
+        public OortCloud() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OortCloud"/> with the given parameters.

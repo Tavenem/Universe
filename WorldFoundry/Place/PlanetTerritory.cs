@@ -50,6 +50,7 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
         /// </summary>
+        /// <param name="place">A <see cref="Place"/> to test for inclusion.</param>
         public override bool Includes(Place place)
             => Entity == place.Entity
             && ((place is PlanetTerritory pt
@@ -78,12 +79,12 @@ namespace WorldFoundry.Place
         public bool Matches(PlanetTerritory obj)
             => base.Matches(obj)
             && (TileIndexes == null) == (obj.TileIndexes == null)
-            && (TileIndexes == null
-            || TileIndexes.SetEquals(obj.TileIndexes));
+            && (TileIndexes?.SetEquals(obj.TileIndexes) != false);
 
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
         /// </summary>
+        /// <param name="place">The <see cref="Place"/> to test for overlap.</param>
         public override bool Overlaps(Place place)
             => Entity == place.Entity
             && ((place is PlanetTerritory pt

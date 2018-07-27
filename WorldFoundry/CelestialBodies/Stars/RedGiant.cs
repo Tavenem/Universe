@@ -10,16 +10,16 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class RedGiant : GiantStar
     {
-        private const string baseTypeName = "Red Giant";
+        private const string _baseTypeName = "Red Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/>.
         /// </summary>
-        public RedGiant() : base() { }
+        public RedGiant() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
@@ -49,6 +49,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         private protected override double GenerateMass(Shape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero

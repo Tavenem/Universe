@@ -18,18 +18,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private const double IcyRingDensity = 300.0;
         private const double RockyRingDensity = 1380.0;
 
-        private const string baseTypeName = "Planet";
+        private const string _baseTypeName = "Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
         /// </summary>
         internal const int MinimumRadius = 600000;
 
-        internal new static int maxSatellites = 5;
+        internal new static int _maxSatellites = 5;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Set to 5 for <see cref="Planemo"/>. For reference, Pluto has 5 moons, the most of any
         /// planemo in the Solar System apart from the giants. No others are known to have more than 2.
         /// </remarks>
-        public override int MaxSatellites => maxSatellites;
+        public override int MaxSatellites => _maxSatellites;
 
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
@@ -48,12 +48,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </remarks>
         public virtual string PlanemoClassPrefix => null;
 
-        internal static double ringChance = 0;
+        internal static double _ringChance = 0;
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
         /// </summary>
         /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
-        protected virtual double RingChance => ringChance;
+        protected virtual double RingChance => _ringChance;
 
         private double? _eccentricity;
         /// <summary>
@@ -108,7 +108,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/>.
         /// </summary>
-        public Planemo() : base() { }
+        public Planemo() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
@@ -211,8 +211,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 outerLimit_Rocky = Math.Min(outerLimit_Rocky, Orbit.GetHillSphereRadius() / 3.0);
             }
 
-            var ringChance = RingChance;
-            while (Randomizer.Static.NextDouble() <= ringChance && innerLimit <= outerLimit_Icy)
+            var _ringChance = RingChance;
+            while (Randomizer.Static.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
             {
                 if (innerLimit < outerLimit_Rocky && Randomizer.Static.NextBoolean())
                 {
@@ -239,7 +239,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                     }
                 }
 
-                ringChance *= 0.5;
+                _ringChance *= 0.5;
             }
         }
 
@@ -280,12 +280,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
         internal double GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
 
-        private double GetRadiusForMass(double mass) => Math.Pow((mass / Density) / MathConstants.FourThirdsPI, 1.0 / 3.0);
+        private double GetRadiusForMass(double mass) => Math.Pow(mass / Density / MathConstants.FourThirdsPI, 1.0 / 3.0);
 
         /// <summary>
-        /// Calculates the approximate outer distance at which rings of the given density may be found, in meters.
+        /// Calculates the approximate outer distance at which rings of the given density may be
+        /// found, in meters.
         /// </summary>
-        /// <returns>The approximate outer distance at which rings of the given density may be found, in meters.</returns>
+        /// <param name="density">The density of the rings, in kg/m³.</param>
+        /// <returns>The approximate outer distance at which rings of the given density may be
+        /// found, in meters.</returns>
         private double GetRingDistance(double density) => 1.26 * Radius * Math.Pow(Density / density, 1.0 / 3.0);
 
         /// <summary>

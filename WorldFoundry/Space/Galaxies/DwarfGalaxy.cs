@@ -11,16 +11,16 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class DwarfGalaxy : Galaxy
     {
-        private const string baseTypeName = "Dwarf Galaxy";
+        private const string _baseTypeName = "Dwarf Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfGalaxy"/>.
         /// </summary>
-        public DwarfGalaxy() : base() { }
+        public DwarfGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfGalaxy"/> with the given parameters.

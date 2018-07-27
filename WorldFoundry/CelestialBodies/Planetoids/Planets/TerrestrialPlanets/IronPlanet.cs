@@ -11,14 +11,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const double CoreProportion = 0.4;
 
-        internal new static bool canHaveWater = false;
+        internal new static bool _canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have water due to its high reactivity with iron compounds.
         /// </remarks>
-        protected override bool CanHaveWater => canHaveWater;
+        protected override bool CanHaveWater => _canHaveWater;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -29,28 +29,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override double MagnetosphereChanceFactor => 5;
 
-        internal new static double maxDensity = 8000;
-        private protected override double MaxDensity => maxDensity;
+        internal new static double _maxDensity = 8000;
+        private protected override double MaxDensity => _maxDensity;
 
-        internal new static double metalProportion = 0.25;
+        internal new static double _metalProportion = 0.25;
         /// <summary>
         /// Used to set the proportionate amount of metal in the composition of a terrestrial planet.
         /// </summary>
-        private protected override double MetalProportion => metalProportion;
+        private protected override double MetalProportion => _metalProportion;
 
-        internal new static double minDensity = 5250;
-        private protected override double MinDensity => minDensity;
+        internal new static double _minDensity = 5250;
+        private protected override double MinDensity => _minDensity;
 
-        private const string planemoClassPrefix = "Iron";
+        private const string _planemoClassPrefix = "Iron";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="IronPlanet"/>.
         /// </summary>
-        public IronPlanet() : base() { }
+        public IronPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IronPlanet"/> with the given parameters.

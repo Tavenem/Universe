@@ -19,7 +19,7 @@ namespace WorldFoundry.Blazor.Client.Services
             }
         }
 
-        public void HideLoading() => OnDoneLoading(new EventArgs());
+        public void HideLoading() => OnDoneLoading(EventArgs.Empty);
 
         protected virtual void OnLoading(MessageEventArgs e) => Loading?.Invoke(this, e);
         protected virtual void OnDoneLoading(EventArgs e) => DoneLoading?.Invoke(this, e);

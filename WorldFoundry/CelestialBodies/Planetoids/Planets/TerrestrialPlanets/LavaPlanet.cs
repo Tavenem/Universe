@@ -12,16 +12,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class LavaPlanet : TerrestrialPlanet
     {
-        internal new static bool canHaveWater = false;
+        internal new static bool _canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have water due to extreme temperature.
         /// </remarks>
-        protected override bool CanHaveWater => canHaveWater;
+        protected override bool CanHaveWater => _canHaveWater;
 
-        internal new static int maxSatellites = 0;
+        internal new static int _maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -30,18 +30,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Lava planets have no satellites; whatever forces have caused their surface trauma should
         /// also inhibit stable satellite orbits.
         /// </remarks>
-        public override int MaxSatellites => maxSatellites;
+        public override int MaxSatellites => _maxSatellites;
 
-        private const string planemoClassPrefix = "Lava";
+        private const string _planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/>.
         /// </summary>
-        public LavaPlanet() : base() { }
+        public LavaPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.

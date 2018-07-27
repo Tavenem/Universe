@@ -18,19 +18,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class DwarfPlanet : Planemo
     {
-        private const string baseTypeName = "Dwarf Planet";
+        private const string _baseTypeName = "Dwarf Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        internal static double densityForType = 2000;
+        internal static double _densityForType = 2000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
-        internal static double maxMassForType = 2.0e22;
+        internal static double _maxMassForType = 2.0e22;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -39,9 +39,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        internal override double? MaxMassForType => maxMassForType;
+        internal override double? MaxMassForType => _maxMassForType;
 
-        internal static double minMassForType = 3.4e20;
+        internal static double _minMassForType = 3.4e20;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -49,7 +49,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <remarks>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </remarks>
-        internal override double? MinMassForType => minMassForType;
+        internal override double? MinMassForType => _minMassForType;
 
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
@@ -63,7 +63,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.
         /// </summary>
-        public DwarfPlanet() : base() { }
+        public DwarfPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
@@ -326,6 +326,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {

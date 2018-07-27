@@ -5,6 +5,7 @@ using WorldFoundry.Blazor.Client.Services;
 
 namespace WorldFoundry.Blazor.Client
 {
+#pragma warning disable RCS1102, RCS1018, RCS1163, RCS1021
     public class Program
     {
         static void Main(string[] args)
@@ -17,4 +18,5 @@ namespace WorldFoundry.Blazor.Client
             new BrowserRenderer(serviceProvider).AddComponent<App>("app");
         }
     }
+#pragma warning restore RCS1102, RCS1018, RCS1163, RCS1021
 }

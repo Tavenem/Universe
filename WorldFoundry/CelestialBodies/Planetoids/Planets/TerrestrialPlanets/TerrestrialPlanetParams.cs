@@ -135,6 +135,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
+        /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
+        /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
+        /// <param name="axialTilt">The target axial tilt, in radians.</param>
+        /// <param name="eccentricity">The target orbital eccentricity.</param>
+        /// <param name="gridSize">The target grid size (level of detail).</param>
+        /// <param name="gridTileRadius">The target tile radius.</param>
+        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
+        /// <param name="radius">The target radius, in meters.</param>
+        /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
+        /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
+        /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
+        /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
+        /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
         public TerrestrialPlanetParams(
             double? atmosphericPressure = null,
             List<Requirement> atmosphericRequirements = null,
@@ -152,7 +166,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? waterRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            AtmosphericRequirements = atmosphericRequirements;
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
@@ -170,6 +184,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Generates a new instance of <see cref="TerrestrialPlanetParams"/> with either the given or default values.
         /// </summary>
+        /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
+        /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
+        /// <param name="axialTilt">The target axial tilt, in radians.</param>
+        /// <param name="eccentricity">The target orbital eccentricity.</param>
+        /// <param name="gridSize">The target grid size (level of detail).</param>
+        /// <param name="gridTileRadius">The target tile radius.</param>
+        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
+        /// <param name="radius">The target radius, in meters.</param>
+        /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
+        /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
+        /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
+        /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
+        /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
         public static TerrestrialPlanetParams FromDefaults(
             double? atmosphericPressure = DefaultAtmosphericPressure,
             List<Requirement> atmosphericRequirements = null,

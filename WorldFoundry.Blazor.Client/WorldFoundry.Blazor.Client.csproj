@@ -8,10 +8,9 @@
     <TypeScriptToolsVersion>Latest</TypeScriptToolsVersion>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="ClientApp\blazor.d.ts" />
-    <None Remove="ClientApp\dotnet_interop.ts" />
-  </ItemGroup>
+  <PropertyGroup>
+    <CodeAnalysisRuleSet>../RoslynatorRuleSet.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Blazor.Browser" Version="0.5.0-preview1-10334" />
@@ -20,11 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WorldFoundry\WorldFoundry.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <TypeScriptCompile Include="ClientApp\blazor.d.ts" />
-    <TypeScriptCompile Include="ClientApp\dotnet_interop.ts" />
   </ItemGroup>
 
   <Target Name="DebugRunWebpackClient" BeforeTargets="Build" Condition=" '$(Configuration)' == 'Debug' And Exists('wwwroot\dist') ">

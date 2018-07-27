@@ -12,19 +12,19 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Universe : CelestialRegion
     {
-        private const string baseTypeName = "Universe";
+        private const string _baseTypeName = "Universe";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 1.5e-82;
+        private const double _childDensity = 1.5e-82;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type,double proportion, object[] constructorParameters)>
             {
                 (typeof(GalaxySupercluster), 1, null),
@@ -32,7 +32,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbits.Orbiter"/>.
@@ -50,7 +50,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Universe"/>.
         /// </summary>
-        public Universe() : base() { }
+        public Universe() { }
 
         /// <summary>
         /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of
@@ -70,12 +70,15 @@ namespace WorldFoundry.Space
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
         /// the real observable universe.
-        ///
+        /// </para>
+        /// <para>
         /// Approximately 4e18 superclusters might be found in the modeled universe, by volume
         /// (although this would require exhaustive "exploration" to populate so many grid spaces).
         /// This makes the universe effectively infinite in scope, if not in linear dimensions.
+        /// </para>
         /// </remarks>
         private protected override void GenerateSubstance()
         {

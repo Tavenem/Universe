@@ -11,16 +11,16 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Nebula : CelestialRegion
     {
-        private const string baseTypeName = "Nebula";
+        private const string _baseTypeName = "Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/>.
         /// </summary>
-        public Nebula() : base() { }
+        public Nebula() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/> with the given parameters.
@@ -56,7 +56,7 @@ namespace WorldFoundry.Space
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.5e17 + Randomizer.Static.Lognormal(0, 1) * 1.5e17);
+                axis = Math.Round(1.5e17 + (Randomizer.Static.Lognormal(0, 1) * 1.5e17));
             } while (axis > 5.5e18);
             SetShape(new Ellipsoid(
                 axis,

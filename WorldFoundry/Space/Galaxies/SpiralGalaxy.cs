@@ -10,16 +10,16 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class SpiralGalaxy : Galaxy
     {
-        private const string baseTypeName = "Spiral Galaxy";
+        private const string _baseTypeName = "Spiral Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="SpiralGalaxy"/>.
         /// </summary>
-        public SpiralGalaxy() : base() { }
+        public SpiralGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SpiralGalaxy"/> with the given parameters.

@@ -14,58 +14,60 @@ namespace WorldFoundry.Test
     [TestClass]
     public class TerrestrialPlanet_Tests
     {
-        private static Serializer _serializer;
-        private static Settings _serializerSettings;
-        private const int gridSize = 6;
-        private const double gridTileRadius = 160000;
-        private const int maxGridSize = 7;
-        private const int numSeasons = 4;
+        private static Serializer Serializer;
+        private static Settings SerializerSettings;
+        private const int GridSize = 6;
+        private const double GridTileRadius = 160000;
+        private const int MaxGridSize = 7;
+        private const int NumSeasons = 4;
 
+#pragma warning disable RCS1163 // Unused parameter.
         [ClassInitialize]
         public static void Init(TestContext context)
         {
-            _serializer = new Serializer();
-            _serializer.ForObject<Type>().SetSurrogate(x => Activator.CreateInstance(typeof(TypeSurrogate<>).MakeGenericType(new[] { x })));
-            _serializer.ForSurrogate<ITypeSurrogate>().SetObject(x => x.Restore());
-            _serializerSettings = new Settings(versionTolerance: VersionToleranceLevel.AllowAssemblyVersionChange | VersionToleranceLevel.AllowFieldAddition | VersionToleranceLevel.AllowFieldRemoval);
+            Serializer = new Serializer();
+            Serializer.ForObject<Type>().SetSurrogate(x => Activator.CreateInstance(typeof(TypeSurrogate<>).MakeGenericType(new[] { x })));
+            Serializer.ForSurrogate<ITypeSurrogate>().SetObject(x => x.Restore());
+            SerializerSettings = new Settings(versionTolerance: VersionToleranceLevel.AllowAssemblyVersionChange | VersionToleranceLevel.AllowFieldAddition | VersionToleranceLevel.AllowFieldRemoval);
         }
+#pragma warning restore RCS1163 // Unused parameter.
 
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
             //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: gridTileRadius, maxGridSize: maxGridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: GridTileRadius, maxGridSize: MaxGridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length}");
-            Console.WriteLine($"Radius: {planet.Radius / 1000} km");
-            Console.WriteLine($"Surface area: {planet.Topography.Tiles.Sum(x => x.Area) / 1000000} km²");
-            Console.WriteLine($"Tile area: {(planet.Topography.Tiles.Length > 12 ? planet.Topography.Tiles[12].Area : planet.Topography.Tiles[11].Area) / 1000000} km²");
+            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length.ToString()}");
+            Console.WriteLine($"Radius: {(planet.Radius / 1000).ToString()} km");
+            Console.WriteLine($"Surface area: {(planet.Topography.Tiles.Sum(x => x.Area) / 1000000).ToString()} km²");
+            Console.WriteLine($"Tile area: {((planet.Topography.Tiles.Length > 12 ? planet.Topography.Tiles[12].Area : planet.Topography.Tiles[11].Area) / 1000000).ToString()} km²");
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Generate_WithSeasons()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length}");
+            Console.WriteLine($"Tiles: {planet.Topography.Tiles.Length.ToString()}");
 
-            var seasons = planet.GetSeasons(numSeasons)?.ToList();
+            var seasons = planet.GetSeasons(NumSeasons)?.ToList();
             Assert.IsNotNull(seasons);
-            Assert.AreEqual(numSeasons, seasons.Count);
+            Assert.AreEqual(NumSeasons, seasons.Count);
             Assert.IsNotNull(planet.Seasons);
-            Assert.AreEqual(numSeasons, planet.Seasons.Count);
+            Assert.AreEqual(NumSeasons, planet.Seasons.Count);
 
             var sb = new StringBuilder();
 
-            AddTempString(sb, planet, seasons);
+            AddTempString(sb, planet);
             AddSimpleClimateString(sb, planet);
-            AddPrecipitationString(sb, planet, seasons, numSeasons);
+            AddPrecipitationString(sb, planet);
 
             Console.WriteLine(sb.ToString());
         }
@@ -73,7 +75,7 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Save()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
@@ -81,13 +83,13 @@ namespace WorldFoundry.Test
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
 
-            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData)}");
+            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData).ToString()}");
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Save_Load()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
@@ -99,32 +101,32 @@ namespace WorldFoundry.Test
             planet = LoadFromString(stringData);
             Assert.IsNotNull(planet);
             Assert.IsNotNull(planet.PlanetParams);
-            Assert.AreEqual(gridSize, planet.PlanetParams.GridSize);
+            Assert.AreEqual(GridSize, planet.PlanetParams.GridSize);
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Save_WithSeasons()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
-            planet.GetSeasons(numSeasons).ToList();
+            planet.GetSeasons(NumSeasons).ToList();
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
 
-            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData)}");
+            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData).ToString()}");
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Save_Load_WithSeasons()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
-            planet.GetSeasons(numSeasons).ToList();
+            planet.GetSeasons(NumSeasons).ToList();
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
@@ -133,9 +135,10 @@ namespace WorldFoundry.Test
             Assert.IsNotNull(planet);
 
             Assert.IsNotNull(planet.Seasons);
-            Assert.AreEqual(numSeasons, planet.Seasons.Count);
+            Assert.AreEqual(NumSeasons, planet.Seasons.Count);
         }
 
+#pragma warning disable RCS1213 // Remove unused member declaration.
         private static void AddClimateString(StringBuilder sb, TerrestrialPlanet planet)
         {
             if (planet.Topography.Tiles[0].BiomeType == BiomeType.None)
@@ -241,6 +244,7 @@ namespace WorldFoundry.Test
             sb.AppendFormat("    Rain Forest:           {0}", planet.Topography.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.RainForest));
             sb.AppendLine();
         }
+#pragma warning restore RCS1213 // Remove unused member declaration.
 
         private static void AddSimpleClimateString(StringBuilder sb, TerrestrialPlanet planet)
         {
@@ -290,30 +294,30 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 
-        static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet, List<Season> seasons, double seasonsInYear)
+        private static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet)
         {
             sb.AppendLine("Precipitation (annual average, land):");
             var list = planet.Topography.Tiles.Where(x => x.TerrainType != TerrainType.Water)
                 .Select(x => x.Precipitation)
                 .ToList();
-            if (list.Any())
+            if (list.Count > 0)
             {
                 list.Sort();
-                sb.AppendFormat("  Avg:                     {0} mm", list.Count == 0 ? 0 : list.Average());
+                sb.AppendFormat("  Avg:                     {0} mm", list.Average());
                 sb.AppendLine();
-                sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Count == 0 ? 0 : list.Take((int)Math.Floor(list.Count * 0.9)).Average());
+                sb.AppendFormat("  Avg (<=P90):             {0} mm", list.Take((int)Math.Floor(list.Count * 0.9)).Average());
                 sb.AppendLine();
-                sb.AppendFormat("  P10:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.1)).First());
+                sb.AppendFormat("  P10:                     {0} mm", list.Skip((int)Math.Floor(list.Count * 0.1)).First());
                 sb.AppendLine();
-                sb.AppendFormat("  Q1:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.25)).First());
+                sb.AppendFormat("  Q1:                      {0} mm", list.Skip((int)Math.Floor(list.Count * 0.25)).First());
                 sb.AppendLine();
-                sb.AppendFormat("  Q2:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.5)).First());
+                sb.AppendFormat("  Q2:                      {0} mm", list.Skip((int)Math.Floor(list.Count * 0.5)).First());
                 sb.AppendLine();
-                sb.AppendFormat("  Q3:                      {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.75)).First());
+                sb.AppendFormat("  Q3:                      {0} mm", list.Skip((int)Math.Floor(list.Count * 0.75)).First());
                 sb.AppendLine();
-                sb.AppendFormat("  P90:                     {0} mm", list.Count == 0 ? 0 : list.Skip((int)Math.Floor(list.Count * 0.9)).First());
+                sb.AppendFormat("  P90:                     {0} mm", list.Skip((int)Math.Floor(list.Count * 0.9)).First());
                 sb.AppendLine();
-                sb.AppendFormat("  Max:                     {0} mm", list.Count == 0 ? 0 : list.Last());
+                sb.AppendFormat("  Max:                     {0} mm", list.Last());
                 sb.AppendLine();
             }
             else
@@ -340,7 +344,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 
-        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet, List<Season> seasons)
+        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet)
         {
             sb.AppendLine("Temp:");
             sb.AppendFormat("  Avg:                     {0} K", planet.Topography.Tiles.Average(x => x.Temperature.Avg));
@@ -386,7 +390,7 @@ namespace WorldFoundry.Test
             TerrestrialPlanet planet;
             using (var ms = new MemoryStream(Convert.FromBase64String(data)))
             {
-                planet = _serializer.Deserialize<TerrestrialPlanet>(ms);
+                planet = Serializer.Deserialize<TerrestrialPlanet>(ms);
             }
             return planet;
         }
@@ -396,7 +400,7 @@ namespace WorldFoundry.Test
             string stringData;
             using (var ms = new MemoryStream())
             {
-                _serializer.Serialize(planet, ms);
+                Serializer.Serialize(planet, ms);
 
                 stringData = Convert.ToBase64String(ms.ToArray());
             }

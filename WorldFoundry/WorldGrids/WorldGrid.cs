@@ -39,7 +39,7 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         private const int ElevationFactor = 100;
 
-        private static readonly List<(double fiveSided, double sixSided)> gridAreas = new List<(double fiveSided, double sixSided)>
+        private static readonly List<(double fiveSided, double sixSided)> GridAreas = new List<(double fiveSided, double sixSided)>
         {
             { (0.995824126333975, 0) },
             { (0.322738912263057, 0.485548584813836) },
@@ -139,9 +139,9 @@ namespace WorldFoundry.WorldGrids
         public static short GetGridSizeForTileRadius(double radiusSquared, double tileRadius, int? max = null)
         {
             var prevDiff = 0.0;
-            for (short i = 0; i < gridAreas.Count; i++)
+            for (short i = 0; i < GridAreas.Count; i++)
             {
-                var tileArea = i == 0 ? gridAreas[i].fiveSided : gridAreas[i].sixSided;
+                var tileArea = i == 0 ? GridAreas[i].fiveSided : GridAreas[i].sixSided;
                 tileArea *= radiusSquared;
                 var radius = Math.Sqrt(tileArea / Math.PI);
 
@@ -169,7 +169,7 @@ namespace WorldFoundry.WorldGrids
                     prevDiff = radius - tileRadius;
                 }
             }
-            return (short)(gridAreas.Count - 1);
+            return (short)(GridAreas.Count - 1);
         }
 
         private void AddCorner(int index, int[] tileIndexes)
@@ -251,7 +251,7 @@ namespace WorldFoundry.WorldGrids
             {
                 t.Elevation -= lowest;
                 t.Elevation *= scale;
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)(t.Elevation * 6.667e-9 + 0.000025); // 0.000045 at 3000
+                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)((t.Elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
             }
             foreach (var c in Corners)
             {
@@ -317,16 +317,16 @@ namespace WorldFoundry.WorldGrids
                     coriolisCoefficients.Add(t.Latitude, Planet.GetCoriolisCoefficient(t.Latitude));
                 }
 
-                var wind = (Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI + 1) / 2;
-                t.WindFactor = (float)(0.5 + (wind - 0.5) * 0.5); // lessen impact
+                var wind = ((Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI) + 1) / 2;
+                t.WindFactor = (float)(0.5 + ((wind - 0.5) * 0.5)); // lessen impact
             }
         }
 
         private void SetGridSize0()
         {
             SetNewGridSize(0);
-            var x = -0.525731112119133606f;
-            var z = -0.850650808352039932f;
+            const float x = -0.525731112119133606f;
+            const float z = -0.850650808352039932f;
 
             var tileVectors = new Vector3[12]
             {
@@ -419,11 +419,8 @@ namespace WorldFoundry.WorldGrids
 
             var baseCount = (int)Math.Pow(3, size);
 
-            var prevCorners = new Corner[Corners == null ? 0 : Corners.Length];
-            if (Corners != null)
-            {
-                Corners.CopyTo(prevCorners, 0);
-            }
+            var prevCorners = new Corner[Corners?.Length ?? 0];
+            Corners?.CopyTo(prevCorners, 0);
             var cornerCount = 20 * baseCount;
             Corners = new Corner[cornerCount];
             for (var i = 0; i < cornerCount; i++)
@@ -431,11 +428,8 @@ namespace WorldFoundry.WorldGrids
                 Corners[i] = new Corner(i);
             }
 
-            var prevEdges = new Edge[Edges == null ? 0 : Edges.Length];
-            if (Edges != null)
-            {
-                Edges.CopyTo(prevEdges, 0);
-            }
+            var prevEdges = new Edge[Edges?.Length ?? 0];
+            Edges?.CopyTo(prevEdges, 0);
             var edgeCount = 30 * baseCount;
             Edges = new Edge[edgeCount];
             for (var i = 0; i < edgeCount; i++)
@@ -443,12 +437,9 @@ namespace WorldFoundry.WorldGrids
                 Edges[i] = new Edge();
             }
 
-            var prevTiles = new Tile[Tiles == null ? 0 : Tiles.Length];
-            if (Tiles != null)
-            {
-                Tiles.CopyTo(prevTiles, 0);
-            }
-            var tileCount = 10 * baseCount + 2;
+            var prevTiles = new Tile[Tiles?.Length ?? 0];
+            Tiles?.CopyTo(prevTiles, 0);
+            var tileCount = (10 * baseCount) + 2;
             Tiles = new Tile[tileCount];
             for (var i = 0; i < tileCount; i++)
             {
@@ -481,7 +472,7 @@ namespace WorldFoundry.WorldGrids
                 for (var k = 0; k < 3; k++)
                 {
                     t.Tiles[2 * k] = prevCorner.Corners[k] + prevTiles.Length;
-                    t.Tiles[2 * k + 1] = prevCorner.Tiles[k];
+                    t.Tiles[(2 * k) + 1] = prevCorner.Tiles[k];
                 }
             }
 
@@ -549,7 +540,7 @@ namespace WorldFoundry.WorldGrids
 
             foreach (var t in Tiles)
             {
-                t.Area = Planet.RadiusSquared * (t.EdgeCount == 5 ? gridAreas[size].fiveSided : gridAreas[size].sixSided);
+                t.Area = Planet.RadiusSquared * (t.EdgeCount == 5 ? GridAreas[size].fiveSided : GridAreas[size].sixSided);
                 t.Latitude = Planet.VectorToLatitude(t.Vector);
                 t.Longitude = Planet.VectorToLongitude(t.Vector);
                 var rotation = Planet.AxisRotation.GetReferenceRotation(t.Vector);

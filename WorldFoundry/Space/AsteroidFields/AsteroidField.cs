@@ -30,19 +30,19 @@ namespace WorldFoundry.Space.AsteroidFields
         private readonly double? majorRadius;
         private readonly double? minorRadius;
 
-        private const string baseTypeName = "Asteroid Field";
+        private const string _baseTypeName = "Asteroid Field";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 5.8e-26;
+        private const double _childDensity = 5.8e-26;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type, double proportion, object[] constructorParameters)>
             {
                 (typeof(CTypeAsteroid), 0.74, null),
@@ -55,7 +55,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
@@ -70,7 +70,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// Initializes a new instance of <see cref="AsteroidField"/>.
         /// </summary>
-        public AsteroidField() : base() { }
+        public AsteroidField() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="AsteroidField"/> with the given parameters.

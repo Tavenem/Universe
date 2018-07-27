@@ -14,16 +14,16 @@ namespace WorldFoundry.Space
     /// <remarks>Not actually a nebula. Gets its name from a quirk of history.</remarks>
     public class PlanetaryNebula : CelestialRegion
     {
-        private const string baseTypeName = "Planetary Nebula";
+        private const string _baseTypeName = "Planetary Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/>.
         /// </summary>
-        public PlanetaryNebula() : base() { }
+        public PlanetaryNebula() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/> with the given parameters.

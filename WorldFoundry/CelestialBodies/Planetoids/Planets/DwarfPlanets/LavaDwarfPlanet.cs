@@ -11,13 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class LavaDwarfPlanet : DwarfPlanet
     {
-        internal new static double densityForType = 4000;
+        internal new static double _densityForType = 4000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
-        internal new static int maxSatellites = 0;
+        internal new static int _maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -26,18 +26,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Lava planets have no satellites; whatever forces have caused their surface trauma should
         /// also inhibit stable satellite orbits.
         /// </remarks>
-        public override int MaxSatellites => maxSatellites;
+        public override int MaxSatellites => _maxSatellites;
 
-        private const string planemoClassPrefix = "Lava";
+        private const string _planemoClassPrefix = "Lava";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/>.
         /// </summary>
-        public LavaDwarfPlanet() : base() { }
+        public LavaDwarfPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/> with the given parameters.

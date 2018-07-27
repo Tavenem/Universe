@@ -17,7 +17,6 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Season
     {
-        private const double ClimateErrorTolerance = 1.0e-4;
         private const double SeaIcePerSecond = 1.53935e-4;
         private const float SnowToRainRatio = 13;
         private const double PrecipitationTempScale = 0.027;
@@ -26,7 +25,7 @@ namespace WorldFoundry.Climate
         /// The volume of water flowing in the river along each <see cref="Edge"/> during this <see
         /// cref="Season"/>, in m³/s.
         /// </summary>
-        public float[] EdgeRiverFlows { get; private set; }
+        public float[] EdgeRiverFlows { get; }
 
         /// <summary>
         /// The index of this item.
@@ -36,17 +35,17 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// The <see cref="TerrestrialPlanet"/> this <see cref="Season"/> describes.
         /// </summary>
-        public TerrestrialPlanet Planet { get; private set; }
+        public TerrestrialPlanet Planet { get; }
 
         /// <summary>
         /// The climate of each <see cref="Tile"/> during this <see cref="Season"/>.
         /// </summary>
-        public TileClimate[] TileClimates { get; private set; }
+        public TileClimate[] TileClimates { get; }
 
         /// <summary>
         /// The latitude of the solar equator during this season, as an angle in radians from the (true) equator.
         /// </summary>
-        internal double TropicalEquator { get; private set; }
+        internal double TropicalEquator { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Season"/>.
@@ -56,6 +55,16 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Initializes a new instance of <see cref="Season"/> with the given values.
         /// </summary>
+        /// <param name="planet">The <see cref="TerrestrialPlanet"/> on which this <see
+        /// cref="Season"/> occurs.</param>
+        /// <param name="index">The index of this <see cref="Season"/> among the collection of a
+        /// year.</param>
+        /// <param name="amount">The number of <see cref="Season"/>s being generated for the current
+        /// year.</param>
+        /// <param name="position">The position of <paramref name="planet"/> at the time of this
+        /// <see cref="Season"/>.</param>
+        /// <param name="previous">The <see cref="Season"/> which immediately preceded this
+        /// one.</param>
         internal Season(TerrestrialPlanet planet, int index, int amount, Vector3 position, Season previous = null)
         {
             Index = index;
@@ -65,7 +74,7 @@ namespace WorldFoundry.Climate
             var seasonProportion = 1.0 / amount;
             var elapsedYearToDate = seasonProportion * index;
 
-            TropicalEquator = planet.AxialTilt * Math.Sin(MathConstants.TwoPI * elapsedYearToDate + MathConstants.HalfPI) * (2.0 / 3.0);
+            TropicalEquator = planet.AxialTilt * Math.Sin((MathConstants.TwoPI * elapsedYearToDate) + MathConstants.HalfPI) * (2.0 / 3.0);
 
             TileClimates = new TileClimate[planet.Topography.Tiles.Length];
             for (var j = 0; j < planet.Topography.Tiles.Length; j++)
@@ -103,7 +112,7 @@ namespace WorldFoundry.Climate
             double elevation,
             double temperature)
         {
-            var height = elevation + TileClimate.AirCellLayerHeight * layer;
+            var height = elevation + (TileClimate.AirCellLayerHeight * layer);
             if (!elevationTemperatures.TryGetValue((temperature, height), out var tempAtElevation))
             {
                 tempAtElevation = Planet.Atmosphere.GetTemperatureAtElevation(temperature, height);
@@ -150,7 +159,7 @@ namespace WorldFoundry.Climate
                     // multiplied by a factor of 4 to roughly model groundwater flow
                     var runoff = (melt * 0.004 * t.Area) / time;
                     var previousRunoff = previous?.TileClimates[i].Runoff ?? runoff;
-                    tc.Runoff = (float)((previousRunoff > runoff ? (previousRunoff * 3 + runoff) : (runoff * 3 + previousRunoff)) / 4);
+                    tc.Runoff = (float)((previousRunoff > runoff ? ((previousRunoff * 3) + runoff) : ((runoff * 3) + previousRunoff)) / 4);
                 }
             }
         }
@@ -180,7 +189,7 @@ namespace WorldFoundry.Climate
 
                 if (!hadleyLifts.TryGetValue(tc.Latitude, out var hadleyLift))
                 {
-                    hadleyLift = (Math.Cos(6 * tc.Latitude) * (1 - Math.Abs(tc.Latitude) / MathConstants.TwoPI) + 1) / 2; // less dropoff with latitude
+                    hadleyLift = ((Math.Cos(6 * tc.Latitude) * (1 - (Math.Abs(tc.Latitude) / MathConstants.TwoPI))) + 1) / 2; // less dropoff with latitude
                     hadleyLifts.Add(tc.Latitude, hadleyLift);
                 }
 
@@ -229,7 +238,8 @@ namespace WorldFoundry.Climate
                 var c = endpoints.First();
                 endpoints.Remove(c);
 
-                var next = Planet.Topography.Corners[Planet.Topography.Edges.FirstOrDefault(x => x.RiverSource == c.Index)?.RiverDirection ?? -1];
+                var index = Array.Find(Planet.Topography.Edges, x => x.RiverSource == c.Index)?.RiverDirection ?? -1;
+                var next = index == -1 ? null : Planet.Topography.Corners[index];
                 if (next == null)
                 {
                     next = c.GetLowestCorner(Planet.Topography, true);
@@ -300,7 +310,7 @@ namespace WorldFoundry.Climate
                     var ice = 0.0;
                     if (tc.Temperature < Chemical.Water_Salt.MeltingPoint)
                     {
-                        ice = SeaIcePerSecond * time * Math.Pow((Chemical.Water_Salt.MeltingPoint - tc.Temperature), 0.58);
+                        ice = SeaIcePerSecond * time * Math.Pow(Chemical.Water_Salt.MeltingPoint - tc.Temperature, 0.58);
                     }
                     else if (previousIce > 0)
                     {

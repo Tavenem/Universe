@@ -8,7 +8,7 @@
         /// <summary>
         /// The indexes of the <see cref="Corner"/>s to which this <see cref="Edge"/> is connected.
         /// </summary>
-        public int[] Corners { get; private set; }
+        public int[] Corners { get; }
 
         /// <summary>
         /// The index of the <see cref="Corner"/> towards which the river on this <see cref="Edge"/>
@@ -35,7 +35,7 @@
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this <see cref="Edge"/> is connected.
         /// </summary>
-        public int[] Tiles { get; private set; }
+        public int[] Tiles { get; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Edge"/>.

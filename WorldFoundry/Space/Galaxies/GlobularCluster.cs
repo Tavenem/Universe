@@ -18,20 +18,20 @@ namespace WorldFoundry.Space.Galaxies
     /// </remarks>
     public class GlobularCluster : Galaxy
     {
-        private const string baseTypeName = "Globular Cluster";
+        private const string _baseTypeName = "Globular Cluster";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 1.3e-17;
+        private const double _childDensity = 1.3e-17;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
         /// <remarks>Globular clusters are far more dense than galaxies.</remarks>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal new static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+        internal new static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type,double proportion, object[] constructorParameters)>
             {
                 // Brown dwarfs, 47%.
@@ -96,12 +96,12 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GlobularCluster"/>.
         /// </summary>
-        public GlobularCluster() : base() { }
+        public GlobularCluster() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GlobularCluster"/> with the given parameters.

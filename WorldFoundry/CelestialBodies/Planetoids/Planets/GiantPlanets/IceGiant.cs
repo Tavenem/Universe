@@ -11,13 +11,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class IceGiant : GiantPlanet
     {
-        private const string baseTypeName = "Ice Giant";
+        private const string _baseTypeName = "Ice Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        internal new static int maxSatellites = 40;
+        internal new static int _maxSatellites = 40;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -26,12 +26,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// Set to 40 for <see cref="IceGiant"/>. For reference, Uranus has 27 moons, and Neptune has
         /// 14 moons.
         /// </remarks>
-        public override int MaxSatellites => maxSatellites;
+        public override int MaxSatellites => _maxSatellites;
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/>.
         /// </summary>
-        public IceGiant() : base() { }
+        public IceGiant() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
@@ -111,13 +111,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             if (ch4 >0 || nh4 > 0)
             {
                 upperLayer = new Composite((Chemical.Water, Phase.Liquid, water));
+                var composite = upperLayer as Composite;
                 if (ch4 > 0)
                 {
-                    (upperLayer as Composite).Components[(Chemical.Methane, Phase.Liquid)] = ch4;
+                    composite.Components[(Chemical.Methane, Phase.Liquid)] = ch4;
                 }
                 if (nh4 > 0)
                 {
-                    (upperLayer as Composite).Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
+                    composite.Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
                 }
             }
             else

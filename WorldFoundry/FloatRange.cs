@@ -35,6 +35,7 @@
         /// Initializes a new instance of <see cref="FloatRange"/> with an <see cref="Avg"/> but no
         /// <see cref="Min"/> or <see cref="Max"/>.
         /// </summary>
+        /// <param name="value">The value at which <see cref="Avg"/> is to be set.</param>
         public FloatRange(float value)
         {
             Avg = value;
@@ -45,6 +46,9 @@
         /// <summary>
         /// Initializes a new instance of <see cref="FloatRange"/> with the specified values.
         /// </summary>
+        /// <param name="min">The value at which <see cref="Min"/> is to be set.</param>
+        /// <param name="avg">The value at which <see cref="Avg"/> is to be set.</param>
+        /// <param name="max">The value at which <see cref="Max"/> is to be set.</param>
         public FloatRange(float min, float avg, float max)
         {
             Avg = avg;

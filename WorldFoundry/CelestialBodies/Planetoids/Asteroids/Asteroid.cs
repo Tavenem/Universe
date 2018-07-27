@@ -14,7 +14,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class Asteroid : Planetoid
     {
-        private const double maxMassForType = 3.4e20;
+        private const double _maxMassForType = 3.4e20;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -23,15 +23,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
         /// rather than an asteroid.
         /// </remarks>
-        internal override double? MaxMassForType => maxMassForType;
+        internal override double? MaxMassForType => _maxMassForType;
 
-        private const double minMassForType = 5.9e8;
+        private const double _minMassForType = 5.9e8;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
         /// </summary>
         /// <remarks>Below this a body is considered a meteoroid, rather than an asteroid.</remarks>
-        internal override double? MinMassForType => minMassForType;
+        internal override double? MinMassForType => _minMassForType;
 
         /// <summary>
         /// The name for this type of <see cref="CelestialEntity"/>.
@@ -54,7 +54,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/>.
         /// </summary>
-        public Asteroid() : base() { }
+        public Asteroid() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
@@ -153,6 +153,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Sets an appropriate orbit for the satellite of an asteroid.
         /// </summary>
+        /// <param name="satellite">The satellite whose orbit is to be set.</param>
+        /// <param name="periapsis">The periapsis of the orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the orbit.</param>
         private protected void SetAsteroidSatelliteOrbit(Orbiter satellite, double periapsis, double eccentricity)
             => Orbit.SetOrbit(
                 satellite,

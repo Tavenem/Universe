@@ -13,19 +13,19 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxyGroup : CelestialRegion
     {
-        private const string baseTypeName = "Galaxy Group";
+        private const string _baseTypeName = "Galaxy Group";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 1.5e-70;
+        private const double _childDensity = 1.5e-70;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type, double proportion, object[] constructorParameters)>
             {
                 (typeof(DwarfGalaxy), 1, null),
@@ -33,12 +33,12 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/>.
         /// </summary>
-        public GalaxyGroup() : base() { }
+        public GalaxyGroup() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/> with the given parameters.

@@ -15,11 +15,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Comet : Planetoid
     {
-        private const string baseTypeName = "Comet";
+        private const string _baseTypeName = "Comet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// The approximate rigidity of this <see cref="Planetoid"/>.
@@ -29,7 +29,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/>.
         /// </summary>
-        public Comet() : base() { }
+        public Comet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.

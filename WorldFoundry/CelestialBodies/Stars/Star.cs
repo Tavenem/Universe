@@ -17,11 +17,11 @@ namespace WorldFoundry.CelestialBodies.Stars
     {
         private const string RedDwarfTypeName = "Red Dwarf";
 
-        private const string baseTypeName = "Star";
+        private const string _baseTypeName = "Star";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         private string _designatorPrefix;
         /// <summary>
@@ -72,7 +72,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/>.
         /// </summary>
-        public Star() : base() { }
+        public Star() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/> with the given parameters.
@@ -111,10 +111,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 LuminosityClass = luminosityClass.Value;
             }
 
-            if (populationII == true)
-            {
-                IsPopulationII = true;
-            }
+            IsPopulationII = populationII;
         }
 
         private void GenerateDesignatorPrefix()
@@ -163,12 +160,12 @@ namespace WorldFoundry.CelestialBodies.Stars
             if (LuminosityClass == LuminosityClass.sd)
             {
                 // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
-                Luminosity = Luminosity / Randomizer.Static.NextDouble(55, 100);
+                Luminosity /= Randomizer.Static.NextDouble(55, 100);
             }
             else if (LuminosityClass == LuminosityClass.IV)
             {
                 // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
-                Luminosity = Luminosity * Randomizer.Static.NextDouble(55, 100);
+                Luminosity *= Randomizer.Static.NextDouble(55, 100);
             }
         }
 
@@ -183,6 +180,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         /// <remarks>
         /// Mass scales with radius for main-sequence stars, with the scale changing at around 1
         /// solar mass/radius.
@@ -344,9 +342,9 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             // If any, and the total is not already taken up by giants (may happen if only 1 total
             // but both types of giant are indicated), then up to 1/3 the total (but at least 1).
-            var numIceGiants =
-                (hasIceGiants && numGiants < numPlanets) ?
-                (int)Math.Round(Math.Max(1, Randomizer.Static.NextDouble(numPlanets / 3.0))) : 0;
+            var numIceGiants = (hasIceGiants && numGiants < numPlanets)
+                ? (int)Math.Round(Math.Max(1, Randomizer.Static.NextDouble(numPlanets / 3.0)))
+                : 0;
 
             var numTerrestrial = 0;
             if (hasTerrestrial)
@@ -374,6 +372,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Determines <see cref="SpectralClass"/> from temperature.
         /// </summary>
+        /// <param name="temperature">The temperature of the <see cref="Star"/>.</param>
         /// <remarks>
         /// Only applies to the standard classes (excludes W).
         /// </remarks>

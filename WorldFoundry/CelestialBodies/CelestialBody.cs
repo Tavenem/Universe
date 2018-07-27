@@ -55,7 +55,7 @@ namespace WorldFoundry.CelestialBodies
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/>.
         /// </summary>
-        public CelestialBody() : base() { }
+        public CelestialBody() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
@@ -83,7 +83,7 @@ namespace WorldFoundry.CelestialBodies
         /// <param name="latitude">A latitude at which to calculate the temperature.</param>
         /// <returns></returns>
         internal static double GetTemperatureAtLatitude(double equatorialTemp, double polarTemp, double latitude)
-            => polarTemp + (equatorialTemp - polarTemp) * Math.Cos(latitude * 0.8);
+            => polarTemp + ((equatorialTemp - polarTemp) * Math.Cos(latitude * 0.8));
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).

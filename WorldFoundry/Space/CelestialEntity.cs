@@ -18,12 +18,12 @@ namespace WorldFoundry.Space
         /// </summary>
         internal const int LocalSpaceScale = 1000000;
 
-        private const string baseTypeName = "Celestial Object";
+        private const string _baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>Intended to be hidden by subclasses.</remarks>
-        public virtual string BaseTypeName => baseTypeName;
+        public virtual string BaseTypeName => _baseTypeName;
 
         /// <summary>
         /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually
@@ -51,7 +51,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The primary key for this <see cref="CelestialEntity"/>.
         /// </summary>
-        public Guid ID { get; private set; }
+        public Guid ID { get; }
 
         private float? _localScale;
         /// <summary>
@@ -173,11 +173,7 @@ namespace WorldFoundry.Space
             if (parent != null)
             {
                 Parent = parent;
-                if (Parent.Children == null)
-                {
-                    Parent.Children = new List<CelestialEntity>();
-                }
-                Parent.Children.Add(this);
+                (Parent.Children ?? (Parent.Children = new List<CelestialEntity>())).Add(this);
             }
         }
 
@@ -251,7 +247,7 @@ namespace WorldFoundry.Space
 
             if (other == Parent)
             {
-                return Position.Length() * (other as CelestialRegion).LocalScale;
+                return Position.Length() * Parent.LocalScale;
             }
             else if (other.Parent == this)
             {
@@ -319,10 +315,7 @@ namespace WorldFoundry.Space
                 {
                     storage = (T)Activator.CreateInstance(typeof(T));
                 }
-                if (generator != null)
-                {
-                    generator.Invoke();
-                }
+                generator?.Invoke();
             }
             return storage;
         }
@@ -340,11 +333,7 @@ namespace WorldFoundry.Space
         /// </returns>
         internal Stack<CelestialEntity> GetTreePathToSpaceGrid(Stack<CelestialEntity> path = null)
         {
-            if (path == null)
-            {
-                path = new Stack<CelestialEntity>();
-            }
-            path.Push(this);
+            (path ?? (path = new Stack<CelestialEntity>())).Push(this);
             return Parent != null ? Parent.GetTreePathToSpaceGrid(path) : path;
         }
 
@@ -370,6 +359,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Sets this <see cref="CelestialEntity"/>'s shape to the given value.
         /// </summary>
+        /// <param name="shape">The shape to set.</param>
         protected virtual void SetShape(Shape shape)
         {
             if (_substance == null)
@@ -468,6 +458,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Translates the specified coordinates in local space into the local space of <see cref="Parent"/>.
         /// </summary>
+        /// <param name="position">The position to translate.</param>
         /// <returns>A <see cref="Vector3"/> giving a position in the local space of <see cref="Parent"/>.</returns>
         /// <exception cref="NullReferenceException">
         /// If this grid has no <see cref="Parent"/>, an exception will be thrown.

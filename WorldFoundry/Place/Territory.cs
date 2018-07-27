@@ -13,6 +13,7 @@
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
         /// </summary>
+        /// <param name="place">A <see cref="Place"/> to test for inclusion.</param>
         public virtual bool Includes(Place place) => Entity == place?.Entity;
 
         /// <summary>
@@ -28,6 +29,7 @@
         /// <summary>
         /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
         /// </summary>
+        /// <param name="place">The <see cref="Place"/> to test for overlap.</param>
         public virtual bool Overlaps(Place place) => Entity == place?.Entity;
     }
 }

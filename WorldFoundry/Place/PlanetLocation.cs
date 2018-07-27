@@ -90,7 +90,7 @@ namespace WorldFoundry.Place
 
         private void SetTile()
         {
-            if (Position != null)
+            if (Position != Vector3.Zero)
             {
                 var tile = Planet?.Topography?.GetClosestTile(Position);
                 if (tile != null)

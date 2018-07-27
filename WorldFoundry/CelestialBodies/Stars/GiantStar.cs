@@ -12,7 +12,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/>.
         /// </summary>
-        public GiantStar() : base() { }
+        public GiantStar() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.

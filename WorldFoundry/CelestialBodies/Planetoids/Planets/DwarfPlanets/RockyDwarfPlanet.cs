@@ -10,22 +10,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class RockyDwarfPlanet : DwarfPlanet
     {
-        internal new static double densityForType = 4000;
+        internal new static double _densityForType = 4000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
-        private const string planemoClassPrefix = "Rocky";
+        private const string _planemoClassPrefix = "Rocky";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="RockyDwarfPlanet"/>.
         /// </summary>
-        public RockyDwarfPlanet() : base() { }
+        public RockyDwarfPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="RockyDwarfPlanet"/> with the given parameters.

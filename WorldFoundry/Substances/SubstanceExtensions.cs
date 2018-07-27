@@ -13,6 +13,7 @@ namespace WorldFoundry.Substances
         /// Determines the proportion of liquids and solids in this <see cref="IComposition"/>. If
         /// layered, the highest proportion among all layers is given, since cloud cover is cumulative.
         /// </summary>
+        /// <param name="composition">This <see cref="IComposition"/> instance.</param>
         public static double GetCloudCover(this IComposition composition)
         {
             if (composition is LayeredComposite lc)
@@ -33,6 +34,7 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// Determines the greenhouse potential of all components in this <see cref="IComposition"/>.
         /// </summary>
+        /// <param name="composition">This <see cref="IComposition"/> instance.</param>
         public static double GetGreenhousePotential(this IComposition composition)
         {
             if (composition is LayeredComposite lc)
@@ -63,6 +65,7 @@ namespace WorldFoundry.Substances
         /// <summary>
         /// Gets the surface layer of this <see cref="IComposition"/> (itself, if it is not layered).
         /// </summary>
+        /// <param name="composition">This <see cref="IComposition"/> instance.</param>
         public static IComposition GetSurface(this IComposition composition)
         {
             if (composition is LayeredComposite lc)

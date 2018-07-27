@@ -18,19 +18,19 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class Galaxy : CelestialRegion
     {
-        private const string baseTypeName = "Galaxy";
+        private const string _baseTypeName = "Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 4.0e-50;
+        private const double _childDensity = 4.0e-50;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type, double proportion, object[] constructorParameters)>
             {
                 // Rogue planets, 60% overall.
@@ -112,7 +112,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         private BlackHole _galacticCore;
         /// <summary>
@@ -127,7 +127,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/>.
         /// </summary>
-        public Galaxy() : base() { }
+        public Galaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
@@ -170,10 +170,9 @@ namespace WorldFoundry.Space.Galaxies
                 Math.Round(Randomizer.Static.NextDouble(0.1), 3));
 
             // Small chance of satellites for rogue planets.
-            if ((type == typeof(Planemo) || type.IsSubclassOf(typeof(Planemo)))
-                && Randomizer.Static.NextDouble() <= 0.2)
+            if (child is Planemo planemo && Randomizer.Static.NextDouble() <= 0.2)
             {
-                (child as Planemo).GenerateSatellites();
+                planemo.GenerateSatellites();
             }
 
             return child;
@@ -198,6 +197,7 @@ namespace WorldFoundry.Space.Galaxies
         /// Produces a rough approximation of the mass of all children, plus the galactic core, plus
         /// an additional high proportion of dark matter.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Galaxy"/>.</param>
         private protected double GenerateMass(Shape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
 
         /// <summary>

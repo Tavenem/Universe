@@ -23,11 +23,11 @@ namespace WorldFoundry.Space
     /// </summary>
     public class StarSystem : CelestialRegion
     {
-        private const string baseTypeName = "Star System";
+        private const string _baseTypeName = "Star System";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
         private string _name;
         /// <summary>
@@ -78,7 +78,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/>.
         /// </summary>
-        public StarSystem() : base() { }
+        public StarSystem() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
@@ -266,10 +266,10 @@ namespace WorldFoundry.Space
         {
             var count = 0;
             var value = 0.0;
-            var mu = 36000;
-            var sigma = 1.732e7;
-            var min = mu - 3 * sigma;
-            var max = mu + 3 * sigma;
+            const int mu = 36000;
+            const double sigma = 1.732e7;
+            const double min = mu - (3 * sigma);
+            const double max = mu + (3 * sigma);
             // loop rather than constraining to limits in order to avoid over-representing the limits
             do
             {
@@ -278,6 +278,7 @@ namespace WorldFoundry.Space
                 {
                     return value;
                 }
+                count++;
             } while (count < 100); // sanity check; should not be reached due to the nature of a normal distribution
             return value;
         }
@@ -302,7 +303,7 @@ namespace WorldFoundry.Space
             {
                 return companions;
             }
-            var primary = Stars.First();
+            var primary = Stars[0];
             var orbited = primary;
 
             // Most periods are about 50 years, in a log normal distribution. There is a chance of a
@@ -336,12 +337,12 @@ namespace WorldFoundry.Space
             if (close)
             {
                 AddCompanionStar(companions, orbited,
-                    Randomizer.Static.Lognormal(0, 1) * 1.5768e9
-                    + Orbit.GetHillSphereRadius(
+                    (Randomizer.Static.Lognormal(0, 1) * 1.5768e9)
+                    + (Orbit.GetHillSphereRadius(
                         companion.star,
                         companion.orbited,
                         companion.semiMajorAxis,
-                        companion.eccentricity) * 20);
+                        companion.eccentricity) * 20));
             }
             else
             {
@@ -373,7 +374,7 @@ namespace WorldFoundry.Space
             for (var c = 4; c <= amount; c += 2) // Step of 2 since a companion is also generated.
             {
                 // Period increases geometrically.
-                period = period * startingPeriod;
+                period *= startingPeriod;
 
                 companion = AddCompanionStar(companions, primary, period);
 
@@ -430,6 +431,15 @@ namespace WorldFoundry.Space
         /// approximation used is judged reasonably close). In multi-planet systems, migration and
         /// resonances result in a more widely-distributed system.
         /// </summary>
+        /// <param name="star">The <see cref="Star"/> around which the planet will orbit.</param>
+        /// <param name="planet">The <see cref="Planemo"/>.</param>
+        /// <param name="minTerrestrialPeriapsis">The minimum periapsis for a terrestrial planet.</param>
+        /// <param name="minGiantPeriapsis">The minimum periapsis for a giant planet.</param>
+        /// <param name="maxApoapsis">The maximum apoapsis.</param>
+        /// <param name="innerPlanet">The current innermost planet.</param>
+        /// <param name="outerPlanet">The current outermost planet.</param>
+        /// <param name="medianOrbit">The median orbit among the current planets.</param>
+        /// <param name="totalGiants">The number of giant planets this <see cref="StarSystem"/> is to have.</param>
         /// <returns>The chosen periapsis, or null if no valid orbit is available.</returns>
         private double? ChoosePlanetPeriapsis(
             Star star,
@@ -540,6 +550,9 @@ namespace WorldFoundry.Space
         /// <summary>
         /// There is a chance of an inner-system asteroid belt inside the orbit of a giant.
         /// </summary>
+        /// <param name="star">The <see cref="Star"/> around which the belt is to orbit.</param>
+        /// <param name="planet">The <see cref="GiantPlanet"/> inside whose orbit the belt is to be placed.</param>
+        /// <param name="periapsis">The periapsis of the belt.</param>
         private void GenerateAsteroidBelt(Star star, GiantPlanet planet, double periapsis)
         {
             var separation = periapsis - (planet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Static.Normal(21.7, 9.5));
@@ -581,6 +594,9 @@ namespace WorldFoundry.Space
         /// Systems with terrestrial planets are also likely to have debris disks (Kuiper belts)
         /// outside the orbit of the most distant planet.
         /// </summary>
+        /// <param name="star">The <see cref="Star"/> around which the debris is to orbit.</param>
+        /// <param name="outerPlanet">The outermost planet of the system.</param>
+        /// <param name="maxApoapsis">The maximum apoapsis.</param>
         private void GenerateDebrisDisc(Star star, Planemo outerPlanet, double? maxApoapsis)
         {
             var outerApoapsis = outerPlanet.Orbit.Apoapsis;
@@ -768,8 +784,8 @@ namespace WorldFoundry.Space
 
             // The maximum mass and density are used to calculate an outer Roche limit (may not be
             // the actual Roche limit for the body which gets generated).
-            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet.maxDensity));
-            var minTerrestialPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(TerrestrialPlanet.maxDensity));
+            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet._maxDensity));
+            var minTerrestialPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(TerrestrialPlanet._maxDensity));
 
             // If the calculated minimum and maximum orbits indicates that no stable orbits are
             // possible, eliminate the indicated type of planet.
@@ -816,13 +832,9 @@ namespace WorldFoundry.Space
             LuminosityClass? luminosityClass = null,
             bool populationII = false)
         {
-            if (starType != null && starType == typeof(Star) || starType.IsSubclassOf(typeof(Star)))
+            if ((starType != null && starType == typeof(Star)) || starType.IsSubclassOf(typeof(Star)))
             {
-                if (Stars == null)
-                {
-                    Stars = new List<Star>();
-                }
-                Stars.Add((Star)starType.InvokeMember(null, System.Reflection.BindingFlags.CreateInstance, null, null,
+                (Stars ?? (Stars = new List<Star>())).Add((Star)starType.InvokeMember(null, System.Reflection.BindingFlags.CreateInstance, null, null,
                     new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII }));
             }
 
@@ -871,12 +883,12 @@ namespace WorldFoundry.Space
             // the actual Roche limit for the body which gets generated).
             var chance = Randomizer.Static.NextDouble();
             var position = ((star.Position * LocalScale) + (Vector3.UnitX * (float)periapsis)) / LocalScale;
-            if (periapsis < star.GetRocheLimit(TerrestrialPlanet.maxDensity) * 1.05 || chance <= 0.01)
+            if (periapsis < star.GetRocheLimit(TerrestrialPlanet._maxDensity) * 1.05 || chance <= 0.01)
             {
                 return new LavaPlanet(this, position);
             }
             // Planets with close orbits may be iron planets.
-            else if (periapsis < star.GetRocheLimit(TerrestrialPlanet.maxDensity) * 200 && chance <= 0.5)
+            else if (periapsis < star.GetRocheLimit(TerrestrialPlanet._maxDensity) * 200 && chance <= 0.5)
             {
                 return new IronPlanet(this, position);
             }
@@ -899,6 +911,9 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Giants may get Trojan asteroid fields at their L4 and L5 Lagrangian points.
         /// </summary>
+        /// <param name="star">The <see cref="Star"/> around which the Trojans are to orbit.</param>
+        /// <param name="planet">The giant planet in whose orbit the Trojans will orbit.</param>
+        /// <param name="periapsis">The periapsis of the orbit.</param>
         private void GenerateTrojans(Star star, GiantPlanet planet, double periapsis)
         {
             var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
@@ -942,6 +957,7 @@ namespace WorldFoundry.Space
         /// of influence of a close companion, provided they are still not beyond the limits towards
         /// further orbiting stars.
         /// </summary>
+        /// <param name="star">The <see cref="Star"/> whose apses' limits are to be calculated.</param>
         private (double? minPeriapsis, double? maxApoapsis) GetApsesLimits(Star star)
         {
             double? maxApoapsis = null;

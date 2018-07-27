@@ -74,12 +74,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The <see cref="TerrestrialPlanets.HabitabilityRequirements"/> for humans.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// 236 K (-34 F) used as a minimum temperature: the average low of Yakutsk, a city with a
         /// permanent human population.
-        ///
+        /// </para>
+        /// <para>
         /// 6.18 kPa is the Armstrong limit, where water boils at human body temperature.
-        ///
+        /// </para>
+        /// <para>
         /// 4980 kPa is the critical point of oxygen, at which oxygen becomes a supercritical fluid.
+        /// </para>
         /// </remarks>
         public static HabitabilityRequirements HumanHabitabilityRequirements =
             new HabitabilityRequirements(

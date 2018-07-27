@@ -13,13 +13,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class OceanPlanet : TerrestrialPlanet
     {
-        private const bool hasFlatSurface = true;
+        private const bool _hasFlatSurface = true;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
         /// (i.e. is non-solid). Prevents generation of a height map during <see
         /// cref="Planetoid.Topography"/> generation.
         /// </summary>
-        public override bool HasFlatSurface => hasFlatSurface;
+        public override bool HasFlatSurface => _hasFlatSurface;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -30,16 +30,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public override double MagnetosphereChanceFactor => 0.5;
 
-        private const string planemoClassPrefix = "Ocean";
+        private const string _planemoClassPrefix = "Ocean";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/>.
         /// </summary>
-        public OceanPlanet() : base() { }
+        public OceanPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.

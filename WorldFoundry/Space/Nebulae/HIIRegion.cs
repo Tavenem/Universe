@@ -13,19 +13,19 @@ namespace WorldFoundry.Space
     /// </summary>
     public class HIIRegion : Nebula
     {
-        private const string baseTypeName = "HII Region";
+        private const string _baseTypeName = "HII Region";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private const double childDensity = 6.0e-50;
+        private const double _childDensity = 6.0e-50;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> childPossibilities =
+        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
             new List<(Type type,double proportion, object[] constructorParameters)>
             {
                 (typeof(StarSystem), 0.9998, new object[]{ typeof(Star), SpectralClass.B, LuminosityClass.V }),
@@ -34,12 +34,12 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
         /// </summary>
-        public HIIRegion() : base() { }
+        public HIIRegion() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/> with the given parameters.
@@ -76,7 +76,7 @@ namespace WorldFoundry.Space
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.0e17 + Randomizer.Static.Lognormal(0, 1) * 1.0e17);
+                axis = Math.Round(1.0e17 + (Randomizer.Static.Lognormal(0, 1) * 1.0e17));
             } while (axis > 5.5e18);
             SetShape(new Ellipsoid(
                 axis,
