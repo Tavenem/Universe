@@ -5,7 +5,6 @@ using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -17,23 +16,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const double CoreProportion = 0.4;
 
-        internal new static bool _canHaveOxygen;
         /// <summary>
         /// Used to allow or prevent oxygen in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have oxygen due to its high reactivity with carbon compounds.
         /// </remarks>
-        protected override bool CanHaveOxygen => _canHaveOxygen;
+        protected override bool CanHaveOxygen => false;
 
-        internal new static bool _canHaveWater;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have water due to its high reactivity with carbon compounds.
         /// </remarks>
-        protected override bool CanHaveWater => _canHaveWater;
+        protected override bool CanHaveWater => false;
 
         private const string _planemoClassPrefix = "Carbon";
         /// <summary>
