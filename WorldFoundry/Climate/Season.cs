@@ -22,10 +22,21 @@ namespace WorldFoundry.Climate
         private const double PrecipitationTempScale = 0.027;
 
         /// <summary>
+        /// Gets the duration of this <see cref="Season"/>, in seconds.
+        /// </summary>
+        public double Duration { get; }
+
+        /// <summary>
         /// The volume of water flowing in the river along each <see cref="Edge"/> during this <see
         /// cref="Season"/>, in m³/s.
         /// </summary>
         public float[] EdgeRiverFlows { get; }
+
+        /// <summary>
+        /// Indicates the proportion of the current year which has elapsed at the start of this <see
+        /// cref="Season"/>.
+        /// </summary>
+        public double ElapsedYearToDate { get; }
 
         /// <summary>
         /// The index of this item.
@@ -36,6 +47,11 @@ namespace WorldFoundry.Climate
         /// The <see cref="TerrestrialPlanet"/> this <see cref="Season"/> describes.
         /// </summary>
         public TerrestrialPlanet Planet { get; }
+
+        /// <summary>
+        /// Indicates the proportion of one year represented by this <see cref="Season"/>.
+        /// </summary>
+        public double ProportionOfYear { get; }
 
         /// <summary>
         /// The climate of each <see cref="Tile"/> during this <see cref="Season"/>.
@@ -70,11 +86,11 @@ namespace WorldFoundry.Climate
             Index = index;
             Planet = planet;
 
-            var seasonDuration = planet.Orbit.Period / amount;
-            var seasonProportion = 1.0 / amount;
-            var elapsedYearToDate = seasonProportion * index;
+            Duration = planet.Orbit.Period / amount;
+            ProportionOfYear = 1.0 / amount;
+            ElapsedYearToDate = ProportionOfYear * index;
 
-            TropicalEquator = planet.AxialTilt * Math.Sin((MathConstants.TwoPI * elapsedYearToDate) + MathConstants.HalfPI) * (2.0 / 3.0);
+            TropicalEquator = planet.AxialTilt * Math.Sin((MathConstants.TwoPI * ElapsedYearToDate) + MathConstants.HalfPI) * (2.0 / 3.0);
 
             TileClimates = new TileClimate[planet.Topography.Tiles.Length];
             for (var j = 0; j < planet.Topography.Tiles.Length; j++)
@@ -96,9 +112,9 @@ namespace WorldFoundry.Climate
             EdgeRiverFlows = new float[planet.Topography.Edges.Length];
 
             SetTemperature(position);
-            SetSeaIce(seasonDuration, previous);
-            SetPrecipitation(seasonProportion);
-            SetGroundWater(seasonDuration, previous);
+            SetSeaIce(previous);
+            SetPrecipitation();
+            SetGroundWater(previous);
             SetRiverFlow();
         }
 
@@ -128,7 +144,7 @@ namespace WorldFoundry.Climate
             return saturationVaporPressure;
         }
 
-        private void SetGroundWater(double time, Season previous)
+        private void SetGroundWater(Season previous)
         {
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
             {
@@ -143,7 +159,7 @@ namespace WorldFoundry.Climate
                     if (tc.Temperature > Chemical.Water.MeltingPoint
                         && (previousSnow > 0 || newSnow > 0))
                     {
-                        var meltPotential = GetSnowMelt(tc.Temperature, time);
+                        var meltPotential = GetSnowMelt(tc.Temperature, Duration);
 
                         melt = Math.Min(meltPotential, previousSnow);
                         meltPotential -= melt;
@@ -157,14 +173,14 @@ namespace WorldFoundry.Climate
 
                     // rolling average, weighted to the heavier, roughly models infiltration and seepage
                     // multiplied by a factor of 4 to roughly model groundwater flow
-                    var runoff = (melt * 0.004 * t.Area) / time;
+                    var runoff = (melt * 0.004 * t.Area) / Duration;
                     var previousRunoff = previous?.TileClimates[i].Runoff ?? runoff;
                     tc.Runoff = (float)((previousRunoff > runoff ? ((previousRunoff * 3) + runoff) : ((runoff * 3) + previousRunoff)) / 4);
                 }
             }
         }
 
-        private void SetPrecipitation(double timeRatio)
+        private void SetPrecipitation()
         {
             var mp = Chemical.Water.MeltingPoint;
             var hadleyLifts = new Dictionary<double, double>();
@@ -206,7 +222,7 @@ namespace WorldFoundry.Climate
 
                 if (!TMath.IsZero(mixingRatio))
                 {
-                    tc.Precipitation = (float)(mixingRatio * TileClimate.GetAirCellHeight(tc) * timeRatio);
+                    tc.Precipitation = (float)(mixingRatio * TileClimate.GetAirCellHeight(tc) * ProportionOfYear);
 
                     if (tc.Temperature <= Chemical.Water.MeltingPoint)
                     {
@@ -260,7 +276,6 @@ namespace WorldFoundry.Climate
                     var edgeIndex = c.Edges[c.IndexOfCorner(next.Index)];
                     var edge = Planet.Topography.Edges[edgeIndex];
                     edge.RiverSource = c.Index;
-                    edge.RiverDirection = next.Index;
 
                     cornerFlows.TryGetValue(c.Index, out var flow);
                     flow += c.Edges
@@ -298,7 +313,7 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private void SetSeaIce(double time, Season previous)
+        private void SetSeaIce(Season previous)
         {
             var saltWaterMeltingPointOffset = Chemical.Water.MeltingPoint - Chemical.Water_Salt.MeltingPoint;
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
@@ -310,11 +325,11 @@ namespace WorldFoundry.Climate
                     var ice = 0.0;
                     if (tc.Temperature < Chemical.Water_Salt.MeltingPoint)
                     {
-                        ice = SeaIcePerSecond * time * Math.Pow(Chemical.Water_Salt.MeltingPoint - tc.Temperature, 0.58);
+                        ice = SeaIcePerSecond * Duration * Math.Pow(Chemical.Water_Salt.MeltingPoint - tc.Temperature, 0.58);
                     }
                     else if (previousIce > 0)
                     {
-                        previousIce -= Math.Min(GetSnowMelt(tc.Temperature + saltWaterMeltingPointOffset, time), previousIce);
+                        previousIce -= Math.Min(GetSnowMelt(tc.Temperature + saltWaterMeltingPointOffset, Duration), previousIce);
                     }
                     tc.SeaIce = (float)Math.Max(previousIce, ice);
                 }

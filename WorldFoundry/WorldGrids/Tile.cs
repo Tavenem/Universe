@@ -1,4 +1,5 @@
-﻿using Substances;
+﻿using ExtensionLib;
+using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -154,6 +155,72 @@ namespace WorldFoundry.WorldGrids
                 Edges[i] = -1;
                 Tiles[i] = -1;
             }
+        }
+
+        /// <summary>
+        /// Determines if this <see cref="Tile"/> instance is mountainous (see Remarks).
+        /// </summary>
+        /// <param name="grid">The <see cref="WorldGrid"/> of which this <see cref="Tile"/> is a
+        /// part.</param>
+        /// <returns><see langword="true"/> if this <see cref="Tile"/> is mountainous; otherwise
+        /// <see langword="false"/>.</returns>
+        /// <remarks>
+        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
+        /// elevation of this world, or a maximum elevation greater than 5% of the maximum and a
+        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
+        /// slope greater than 0.0875.
+        /// </remarks>
+        public bool GetIsMountainous(WorldGrid grid)
+        {
+            var maxElevation = Math.Max(Elevation, Corners.Select(x => grid.Corners[x]).Max(x => x.Elevation));
+            var maxWorldElevation = Math.Max(grid.Tiles.Max(x => x.Elevation), grid.Corners.Max(x => x.Elevation));
+            if (maxElevation < maxWorldElevation * 0.035)
+            {
+                return false;
+            }
+            if (maxElevation > maxWorldElevation * 0.085)
+            {
+                return true;
+            }
+            var slope = GetSlope(grid);
+            if (maxElevation > maxWorldElevation * 0.05)
+            {
+                return slope > 0.035;
+            }
+            return slope > 0.0875;
+        }
+
+        /// <summary>
+        /// Calculates the slope of this <see cref="Tile"/>, as the ratio of rise over run from the
+        /// lowest point to highest point among its center and corners.
+        /// </summary>
+        /// <param name="grid">The <see cref="WorldGrid"/> of which this <see cref="Tile"/> is a
+        /// part.</param>
+        /// <returns>The slope of this <see cref="Tile"/>.</returns>
+        public double GetSlope(WorldGrid grid)
+        {
+            var minCorner = grid.Corners[Corners[Corners.Select(x => grid.Corners[x].Elevation).IndexOfMin()]];
+            var maxCorner = grid.Corners[Corners[Corners.Select(x => grid.Corners[x].Elevation).IndexOfMax()]];
+            var centerMin = Elevation < minCorner.Elevation;
+            var centerMax = Elevation > maxCorner.Elevation;
+            var diff = 0.0;
+            var dist = 0.0;
+            if (centerMin)
+            {
+                diff = maxCorner.Elevation - Elevation;
+                dist = (Vector - maxCorner.Vector).Length();
+            }
+            else if (centerMax)
+            {
+                diff = Elevation - minCorner.Elevation;
+                dist = (Vector - minCorner.Vector).Length();
+            }
+            else
+            {
+                diff = maxCorner.Elevation - minCorner.Elevation;
+                dist = (maxCorner.Vector - minCorner.Vector).Length();
+            }
+            return diff / dist;
         }
 
         internal Corner GetLowestCorner(WorldGrid grid)

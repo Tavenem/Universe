@@ -87,10 +87,10 @@ namespace WorldFoundry.WorldGrids
             var corners = Corners.Select(i => grid.Corners[i]);
             if (riverSources)
             {
-                var riverSourceCorners = corners.Where(c => c.Edges.Any(e => grid.Edges[e].RiverSource == c.Index));
+                var riverSourceCorners = Corners.Select(i => grid.Corners[i]).Where(c => c.Edges.Any(e => grid.Edges[e].RiverSource == c.Index));
                 if (riverSourceCorners.Any())
                 {
-                    corners = riverSourceCorners;
+                    return riverSourceCorners.OrderBy(c => c.Elevation).First();
                 }
             }
             return corners.OrderBy(c => c.Elevation).First();
