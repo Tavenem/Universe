@@ -90,6 +90,12 @@ namespace WorldFoundry.WorldGrids
         public float Precipitation { get; internal set; }
 
         /// <summary>
+        /// The distance between this <see cref="Tile"/>'s center and any of its <see
+        /// cref="Corners"/>.
+        /// </summary>
+        public double Radius { get; internal set; }
+
+        /// <summary>
         /// The resources which can be found in this <see cref="Tile"/>, along with a value from 0 to
         /// 1 (inclusive) indicating the relative richness of the resource in that location.
         /// </summary>

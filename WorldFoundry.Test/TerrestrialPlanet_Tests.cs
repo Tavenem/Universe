@@ -2,7 +2,6 @@ using Antmicro.Migrant;
 using Antmicro.Migrant.Customization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;

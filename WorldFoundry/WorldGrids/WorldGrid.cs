@@ -538,9 +538,18 @@ namespace WorldFoundry.WorldGrids
                 c.Longitude = Planet.VectorToLongitude(c.Vector);
             }
 
+            var fiveSided = Array.Find(Tiles, x => x.EdgeCount == 5);
+            var sixSided = Array.Find(Tiles, x => x.EdgeCount == 6);
+
+            var fiveSidedRadius = Planet.RadiusSquared * (fiveSided.Vector - Corners[fiveSided.Corners[0]].Vector).Length();
+            var sixSidedRadius = sixSided == null ? 0 : Planet.RadiusSquared * (sixSided.Vector - Corners[sixSided.Corners[0]].Vector).Length();
+            var fiveSidedArea = Planet.RadiusSquared * GridAreas[size].fiveSided;
+            var sixSidedArea = sixSided == null ? 0 : Planet.RadiusSquared * GridAreas[size].sixSided;
+
             foreach (var t in Tiles)
             {
-                t.Area = Planet.RadiusSquared * (t.EdgeCount == 5 ? GridAreas[size].fiveSided : GridAreas[size].sixSided);
+                t.Radius = t.EdgeCount == 5 ? fiveSidedRadius : sixSidedRadius;
+                t.Area = t.EdgeCount == 5 ? fiveSidedArea : sixSidedArea;
                 t.Latitude = Planet.VectorToLatitude(t.Vector);
                 t.Longitude = Planet.VectorToLongitude(t.Vector);
                 var rotation = Planet.AxisRotation.GetReferenceRotation(t.Vector);
