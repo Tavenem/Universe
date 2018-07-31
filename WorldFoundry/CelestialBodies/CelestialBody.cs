@@ -100,23 +100,22 @@ namespace WorldFoundry.CelestialBodies
         public double GetEscapeVelocity() => Math.Sqrt((ScienceConstants.TwoG * Mass) / Radius);
 
         /// <summary>
-        /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
-        /// position, in K.
+        /// Calculates the insolation received by this <see cref="CelestialBody"/> at the given
+        /// position, in W/m².
         /// </summary>
         /// <param name="position">
-        /// A hypothetical position for this <see cref="CelestialBody"/> at which the heat of
-        /// insolation will be calculated.
+        /// A hypothetical position for this <see cref="CelestialBody"/> at which the insolation
+        /// will be calculated.
         /// </param>
         /// <returns>
-        /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
-        /// in K.
+        /// The insolation received by this <see cref="CelestialBody"/> at the given position, in
+        /// W/m².
         /// </returns>
-        private protected virtual double GetInsolationHeat(Vector3 position)
+        public double GetInsolation(Vector3 position)
         {
-            // Nearby stars within the same parent may provide heat.
-            // Other stars are ignored, presumed to be far enough away that
-            // their heating effects are negligible.
-            // Within a star system, all stars are counted.
+            // Nearby stars within the same parent may provide heat. Other stars are ignored,
+            // presumed to be far enough away that their heating effects are negligible. Within a
+            // star system, all stars are counted.
             IEnumerable<Star> stellarSiblings = null;
             if (Parent is StarSystem)
             {
@@ -133,8 +132,23 @@ namespace WorldFoundry.CelestialBodies
                 totalInsolation += star.Luminosity / (MathConstants.FourPI * Math.Pow(GetDistanceFromPositionToTarget(position, star), 2));
             }
 
-            return Math.Pow((totalInsolation * (1 - Albedo)) / ScienceConstants.FourSigma, 0.25);
+            return totalInsolation * (1 - Albedo);
         }
+
+        /// <summary>
+        /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
+        /// position, in K.
+        /// </summary>
+        /// <param name="position">
+        /// A hypothetical position for this <see cref="CelestialBody"/> at which the heat of
+        /// insolation will be calculated.
+        /// </param>
+        /// <returns>
+        /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
+        /// in K.
+        /// </returns>
+        private protected virtual double GetInsolationHeat(Vector3 position)
+            => Math.Pow(GetInsolation(position) / ScienceConstants.FourSigma, 0.25);
 
         /// <summary>
         /// Calculates the temperature of the <see cref="CelestialBody"/>, in K.
