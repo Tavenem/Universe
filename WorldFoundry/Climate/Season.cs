@@ -90,7 +90,7 @@ namespace WorldFoundry.Climate
             ProportionOfYear = 1.0 / amount;
             ElapsedYearToDate = ProportionOfYear * index;
 
-            TropicalEquator = planet.AxialTilt * Math.Sin((MathConstants.TwoPI * ElapsedYearToDate) + MathConstants.HalfPI) * (2.0 / 3.0);
+            TropicalEquator = -planet.AxialTilt * Math.Cos(MathConstants.TwoPI * ElapsedYearToDate) * (2.0 / 3.0);
 
             TileClimates = new TileClimate[planet.Topography.Tiles.Length];
             for (var j = 0; j < planet.Topography.Tiles.Length; j++)
