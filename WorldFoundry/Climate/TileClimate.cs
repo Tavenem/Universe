@@ -12,20 +12,10 @@ namespace WorldFoundry.Climate
         internal const int AirCellLayerHeight = 2000;
 
         /// <summary>
-        /// The number of cells of air above this <see cref="Tile"/> during this <see cref="Season"/>.
-        /// </summary>
-        internal int AirCellLayers { get; set; }
-
-        /// <summary>
         /// The average atmospheric pressure in this <see cref="Tile"/> during this <see
         /// cref="Season"/>, in kPa.
         /// </summary>
         public float AtmosphericPressure { get; internal set; }
-
-        /// <summary>
-        /// The latitude of this <see cref="Tile"/> relative to the tropical equator (versus the true equator).
-        /// </summary>
-        internal float Latitude { get; set; }
 
         /// <summary>
         /// The total precipitation in this <see cref="Tile"/> during this <see cref="Season"/>,
@@ -97,7 +87,7 @@ namespace WorldFoundry.Climate
         internal static double GetSaturationMixingRatio(TerrestrialPlanet planet, TileClimate tc, double elevation)
             => Atmosphere.GetSaturationMixingRatio(GetSaturationVaporPressure(0, planet, elevation, tc.Temperature), tc.AtmosphericPressure);
 
-        internal static double GetAirCellHeight(TileClimate tc)
-            => Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * AirCellLayerHeight * tc.AirCellLayers;
+        internal static double GetAirCellHeight(TileClimate tc, int layers)
+            => Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * AirCellLayerHeight * layers;
     }
 }

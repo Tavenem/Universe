@@ -21,6 +21,9 @@ namespace WorldFoundry.Climate
         private const float SnowToRainRatio = 13;
         private const double PrecipitationTempScale = 0.027;
 
+        private readonly int[] _airCellLayers;
+        private readonly double[] _latitudes;
+
         /// <summary>
         /// Gets the duration of this <see cref="Season"/>, in seconds.
         /// </summary>
@@ -59,11 +62,6 @@ namespace WorldFoundry.Climate
         public TileClimate[] TileClimates { get; }
 
         /// <summary>
-        /// The latitude of the solar equator during this season, as an angle in radians from the (true) equator.
-        /// </summary>
-        internal double TropicalEquator { get; }
-
-        /// <summary>
         /// Initializes a new instance of <see cref="Season"/>.
         /// </summary>
         public Season() { }
@@ -90,7 +88,8 @@ namespace WorldFoundry.Climate
             ProportionOfYear = 1.0 / amount;
             ElapsedYearToDate = ProportionOfYear * index;
 
-            TropicalEquator = -planet.AxialTilt * Math.Cos(MathConstants.TwoPI * ElapsedYearToDate) * (2.0 / 3.0);
+            _latitudes = new double[planet.Topography.Tiles.Length];
+            var tropicalEquator = -planet.AxialTilt * Math.Cos(MathConstants.TwoPI * ElapsedYearToDate) * (2.0 / 3.0);
 
             TileClimates = new TileClimate[planet.Topography.Tiles.Length];
             for (var j = 0; j < planet.Topography.Tiles.Length; j++)
@@ -98,7 +97,7 @@ namespace WorldFoundry.Climate
                 var t = planet.Topography.Tiles[j];
 
                 TileClimates[j] = new TileClimate();
-                var seasonalLatitude = t.Latitude - TropicalEquator;
+                var seasonalLatitude = t.Latitude - tropicalEquator;
                 if (seasonalLatitude > MathConstants.HalfPI)
                 {
                     seasonalLatitude = MathConstants.HalfPI - (seasonalLatitude - MathConstants.HalfPI);
@@ -107,13 +106,19 @@ namespace WorldFoundry.Climate
                 {
                     seasonalLatitude = -MathConstants.HalfPI - (seasonalLatitude + MathConstants.HalfPI);
                 }
-                TileClimates[j].Latitude = (float)seasonalLatitude;
+                _latitudes[j] = seasonalLatitude;
             }
             EdgeRiverFlows = new float[planet.Topography.Edges.Length];
+
+            _airCellLayers = new int[planet.Topography.Tiles.Length];
 
             SetTemperature(position);
             SetSeaIce(previous);
             SetPrecipitation();
+
+            _airCellLayers = null;
+            _latitudes = null;
+
             SetGroundWater(previous);
             SetRiverFlow();
         }
@@ -203,14 +208,14 @@ namespace WorldFoundry.Climate
                     continue;
                 }
 
-                if (!hadleyLifts.TryGetValue(tc.Latitude, out var hadleyLift))
+                if (!hadleyLifts.TryGetValue(_latitudes[i], out var hadleyLift))
                 {
-                    hadleyLift = ((Math.Cos(6 * tc.Latitude) * (1 - (Math.Abs(tc.Latitude) / MathConstants.TwoPI))) + 1) / 2; // less dropoff with latitude
-                    hadleyLifts.Add(tc.Latitude, hadleyLift);
+                    hadleyLift = ((Math.Cos(6 * _latitudes[i]) * (1 - (Math.Abs(_latitudes[i]) / MathConstants.TwoPI))) + 1) / 2; // less dropoff with latitude
+                    hadleyLifts.Add(_latitudes[i], hadleyLift);
                 }
 
                 var relativeHumidity = warmAir;
-                for (var j = 0; j < tc.AirCellLayers; j++)
+                for (var j = 0; j < _airCellLayers[i]; j++)
                 {
                     relativeHumidity += warmAir;
                     warmAir *= hadleyLift;
@@ -222,7 +227,7 @@ namespace WorldFoundry.Climate
 
                 if (!TMath.IsZero(mixingRatio))
                 {
-                    tc.Precipitation = (float)(mixingRatio * TileClimate.GetAirCellHeight(tc) * ProportionOfYear);
+                    tc.Precipitation = (float)(mixingRatio * TileClimate.GetAirCellHeight(tc, _airCellLayers[i]) * ProportionOfYear);
 
                     if (tc.Temperature <= Chemical.Water.MeltingPoint)
                     {
@@ -351,7 +356,7 @@ namespace WorldFoundry.Climate
             {
                 var t = Planet.Topography.Tiles[i];
                 var tc = TileClimates[i];
-                var lat = Math.Abs(tc.Latitude);
+                var lat = Math.Abs(_latitudes[i]);
                 if (!latitudeTemperatures.TryGetValue(lat, out var surfaceTemp))
                 {
                     surfaceTemp = CelestialBody.GetTemperatureAtLatitude(equatorialTemp, polarTemp, lat);
@@ -381,12 +386,12 @@ namespace WorldFoundry.Climate
                     layerIndex = TileClimate.GetAirCellIndexOfNearlyZeroSaturationVaporPressure(Planet, nearestLayerHeight, roundedTemperature);
                     zeroSVPIndexes.Add((nearestLayerHeight, roundedTemperature), layerIndex);
                 }
-                tc.AirCellLayers = Math.Max(1, Math.Min(layers, layerIndex));
+                _airCellLayers[i] = Math.Max(1, Math.Min(layers, layerIndex));
 
-                while (tc.AirCellLayers < layers
-                    && !TMath.IsZero(GetCachedSaturationVaporPressure(elevationTemperatures, saturationVaporPressures, tc.AirCellLayers - 1, nearestLayerHeight, roundedTemperature)))
+                while (_airCellLayers[i] < layers
+                    && !TMath.IsZero(GetCachedSaturationVaporPressure(elevationTemperatures, saturationVaporPressures, _airCellLayers[i] - 1, nearestLayerHeight, roundedTemperature)))
                 {
-                    tc.AirCellLayers++;
+                    _airCellLayers[i]++;
                 }
             }
         }
