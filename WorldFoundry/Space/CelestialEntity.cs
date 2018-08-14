@@ -285,7 +285,7 @@ namespace WorldFoundry.Space
         /// The two <see cref="CelestialEntity"/> objects must be part of the same hierarchy (i.e.
         /// share a common parent).
         /// </exception>
-        internal double GetDistanceToTarget(CelestialEntity other) => GetDistanceFromPositionToTarget(Position, other);
+        public double GetDistanceToTarget(CelestialEntity other) => GetDistanceFromPositionToTarget(Position, other);
 
         /// <summary>
         /// Returns the size of 1 unit of local space within this <see cref="CelestialEntity"/>, in meters.

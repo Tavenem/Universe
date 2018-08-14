@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
-    <Version>0.1.36</Version>
+    <Version>0.1.37</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
