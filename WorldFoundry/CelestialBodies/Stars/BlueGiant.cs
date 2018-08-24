@@ -67,7 +67,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             if (LuminosityClass == LuminosityClass.Zero) // Hypergiants
             {
                 // Maxmium possible mass at the current luminosity.
-                var eddingtonLimit = (Luminosity / 1.23072e31) * 1.99e30;
+                var eddingtonLimit = Luminosity / 1.23072e31 * 1.99e30;
                 if (eddingtonLimit <= 7.96e31)
                 {
                     return eddingtonLimit;

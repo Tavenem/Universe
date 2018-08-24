@@ -97,7 +97,7 @@ namespace WorldFoundry.CelestialBodies
         /// Calculates the escape velocity from this body, in m/s.
         /// </summary>
         /// <returns>The escape velocity from this body, in m/s.</returns>
-        public double GetEscapeVelocity() => Math.Sqrt((ScienceConstants.TwoG * Mass) / Radius);
+        public double GetEscapeVelocity() => Math.Sqrt(ScienceConstants.TwoG * Mass / Radius);
 
         /// <summary>
         /// Calculates the insolation received by this <see cref="CelestialBody"/> at the given

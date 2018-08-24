@@ -422,7 +422,7 @@ namespace WorldFoundry.Climate
 
             if (chemical == Chemical.Water && planet.HydrosphereProportion >= 0.01)
             {
-                ice = (0.01 / planet.HydrosphereProportion) * proportionInHydrosphere;
+                ice = 0.01 / planet.HydrosphereProportion * proportionInHydrosphere;
             }
 
             // Liquid fully precipitates out of the atmosphere when below the minimum; if no liquid
@@ -707,14 +707,14 @@ namespace WorldFoundry.Climate
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
         private double GetAtmosphericHeight()
-            => (Math.Log(1.0e-5 / AtmosphericPressure) * ScienceConstants.R * GetSurfaceTemperatureAverageOrbital()) / (-CelestialBody.SurfaceGravity * ScienceConstants.MAir);
+            => Math.Log(1.0e-5 / AtmosphericPressure) * ScienceConstants.R * GetSurfaceTemperatureAverageOrbital() / (-CelestialBody.SurfaceGravity * ScienceConstants.MAir);
 
         /// <summary>
         /// Calculates the total mass of this <see cref="Atmosphere"/>, in kg.
         /// </summary>
         /// <returns>The total mass of this <see cref="Atmosphere"/>, in kg.</returns>
         private double GetAtmosphericMass()
-            => (MathConstants.FourPI * CelestialBody.RadiusSquared * AtmosphericPressure * 1000) / CelestialBody.SurfaceGravity;
+            => MathConstants.FourPI * CelestialBody.RadiusSquared * AtmosphericPressure * 1000 / CelestialBody.SurfaceGravity;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -741,7 +741,7 @@ namespace WorldFoundry.Climate
             }
             else
             {
-                return AtmosphericPressure * Math.Exp((CelestialBody.SurfaceGravity * ScienceConstants.MAir * elevation) / (ScienceConstants.R * temperature));
+                return AtmosphericPressure * Math.Exp(CelestialBody.SurfaceGravity * ScienceConstants.MAir * elevation / (ScienceConstants.R * temperature));
             }
         }
 
@@ -758,7 +758,7 @@ namespace WorldFoundry.Climate
         /// calculated with the more accurate temperature values.
         /// </remarks>
         private double GetAtmosphericScaleHeight()
-            => (AtmosphericPressure * 1000) / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(CelestialBody.GetTotalTemperature(), AtmosphericPressure));
+            => AtmosphericPressure * 1000 / (CelestialBody.SurfaceGravity * GetAtmosphericDensity(CelestialBody.GetTotalTemperature(), AtmosphericPressure));
 
         /// <summary>
         /// Calculates the total greenhouse effect for this <see cref="Atmosphere"/>, in K.

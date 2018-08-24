@@ -434,7 +434,7 @@ namespace WorldFoundry.Space
                 otherPosition = otherParent.TranslateToParentCoordinates(otherPosition);
                 otherParent = otherParent.Parent;
             }
-            return ((position - otherPosition) * LocalScale) / other.LocalScale;
+            return (position - otherPosition) * LocalScale / other.LocalScale;
         }
 
         /// <summary>
