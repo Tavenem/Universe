@@ -328,7 +328,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 // Even if this planemo is not yet in a defined orbit, some orbital characteristics
                 // must be determined early, in order to distinguish a dwarf planet from a planet,
                 // which depends partially on orbital distance.
-                semiMajorAxis = (GetDistanceToTarget(Parent) * (1 + Eccentricity)) / (1 - Eccentricity);
+                semiMajorAxis = GetDistanceToTarget(Parent) * (1 + Eccentricity) / (1 - Eccentricity);
             }
 
             return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);

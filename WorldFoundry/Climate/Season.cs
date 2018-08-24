@@ -178,7 +178,7 @@ namespace WorldFoundry.Climate
 
                     // rolling average, weighted to the heavier, roughly models infiltration and seepage
                     // multiplied by a factor of 4 to roughly model groundwater flow
-                    var runoff = (melt * 0.004 * t.Area) / Duration;
+                    var runoff = melt * 0.004 * t.Area / Duration;
                     var previousRunoff = previous?.TileClimates[i].Runoff ?? runoff;
                     tc.Runoff = (float)((previousRunoff > runoff ? ((previousRunoff * 3) + runoff) : ((runoff * 3) + previousRunoff)) / 4);
                 }

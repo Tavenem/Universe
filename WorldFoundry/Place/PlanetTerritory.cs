@@ -78,7 +78,7 @@ namespace WorldFoundry.Place
         /// </returns>
         public bool Matches(PlanetTerritory obj)
             => base.Matches(obj)
-            && (TileIndexes == null) == (obj.TileIndexes == null)
+            && TileIndexes == null == (obj.TileIndexes == null)
             && (TileIndexes?.SetEquals(obj.TileIndexes) != false);
 
         /// <summary>

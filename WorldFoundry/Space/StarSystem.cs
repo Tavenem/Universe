@@ -471,7 +471,7 @@ namespace WorldFoundry.Space
                 }
                 if (count == 100)
                 {
-                    periapsis = (planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis);
+                    periapsis = planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis;
                 }
             }
             // If there are already any planets and this planet is a giant, it is placed in a higher
@@ -917,7 +917,7 @@ namespace WorldFoundry.Space
         private void GenerateTrojans(Star star, GiantPlanet planet, double periapsis)
         {
             var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
-            var asteroids = new AsteroidField(this, (-Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
+            var asteroids = new AsteroidField(this, -Vector3.UnitZ * (float)periapsis / LocalScale, star, doubleHillRadius);
             var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755; // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
@@ -933,7 +933,7 @@ namespace WorldFoundry.Space
                 Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
 
-            asteroids = new AsteroidField(this, (Vector3.UnitZ * (float)periapsis) / LocalScale, star, doubleHillRadius);
+            asteroids = new AsteroidField(this, Vector3.UnitZ * (float)periapsis / LocalScale, star, doubleHillRadius);
             trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755; // -60°
             while (trueAnomaly < 0)
             {

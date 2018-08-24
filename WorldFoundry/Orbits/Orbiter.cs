@@ -93,7 +93,7 @@ namespace WorldFoundry.Orbits
 
             var distance = GetDistanceToTarget(other);
 
-            var scale = (float)(-ScienceConstants.G * ((Mass * other.Mass) / (distance * distance)));
+            var scale = (float)(-ScienceConstants.G * (Mass * other.Mass / (distance * distance)));
 
             // Get the unit vector
             var unit = (other.Position - Position) / (float)distance;
@@ -190,7 +190,7 @@ namespace WorldFoundry.Orbits
                 Position = Orbit.OrbitedObject.Position + (position / Orbit.OrbitedObject.Parent.LocalScale);
             }
 
-            Velocity = (velocity / Orbit.OrbitedObject.Parent.LocalScale);
+            Velocity = velocity / Orbit.OrbitedObject.Parent.LocalScale;
 
             Orbit.UpdateOrbit();
         }

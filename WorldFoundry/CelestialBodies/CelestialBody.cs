@@ -210,7 +210,7 @@ namespace WorldFoundry.CelestialBodies
         /// and apoapsis, in K.
         /// </summary>
         /// <returns>The average temperature of the <see cref="CelestialBody"/>.</returns>
-        internal double GetTotalTemperatureAverageOrbital()
+        public double GetTotalTemperatureAverageOrbital()
         {
             // Only bother calculating twice if the body is actually in orbit.
             if (Orbit == null)

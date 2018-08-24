@@ -315,12 +315,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // orbital temperature (rather than the temperature at the current position).
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
-                var distance = semiMajorAxis.Value * (1 + ((Eccentricity * Eccentricity) / 2));
+                var distance = semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2));
                 star.Luminosity = GetLuminosityForTemperature(targetTemp, distance);
             }
             else
             {
-                semiMajorAxis = GetDistanceForTemperature(star, targetTemp) / (1 + ((Eccentricity * Eccentricity) / 2));
+                semiMajorAxis = GetDistanceForTemperature(star, targetTemp) / (1 + (Eccentricity * Eccentricity / 2));
                 GenerateOrbit(star, semiMajorAxis.Value, trueAnomaly);
             }
             ResetCachedTemperatures();
@@ -617,7 +617,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
 
                 var mass = Math.Max(factor, Randomizer.Static.Lognormal(0, factor * 4));
-                pressure = (mass * SurfaceGravity) / (1000 * MathConstants.FourPI * RadiusSquared);
+                pressure = mass * SurfaceGravity / (1000 * MathConstants.FourPI * RadiusSquared);
             }
 
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
@@ -894,7 +894,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 var mass = GenerateHydrosphereMass();
 
-                HydrosphereProportion = (mass / Mass);
+                HydrosphereProportion = mass / Mass;
                 if (!HydrosphereProportion.IsZero())
                 {
                     // Surface water is mostly salt water.
@@ -988,7 +988,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return oceanMass;
         }
 
-        private void GenerateITCZ() => HalfITCZWidth = (370400 / Radius);
+        private void GenerateITCZ() => HalfITCZWidth = 370400 / Radius;
 
         /// <summary>
         /// Determines whether this planet is capable of sustaining life, and whether or not it
@@ -1344,7 +1344,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     var maxMass = MaxMassForType ?? _maxMassForType;
                     var maxVolume = maxMass / Density;
                     var maxRadius = Math.Pow(maxVolume / MathConstants.FourThirdsPI, 1.0 / 3.0);
-                    maxGravity = ((ScienceConstants.G * maxMass) / (maxRadius * maxRadius));
+                    maxGravity = ScienceConstants.G * maxMass / (maxRadius * maxRadius);
                 }
                 var gravity = Randomizer.Static.NextDouble(HabitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
                 GenerateShape(Math.Max(MinimumRadius, Math.Min(GetRadiusForSurfaceGravity(gravity), GetMaxRadius())));
@@ -1504,7 +1504,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * MathConstants.FourPI * ScienceConstants.sigma * areaRatio);
         }
 
-        internal double GetHydrosphereAtmosphereRatio() => Math.Min(1, (HydrosphereProportion * Mass) / Atmosphere.Mass);
+        internal double GetHydrosphereAtmosphereRatio() => Math.Min(1, HydrosphereProportion * Mass / Atmosphere.Mass);
 
         /// <summary>
         /// Calculates the luminosity (in Watts) the given <see cref="Star"/> would have to be
@@ -1535,7 +1535,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
             }
 
-            return (Math.Pow(temperature / Math.Pow(areaRatio, 0.25), 4) * ScienceConstants.FourSigma * MathConstants.FourPI * distance * distance) / (1 - Albedo);
+            return Math.Pow(temperature / Math.Pow(areaRatio, 0.25), 4) * ScienceConstants.FourSigma * MathConstants.FourPI * distance * distance / (1 - Albedo);
         }
 
         /// <summary>
@@ -1543,7 +1543,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in m/s².</param>
         /// <returns>The mass required to produce the given surface gravity, in kg.</returns>
-        private double GetMassForSurfaceGravity(double gravity) => (gravity * RadiusSquared) / ScienceConstants.G;
+        private double GetMassForSurfaceGravity(double gravity) => gravity * RadiusSquared / ScienceConstants.G;
 
         private Vector3 GetPositionForSeason(int amount, int index)
         {
@@ -1629,7 +1629,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <param name="gravity">The desired surface gravity, in m/s².</param>
         /// <returns>The radius required to produce the given surface gravity, in meters.</returns>
-        private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt((Mass * ScienceConstants.G) / gravity);
+        private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt(Mass * ScienceConstants.G / gravity);
 
         /// <summary>
         /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.

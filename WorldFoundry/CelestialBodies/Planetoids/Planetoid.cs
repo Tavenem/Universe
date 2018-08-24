@@ -451,7 +451,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// seconds in an Earth year, which simplifies to multiplying mass by 2.88e-19.
         /// </remarks>
         private protected virtual void GenerateMagnetosphere()
-            => HasMagnetosphere = Randomizer.Static.NextDouble() <= ((Mass * 2.88e-19) / RotationalPeriod) * MagnetosphereChanceFactor;
+            => HasMagnetosphere = Randomizer.Static.NextDouble() <= Mass * 2.88e-19 / RotationalPeriod * MagnetosphereChanceFactor;
 
         /// <summary>
         /// Generates an appropriate minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
@@ -567,6 +567,42 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         internal double GetCoriolisCoefficient(double latitude) => 2 * AngularVelocity * Math.Sin(latitude);
 
         /// <summary>
+        /// Calculates the diurnal temperature variation for this body, in K.
+        /// </summary>
+        /// <returns>The diurnal temperature variation for this body, in K.</returns>
+        public double GetDiurnalTemperatureVariation()
+        {
+            var factor = Math.Pow(1 / GetInsolationAreRatio(), 0.25);
+            return (GetTotalTemperatureAverageOrbital() * factor)
+                + ((Atmosphere?.InsolationFactor_Equatorial ?? 0) * factor);
+        }
+
+        private double GetInsolationAreRatio()
+        {
+            var period = RotationalPeriod;
+            if (period <= 2500)
+            {
+                return 1;
+            }
+            else if (period <= 75000)
+            {
+                return 0.25;
+            }
+            else if (period <= 150000)
+            {
+                return 1.0 / 3.0;
+            }
+            else if (period <= 300000)
+            {
+                return 0.5;
+            }
+            else
+            {
+                return 1;
+            }
+        }
+
+        /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
         /// position, in K.
         /// </summary>
@@ -589,27 +625,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // heat-shedding). Here, we merely approximate very roughly since accurate calculations
             // depends on many factors and would involve either circular logic, or extremely
             // extensive calculus, if we attempted to calculate it accurately.
-            var period = RotationalPeriod;
-            if (period <= 2500)
-            {
-                return heat;
-            }
-
-            var areaRatio = 1.0;
-            if (period <= 75000)
-            {
-                areaRatio = 0.25;
-            }
-            else if (period <= 150000)
-            {
-                areaRatio = 1.0 / 3.0;
-            }
-            else if (period <= 300000)
-            {
-                areaRatio = 0.5;
-            }
-
-            return heat * Math.Pow(areaRatio, 0.25);
+            var areaRatio = GetInsolationAreRatio();
+            return areaRatio == 1 ? heat : heat * Math.Pow(areaRatio, 0.25);
         }
 
         /// <summary>
@@ -621,7 +638,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public bool GetIsTidallyLockedAfter(double years)
             => Orbit == null
             ? false
-            : Math.Pow(((years / 6.0e11) * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2)) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
+            : Math.Pow(years / 6.0e11 * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
 
         private void SetAxis()
         {

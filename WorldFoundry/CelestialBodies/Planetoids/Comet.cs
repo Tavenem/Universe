@@ -173,7 +173,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
             // and have eccentricities which may either leave them there, or send them into the inner solar system.
             var eccentricity = Math.Round(Randomizer.Static.NextDouble(), 2);
-            var periapsis = ((1 - eccentricity) / (1 + eccentricity)) * GetDistanceToTarget(orbitedObject);
+            var periapsis = (1 - eccentricity) / (1 + eccentricity) * GetDistanceToTarget(orbitedObject);
 
             Orbit.SetOrbit(
                 this,

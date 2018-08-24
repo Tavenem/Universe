@@ -76,7 +76,7 @@ namespace WorldFoundry.Place
         /// </returns>
         public bool Matches(RegionTerritory obj)
             => base.Matches(obj)
-            && (GridSpaces == null) == (obj.GridSpaces == null)
+            && GridSpaces == null == (obj.GridSpaces == null)
             && (GridSpaces?.SetEquals(obj.GridSpaces) != false);
 
         /// <summary>

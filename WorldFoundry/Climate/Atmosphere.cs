@@ -65,7 +65,7 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// The total greenhouse effect for this <see cref="Atmosphere"/>, in K.
         /// </summary>
-        internal double GreenhouseEffect
+        public double GreenhouseEffect
             => _greenhouseEffect ?? (_greenhouseEffect = GetGreenhouseEffect()).Value;
 
         private double? _greenhouseFactor;
@@ -79,7 +79,7 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// The insolation factor to be used at the equator.
         /// </summary>
-        private double InsolationFactor_Equatorial
+        internal double InsolationFactor_Equatorial
             => _insolationFactor_Equatorial ?? (_insolationFactor_Equatorial = GetInsolationFactor()).Value;
 
         private double? _insolationFactor_Polar;
@@ -800,11 +800,11 @@ namespace WorldFoundry.Climate
             => ((surfaceTemp - temperature) / GetLapseRate(surfaceTemp)) - elevation;
 
         /// <summary>
-        /// Calculates the insolation factor to be used at the predetermined latitude for checking polar temperatures.
+        /// Calculates the insolation factor to be used at the predetermined latitude for checking temperatures.
         /// </summary>
         /// <param name="polar">Whether or not to get the polar value.</param>
         /// <returns>
-        /// The insolation factor to be used at the predetermined latitude for checking polar temperatures.
+        /// The insolation factor to be used at the predetermined latitude for checking temperatures.
         /// </returns>
         private double GetInsolationFactor(bool polar = false)
         {

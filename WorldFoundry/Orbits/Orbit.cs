@@ -328,7 +328,7 @@ namespace WorldFoundry.Orbits
             var angleAscending = Vector3.UnitX.GetAngle(xz) - MathConstants.HalfPI;
 
             var n = new Vector3((float)Math.Cos(angleAscending), (float)Math.Sin(angleAscending), 0);
-            var argPeriapsis = Math.Acos((Vector3.Dot(n, orbit.R0)) / (n.Length() * orbit.Radius));
+            var argPeriapsis = Math.Acos(Vector3.Dot(n, orbit.R0) / (n.Length() * orbit.Radius));
             if ((orbit._r0?.Z ?? 0) < 0)
             {
                 argPeriapsis = MathConstants.TwoPI - argPeriapsis;
@@ -371,9 +371,9 @@ namespace WorldFoundry.Orbits
             var cosineInclination = Math.Cos(inclination);
             var sineInclination = Math.Sin(inclination);
 
-            var qi = (float)(-(sineAngleAscending * cosineInclination));
+            var qi = (float)-(sineAngleAscending * cosineInclination);
             var qj = (float)(cosineAngleAscending * cosineInclination);
-            var qk = (float)(sineInclination);
+            var qk = (float)sineInclination;
 
             var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
 
@@ -388,7 +388,7 @@ namespace WorldFoundry.Orbits
         /// <param name="period">A period, in seconds.</param>
         /// <returns>THe semi-major axis of the desired orbit, in meters.</returns>
         public static double GetSemiMajorAxisForPeriod(Orbiter orbitingObject, Orbiter orbitedObject, double period)
-            => Math.Pow((ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period) / (MathConstants.FourPI * Math.PI), 1.0 / 3.0);
+            => Math.Pow(ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period / (MathConstants.FourPI * Math.PI), 1.0 / 3.0);
 
         /// <summary>
         /// Sets the orbit of the given <see cref="Orbiter"/> based on the orbiting object's current
@@ -699,8 +699,8 @@ namespace WorldFoundry.Orbits
             var scz = StumpffC(z);
             var x2scz = x2 * scz;
 
-            var n = ((accel / sqrtSGP) * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
-            var d = ((accel / sqrtSGP) * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
+            var n = (accel / sqrtSGP * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
+            var d = (accel / sqrtSGP * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
             return n / d;
         }
 
@@ -735,14 +735,14 @@ namespace WorldFoundry.Orbits
             var scax2 = StumpffC(ax2);
             var ssax2x3 = ssax2 * x3;
 
-            var uvf = (float)(1.0 - ((x2 / Radius) * scax2));
-            var uvg = (float)(t - ((1.0 / sqrtSGP) * ssax2x3));
+            var uvf = (float)(1.0 - (x2 / Radius * scax2));
+            var uvg = (float)(t - (1.0 / sqrtSGP * ssax2x3));
 
             var r = (R0 * uvf) + (V0 * uvg);
             var rLength = r.Length();
 
-            var uvfp = (float)((sqrtSGP / (rLength * Radius)) * ((Alpha * ssax2x3) - x));
-            var uvfgp = (float)(1.0 - ((x2 / rLength) * scax2));
+            var uvfp = (float)(sqrtSGP / (rLength * Radius) * ((Alpha * ssax2x3) - x));
+            var uvfgp = (float)(1.0 - (x2 / rLength * scax2));
 
             var v = (R0 * uvfp) + (V0 * uvfgp);
 
