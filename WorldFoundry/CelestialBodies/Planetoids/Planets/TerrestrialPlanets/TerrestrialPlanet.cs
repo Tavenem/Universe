@@ -902,6 +902,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     _hydrosphere = new Composite(
                         (Chemical.Water, Phase.Liquid, 1 - saltWater),
                         (Chemical.Water_Salt, Phase.Liquid, saltWater));
+
+                    // Salt water indicates sedimentary halite deposits.
+                    AddResource(Chemical.Salt, 0.013, false);
                 }
             }
             if (_hydrosphere == null)
