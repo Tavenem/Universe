@@ -1410,7 +1410,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var platinum = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
             titanium -= platinum;
 
-            var rock = 1 - metals;
+            var sulfur = Math.Round(Randomizer.Static.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
+
+            var rock = 1 - metals - sulfur;
 
             layers.Add((new Composite(
                 (Chemical.Aluminium, Phase.Solid, aluminum),
@@ -1422,6 +1424,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 (Chemical.Platinum, Phase.Solid, platinum),
                 (Chemical.Rock, Phase.Solid, rock),
                 (Chemical.Silver, Phase.Solid, silver),
+                (Chemical.Sulfur, Phase.Solid, sulfur),
                 (Chemical.Tin, Phase.Solid, tin),
                 (Chemical.Titanium, Phase.Solid, titanium),
                 (Chemical.Uranium, Phase.Solid, uranium)),
@@ -1452,6 +1455,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             AddResources(Substance.Composition.GetSurface()
                 .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
                 .Select(x => (x.chemical, x.proportion, true)));
+
+            var uranium = Substance.Composition.GetSurface()
+                .GetProportion(Chemical.Uranium, Phase.Solid);
+            if (!uranium.IsZero())
+            {
+                AddResource(Chemical.Uranium, uranium, false);
+            }
+
+            // A magnetosphere is presumed to indicate tectonic, and hence volcanic, activity.
+            // This, in turn, indicates elemental sulfur at the surface.
+            if (HasMagnetosphere)
+            {
+                var sulfur = Substance.Composition.GetSurface()
+                    .GetProportion(Chemical.Sulfur, Phase.Solid);
+                if (!sulfur.IsZero())
+                {
+                    AddResource(Chemical.Sulfur, sulfur, false);
+                }
+            }
         }
 
         /// <summary>

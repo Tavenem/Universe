@@ -136,7 +136,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= platinum;
 
-            var rock = 1 - metals;
+            var sulfur = Math.Round(Randomizer.Static.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
+
+            var rock = 1 - metals - sulfur;
 
             layers.Add((new Composite(
                 (Chemical.Aluminium, Phase.Liquid, aluminum),
@@ -148,6 +150,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 (Chemical.Platinum, Phase.Liquid, platinum),
                 (Chemical.Rock, Phase.Liquid, rock),
                 (Chemical.Silver, Phase.Liquid, silver),
+                (Chemical.Sulfur, Phase.Solid, sulfur),
                 (Chemical.Tin, Phase.Solid, tin),
                 (Chemical.Titanium, Phase.Liquid, titanium),
                 (Chemical.Uranium, Phase.Solid, uranium)),
