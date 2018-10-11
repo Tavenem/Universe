@@ -10,6 +10,7 @@
         /// cref="Desert"/> or <see cref="Sea"/>).
         /// </summary>
         None,
+#pragma warning disable CS1591
         Desert,
         Ice,
         DryTundra,
@@ -27,5 +28,6 @@
         WetForest,
         RainForest,
         Sea
+#pragma warning restore CS1591
     }
 }

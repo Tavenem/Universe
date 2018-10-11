@@ -1,26 +1,29 @@
-﻿using System.Collections.Generic;
+﻿using Substances;
+using System.Collections.Generic;
 using WorldFoundry.Climate;
-using WorldFoundry.Substances;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
+    /// <summary>
+    /// A set of parameters which constrains the random generation of a <see cref="TerrestrialPlanet"/>.
+    /// </summary>
     public class TerrestrialPlanetParams
     {
         /// <summary>
         /// The default atmospheric pressure, used if none is specified, in kPa.
         /// </summary>
-        public const float DefaultAtmosphericPressure = 101.325f;
+        public const double DefaultAtmosphericPressure = 101.325;
 
         /// <summary>
         /// The default axial tilt, used if none is specified, in radians.
         /// </summary>
-        public const float DefaultAxialTilt = 0.41f;
+        public const double DefaultAxialTilt = 0.41;
 
         /// <summary>
         /// The default orbital eccentricity, used if none is specified.
         /// </summary>
-        public const float DefaultEccentricity = 0.0167f;
+        public const double DefaultEccentricity = 0.0167;
 
         /// <summary>
         /// The default planetary radius, used if none is specified, in meters.
@@ -40,7 +43,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The default surface gravity, used if none is specified, in m/s².
         /// </summary>
-        public const float DefaultSurfaceGravity = 9.807f;
+        public const double DefaultSurfaceGravity = 9.807;
 
         /// <summary>
         /// The default surface temperature, used if none is specified, in K.
@@ -52,32 +55,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// experimentation, this value was determined to result in planets whose actual average
         /// surface temperature, after taking topography into account, is close to 289.15K.
         /// </remarks>
-        public const float DefaultSurfaceTemperature = 289;
+        public const double DefaultSurfaceTemperature = 289;
 
         /// <summary>
         /// The default ratio of water coverage, used if none is specified.
         /// </summary>
-        public const float DefaultWaterRatio = 0.65f;
+        public const double DefaultWaterRatio = 0.65;
 
         /// <summary>
         /// The target atmospheric pressure, in kPa.
         /// </summary>
-        public float? AtmosphericPressure { get; set; }
+        public double? AtmosphericPressure { get; set; }
 
         /// <summary>
         /// All atmospheric requirements.
         /// </summary>
-        public ICollection<ComponentRequirement> AtmosphericRequirements { get; set; }
+        public IList<Requirement> AtmosphericRequirements { get; set; }
 
         /// <summary>
         /// The target axial tilt, in radians.
         /// </summary>
-        public float? AxialTilt { get; set; }
+        public double? AxialTilt { get; set; }
 
         /// <summary>
         /// The target orbital eccentricity.
         /// </summary>
-        public float? Eccentricity { get; set; }
+        public double? Eccentricity { get; set; }
 
         /// <summary>
         /// The target grid size (level of detail).
@@ -85,9 +88,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public int? GridSize { get; set; }
 
         /// <summary>
+        /// The target tile radius.
+        /// </summary>
+        public double? GridTileRadius { get; set; }
+
+        /// <summary>
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
         public bool? HasMagnetosphere { get; set; }
+
+        /// <summary>
+        /// The maximum generated grid size (level of detail).
+        /// </summary>
+        public int? MaxGridSize { get; set; }
 
         /// <summary>
         /// The target radius, in meters.
@@ -107,41 +120,59 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The target surface gravity, in m/s².
         /// </summary>
-        public float? SurfaceGravity { get; set; }
+        public double? SurfaceGravity { get; set; }
 
         /// <summary>
         /// The target surface temperature, in K.
         /// </summary>
-        public float? SurfaceTemperature { get; set; }
+        public double? SurfaceTemperature { get; set; }
 
         /// <summary>
         /// The target ratio of water to land on the surface.
         /// </summary>
-        public float? WaterRatio { get; set; }
+        public double? WaterRatio { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
+        /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
+        /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
+        /// <param name="axialTilt">The target axial tilt, in radians.</param>
+        /// <param name="eccentricity">The target orbital eccentricity.</param>
+        /// <param name="gridSize">The target grid size (level of detail).</param>
+        /// <param name="gridTileRadius">The target tile radius.</param>
+        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
+        /// <param name="radius">The target radius, in meters.</param>
+        /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
+        /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
+        /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
+        /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
+        /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
         public TerrestrialPlanetParams(
-            float? atmosphericPressure = null,
-            List<ComponentRequirement> atmosphericRequirements = null,
-            float? axialTilt = null,
-            float? eccentricity = null,
+            double? atmosphericPressure = null,
+            List<Requirement> atmosphericRequirements = null,
+            double? axialTilt = null,
+            double? eccentricity = null,
             int? gridSize = null,
+            double? gridTileRadius = null,
             bool? hasMagnetosphere = null,
+            int? maxGridSize = null,
             int? radius = null,
             double? revolutionPeriod = null,
             double? rotationalPeriod = null,
-            float? surfaceGravity = null,
-            float? surfaceTemperature = null,
-            float? waterRatio = null)
+            double? surfaceGravity = null,
+            double? surfaceTemperature = null,
+            double? waterRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            AtmosphericRequirements = atmosphericRequirements;
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
+            GridTileRadius = gridTileRadius;
             HasMagnetosphere = hasMagnetosphere;
+            MaxGridSize = maxGridSize;
             Radius = radius;
             RevolutionPeriod = revolutionPeriod;
             RotationalPeriod = rotationalPeriod;
@@ -153,23 +184,43 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Generates a new instance of <see cref="TerrestrialPlanetParams"/> with either the given or default values.
         /// </summary>
+        /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
+        /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
+        /// <param name="axialTilt">The target axial tilt, in radians.</param>
+        /// <param name="eccentricity">The target orbital eccentricity.</param>
+        /// <param name="gridSize">The target grid size (level of detail).</param>
+        /// <param name="gridTileRadius">The target tile radius.</param>
+        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
+        /// <param name="radius">The target radius, in meters.</param>
+        /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
+        /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
+        /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
+        /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
+        /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
         public static TerrestrialPlanetParams FromDefaults(
-            float? atmosphericPressure = DefaultAtmosphericPressure,
-            List<ComponentRequirement> atmosphericRequirements = null,
-            float? axialTilt = DefaultAxialTilt,
-            float? eccentricity = DefaultEccentricity,
-            int? gridSize = WorldGrid.DefaultGridSize,
+            double? atmosphericPressure = DefaultAtmosphericPressure,
+            List<Requirement> atmosphericRequirements = null,
+            double? axialTilt = DefaultAxialTilt,
+            double? eccentricity = DefaultEccentricity,
+            int? gridSize = null,
+            double? gridTileRadius = null,
+            int? maxGridSize = null,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
             double? rotationalPeriod = DefaultRotationalPeriod,
-            float? surfaceGravity = DefaultSurfaceGravity,
-            float? surfaceTemperature = DefaultSurfaceTemperature,
-            float? waterRatio = DefaultWaterRatio)
+            double? surfaceGravity = DefaultSurfaceGravity,
+            double? surfaceTemperature = DefaultSurfaceTemperature,
+            double? waterRatio = DefaultWaterRatio)
         {
             if (atmosphericRequirements == null)
             {
                 atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
+            }
+            if (gridSize == null)
+            {
+                gridSize = WorldGrid.DefaultGridSize;
             }
             return new TerrestrialPlanetParams(
                 atmosphericPressure,
@@ -177,7 +228,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 axialTilt,
                 eccentricity,
                 gridSize,
+                gridTileRadius,
                 hasMagnetosphere,
+                maxGridSize,
                 radius,
                 revolutionPeriod,
                 rotationalPeriod,

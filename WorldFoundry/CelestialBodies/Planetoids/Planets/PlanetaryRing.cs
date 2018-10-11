@@ -6,19 +6,19 @@
     public class PlanetaryRing
     {
         /// <summary>
-        /// The inner radius of the <see cref="PlanetaryRing"/>.
+        /// The inner radius of the <see cref="PlanetaryRing"/>, in m.
         /// </summary>
-        public float InnerRadius { get; set; }
+        public double InnerRadius { get; set; }
 
         /// <summary>
-        /// Indicates that the <see cref="PlanetaryRing"/> is icy (rather than rocky).
+        /// Indicates that the <see cref="PlanetaryRing"/> is icy, rather than rocky.
         /// </summary>
         public bool Icy { get; set; }
 
         /// <summary>
-        /// The outer radius of the <see cref="PlanetaryRing"/>.
+        /// The outer radius of the <see cref="PlanetaryRing"/>, in m.
         /// </summary>
-        public float OuterRadius { get; set; }
+        public double OuterRadius { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryRing"/>.
@@ -28,7 +28,10 @@
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryRing"/> with the given parameters.
         /// </summary>
-        public PlanetaryRing(bool icy, float innerRadius, float outerRadius)
+        /// <param name="icy">Whether the ring is icy, rather than rocky.</param>
+        /// <param name="innerRadius">The inner radius of the ring, in m.</param>
+        /// <param name="outerRadius">The outer radius of the ring, in m.</param>
+        public PlanetaryRing(bool icy, double innerRadius, double outerRadius)
         {
             Icy = icy;
             InnerRadius = innerRadius;

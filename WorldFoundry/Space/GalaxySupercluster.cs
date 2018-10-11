@@ -1,40 +1,39 @@
-﻿using System;
+﻿using MathAndScience.Shapes;
+using Substances;
+using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Numerics;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
+using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
     /// <summary>
     /// The largest structure in the universe: a massive collection of galaxy groups and clusters.
     /// </summary>
-    public class GalaxySupercluster : CelestialObject
+    public class GalaxySupercluster : CelestialRegion
     {
-        internal new static string baseTypeName = "Galaxy Supercluster";
+        private const string _baseTypeName = "Galaxy Supercluster";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        public static double childDensity = 1.0e-73;
+        private const double _childDensity = 1.0e-73;
         /// <summary>
         /// The average number of children within the grid per m³.
         /// </summary>
-        public override double ChildDensity => childDensity;
+        public override double ChildDensity => _childDensity;
 
-        internal static IDictionary<Type, (float proportion, object[] constructorParameters)> childPossibilities =
-            new Dictionary<Type, (float proportion, object[] constructorParameters)>
+        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
+            new List<(Type type, double proportion, object[] constructorParameters)>
             {
-                { typeof(GalaxyCluster), (1.0f / 3.0f, null) },
-                { typeof(GalaxyGroup), (2.0f / 3.0f, null) },
+                (typeof(GalaxyCluster), 1.0 / 3.0, null),
+                (typeof(GalaxyGroup), 2.0 / 3.0, null),
             };
         /// <summary>
         /// The types of children this region of space might have.
         /// </summary>
-        [NotMapped]
-        public override IDictionary<Type, (float proportion, object[] constructorParameters)> ChildPossibilities => childPossibilities;
+        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/>.
@@ -45,35 +44,32 @@ namespace WorldFoundry.Space
         /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxySupercluster"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
         /// </param>
-        public GalaxySupercluster(CelestialObject parent) : base(parent) { }
+        public GalaxySupercluster(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="GalaxySupercluster"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxySupercluster"/>.</param>
-        public GalaxySupercluster(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <remarks>
-        /// General average; 1.0e16–1.0e17 solar masses.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47);
-
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
         /// </remarks>
-        private protected override void GenerateShape()
+        private protected override void GenerateSubstance()
         {
+            Substance = new Substance
+            {
+                Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
+                Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
+            };
             var majorAxis = Randomizer.Static.NextDouble(9.4607e23, 9.4607e25);
             var minorAxis1 = majorAxis * Randomizer.Static.NextDouble(0.02, 0.15);
             double minorAxis2;

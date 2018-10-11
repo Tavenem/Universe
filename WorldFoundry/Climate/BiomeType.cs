@@ -11,6 +11,7 @@
         /// appropriate biome type).
         /// </summary>
         None,
+#pragma warning disable CS1591
         Polar,
         Tundra,
         LichenWoodland,
@@ -25,5 +26,6 @@
         MonsoonForest,
         RainForest,
         Sea
+#pragma warning restore CS1591
     }
 }

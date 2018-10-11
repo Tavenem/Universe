@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MathAndScience;
+using Substances;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -7,7 +9,6 @@ using WorldFoundry.Climate;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
@@ -17,19 +18,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class DwarfPlanet : Planemo
     {
-        internal new static string baseTypeName = "Dwarf Planet";
+        private const string _baseTypeName = "Dwarf Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        internal static double densityForType = 2000;
+        internal static double _densityForType = 2000;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
-        internal static double maxMassForType = 2.0e22;
+        internal static double _maxMassForType = 2.0e22;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates no maximum.
@@ -38,9 +39,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </remarks>
-        internal override double? MaxMassForType => maxMassForType;
+        internal override double? MaxMassForType => _maxMassForType;
 
-        internal static double minMassForType = 3.4e20;
+        internal static double _minMassForType = 3.4e20;
         /// <summary>
         /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
         /// generation, in kg. Null indicates a minimum of 0.
@@ -48,7 +49,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <remarks>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </remarks>
-        internal override double? MinMassForType => minMassForType;
+        internal override double? MinMassForType => _minMassForType;
 
         /// <summary>
         /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
@@ -57,7 +58,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// There is a low chance of most planets having substantial rings; 10 for <see
         /// cref="DwarfPlanet"/>s.
         /// </remarks>
-        protected new static float RingChance => 10;
+        protected new static double RingChance => 10;
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/>.
@@ -68,70 +69,70 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="DwarfPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfPlanet"/> is located.
         /// </param>
-        public DwarfPlanet(CelestialObject parent) : base(parent) { }
+        public DwarfPlanet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="DwarfPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfPlanet"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="DwarfPlanet"/> during random generation, in kg.
         /// </param>
-        public DwarfPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public DwarfPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="DwarfPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="DwarfPlanet"/>.</param>
-        public DwarfPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public DwarfPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="DwarfPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="DwarfPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="DwarfPlanet"/> during random generation, in kg.
         /// </param>
-        public DwarfPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public DwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Adds an appropriate icy crust with the given proportion.
         /// </summary>
-        private protected virtual void AddIcyCrust(int layer, float crustProportion)
+        private protected virtual IComposition GetIcyCrust()
         {
-            var dust = (float)Math.Round(Randomizer.Static.NextDouble(), 3);
+            var dust = Math.Round(Randomizer.Static.NextDouble(), 3);
             var total = dust;
 
             // 50% chance of not including the following:
-            var waterIce = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var waterIce = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += waterIce;
 
-            var n2 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var n2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += n2;
 
-            var ch4 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var ch4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += ch4;
 
-            var co = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var co = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += co;
 
-            var co2 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var co2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += co2;
 
-            var nh3 = (float)Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
+            var nh3 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
             total += nh3;
 
-            var ratio = 1.0f / total;
+            var ratio = 1.0 / total;
             dust *= ratio;
             waterIce *= ratio;
             n2 *= ratio;
@@ -140,73 +141,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             co2 *= ratio;
             nh3 *= ratio;
 
-            var crust = new Mixture(new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Dust,
-                    Phase = Phase.Solid,
-                    Proportion = dust,
-                },
-            })
-            {
-                Proportion = crustProportion,
-            };
+            var crust = new Composite((Chemical.Dust, Phase.Solid, dust));
             if (waterIce > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = waterIce,
-                });
+                crust.Components[(Chemical.Water, Phase.Solid)] = waterIce;
             }
             if (n2 > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Nitrogen,
-                    Phase = Phase.Solid,
-                    Proportion = n2,
-                });
+                crust.Components[(Chemical.Nitrogen, Phase.Solid)] = n2;
             }
             if (ch4 > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Solid,
-                    Proportion = ch4,
-                });
+                crust.Components[(Chemical.Methane, Phase.Solid)] = ch4;
             }
             if (co > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonMonoxide,
-                    Phase = Phase.Solid,
-                    Proportion = co,
-                });
+                crust.Components[(Chemical.CarbonMonoxide, Phase.Solid)] = co;
             }
             if (co2 > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonDioxide,
-                    Phase = Phase.Solid,
-                    Proportion = co2,
-                });
+                crust.Components[(Chemical.CarbonDioxide, Phase.Solid)] = co2;
             }
             if (nh3 > 0)
             {
-                crust.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Solid,
-                    Proportion = nh3,
-                });
+                crust.Components[(Chemical.Ammonia, Phase.Solid)] = nh3;
             }
-            Composition.Mixtures.Add(crust);
+            return crust;
         }
 
         /// <summary>
@@ -214,11 +174,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         private protected override void GenerateAlbedo()
         {
-            var albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
-            var surfaceIce = Composition.GetChildAtLastLayer().Components
-                .Where(c => c.Phase == Phase.Solid)
-                .Sum(c => c.Proportion);
-            Albedo = (albedo * (1.0f - surfaceIce)) + (0.9f * surfaceIce);
+            var surface = Substance.Composition.GetSurface();
+            var surfaceIce = 0.0;
+            if (surface != null)
+            {
+                surfaceIce = surface.GetChemicals(Phase.Solid).Sum(x => x.proportion);
+            }
+
+            var albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
+            Albedo = (albedo * (1.0 - surfaceIce)) + (0.9 * surfaceIce);
         }
 
         /// <summary>
@@ -228,153 +192,93 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         {
             // Atmosphere is based solely on the volatile ices present.
 
-            var crust = Composition.GetChildAtLastLayer();
+            var crust = Substance.Composition.GetSurface();
 
-            var water = crust.GetComponent(Chemical.Water, Phase.Solid).Proportion;
-            bool anyIces = water > 0;
+            var water = crust.GetProportion(Chemical.Water, Phase.Solid);
+            var anyIces = water > 0;
 
-            var n2 = crust.GetComponent(Chemical.Nitrogen, Phase.Solid).Proportion;
+            var n2 = crust.GetProportion(Chemical.Nitrogen, Phase.Solid);
             anyIces &= n2 > 0;
 
-            var ch4 = crust.GetComponent(Chemical.Methane, Phase.Solid).Proportion;
+            var ch4 = crust.GetProportion(Chemical.Methane, Phase.Solid);
             anyIces &= ch4 > 0;
 
-            var co = crust.GetComponent(Chemical.CarbonMonoxide, Phase.Solid).Proportion;
+            var co = crust.GetProportion(Chemical.CarbonMonoxide, Phase.Solid);
             anyIces &= co > 0;
 
-            var co2 = crust.GetComponent(Chemical.CarbonDioxide, Phase.Solid).Proportion;
+            var co2 = crust.GetProportion(Chemical.CarbonDioxide, Phase.Solid);
             anyIces &= co2 > 0;
 
-            var nh3 = crust.GetComponent(Chemical.Ammonia, Phase.Solid).Proportion;
+            var nh3 = crust.GetProportion(Chemical.Ammonia, Phase.Solid);
             anyIces &= nh3 > 0;
 
             if (!anyIces)
             {
+                Atmosphere = new Atmosphere(this, Material.Empty(), 0);
                 return;
             }
 
-            Atmosphere = new Atmosphere(this, (float)Math.Round(Randomizer.Static.NextDouble(2.5)))
-            {
-                Mixtures = new HashSet<Mixture>()
-            };
-            var firstLayer = new Mixture
-            {
-                Components = new HashSet<MixtureComponent>(),
-                Proportion = 1,
-            };
-
+            var atmosphere = new Composite();
             if (water > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Gas,
-                    Proportion = water,
-                });
+                atmosphere.Components[(Chemical.Water, Phase.Gas)] = water;
             }
             if (n2 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Nitrogen,
-                    Phase = Phase.Gas,
-                    Proportion = n2,
-                });
+                atmosphere.Components[(Chemical.Nitrogen, Phase.Gas)] = n2;
             }
             if (ch4 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Methane,
-                    Phase = Phase.Gas,
-                    Proportion = ch4,
-                });
+                atmosphere.Components[(Chemical.Methane, Phase.Gas)] = ch4;
             }
             if (co > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonMonoxide,
-                    Phase = Phase.Gas,
-                    Proportion = co,
-                });
+                atmosphere.Components[(Chemical.CarbonMonoxide, Phase.Gas)] = co;
             }
             if (co2 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.CarbonDioxide,
-                    Phase = Phase.Gas,
-                    Proportion = co2,
-                });
+                atmosphere.Components[(Chemical.CarbonDioxide, Phase.Gas)] = co2;
             }
             if (nh3 > 0)
             {
-                firstLayer.Components.Add(new MixtureComponent
-                {
-                    Chemical = Chemical.Ammonia,
-                    Phase = Phase.Gas,
-                    Proportion = nh3,
-                });
+                atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
-
-            Atmosphere.Mixtures.Add(firstLayer);
+            Atmosphere = new Atmosphere(this, atmosphere, Math.Round(Randomizer.Static.NextDouble(2.5)));
         }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
-
             // rocky core
             var coreProportion = GetCoreProportion();
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = coreProportion,
-            });
+            var core = new Material(Chemical.Rock, Phase.Solid);
 
             var crustProportion = GetCrustProportion();
 
             // water-ice mantle
-            var mantleProportion = 1.0f - coreProportion - crustProportion;
-            var mantleIce = (float)Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = mantleIce,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Liquid,
-                    Proportion = 1.0f - mantleIce,
-                },
-            })
-            {
-                Proportion = mantleProportion,
-            });
+            var mantleProportion = 1.0 - coreProportion - crustProportion;
+            var mantleIce = Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
+            var mantle = new Composite(
+                (Chemical.Water, Phase.Solid, mantleIce),
+                (Chemical.Water, Phase.Liquid, 1 - mantleIce));
 
-            AddIcyCrust(2, crustProportion);
+            var crust = GetIcyCrust();
+
+            Substance = new Substance()
+            {
+                Composition = new LayeredComposite(
+                    (core, coreProportion),
+                    (mantle, mantleProportion),
+                    (crust, crustProportion)),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="DwarfPlanet"/>.
         /// </summary>
         /// <remarks>
         /// The Stern-Levison parameter for neighborhood-clearing is used to determined maximum mass
@@ -382,7 +286,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// maximum at two orders of magnitude less than this (dwarf planets in our solar system all
         /// have masses below 5 orders of magnitude less).
         /// </remarks>
-        private protected override void GenerateMass()
+        private protected virtual double GenerateMass()
         {
             var maxMass = MaxMass;
             if (Parent != null)
@@ -394,7 +298,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 }
             }
 
-            Mass = Math.Round(Randomizer.Static.NextDouble(MinMass, maxMass));
+            return Math.Round(Randomizer.Static.NextDouble(MinMass, maxMass));
         }
 
         /// <summary>
@@ -413,17 +317,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 orbitedObject,
                 GetDistanceToTarget(orbitedObject),
                 Eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.9), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
 
@@ -435,7 +342,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             else
             {
                 // Otherwise, it is an asteroid, selected from the standard distribution of types.
-                double chance = Randomizer.Static.NextDouble();
+                var chance = Randomizer.Static.NextDouble();
                 if (chance <= 0.75)
                 {
                     satellite = new CTypeAsteroid(Parent, maxMass);
@@ -455,10 +362,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 this,
                 periapsis,
                 eccentricity,
-                (float)Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4),
-                (float)Math.Round(Randomizer.Static.NextDouble(Utilities.MathUtil.Constants.TwoPI), 4));
+                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
 
             return satellite;
         }
@@ -467,6 +374,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        private protected override float GetCoreProportion() => (float)Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
+        private protected override double GetCoreProportion() => Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
     }
 }

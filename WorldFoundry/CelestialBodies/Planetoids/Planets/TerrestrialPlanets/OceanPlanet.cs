@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -14,11 +13,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class OceanPlanet : TerrestrialPlanet
     {
-        internal new static string baseTypeName = "Ocean Planet";
+        private const bool _hasFlatSurface = true;
         /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
+        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
+        /// (i.e. is non-solid). Prevents generation of a height map during <see
+        /// cref="Planetoid.Topography"/> generation.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override bool HasFlatSurface => _hasFlatSurface;
 
         /// <summary>
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
@@ -27,13 +28,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The cores of ocean planets are liable to cool more rapidly than other planets of similar
         /// size, reducing the chances of producing the required dynamo effect.
         /// </remarks>
-        public override float MagnetosphereChanceFactor => 0.5f;
+        public override double MagnetosphereChanceFactor => 0.5;
 
-        private static string planemoClassPrefix = "Ocean";
+        private const string _planemoClassPrefix = "Ocean";
         /// <summary>
         /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
         /// </summary>
-        public override string PlanemoClassPrefix => planemoClassPrefix;
+        public override string PlanemoClassPrefix => _planemoClassPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/>.
@@ -44,224 +45,140 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="OceanPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
-        public OceanPlanet(CelestialObject parent) : base(parent) { }
+        public OceanPlanet(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="OceanPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="OceanPlanet"/> during random generation, in kg.
         /// </param>
-        public OceanPlanet(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public OceanPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="OceanPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="OceanPlanet"/>.</param>
-        public OceanPlanet(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public OceanPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="OceanPlanet"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="OceanPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="OceanPlanet"/> during random generation, in kg.
         /// </param>
-        public OceanPlanet(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public OceanPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            Composition = new Mixture()
-            {
-                Mixtures = new HashSet<Mixture>(),
-            };
+            var layers = new List<(IComposition substance, double proportion)>();
 
             // Iron-nickel core.
             var coreProportion = GetCoreProportion();
-            var coreNickel = (float)Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            Composition.Mixtures.Add(new Mixture(new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = 1 - coreNickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = coreNickel,
-                },
-            })
-            {
-                Proportion = coreProportion,
-            });
+            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
+            layers.Add((new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
+                (Chemical.Nickel, Phase.Solid, coreNickel)),
+                coreProportion));
 
             var crustProportion = GetCrustProportion();
+
             var mantleProportion = 1 - coreProportion - crustProportion;
 
             // Thin magma mantle
-            var magmaMantle = mantleProportion * 0.1f;
-            Composition.Mixtures.Add(new Mixture(1, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Liquid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = magmaMantle,
-            });
+            var magmaMantle = mantleProportion * 0.1;
+            layers.Add((new Material(Chemical.Rock, Phase.Liquid), magmaMantle));
 
             // Rocky crust with trace elements
             // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = (float)Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+            var metals = Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = (float)Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
 
-            var titanium = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
+            var titanium = Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
 
             var iron = metals - nickel - aluminum - titanium;
 
-            var copper = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var copper = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= copper;
 
-            var silver = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var lead = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= lead;
+
+            var uranium = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= uranium;
+
+            var tin = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
+            titanium -= tin;
+
+            var silver = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= silver;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var gold = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= gold;
 
-            var platinum = (float)Math.Round(Randomizer.Static.NextDouble(titanium), 4);
+            var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
             titanium -= platinum;
 
-            var rock = 1 - metals;
+            var sulfur = Math.Round(Randomizer.Static.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
 
-            Composition.Mixtures.Add(new Mixture(2, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Aluminum,
-                    Phase = Phase.Solid,
-                    Proportion = aluminum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Copper,
-                    Phase = Phase.Solid,
-                    Proportion = copper,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Gold,
-                    Phase = Phase.Solid,
-                    Proportion = gold,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = iron,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = nickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Platinum,
-                    Phase = Phase.Solid,
-                    Proportion = platinum,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = rock,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Silver,
-                    Phase = Phase.Solid,
-                    Proportion = silver,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Titanium,
-                    Phase = Phase.Solid,
-                    Proportion = titanium,
-                },
-            })
-            {
-                Proportion = crustProportion,
-            });
+            var rock = 1 - metals - sulfur;
+
+            layers.Add((new Composite(
+                (Chemical.Aluminium, Phase.Solid, aluminum),
+                (Chemical.Copper, Phase.Solid, copper),
+                (Chemical.Gold, Phase.Solid, gold),
+                (Chemical.Iron, Phase.Solid, iron),
+                (Chemical.Lead, Phase.Solid, lead),
+                (Chemical.Nickel, Phase.Solid, nickel),
+                (Chemical.Platinum, Phase.Solid, platinum),
+                (Chemical.Rock, Phase.Solid, rock),
+                (Chemical.Silver, Phase.Solid, silver),
+                (Chemical.Sulfur, Phase.Solid, sulfur),
+                (Chemical.Tin, Phase.Solid, tin),
+                (Chemical.Titanium, Phase.Solid, titanium),
+                (Chemical.Uranium, Phase.Solid, uranium)),
+                crustProportion));
 
             // Ice mantle
-            var iceMantle = mantleProportion * 0.4f;
-            Composition.Mixtures.Add(new Mixture(3, new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Solid,
-                    Proportion = 1,
-                },
-            })
-            {
-                Proportion = iceMantle,
-            });
-            Composition.BalanceProportions(children: true);
+            var iceMantle = mantleProportion * 0.4;
+            layers.Add((new Material(Chemical.Water, Phase.Solid), iceMantle));
+
+            Substance = new Substance() { Composition = new LayeredComposite(layers) };
+            Substance.Composition.BalanceProportions();
+            GenerateShape();
 
             // Hydrosphere makes up the bulk of the planet, and therefore is generated as part of Composition.
-            var water = mantleProportion / 2;
+            HydrosphereProportion = mantleProportion / 2;
             // Surface water is mostly salt water.
-            var saltWater = (float)Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
-            Hydrosphere = new Mixture(new MixtureComponent[]
-            {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water,
-                    Phase = Phase.Liquid,
-                    Proportion = 1 - saltWater,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Water_Salt,
-                    Phase = Phase.Liquid,
-                    Proportion = saltWater,
-                },
-            })
-            {
-                Proportion = water,
-            };
+            var saltWater = Math.Round(Randomizer.Static.Normal(0.945, 0.015), 3);
+            _hydrosphere = new Composite(
+                (Chemical.Water, Phase.Liquid, 1 - saltWater),
+                (Chemical.Water_Salt, Phase.Liquid, saltWater));
         }
 
         /// <summary>
         /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <remarks>
-        /// Ocean planets have a thick hydrosphere layer generated as part of the <see cref="Planetoid.Composition"/>.
+        /// Ocean planets have a thick hydrosphere layer generated as part of the <see cref="CelestialEntity.Substance"/>.
         /// </remarks>
-        private protected override void GenerateHydrosphere() => GenerateComposition();
+        private protected override void GenerateHydrosphere() => GenerateSubstance();
     }
 }

@@ -1,7 +1,7 @@
-﻿using System;
+﻿using MathAndScience.Shapes;
+using System;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -10,15 +10,15 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class YellowGiant : GiantStar
     {
-        internal new static string baseTypeName = "Yellow Giant";
+        private const string _baseTypeName = "Yellow Giant";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private static float chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
+        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
         /// <remarks>
@@ -26,7 +26,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// in the same place long enough for life to develop before the star evolves into another
         /// type, or dies.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="YellowGiant"/>.
@@ -37,15 +37,15 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Initializes a new instance of <see cref="YellowGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="YellowGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="YellowGiant"/> is located.
         /// </param>
-        public YellowGiant(CelestialObject parent) : base(parent) { }
+        public YellowGiant(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="YellowGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="YellowGiant"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="YellowGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="YellowGiant"/>.</param>
         /// <param name="luminosityClass">
@@ -53,27 +53,30 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="YellowGiant"/>.</param>
         public YellowGiant(
-            CelestialObject parent,
+            CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateMass()
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
+        private protected override double GenerateMass(IShape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero)
             {
-                Mass = Randomizer.Static.NextDouble(1.0e31, 8.96e31); // Hypergiants
+                return Randomizer.Static.NextDouble(1.0e31, 8.96e31); // Hypergiants
             }
             else if (LuminosityClass == LuminosityClass.Ia
                 || LuminosityClass == LuminosityClass.Ib)
             {
-                Mass = Randomizer.Static.NextDouble(5.97e31, 6.97e31); // Supergiants
+                return Randomizer.Static.NextDouble(5.97e31, 6.97e31); // Supergiants
             }
-
-            Mass = Randomizer.Static.NextDouble(5.97e29, 1.592e31); // (Bright)giants
+            else
+            {
+                return Randomizer.Static.NextDouble(5.97e29, 1.592e31); // (Bright)giants
+            }
         }
 
         /// <summary>
@@ -82,8 +85,8 @@ namespace WorldFoundry.CelestialBodies.Stars
         private protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
 
         /// <summary>
-        /// Determines a temperature for this <see cref="ThermalBody"/>, in K.
+        /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected override void GenerateTemperature() => Temperature = (float)Math.Round(Randomizer.Static.Normal(7600, 800));
+        private protected override double GenerateTemperature() => Math.Round(Randomizer.Static.Normal(7600, 800));
     }
 }

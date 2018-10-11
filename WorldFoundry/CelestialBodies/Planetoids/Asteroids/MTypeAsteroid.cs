@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Substances;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
-using WorldFoundry.Utilities;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -11,17 +11,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class MTypeAsteroid : Asteroid
     {
-        internal new static string baseTypeName = "M-Type Asteroid";
+        private const string _baseTypeName = "M-Type Asteroid";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private static double densityForType = 5320;
+        private const double _densityForType = 5320;
         /// <summary>
         /// Indicates the average density of this type of <see cref="Planetoid"/>, in kg/m³.
         /// </summary>
-        internal override double DensityForType => densityForType;
+        internal override double DensityForType => _densityForType;
 
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
@@ -37,104 +37,85 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
-        public MTypeAsteroid(CelestialObject parent) : base(parent) { }
+        public MTypeAsteroid(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="MTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public MTypeAsteroid(CelestialObject parent, double maxMass) : base(parent, maxMass) { }
+        public MTypeAsteroid(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="MTypeAsteroid"/>.</param>
-        public MTypeAsteroid(CelestialObject parent, Vector3 position) : base(parent, position) { }
+        public MTypeAsteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="MTypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="MTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        public MTypeAsteroid(CelestialObject parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        public MTypeAsteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = (float)Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 2);
+        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 2);
 
         /// <summary>
-        /// Determines the composition of this <see cref="Planetoid"/>.
+        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
         /// </summary>
-        private protected override void GenerateComposition()
+        private protected override void GenerateSubstance()
         {
-            var iron = 0.95f;
+            var iron = 0.95;
 
-            var nickel = (float)Math.Round(Randomizer.Static.NextDouble(0.05, 0.25), 3);
+            var nickel = Math.Round(Randomizer.Static.NextDouble(0.05, 0.25), 3);
             iron -= nickel;
 
-            var rock = (float)Math.Round(Randomizer.Static.NextDouble(0.2), 3);
+            var rock = Math.Round(Randomizer.Static.NextDouble(0.2), 3);
             iron -= rock;
 
-            var gold = (float)Math.Round(Randomizer.Static.NextDouble(0.05), 3);
+            var gold = Math.Round(Randomizer.Static.NextDouble(0.05), 3);
 
-            var platinum = 0.05f - gold;
+            var platinum = 0.05 - gold;
 
-            Composition = new Mixture(new MixtureComponent[]
+            Substance = new Substance
             {
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Rock,
-                    Phase = Phase.Solid,
-                    Proportion = rock,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Iron,
-                    Phase = Phase.Solid,
-                    Proportion = iron,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Nickel,
-                    Phase = Phase.Solid,
-                    Proportion = nickel,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Gold,
-                    Phase = Phase.Solid,
-                    Proportion = gold,
-                },
-                new MixtureComponent
-                {
-                    Chemical = Chemical.Platinum,
-                    Phase = Phase.Solid,
-                    Proportion = platinum,
-                },
-            });
+                Composition = new Composite(
+                    (Chemical.Rock, Phase.Solid, rock),
+                    (Chemical.Iron, Phase.Solid, iron),
+                    (Chemical.Nickel, Phase.Solid, nickel),
+                    (Chemical.Gold, Phase.Solid, gold),
+                    (Chemical.Platinum, Phase.Solid, platinum)),
+                Mass = GenerateMass(),
+            };
+            GenerateShape();
         }
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
+        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
+        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
+        /// <param name="maxMass">The maximum mass of the satellite.</param>
         /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
-        private protected override Planetoid GenerateSatellite(double periapsis, float eccentricity, double maxMass)
+        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             var satellite = new MTypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);

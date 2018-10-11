@@ -2,6 +2,9 @@
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
+    /// <summary>
+    /// A reason why a <see cref="TerrestrialPlanet"/> does not meet an inhabitability requirement.
+    /// </summary>
     [Flags]
     public enum UninhabitabilityReason
     {

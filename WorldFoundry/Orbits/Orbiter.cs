@@ -1,5 +1,5 @@
-﻿using System;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using MathAndScience;
+using System;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -12,76 +12,15 @@ namespace WorldFoundry.Orbits
     /// </summary>
     public class Orbiter : CelestialEntity
     {
-        private double? _mass;
-        /// <summary>
-        /// The mass of the celestial object, including the mass of all children, whether explicitly
-        /// modeled or merely potential, in kg.
-        /// </summary>
-        public virtual double Mass
-        {
-            get => GetProperty(ref _mass, GenerateMass) ?? 0;
-            internal set => _mass = value;
-        }
-
         /// <summary>
         /// The orbit occupied by this <see cref="Orbiter"/> (may be null).
         /// </summary>
         public Orbit Orbit { get; set; }
 
-        private double? _surfaceGravity;
-        /// <summary>
-        /// The average force of gravity at the surface of this celestial object, in N.
-        /// </summary>
-        public double SurfaceGravity
-        {
-            get => GetProperty(ref _surfaceGravity, GenerateSurfaceGravity) ?? 0;
-            protected set => _surfaceGravity = value;
-        }
-
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbiter"/>.
         /// </summary>
-        [NotMapped]
-        public virtual Vector3 Velocity
-        {
-            get => new Vector3(VelocityX, VelocityY, VelocityZ);
-            set
-            {
-                _velocityX = value.X;
-                _velocityY = value.Y;
-                _velocityZ = value.Z;
-            }
-        }
-
-        private float _velocityX;
-        /// <summary>
-        /// Specifies the X component of the <see cref="Orbiter"/>'s velocity.
-        /// </summary>
-        private protected float VelocityX
-        {
-            get => _velocityX;
-            private set => _velocityX = value;
-        }
-
-        private float _velocityY;
-        /// <summary>
-        /// Specifies the Y component of the <see cref="Orbiter"/>'s velocity.
-        /// </summary>
-        private protected float VelocityY
-        {
-            get => _velocityY;
-            private set => _velocityY = value;
-        }
-
-        private float _velocityZ;
-        /// <summary>
-        /// Specifies the Z component of the <see cref="Orbiter"/>'s velocity.
-        /// </summary>
-        private protected float VelocityZ
-        {
-            get => _velocityZ;
-            private set => _velocityZ = value;
-        }
+        public virtual Vector3 Velocity { get; set; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/>.
@@ -92,24 +31,18 @@ namespace WorldFoundry.Orbits
         /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Orbiter"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Orbiter"/> is located.
         /// </param>
-        public Orbiter(CelestialObject parent) : base(parent) { }
+        public Orbiter(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Orbiter"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="Orbiter"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Orbiter"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Orbiter"/>.</param>
-        public Orbiter(CelestialObject parent, Vector3 position) : base(parent, position) { }
-
-        /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <remarks>Produces 0 in the base class; expected to be overridden in subclasses.</remarks>
-        private protected virtual void GenerateMass() => Mass = 0;
+        public Orbiter(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -131,11 +64,6 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Calculates the average surface gravity of this <see cref="Orbiter"/>, in N.
-        /// </summary>
-        private protected virtual void GenerateSurfaceGravity() => SurfaceGravity = (Utilities.Science.Constants.G * Mass) / RadiusSquared;
-
-        /// <summary>
         /// Calculates the force of gravity on this <see cref="Orbiter"/> from another as a vector,
         /// in N.
         /// </summary>
@@ -148,7 +76,7 @@ namespace WorldFoundry.Orbits
         /// </exception>
         /// <exception cref="System.Exception">
         /// An exception will be thrown if the two <see cref="Orbiter"/> s do not share a <see
-        /// cref="Space.CelestialObject"/> parent at some point.
+        /// cref="Space.CelestialRegion"/> parent at some point.
         /// </exception>
         /// <remarks>
         /// Newton's law is used. General relativity would be more accurate in certain circumstances,
@@ -158,12 +86,17 @@ namespace WorldFoundry.Orbits
         /// </remarks>
         public Vector3 GetGravityFromObject(Orbiter other)
         {
-            float distance = GetDistanceToTarget(other);
+            if (other == null)
+            {
+                throw new ArgumentNullException(nameof(other));
+            }
 
-            float scale = (float)(-Utilities.Science.Constants.G * ((Mass * other.Mass) / (distance * distance)));
+            var distance = GetDistanceToTarget(other);
+
+            var scale = (float)(-ScienceConstants.G * (Mass * other.Mass / (distance * distance)));
 
             // Get the unit vector
-            Vector3 unit = (other.Position - Position) / distance;
+            var unit = (other.Position - Position) / (float)distance;
 
             return unit * scale;
         }
@@ -192,7 +125,7 @@ namespace WorldFoundry.Orbits
         /// </remarks>
         public Vector3 GetTotalLocalGravity()
         {
-            Vector3 totalGravity = Vector3.Zero;
+            var totalGravity = Vector3.Zero;
 
             // No gravity for a parent-less object
             if (Parent == null)
@@ -218,7 +151,7 @@ namespace WorldFoundry.Orbits
         /// <returns>A string that represents the celestial object.</returns>
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder(base.ToString());
+            var sb = new StringBuilder(base.ToString());
             if (Orbit?.OrbitedObject != null)
             {
                 sb.Append(", orbiting ");
@@ -257,7 +190,7 @@ namespace WorldFoundry.Orbits
                 Position = Orbit.OrbitedObject.Position + (position / Orbit.OrbitedObject.Parent.LocalScale);
             }
 
-            Velocity = (velocity / Orbit.OrbitedObject.Parent.LocalScale);
+            Velocity = velocity / Orbit.OrbitedObject.Parent.LocalScale;
 
             Orbit.UpdateOrbit();
         }

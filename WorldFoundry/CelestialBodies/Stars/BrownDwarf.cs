@@ -1,8 +1,7 @@
-﻿using System;
+﻿using MathAndScience.Shapes;
+using System;
 using System.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Utilities;
-using WorldFoundry.Utilities.MathUtil.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -11,15 +10,15 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class BrownDwarf : Star
     {
-        internal new static string baseTypeName = "Brown Dwarf";
+        private const string _baseTypeName = "Brown Dwarf";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
-        public override string BaseTypeName => baseTypeName;
+        public override string BaseTypeName => _baseTypeName;
 
-        private static float chanceOfLife = 0;
+        private const double _chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="BioZone"/> and its children will actually have a
+        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
         /// biosphere, if it is habitable.
         /// </summary>
         /// <remarks>
@@ -27,7 +26,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// cooling, and intersect soon with severe tidal forces, making it unlikely that life could
         /// develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override float? ChanceOfLife => chanceOfLife;
+        public override double? ChanceOfLife => _chanceOfLife;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/>.
@@ -38,22 +37,22 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Initializes a new instance of <see cref="BrownDwarf"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="BrownDwarf"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="BrownDwarf"/> is located.
         /// </param>
-        public BrownDwarf(CelestialObject parent) : base(parent) { }
+        public BrownDwarf(CelestialRegion parent) : base(parent) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialObject"/> in which this <see cref="BrownDwarf"/> is located.
+        /// The containing <see cref="CelestialRegion"/> in which this <see cref="BrownDwarf"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="BrownDwarf"/>.</param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="BrownDwarf"/>.</param>
-        public BrownDwarf(CelestialObject parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
+        public BrownDwarf(CelestialRegion parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
 
         /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
+        /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
         private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
 
@@ -63,24 +62,19 @@ namespace WorldFoundry.CelestialBodies.Stars
         private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.V;
 
         /// <summary>
-        /// Generates the <see cref="Mass"/> of this <see cref="Orbiter"/>.
+        /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
-        /// <remarks>
-        /// Between 13 and 90 times the mass of Jupiter.
-        /// </remarks>
-        private protected override void GenerateMass() => Mass = Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
+        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
+        private protected override double GenerateMass(IShape shape) => Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
+        /// Generates the shape of this <see cref="Star"/>.
         /// </summary>
-        /// <remarks>
-        /// Brown dwarfs are all approximately the same radius as Jupiter, within about a 15% tolerance.
-        /// </remarks>
-        private protected override void GenerateShape()
+        private protected override IShape GenerateShape()
         {
             var radius = Math.Round(Randomizer.Static.Normal(69911000, 3495550));
             var flattening = Math.Max(Randomizer.Static.NextDouble(0.1), 0);
-            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
+            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>
