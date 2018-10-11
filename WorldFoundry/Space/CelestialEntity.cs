@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Collections.Generic;
@@ -88,11 +88,23 @@ namespace WorldFoundry.Space
         /// </summary>
         public CelestialRegion Parent { get; private set; }
 
+        private Vector3 _position;
         /// <summary>
         /// Specifies the location of this <see cref="CelestialEntity"/>'s center in the local space of its
         /// containing <see cref="Parent"/>.
         /// </summary>
-        public Vector3 Position { get; set; }
+        public Vector3 Position
+        {
+            get => _position;
+            set
+            {
+                _position = value;
+                if (Substance?.Shape != null)
+                {
+                    Substance.Shape = Substance.Shape.GetCloneAtPosition(value);
+                }
+            }
+        }
 
         /// <summary>
         /// Gets a radius which fully contains this <see cref="CelestialEntity"/>, in meters.
@@ -360,14 +372,14 @@ namespace WorldFoundry.Space
         /// Sets this <see cref="CelestialEntity"/>'s shape to the given value.
         /// </summary>
         /// <param name="shape">The shape to set.</param>
-        protected virtual void SetShape(Shape shape)
+        protected virtual void SetShape(IShape shape)
         {
             if (_substance == null)
             {
                 throw new Exception($"{nameof(Substance)} must be initialized before calling {nameof(SetShape)}.");
             }
 
-            Substance.Shape = shape ?? throw new ArgumentNullException(nameof(shape));
+            Substance.Shape = (shape ?? throw new ArgumentNullException(nameof(shape))).GetCloneAtPosition(Position);
 
             Parent?.SetRegionPopulated(Position, shape);
         }

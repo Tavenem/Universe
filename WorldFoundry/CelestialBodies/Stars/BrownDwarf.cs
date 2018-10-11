@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using System;
 using System.Numerics;
 using WorldFoundry.Space;
@@ -65,12 +65,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
         /// <param name="shape">The shape of the <see cref="Star"/>.</param>
-        private protected override double GenerateMass(Shape shape) => Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
+        private protected override double GenerateMass(IShape shape) => Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>
         /// Generates the shape of this <see cref="Star"/>.
         /// </summary>
-        private protected override Shape GenerateShape()
+        private protected override IShape GenerateShape()
         {
             var radius = Math.Round(Randomizer.Static.Normal(69911000, 3495550));
             var flattening = Math.Max(Randomizer.Static.NextDouble(0.1), 0);

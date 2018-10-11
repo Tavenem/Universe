@@ -1,6 +1,5 @@
 ﻿using ExtensionLib;
-using MathAndScience.MathUtil;
-using MathAndScience.Science;
+using MathAndScience;
 using Substances;
 using System;
 using System.Collections.Generic;

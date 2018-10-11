@@ -1,5 +1,5 @@
 ﻿using ExtensionLib;
-using MathAndScience.MathUtil.Shapes;
+using MathAndScience.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -192,9 +192,9 @@ namespace WorldFoundry.Space
                 {
                     return false;
                 }
-                var position1 = TranslateToLocalCoordinates(commonParent);
-                var position2 = other.TranslateToLocalCoordinates(commonParent);
-                return Substance.Shape.IsPointWithin(position1, position2);
+                return Substance.Shape
+                    .GetCloneAtPosition(TranslateToLocalCoordinates(commonParent))
+                    .IsPointWithin(other.TranslateToLocalCoordinates(commonParent));
             }
         }
 
@@ -447,7 +447,9 @@ namespace WorldFoundry.Space
         /// radius, or null if no child does.
         /// </returns>
         public CelestialRegion GetContainingChild(Vector3 position)
-            => Children?.FirstOrDefault(c => c.GetType().IsSubclassOf(typeof(CelestialRegion)) && (c.Substance?.Shape?.IsPointWithin(c.Position, position) ?? false)) as CelestialRegion;
+            => Children?.FirstOrDefault(c =>
+            c.GetType().IsSubclassOf(typeof(CelestialRegion))
+            && (c.Substance?.Shape?.IsPointWithin(position) ?? false)) as CelestialRegion;
 
         /// <summary>
         /// Determines the nearest containing <see cref="CelestialEntity.Parent"/> of this <see cref="CelestialRegion"/>
@@ -716,7 +718,7 @@ namespace WorldFoundry.Space
             // allowed to be marked populated above in any case in order to avoid this expensive
             // calculation in the future.
             if (GridCoordsToCornerPositions(coordinates)
-                .Any(p => Substance?.Shape?.IsPointWithin(Vector3.Zero, p * LocalScale) ?? false))
+                .Any(p => Substance?.Shape?.GetCloneAtPosition(Vector3.Zero).IsPointWithin(p * LocalScale) ?? false))
             {
                 GenerateChild(coordinates);
             }
@@ -786,7 +788,7 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <param name="position">The center of the region to be marked as populated.</param>
         /// <param name="shape">The shape of the region to be marked as populated.</param>
-        internal void SetRegionPopulated(Vector3 position, Shape shape)
+        internal void SetRegionPopulated(Vector3 position, IShape shape)
         {
             if (_substance?.Shape == null)
             {
@@ -827,13 +829,11 @@ namespace WorldFoundry.Space
 
                         var coordinates = new Vector3(home.X + x, home.Y + y, home.Z + z);
                         // For in-bounds grids, test all four corners for inclusion in the shape.
-                        if (IsGridSpaceInBounds(coordinates))
+                        if (IsGridSpaceInBounds(coordinates)
+                            && GridCoordsToCornerPositions(coordinates)
+                            .Any(p => shape.GetCloneAtPosition(position * LocalScale).IsPointWithin(p * LocalScale)))
                         {
-                            if (GridCoordsToCornerPositions(coordinates)
-                                .Any(p => shape.IsPointWithin(position * LocalScale, p * LocalScale)))
-                            {
-                                GridSpaces[coordinates] = true;
-                            }
+                            GridSpaces[coordinates] = true;
                         }
                     }
                 }
@@ -844,7 +844,7 @@ namespace WorldFoundry.Space
         /// Sets this <see cref="CelestialEntity"/>'s <see cref="Shape"/> to the given value.
         /// </summary>
         /// <param name="shape">The shape to set.</param>
-        protected override void SetShape(Shape shape)
+        protected override void SetShape(IShape shape)
         {
             base.SetShape(shape);
 

@@ -1,4 +1,4 @@
-﻿using MathAndScience.Science;
+﻿using MathAndScience;
 using System;
 using System.Linq;
 using System.Numerics;

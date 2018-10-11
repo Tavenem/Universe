@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using Substances;
 using System.Numerics;
 using WorldFoundry.CelestialBodies.BlackHoles;

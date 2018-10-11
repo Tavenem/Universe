@@ -1,6 +1,5 @@
-﻿using MathAndScience.MathUtil;
-using MathAndScience.MathUtil.Shapes;
-using MathAndScience.Science;
+﻿using MathAndScience;
+using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Numerics;
@@ -185,7 +184,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Mass scales with radius for main-sequence stars, with the scale changing at around 1
         /// solar mass/radius.
         /// </remarks>
-        private protected virtual double GenerateMass(Shape shape)
+        private protected virtual double GenerateMass(IShape shape)
         {
             if (shape.ContainingRadius < 6.955e8)
             {
@@ -200,7 +199,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Generates the shape of this <see cref="Star"/>.
         /// </summary>
-        private protected virtual Shape GenerateShape()
+        private protected virtual IShape GenerateShape()
         {
             // A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
             var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);

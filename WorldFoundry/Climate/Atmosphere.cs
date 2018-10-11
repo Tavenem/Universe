@@ -1,6 +1,5 @@
-﻿using MathAndScience.MathUtil;
-using MathAndScience.MathUtil.Shapes;
-using MathAndScience.Science;
+﻿using MathAndScience;
+using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Collections.Generic;
@@ -861,7 +860,7 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Calculates the <see cref="Atmosphere"/>'s shape.
         /// </summary>
-        private Shape GetShape() => new HollowSphere(CelestialBody.Radius, GetAtmosphericHeight());
+        private IShape GetShape() => new HollowSphere(CelestialBody.Radius, GetAtmosphericHeight());
 
         /// <summary>
         /// Calculates the effective surface temperature, including greenhouse effects, in K.

@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Collections.Generic;
@@ -198,7 +198,7 @@ namespace WorldFoundry.Space.Galaxies
         /// an additional high proportion of dark matter.
         /// </summary>
         /// <param name="shape">The shape of the <see cref="Galaxy"/>.</param>
-        private protected double GenerateMass(Shape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
+        private protected double GenerateMass(IShape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.

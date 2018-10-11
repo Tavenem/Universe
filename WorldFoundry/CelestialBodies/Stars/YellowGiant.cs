@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using System;
 using System.Numerics;
 using WorldFoundry.Space;
@@ -62,7 +62,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
         /// <param name="shape">The shape of the <see cref="Star"/>.</param>
-        private protected override double GenerateMass(Shape shape)
+        private protected override double GenerateMass(IShape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero)
             {

@@ -1,4 +1,4 @@
-﻿using MathAndScience.MathUtil.Shapes;
+﻿using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Collections.Generic;
@@ -27,8 +27,8 @@ namespace WorldFoundry.Space.AsteroidFields
     {
         private const string AsteroidBeltTypeName = "Asteroid Belt";
 
-        private readonly double? majorRadius;
-        private readonly double? minorRadius;
+        private readonly double? _majorRadius;
+        private readonly double? _minorRadius;
 
         private const string _baseTypeName = "Asteroid Field";
         /// <summary>
@@ -108,8 +108,8 @@ namespace WorldFoundry.Space.AsteroidFields
         public AsteroidField(CelestialRegion parent, Vector3 position, Star star, double majorRadius, double? minorRadius = null) : base(parent, position)
         {
             Star = star;
-            this.majorRadius = majorRadius;
-            this.minorRadius = minorRadius;
+            _majorRadius = majorRadius;
+            _minorRadius = minorRadius;
             GenerateSubstance();
         }
 
@@ -155,15 +155,15 @@ namespace WorldFoundry.Space.AsteroidFields
         {
             Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
 
-            Shape shape = null;
+            IShape shape = null;
             if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
             {
-                var axis = majorRadius ?? Randomizer.Static.NextDouble(1.5e11, 3.15e12);
+                var axis = _majorRadius ?? Randomizer.Static.NextDouble(1.5e11, 3.15e12);
                 shape = new Ellipsoid(axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis);
             }
             else
             {
-                shape = new Torus(majorRadius ?? 0, minorRadius ?? 0);
+                shape = new Torus(_majorRadius ?? 0, _minorRadius ?? 0);
             }
 
             Substance.Mass = shape.Volume * 7.0e-8;
