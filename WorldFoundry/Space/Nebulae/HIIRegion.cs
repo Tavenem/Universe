@@ -2,7 +2,8 @@
 using Substances;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Substances;
 
@@ -13,28 +14,25 @@ namespace WorldFoundry.Space
     /// </summary>
     public class HIIRegion : Nebula
     {
+        private const double ChildDensity = 6.0e-50;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.9998, typeof(Star), SpectralClass.B, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.0002, typeof(Star), SpectralClass.O, LuminosityClass.V),
+        };
+
         private const string _baseTypeName = "HII Region";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 6.0e-50;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type,double proportion, object[] constructorParameters)>
-            {
-                (typeof(StarSystem), 0.9998, new object[]{ typeof(Star), SpectralClass.B, LuminosityClass.V }),
-                (typeof(StarSystem), 0.0002, new object[]{ typeof(Star), SpectralClass.O, LuminosityClass.V }),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
@@ -66,7 +64,7 @@ namespace WorldFoundry.Space
             Substance = new Substance
             {
                 Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
+                Mass = Randomizer.Instance.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
                 Temperature = 10000,
             };
 
@@ -76,12 +74,12 @@ namespace WorldFoundry.Space
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.0e17 + (Randomizer.Static.Lognormal(0, 1) * 1.0e17));
-            } while (axis > 5.5e18);
+                axis = Math.Round(1.0e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.0e17));
+            } while (axis > Space);
             SetShape(new Ellipsoid(
                 axis,
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5)),
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5))));
+                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5)),
+                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5))));
         }
     }
 }

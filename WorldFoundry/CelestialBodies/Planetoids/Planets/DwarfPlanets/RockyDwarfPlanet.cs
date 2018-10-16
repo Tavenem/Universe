@@ -1,7 +1,8 @@
 ﻿using Substances;
-using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
+using System.Collections.Generic;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
@@ -67,26 +68,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </param>
         public RockyDwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
+        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
         {
-            var crustProportion = GetCrustProportion();
-
-            // rocky core
-            var core = new Material(Chemical.Rock, Phase.Solid);
-
-            var crust = GetIcyCrust();
-
-            Substance = new Substance()
-            {
-                Composition = new LayeredComposite(
-                    (core, 1 - crustProportion),
-                    (crust, crustProportion)),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
+            yield break;
         }
     }
 }

@@ -1,7 +1,6 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
@@ -11,6 +10,12 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Nebula : CelestialRegion
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 5.5e18;
+
         private const string _baseTypeName = "Nebula";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -47,7 +52,7 @@ namespace WorldFoundry.Space
             Substance = new Substance
             {
                 Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
+                Mass = Randomizer.Instance.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
             };
 
             // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
@@ -56,12 +61,12 @@ namespace WorldFoundry.Space
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.5e17 + (Randomizer.Static.Lognormal(0, 1) * 1.5e17));
-            } while (axis > 5.5e18);
+                axis = 1.5e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.5e17);
+            } while (axis > Space);
             SetShape(new Ellipsoid(
                 axis,
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5)),
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5))));
+                axis * Randomizer.Instance.NextDouble(0.5, 1.5),
+                axis * Randomizer.Instance.NextDouble(0.5, 1.5)));
         }
     }
 }

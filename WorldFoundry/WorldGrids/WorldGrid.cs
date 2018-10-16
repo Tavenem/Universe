@@ -1,9 +1,8 @@
-﻿using ExtensionLib;
-using MathAndScience;
+﻿using MathAndScience;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.WorldGrids
@@ -33,11 +32,6 @@ namespace WorldFoundry.WorldGrids
             get => _defaultGridSize;
             set => _defaultGridSize = Math.Min(value, MaxGridSize);
         }
-
-        /// <summary>
-        /// The default multiplier for the elevation noise generation.
-        /// </summary>
-        private const int ElevationFactor = 100;
 
         private static readonly List<(double fiveSided, double sixSided)> GridAreas = new List<(double fiveSided, double sixSided)>
         {
@@ -75,15 +69,6 @@ namespace WorldFoundry.WorldGrids
         /// The array of all <see cref="Corner"/>s which make up the <see cref="WorldGrid"/>.
         /// </summary>
         public Corner[] Corners { get; private set; }
-
-        /// <summary>
-        /// The random seed used during elevation height map generation.
-        /// </summary>
-        /// <remarks>
-        /// Preserved so that future runs of the generation can produce identical results, in order
-        /// to reproduce the same height map for different <see cref="GridSize"/>s.
-        /// </remarks>
-        internal int ElevationSeed { get; private set; }
 
         /// <summary>
         /// The array of all <see cref="Edge"/>s which make up the <see cref="WorldGrid"/>.
@@ -205,61 +190,6 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private void GenerateElevations(bool preserveShape = false)
-        {
-            if (!preserveShape)
-            {
-                ElevationSeed = Randomizer.Static.NextInclusiveMaxValue();
-            }
-
-            var m = new FastNoise(ElevationSeed);
-            m.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            m.SetFractalOctaves(6);
-            var n = new FastNoise(ElevationSeed >> (int.MaxValue / 5));
-            n.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            n.SetFractalOctaves(5);
-            var o = new FastNoise(ElevationSeed >> (int.MaxValue / 5 * 2));
-            o.SetNoiseType(FastNoise.NoiseType.SimplexFractal);
-            o.SetFractalOctaves(4);
-            foreach (var t in Tiles)
-            {
-                var v = t.Vector * ElevationFactor;
-                t.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-            foreach (var c in Corners)
-            {
-                var v = c.Vector * ElevationFactor;
-                c.Elevation = m.GetNoise(v.X, v.Y, v.Z) * Math.Abs(n.GetNoise(v.X, v.Y, v.Z)) * Math.Abs(o.GetNoise(v.X, v.Y, v.Z));
-            }
-
-            var lowest = Math.Min(Tiles.Min(t => t.Elevation), Corners.Min(c => c.Elevation));
-            var highest = Math.Max(Tiles.Max(t => t.Elevation), Corners.Max(c => c.Elevation));
-            highest -= lowest;
-
-            var max = 2e5 / Planet.SurfaceGravity;
-            var r = new Random(ElevationSeed);
-            var d = 0.0;
-            for (var i = 0; i < 5; i++)
-            {
-                d += Math.Pow(r.NextDouble(), 3);
-            }
-            d /= 5;
-            max = (max * (d + 3) / 8) + (max / 2);
-
-            var scale = (float)(max / highest);
-            foreach (var t in Tiles)
-            {
-                t.Elevation -= lowest;
-                t.Elevation *= scale;
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)((t.Elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
-            }
-            foreach (var c in Corners)
-            {
-                c.Elevation -= lowest;
-                c.Elevation *= scale;
-            }
-        }
-
         /// <summary>
         /// Finds the closest <see cref="Tile"/> to the given <see cref="Vector3"/>.
         /// </summary>
@@ -301,12 +231,6 @@ namespace WorldFoundry.WorldGrids
             return tile;
         }
 
-        private float GetNorth(Tile t, Quaternion rotation)
-        {
-            var v = Vector3.Transform(Tiles[t.Tiles[0]].Vector, rotation);
-            return (float)(Math.PI - Math.Atan2(v.Y, v.X));
-        }
-
         internal void SetCoriolisCoefficients()
         {
             var coriolisCoefficients = new Dictionary<double, double>();
@@ -317,8 +241,7 @@ namespace WorldFoundry.WorldGrids
                     coriolisCoefficients.Add(t.Latitude, Planet.GetCoriolisCoefficient(t.Latitude));
                 }
 
-                var wind = ((Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI) + 1) / 2;
-                t.WindFactor = (float)(0.5 + ((wind - 0.5) * 0.5)); // lessen impact
+                t.WindFactor = (float)(((Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI) + 1) / 2);
             }
         }
 
@@ -520,7 +443,7 @@ namespace WorldFoundry.WorldGrids
         /// resulting in the same height map (can be used to maintain a similar look when changing
         /// <see cref="GridSize"/>, rather than an entirely new geography).
         /// </param>
-        internal void SubdivideGrid(int size, bool preserveShape = false)
+        internal void SubdivideGrid(int size)
         {
             size = Math.Min(MaxGridSize, size);
             if (GridSize < 0 || size < GridSize)
@@ -534,8 +457,8 @@ namespace WorldFoundry.WorldGrids
 
             foreach (var c in Corners)
             {
-                c.Latitude = Planet.VectorToLatitude(c.Vector);
-                c.Longitude = Planet.VectorToLongitude(c.Vector);
+                c.Latitude = (float)Planet.VectorToLatitude(c.Vector);
+                c.Longitude = (float)Planet.VectorToLongitude(c.Vector);
             }
 
             var fiveSided = Array.Find(Tiles, x => x.EdgeCount == 5);
@@ -550,18 +473,9 @@ namespace WorldFoundry.WorldGrids
             {
                 t.Radius = t.EdgeCount == 5 ? fiveSidedRadius : sixSidedRadius;
                 t.Area = t.EdgeCount == 5 ? fiveSidedArea : sixSidedArea;
-                t.Latitude = Planet.VectorToLatitude(t.Vector);
-                t.Longitude = Planet.VectorToLongitude(t.Vector);
-                var rotation = Planet.AxisRotation.GetReferenceRotation(t.Vector);
-                t.North = GetNorth(t, rotation);
+                t.Latitude = (float)Planet.VectorToLatitude(t.Vector);
+                t.Longitude = (float)Planet.VectorToLongitude(t.Vector);
             }
-
-            if (!Planet.HasFlatSurface)
-            {
-                GenerateElevations(preserveShape);
-            }
-
-            SetCoriolisCoefficients();
         }
     }
 }

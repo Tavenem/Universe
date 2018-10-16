@@ -1,8 +1,8 @@
 ﻿using Substances;
 using System;
-using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -76,31 +76,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.03, 0.1), 2);
-
-        /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            var rock = 1.0;
-
-            var clay = Math.Round(Randomizer.Static.NextDouble(0.1, 0.2), 3);
-            rock -= clay;
-
-            var ice = Math.Round(Randomizer.Static.NextDouble(0.22), 3);
-            rock -= ice;
-
-            Substance = new Substance
-            {
-                Composition = new Composite(
-                    (Chemical.Rock, Phase.Solid, rock),
-                    (Chemical.Clay, Phase.Solid, clay),
-                    (Chemical.Water, Phase.Solid, ice)),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
-        }
+        private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.03, 0.1);
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
@@ -114,6 +90,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             var satellite = new CTypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
             return satellite;
+        }
+
+        private protected override IComposition GetComposition(double mass, IShape shape)
+        {
+            var rock = 1.0;
+
+            var clay = Math.Round(Randomizer.Instance.NextDouble(0.1, 0.2), 3);
+            rock -= clay;
+
+            var ice = Math.Round(Randomizer.Instance.NextDouble(0.22), 3);
+            rock -= ice;
+
+            return new Composite(
+                (Chemical.Rock, Phase.Solid, rock),
+                (Chemical.Clay, Phase.Solid, clay),
+                (Chemical.Water, Phase.Solid, ice));
         }
     }
 }

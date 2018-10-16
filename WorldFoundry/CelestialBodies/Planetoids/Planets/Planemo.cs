@@ -2,10 +2,11 @@
 using MathAndScience.Shapes;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
+using Substances;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets
 {
@@ -23,11 +24,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
-
-        /// <summary>
-        /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
-        /// </summary>
-        internal const int MinimumRadius = 600000;
 
         internal new static int _maxSatellites = 5;
         /// <summary>
@@ -55,24 +51,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
         protected virtual double RingChance => _ringChance;
 
-        private double? _eccentricity;
-        /// <summary>
-        /// The eccentricity of this <see cref="Planemo"/>'s orbit.
-        /// </summary>
-        private protected double Eccentricity
-        {
-            get => GetProperty(ref _eccentricity, GenerateEccentricity) ?? 0;
-            set => _eccentricity = value;
-        }
-
         private List<PlanetaryRing> _rings;
         /// <summary>
         /// The collection of <see cref="PlanetaryRing"/>s around this <see cref="Planemo"/>.
         /// </summary>
-        public IList<PlanetaryRing> Rings
+        public List<PlanetaryRing> Rings
         {
-            get => GetProperty(ref _rings, GenerateRings);
-            private set => _rings = (List<PlanetaryRing>)value;
+            get
+            {
+                if (_rings == null)
+                {
+                    _rings = new List<PlanetaryRing>();
+                    GenerateRings();
+                }
+                return _rings;
+            }
         }
 
         /// <summary>
@@ -151,14 +144,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         public Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Randomly determines an eccentricity for this <see cref="Planemo"/>.
-        /// </summary>
-        /// <remarks>
-        /// High eccentricity is unusual for a <see cref="Planemo"/>. Gaussian distribution with most values between 0.0 and 0.1.
-        /// </remarks>
-        private void GenerateEccentricity() => Eccentricity = Math.Abs(Math.Round(Randomizer.Static.Normal(0, 0.05), 4));
-
-        /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
         /// </summary>
         /// <param name="orbitedObject">The <see cref="Orbiter"/> which is to be orbited.</param>
@@ -175,24 +160,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                GetDistanceToTarget(orbitedObject),
+                Location.GetDistanceTo(orbitedObject),
                 Eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Instance.NextDouble(0.9), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
         /// Generates the ring system around this <see cref="Planemo"/>, if any.
         /// </summary>
-        private protected virtual void GenerateRings()
+        private protected void GenerateRings()
         {
-            if (_rings == null)
-            {
-                _rings = new List<PlanetaryRing>();
-            }
-
             var innerLimit = Atmosphere == null ? 0 : Atmosphere.AtmosphericHeight;
 
             var outerLimit_Icy = GetRingDistance_Icy();
@@ -212,11 +192,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
 
             var _ringChance = RingChance;
-            while (Randomizer.Static.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
+            while (Randomizer.Instance.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
             {
-                if (innerLimit < outerLimit_Rocky && Randomizer.Static.NextBoolean())
+                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBoolean())
                 {
-                    var innerRadius = Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Rocky));
+                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Rocky));
 
                     Rings.Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
 
@@ -228,7 +208,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 }
                 else
                 {
-                    var innerRadius = Math.Round(Randomizer.Static.NextDouble(innerLimit, outerLimit_Icy));
+                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Icy));
 
                     Rings.Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
 
@@ -243,35 +223,156 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
         }
 
-        /// <summary>
-        /// Generates the <see cref="Shape"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="knownRadius">
-        /// A predetermined radius for the <see cref="Planemo"/>. May be left null to randomly
-        /// determine an appropriate radius.
-        /// </param>
-        private protected void GenerateShape(double? knownRadius = null)
+        private protected override IComposition GetComposition(double mass, IShape shape)
         {
-            // If no known radius is provided, an approximate radius as if the shape was a sphere is
-            // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? Math.Round(Math.Max(MinimumRadius, GetRadiusForMass(Mass)));
-            var flattening = Randomizer.Static.NextDouble(0.1);
-            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), 1));
+            var coreProportion = GetCoreProportion(mass);
+            var crustProportion = GetCrustProportion(shape);
+            var mantleProportion = 1 - (coreProportion + crustProportion);
+
+            var coreLayers = GetCore(mass);
+            var mantleLayers = GetMantle(shape, mantleProportion);
+            var crustLayers = GetCrust();
+
+            var lc = new LayeredComposite();
+            foreach (var (layer, proportion) in coreLayers)
+            {
+                lc.Layers.Add((layer, proportion * coreProportion));
+            }
+            foreach (var (layer, proportion) in mantleLayers)
+            {
+                lc.Layers.Add((layer, proportion * mantleProportion));
+            }
+            foreach (var (layer, proportion) in crustLayers)
+            {
+                lc.Layers.Add((layer, proportion * crustProportion));
+            }
+
+            return lc;
+        }
+
+        private protected virtual IEnumerable<(IComposition, double)> GetCore(double mass)
+        {
+            yield return (new Material(Chemical.Rock, Phase.Solid), 1);
         }
 
         /// <summary>
-        /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
+        /// Randomly determines the proportionate amount of the composition devoted to the core of a
+        /// <see cref="Planemo"/>.
         /// </summary>
+        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        private protected virtual double GetCoreProportion() => CoreProportion;
+        /// <remarks>The base class returns a flat ratio; subclasses are expected to override as
+        /// needed.</remarks>
+        private protected virtual double GetCoreProportion(double mass) => CoreProportion;
+
+        private protected virtual IEnumerable<(IComposition, double)> GetCrust()
+        {
+            var dust = Randomizer.Instance.NextDouble();
+            var total = dust;
+
+            // 50% chance of not including the following:
+            var waterIce = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += waterIce;
+
+            var n2 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += n2;
+
+            var ch4 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += ch4;
+
+            var co = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += co;
+
+            var co2 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += co2;
+
+            var nh3 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            total += nh3;
+
+            var ratio = 1.0 / total;
+            dust *= ratio;
+            waterIce *= ratio;
+            n2 *= ratio;
+            ch4 *= ratio;
+            co *= ratio;
+            co2 *= ratio;
+            nh3 *= ratio;
+
+            var crust = new Composite((Chemical.Dust, Phase.Solid, dust));
+            if (waterIce > 0)
+            {
+                crust.Components[(Chemical.Water, Phase.Solid)] = waterIce;
+            }
+            if (n2 > 0)
+            {
+                crust.Components[(Chemical.Nitrogen, Phase.Solid)] = n2;
+            }
+            if (ch4 > 0)
+            {
+                crust.Components[(Chemical.Methane, Phase.Solid)] = ch4;
+            }
+            if (co > 0)
+            {
+                crust.Components[(Chemical.CarbonMonoxide, Phase.Solid)] = co;
+            }
+            if (co2 > 0)
+            {
+                crust.Components[(Chemical.CarbonDioxide, Phase.Solid)] = co2;
+            }
+            if (nh3 > 0)
+            {
+                crust.Components[(Chemical.Ammonia, Phase.Solid)] = nh3;
+            }
+            yield return (crust, 1);
+        }
 
         /// <summary>
-        /// Randomly determines the proportionate amount of the composition devoted to the crust of a <see cref="Planemo"/>.
+        /// Randomly determines the proportionate amount of the composition devoted to the crust of
+        /// a <see cref="Planemo"/>.
         /// </summary>
+        /// <param name="shape">The shape of the <see cref="Planemo"/></param>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        /// <remarks>Smaller <see cref="Planemo"/>s have thicker crusts due to faster proto-planetary cooling.</remarks>
-        private protected double GetCrustProportion() => 400000.0 / Math.Pow(Radius, 1.6);
+        /// <remarks>Smaller <see cref="Planemo"/> objects have thicker crusts due to faster
+        /// proto-planetary cooling.</remarks>
+        private protected virtual double GetCrustProportion(IShape shape) => 400000.0 / Math.Pow(shape.ContainingRadius, 1.6);
+
+        private protected IComposition GetIronNickelCore()
+        {
+            var coreNickel = Randomizer.Instance.NextDouble(0.03, 0.15);
+            return new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
+                (Chemical.Nickel, Phase.Solid, coreNickel));
+        }
+
+        private protected virtual IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
+        {
+            var mantleIce = Randomizer.Instance.NextDouble(0.2, 1);
+            yield return (new Composite(
+                (Chemical.Water, Phase.Solid, mantleIce),
+                (Chemical.Water, Phase.Liquid, 1 - mantleIce)),
+                1);
+        }
+
+        private protected override double GetMass(IShape shape = null)
+        {
+            var maxMass = MaxMass;
+            if (Parent != null)
+            {
+                maxMass = Math.Min(maxMass, GetSternLevisonLambdaMass() / 100);
+                if (maxMass < MinMass)
+                {
+                    maxMass = MinMass; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
+                }
+            }
+
+            return Randomizer.Instance.NextDouble(MinMass, maxMass);
+        }
+
+        private protected override (double, IShape) GetMassAndShape()
+        {
+            var mass = GetMass();
+            return (mass, GetShape(mass));
+        }
 
         /// <summary>
         /// Determines the maximum radius allowed for this <see cref="Planemo"/>, given its <see
@@ -303,6 +404,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <returns>The approximate outer distance at which rocky rings may be found, in meters.</returns>
         private protected double GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
 
+        private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
+        {
+            // If no known radius is provided, an approximate radius as if the shape was a sphere is
+            // determined, which is no less than the minimum required for hydrostatic equilibrium.
+            var radius = knownRadius ?? Math.Max(MinimumRadius, GetRadiusForMass(mass.Value));
+            var flattening = Randomizer.Instance.NextDouble(0.1);
+            return new Ellipsoid(radius, radius * (1 - flattening), 1);
+        }
+
         /// <summary>
         /// Calculates the mass at which the Stern-Levison parameter for this <see cref="Planemo"/>
         /// will be 1, given its orbital characteristics.
@@ -311,7 +421,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Also sets <see cref="Eccentricity"/> as a side effect, if the <see cref="Planemo"/>
         /// doesn't already have a defined orbit.
         /// </remarks>
-        /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit or <see cref="CelestialEntity.Parent"/>.</exception>
+        /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit
+        /// or <see cref="CelestialEntity.Parent"/>.</exception>
         private protected double GetSternLevisonLambdaMass()
         {
             var semiMajorAxis = 0.0;
@@ -325,10 +436,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
             else
             {
-                // Even if this planemo is not yet in a defined orbit, some orbital characteristics
-                // must be determined early, in order to distinguish a dwarf planet from a planet,
-                // which depends partially on orbital distance.
-                semiMajorAxis = GetDistanceToTarget(Parent) * (1 + Eccentricity) / (1 - Eccentricity);
+                // Even if this planetoid is not yet in a defined orbit, some orbital
+                // characteristics must be determined early, in order to distinguish a dwarf planet
+                // from a planet, which depends partially on orbital distance.
+                semiMajorAxis = Location.GetDistanceTo(Parent) * (1 + Eccentricity) / (1 - Eccentricity);
             }
 
             return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);

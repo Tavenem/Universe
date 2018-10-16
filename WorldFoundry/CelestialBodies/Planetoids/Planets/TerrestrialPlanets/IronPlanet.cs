@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using MathAndScience.Numerics;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -11,7 +11,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     {
         private const double CoreProportion = 0.4;
 
-        internal new static bool _canHaveWater = false;
+        internal new const bool _canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
@@ -95,7 +95,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
+        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        private protected override double GetCoreProportion() => CoreProportion;
+        private protected override double GetCoreProportion(double mass) => CoreProportion;
     }
 }

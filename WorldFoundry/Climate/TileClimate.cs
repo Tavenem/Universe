@@ -1,43 +1,35 @@
-﻿using System;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.WorldGrids;
-
-namespace WorldFoundry.Climate
+﻿namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Describes the climate of a <see cref="Tile"/> during a particular <see cref="Season"/>.
+    /// Describes the climate of a location during a particular time.
     /// </summary>
     public class TileClimate
     {
-        internal const int AirCellLayerHeight = 2000;
-
         /// <summary>
-        /// The average atmospheric pressure in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in kPa.
+        /// The avergae atmospheric pressure in this location during this time, in kPa.
         /// </summary>
         public float AtmosphericPressure { get; internal set; }
 
         /// <summary>
-        /// The total precipitation in this <see cref="Tile"/> during this <see cref="Season"/>,
-        /// in mm. Counts all forms of precipitation, including the water-equivalent amount of
-        /// snowfall (even though snow is also reported separately).
+        /// The total precipitation in this location during this time, in mm. Counts all forms of
+        /// precipitation, including the water-equivalent amount of snowfall (even though snow is
+        /// also reported separately).
         /// </summary>
         public float Precipitation { get; internal set; }
 
         /// <summary>
-        /// The total runoff in this <see cref="Tile"/> during this <see cref="Season"/>, in m³/s.
+        /// The total runoff in this location during this time, in m³/s.
         /// </summary>
         internal float Runoff { get; set; }
 
         /// <summary>
-        /// The average thickness of sea ice in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in meters.
+        /// The average thickness of sea ice in this location during this time, in meters.
         /// </summary>
         public float SeaIce { get; internal set; }
 
         /// <summary>
-        /// The depth of persistent snow cover in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in mm. Assumes a typical ratio of 1mm water-equivalent = 13mm snow.
+        /// The depth of persistent snow cover in this location during this time, in mm. Assumes a
+        /// typical ratio of 1mm water-equivalent = 13mm snow.
         /// </summary>
         /// <remarks>
         /// Snow depth at any given time during the season will depend on the amount of time since
@@ -48,8 +40,7 @@ namespace WorldFoundry.Climate
         public float SnowCover { get; internal set; }
 
         /// <summary>
-        /// The total amount of snow which falls in this <see cref="Tile"/> during this <see
-        /// cref="Season"/>, in mm.
+        /// The total amount of snow which falls in this location during this time, in mm.
         /// </summary>
         /// <remarks>
         /// This may all fall during a single large snow event, or be divided equally among multiple
@@ -58,36 +49,8 @@ namespace WorldFoundry.Climate
         public float SnowFall { get; set; }
 
         /// <summary>
-        /// The average temperature in this <see cref="Tile"/> during this <see cref="Season"/>,
-        /// in K.
+        /// The average temperature in this location during this time, in K.
         /// </summary>
         public float Temperature { get; internal set; }
-
-        internal static int GetAirCellIndexOfNearlyZeroSaturationVaporPressure(TerrestrialPlanet planet, double elevation, double temperature)
-        {
-            var height = planet.Atmosphere.GetHeightForTemperature(Atmosphere.TemperatureAtNearlyZeroSaturationVaporPressure, temperature, elevation);
-            return (int)Math.Ceiling(height / AirCellLayerHeight);
-        }
-
-        internal static double GetSaturationVaporPressure(TerrestrialPlanet planet, double elevation, double temperature)
-        {
-            var pressure = planet.Atmosphere.GetAtmosphericPressure(temperature, elevation);
-            return Atmosphere.GetSaturationVaporPressure(temperature * planet.Atmosphere.Exner(pressure));
-        }
-
-        internal static double GetSaturationVaporPressure(int index, TerrestrialPlanet planet, double elevation, double temperature)
-        {
-            var height = AirCellLayerHeight * index;
-            var temperatureAtElevation = index == 0
-                ? temperature
-                : planet.Atmosphere.GetTemperatureAtElevation(temperature, elevation + height);
-            return GetSaturationVaporPressure(planet, elevation + height, temperatureAtElevation);
-        }
-
-        internal static double GetSaturationMixingRatio(TerrestrialPlanet planet, TileClimate tc, double elevation)
-            => Atmosphere.GetSaturationMixingRatio(GetSaturationVaporPressure(0, planet, elevation, tc.Temperature), tc.AtmosphericPressure);
-
-        internal static double GetAirCellHeight(TileClimate tc, int layers)
-            => Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * AirCellLayerHeight * layers;
     }
 }

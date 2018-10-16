@@ -3,7 +3,7 @@ using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Climate;
 
 namespace WorldFoundry.WorldGrids
@@ -79,8 +79,6 @@ namespace WorldFoundry.WorldGrids
         /// The longitude of this <see cref="Tile"/>, as an angle in radians from the X-axis at 0 rotation.
         /// </summary>
         public float Longitude { get; internal set; }
-
-        internal float North { get; set; }
 
         /// <summary>
         /// The average annual precipitation in this <see cref="Tile"/>, in mm. Counts all forms of

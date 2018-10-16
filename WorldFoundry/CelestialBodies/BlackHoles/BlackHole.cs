@@ -1,7 +1,7 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
 
@@ -12,6 +12,12 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
     /// </summary>
     public class BlackHole : CelestialBody
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 60000;
+
         private const string _baseTypeName = "Black Hole";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -46,7 +52,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <remarks>
         /// ~3–20 solar masses
         /// </remarks>
-        private protected virtual double GenerateMass() => Randomizer.Static.NextDouble(6.0e30, 4.0e31);
+        private protected virtual double GenerateMass() => Randomizer.Instance.NextDouble(6.0e30, 4.0e31);
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.

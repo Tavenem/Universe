@@ -1,6 +1,6 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.BlackHoles;
 using WorldFoundry.Substances;
 
@@ -11,6 +11,12 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class DwarfGalaxy : Galaxy
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 2.5e18;
+
         private const string _baseTypeName = "Dwarf Galaxy";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -45,7 +51,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of dwarf galaxies are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override void GenerateGalacticCore() => GalacticCore = new BlackHole(this);
+        private protected override BlackHole GetGalacticCore() => new BlackHole(this);
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
@@ -54,8 +60,8 @@ namespace WorldFoundry.Space.Galaxies
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
 
-            var radius = Randomizer.Static.NextDouble(9.5e18, 2.5e18); // ~200–1800 ly
-            var axis = radius * Randomizer.Static.Normal(0.02, 1);
+            var radius = Randomizer.Instance.NextDouble(9.5e18, 2.5e18); // ~200–1800 ly
+            var axis = radius * Randomizer.Instance.Normal(0.02, 1);
             var shape = new Ellipsoid(radius, axis);
 
             Substance.Mass = GenerateMass(shape);

@@ -1,7 +1,6 @@
-﻿using ExtensionLib;
-using MathAndScience;
+﻿using MathAndScience;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 
 namespace WorldFoundry.Orbits
 {
@@ -22,7 +21,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_alpha.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _alpha ?? 0;
             }
@@ -38,7 +37,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_angleAscending.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _angleAscending ?? 0;
             }
@@ -54,7 +53,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_apoapsis.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _apoapsis ?? 0;
             }
@@ -70,7 +69,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_argumentPeriapsis.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _argumentPeriapsis ?? 0;
             }
@@ -86,7 +85,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_eccentricity.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _eccentricity ?? 0;
             }
@@ -103,7 +102,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_inclination.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _inclination ?? 0;
             }
@@ -148,7 +147,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_periapsis.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _periapsis ?? 0;
             }
@@ -164,7 +163,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_perifocalP.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _perifocalP ?? Vector3.Zero;
             }
@@ -181,7 +180,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_period.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _period ?? 0;
             }
@@ -197,7 +196,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_r0.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _r0 ?? Vector3.Zero;
             }
@@ -214,7 +213,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_radius.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _radius ?? 0;
             }
@@ -230,7 +229,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_semiMajorAxis.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _semiMajorAxis ?? 0;
             }
@@ -246,7 +245,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_standardGravitationalParameter.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _standardGravitationalParameter ?? 0;
             }
@@ -262,7 +261,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_trueAnomaly.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _trueAnomaly ?? 0;
             }
@@ -278,7 +277,7 @@ namespace WorldFoundry.Orbits
             {
                 if (!_v0.HasValue)
                 {
-                    SetGravitationalParameters();
+                    SetParametersFromPositionAndVelocity();
                 }
                 return _v0 ?? Vector3.Zero;
             }
@@ -301,82 +300,6 @@ namespace WorldFoundry.Orbits
         {
             OrbitingObject = orbitingObject ?? throw new ArgumentNullException(nameof(orbitingObject), $"{nameof(orbitingObject)} cannot be null");
             OrbitedObject = orbitedObject ?? throw new ArgumentNullException(nameof(orbitedObject), $"{nameof(orbitedObject)} cannot be null");
-        }
-
-        internal static Orbit GetCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
-        {
-            var orbit = new Orbit(orbitingObject, orbitedObject)
-            {
-                _eccentricity = 0,
-                _standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass),
-            };
-
-            orbit.R0 = (orbitingObject.Position - orbitedObject.Position) * orbitingObject.Parent.LocalScale;
-            orbit._radius = orbit.R0.Length();
-
-            // Calculate magnitudes manually to avoid low-precision
-            // implementation resulting in infinity.
-            var r0x2 = Math.Pow(orbit._r0?.X ?? 0, 2);
-            var r0z2 = Math.Pow(orbit._r0?.Z ?? 0, 2);
-            orbit._semiMajorAxis = Math.Sqrt(r0x2 + Math.Pow(orbit._r0?.Y ?? 0, 2) + r0z2);
-            orbit._apoapsis = orbit._semiMajorAxis;
-            orbit._periapsis = orbit._semiMajorAxis;
-
-            var xz = new Vector3(orbit._r0?.X ?? 0, 0, orbit._r0?.Z ?? 0);
-            orbit._inclination = Math.Acos(Math.Sqrt(r0x2 + r0z2) / orbit._semiMajorAxis.Value);
-            var angleAscending = Vector3.UnitX.GetAngle(xz) - MathConstants.HalfPI;
-
-            var n = new Vector3((float)Math.Cos(angleAscending), (float)Math.Sin(angleAscending), 0);
-            var argPeriapsis = Math.Acos(Vector3.Dot(n, orbit.R0) / (n.Length() * orbit.Radius));
-            if ((orbit._r0?.Z ?? 0) < 0)
-            {
-                argPeriapsis = MathConstants.TwoPI - argPeriapsis;
-            }
-
-            // Calculate the perifocal vectors
-            var cosineAngleAscending = Math.Cos(angleAscending);
-            var sineAngleAscending = Math.Sin(angleAscending);
-            var cosineArgPeriapsis = Math.Cos(argPeriapsis);
-            var sineArgPeriapsis = Math.Sin(argPeriapsis);
-            var cosineInclination = Math.Cos(orbit._inclination.Value);
-            var sineInclination = Math.Sin(orbit._inclination.Value);
-
-            var qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qk = (float)(sineInclination * cosineArgPeriapsis);
-
-            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
-
-            orbit._trueAnomaly = 0;
-
-            orbit._alpha = orbit._standardGravitationalParameter.Value / orbit._semiMajorAxis.Value;
-            orbit.V0 = (float)Math.Sqrt(orbit._alpha.Value) * perifocalQ;
-
-            return orbit;
-        }
-
-        internal static Vector3 GetDeltaVForCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
-        {
-            var orbit = new Orbit(orbitingObject, orbitedObject);
-
-            var h = Vector3.Cross(orbit.R0, orbit.V0);
-            var inclination = Math.Acos(h.Z / h.Length());
-            var n = Vector3.Cross(Vector3.UnitZ, h);
-            var angleAscending = Math.Acos(n.X / n.Length());
-
-            // Calculate the perifocal vector
-            var cosineAngleAscending = Math.Cos(angleAscending);
-            var sineAngleAscending = Math.Sin(angleAscending);
-            var cosineInclination = Math.Cos(inclination);
-            var sineInclination = Math.Sin(inclination);
-
-            var qi = (float)-(sineAngleAscending * cosineInclination);
-            var qj = (float)(cosineAngleAscending * cosineInclination);
-            var qk = (float)sineInclination;
-
-            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
-
-            return (float)Math.Sqrt(orbit.StandardGravitationalParameter / orbit.Radius) * perifocalQ;
         }
 
         /// <summary>
@@ -419,18 +342,26 @@ namespace WorldFoundry.Orbits
                 orbitingObject.Orbit.OrbitedObject = orbitedObject;
             }
             orbitingObject.Orbit._eccentricity = eccentricity;
+
             orbitingObject.Orbit._standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass);
 
-            orbitingObject.Orbit.R0 = (orbitingObject.Position - orbitedObject.Position) * orbitingObject.Parent.LocalScale;
+            if (orbitedObject.Parent != orbitingObject.Parent)
+            {
+                orbitingObject.Orbit.R0 = orbitingObject.Location.GetLocalizedPosition(orbitedObject.Location, orbitedObject.Position);
+            }
+            else
+            {
+                orbitingObject.Orbit.R0 = orbitingObject.Position - orbitingObject.Position;
+            }
 
             // Calculate magnitudes manually to avoid low-precision implementation resulting in infinity.
             var distance = Math.Sqrt(Math.Pow(orbitingObject.Orbit._r0?.X ?? 0, 2) + Math.Pow(orbitingObject.Orbit._r0?.Y ?? 0, 2) + Math.Pow(orbitingObject.Orbit._r0?.Z ?? 0, 2));
 
             var xz = new Vector3(orbitingObject.Orbit._r0?.X ?? 0, 0, orbitingObject.Orbit._r0?.Z ?? 0);
             orbitingObject.Orbit._inclination = Math.Acos(Math.Sqrt(Math.Pow(xz.X, 2) + Math.Pow(xz.Z, 2)) / distance);
-            orbitingObject.Orbit._angleAscending = Vector3.UnitX.GetAngle(xz) - MathConstants.HalfPI;
+            orbitingObject.Orbit._angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
 
-            orbitingObject.Orbit._trueAnomaly = Randomizer.Static.NextDouble(MathConstants.TwoPI);
+            orbitingObject.Orbit._trueAnomaly = Randomizer.Instance.NextDouble(MathConstants.TwoPI);
 
             var semiLatusRectum = distance * (1 + (eccentricity * Math.Cos(orbitingObject.Orbit._trueAnomaly.Value)));
             orbitingObject.Orbit._semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -442,7 +373,7 @@ namespace WorldFoundry.Orbits
             // body is less than the semi-major axis, and the periapsis if not.
             var e = distance < orbitingObject.Orbit._semiMajorAxis
                 ? orbitingObject.Orbit.R0
-                : Vector3.Normalize(new Vector3(-orbitingObject.Orbit._r0?.X ?? 0, -orbitingObject.Orbit._r0?.Y ?? 0, -orbitingObject.Orbit._r0?.Z ?? 0)) * (float)(semiLatusRectum / (1 + eccentricity));
+                : Vector3.Normalize(new Vector3(-orbitingObject.Orbit._r0?.X ?? 0, -orbitingObject.Orbit._r0?.Y ?? 0, -orbitingObject.Orbit._r0?.Z ?? 0)) * (semiLatusRectum / (1 + eccentricity));
             // For parabolic orbits, semi-major axis is undefined, and is set to the periapsis instead.
             if (eccentricity == 1)
             {
@@ -460,24 +391,24 @@ namespace WorldFoundry.Orbits
             var cosineArgPeriapsis = Math.Cos(orbitingObject.Orbit._argumentPeriapsis.Value);
             var sineArgPeriapsis = Math.Sin(orbitingObject.Orbit._argumentPeriapsis.Value);
 
-            var pi = (float)((cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pj = (float)((sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pk = (float)(sineInclination * sineArgPeriapsis);
+            var pi = (cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pj = (sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pk = sineInclination * sineArgPeriapsis;
 
-            var qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qk = (float)(sineInclination * cosineArgPeriapsis);
+            var qi = -(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qj = -(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qk = sineInclination * cosineArgPeriapsis;
 
             var perifocalP = (pi * Vector3.UnitX) + (pj * Vector3.UnitY) + (pk * Vector3.UnitZ);
             var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
 
-            var cosineTrueAnomaly = (float)Math.Cos(orbitingObject.Orbit._trueAnomaly.Value);
-            var sineTrueAnomaly = (float)Math.Sin(orbitingObject.Orbit._trueAnomaly.Value);
+            var cosineTrueAnomaly = Math.Cos(orbitingObject.Orbit._trueAnomaly.Value);
+            var sineTrueAnomaly = Math.Sin(orbitingObject.Orbit._trueAnomaly.Value);
 
-            orbitingObject.Orbit.V0 = (float)Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum)
-                * ((-sineTrueAnomaly * perifocalP) + ((float)eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
+            orbitingObject.Orbit.V0 = Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum)
+                * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
-            orbitingObject.Velocity = orbitingObject.Orbit.V0 / orbitedObject.Parent.LocalScale;
+            orbitingObject.Velocity = orbitingObject.Orbit.V0;
         }
 
         /// <summary>
@@ -575,13 +506,13 @@ namespace WorldFoundry.Orbits
             var cosineInclination = Math.Cos(inclination);
             var sineInclination = Math.Sin(inclination);
 
-            var pi = (float)((cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pj = (float)((sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pk = (float)(sineInclination * sineArgPeriapsis);
+            var pi = (cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pj = (sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pk = sineInclination * sineArgPeriapsis;
 
-            var qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qk = (float)(sineInclination * cosineArgPeriapsis);
+            var qi = -(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qj = -(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qk = sineInclination * cosineArgPeriapsis;
 
             var perifocalP = (pi * Vector3.UnitX) + (pj * Vector3.UnitY) + (pk * Vector3.UnitZ);
             var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
@@ -590,12 +521,19 @@ namespace WorldFoundry.Orbits
             var sineTrueAnomaly = Math.Sin(trueAnomaly);
             orbitingObject.Orbit._radius = semiLatusRectum / (1 + (eccentricity * cosineTrueAnomaly));
 
-            orbitingObject.Orbit.R0 = ((float)(orbitingObject.Orbit._radius.Value * cosineTrueAnomaly) * perifocalP) + ((float)(orbitingObject.Orbit._radius.Value * sineTrueAnomaly) * perifocalQ);
-            orbitingObject.Orbit.V0 = (float)Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum)
-                * (((float)-sineTrueAnomaly * perifocalP) + ((float)eccentricity * perifocalQ) + ((float)cosineTrueAnomaly * perifocalQ));
+            orbitingObject.Orbit.R0 = (orbitingObject.Orbit._radius.Value * cosineTrueAnomaly * perifocalP) + (orbitingObject.Orbit._radius.Value * sineTrueAnomaly * perifocalQ);
+            orbitingObject.Orbit.V0 = Math.Sqrt(orbitingObject.Orbit._standardGravitationalParameter.Value / semiLatusRectum)
+                * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
-            orbitingObject.Position = orbitedObject.Position + (orbitingObject.Orbit.R0 / orbitedObject.Parent.LocalScale);
-            orbitingObject.Velocity = orbitingObject.Orbit.V0 / orbitedObject.Parent.LocalScale;
+            if (orbitingObject.Parent != orbitedObject.Parent)
+            {
+                orbitingObject.Position += orbitingObject.Location.GetLocalizedPosition(orbitedObject.Location, orbitingObject.Orbit.R0);
+            }
+            else
+            {
+                orbitingObject.Position = orbitedObject.Position + orbitingObject.Orbit.R0;
+            }
+            orbitingObject.Velocity = orbitingObject.Orbit.V0;
         }
 
         /// <summary>
@@ -609,22 +547,6 @@ namespace WorldFoundry.Orbits
         public static double GetHillSphereRadius(Orbiter orbitingObject, Orbiter orbitedObject, double semiMajorAxis, double eccentricity)
             => semiMajorAxis * (1 - eccentricity) * Math.Pow(orbitingObject.Mass / (3 * orbitedObject.Mass), 1.0 / 3.0);
 
-        private void ClearParameters()
-        {
-            _alpha = null;
-            _apoapsis = null;
-            _eccentricity = null;
-            _inclination = null;
-            _periapsis = null;
-            _period = null;
-            _r0 = null;
-            _radius = null;
-            _semiMajorAxis = null;
-            _standardGravitationalParameter = null;
-            _trueAnomaly = null;
-            _v0 = null;
-        }
-
         /// <summary>
         /// Calculates the radius of the orbiting body's Hill sphere, in meters.
         /// </summary>
@@ -632,82 +554,12 @@ namespace WorldFoundry.Orbits
         public double GetHillSphereRadius() => GetHillSphereRadius(OrbitingObject, OrbitedObject, SemiMajorAxis, Eccentricity);
 
         /// <summary>
-        /// Approximates the radius of the orbiting body's mutual Hill sphere with another
-        /// orbiting body in orbit around the same primary, in meters.
-        /// </summary>
-        /// <remarks>
-        /// Assumes the semimajor axis of both orbits is identical for the purposes of the
-        /// calculation, which obviously would not be the case, but generates reasonably close
-        /// estimates in the absence of actual values.
-        /// </remarks>
-        /// <param name="otherMass">
-        /// The mass of another celestial body presumed to be orbiting the same primary as this one.
-        /// </param>
-        /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
-        public double GetMutualHillSphereRadius(double otherMass)
-            => Math.Pow((OrbitingObject.Mass + otherMass) / (3 * OrbitedObject.Mass), 1.0 / 3.0) * SemiMajorAxis;
-
-        /// <summary>
-        /// Calculates the radius of the orbiting body's sphere of influence, in meters.
-        /// </summary>
-        /// <returns>The radius of the orbiting body's sphere of influence, in meters.</returns>
-        public double GetSphereOfInfluenceRadius()
-            => SemiMajorAxis * Math.Pow(OrbitingObject.Mass / OrbitedObject.Mass, 2.0 / 5.0);
-
-        /// <summary>
-        /// Given a true anomaly, calculates the state vectors of this orbit.
-        /// </summary>
-        /// <param name="trueAnomaly">A true anomaly.</param>
-        public (Vector3 r, Vector3 v) GetStateVectorsForTrueAnomaly(double trueAnomaly)
-        {
-            var cosineAngleAscending = Math.Cos(_angleAscending.Value);
-            var sineAngleAscending = Math.Sin(_angleAscending.Value);
-            var sineInclination = Math.Sin(_inclination.Value);
-            var cosineInclination = Math.Cos(_inclination.Value);
-            var cosineArgPeriapsis = Math.Cos(_argumentPeriapsis.Value);
-            var sineArgPeriapsis = Math.Sin(_argumentPeriapsis.Value);
-
-            var pi = (float)((cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pj = (float)((sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis));
-            var pk = (float)(sineInclination * sineArgPeriapsis);
-
-            var qi = (float)(-(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qj = (float)(-(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis));
-            var qk = (float)(sineInclination * cosineArgPeriapsis);
-
-            var perifocalP = (pi * Vector3.UnitX) + (pj * Vector3.UnitY) + (pk * Vector3.UnitZ);
-            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
-
-            var cosineTrueAnomaly = Math.Cos(trueAnomaly);
-            var sineTrueAnomaly = Math.Sin(trueAnomaly);
-
-            var semiLatusRectum = _periapsis.Value * (1 + _eccentricity.Value);
-
-            var r = ((float)(_radius.Value * cosineTrueAnomaly) * perifocalP) + ((float)(_radius.Value * sineTrueAnomaly) * perifocalQ);
-            var v = (float)Math.Sqrt(_standardGravitationalParameter.Value / semiLatusRectum)
-                * (((float)-sineTrueAnomaly * perifocalP) + ((float)_eccentricity.Value * perifocalQ) + ((float)cosineTrueAnomaly * perifocalQ));
-
-            return (OrbitedObject.Position + (r / OrbitedObject.Parent.LocalScale), v / OrbitedObject.Parent.LocalScale);
-        }
-
-        private double GetUniversalVariableFormulaRatio(double x, double t, double sqrtSGP, double accel, double f)
-        {
-            var x2 = x * x;
-            var z = Alpha * x2;
-            var ssz = StumpffS(z);
-            var scz = StumpffC(z);
-            var x2scz = x2 * scz;
-
-            var n = (accel / sqrtSGP * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
-            var d = (accel / sqrtSGP * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
-            return n / d;
-        }
-
-        /// <summary>
         /// Gets updated orbital position and velocity vectors.
         /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the conditions when the orbit was defined were true.</param>
-        /// <returns>An array with 2 elements: the position vector (relative to the orbited object), and the velocity vector.</returns>
+        /// <param name="t">The number of seconds which have elapsed since the conditions when the
+        /// orbit was defined were true.</param>
+        /// <returns>An array with 2 elements: the position vector (relative to the orbited object),
+        /// and the velocity vector.</returns>
         public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(double t)
         {
             // Universal variable formulas; Newton's method
@@ -734,28 +586,231 @@ namespace WorldFoundry.Orbits
             var scax2 = StumpffC(ax2);
             var ssax2x3 = ssax2 * x3;
 
-            var uvf = (float)(1.0 - (x2 / Radius * scax2));
-            var uvg = (float)(t - (1.0 / sqrtSGP * ssax2x3));
+            var uvf = 1.0 - (x2 / Radius * scax2);
+            var uvg = t - (1.0 / sqrtSGP * ssax2x3);
 
             var r = (R0 * uvf) + (V0 * uvg);
             var rLength = r.Length();
 
-            var uvfp = (float)(sqrtSGP / (rLength * Radius) * ((Alpha * ssax2x3) - x));
-            var uvfgp = (float)(1.0 - (x2 / rLength * scax2));
+            var uvfp = sqrtSGP / (rLength * Radius) * ((Alpha * ssax2x3) - x);
+            var uvfgp = 1.0 - (x2 / rLength * scax2);
 
             var v = (R0 * uvfp) + (V0 * uvfgp);
 
-            return (OrbitedObject.Position + (r / OrbitedObject.Parent.LocalScale), v / OrbitedObject.Parent.LocalScale);
+            return (r, v);
         }
 
-        private void SetGravitationalParameters()
+        /// <summary>
+        /// Updates the orbital position and velocity of this <see cref="Orbit"/> after the
+        /// specified number of seconds have passed, assuming no influences on the orbiter's motion
+        /// have occurred, aside from its orbit.
+        /// </summary>
+        /// <param name="elapsedSeconds">
+        /// The number of seconds which have elapsed since the orbit was last updated.
+        /// </param>
+        public void UpdateOrbit(double elapsedSeconds)
+        {
+            var (position, velocity) = GetStateVectorsAtTime(elapsedSeconds);
+
+            if (OrbitedObject.Parent != OrbitingObject.Parent)
+            {
+                OrbitingObject.Position = OrbitingObject.Location.Parent.GetLocalizedPosition(OrbitedObject.Location) + position;
+            }
+            else
+            {
+                OrbitingObject.Position = OrbitedObject.Position + position;
+            }
+
+            OrbitingObject.Velocity = velocity;
+
+            ClearParameters();
+            SetParametersFromPositionAndVelocity();
+        }
+
+        /// <summary>
+        /// Updates an orbit from the current position and velocity of its <see cref="Orbiter"/>
+        /// objects.
+        /// </summary>
+        public void UpdateOrbit()
+        {
+            ClearParameters();
+            SetParametersFromPositionAndVelocity();
+        }
+
+        internal static Orbit GetCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
+        {
+            var orbit = new Orbit(orbitingObject, orbitedObject)
+            {
+                _eccentricity = 0,
+                _standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass),
+            };
+
+            orbit.R0 = orbitingObject.Position - orbitedObject.Position;
+            orbit._radius = orbit.R0.Length();
+
+            // Calculate magnitudes manually to avoid low-precision
+            // implementation resulting in infinity.
+            var r0x2 = Math.Pow(orbit._r0?.X ?? 0, 2);
+            var r0z2 = Math.Pow(orbit._r0?.Z ?? 0, 2);
+            orbit._semiMajorAxis = Math.Sqrt(r0x2 + Math.Pow(orbit._r0?.Y ?? 0, 2) + r0z2);
+            orbit._apoapsis = orbit._semiMajorAxis;
+            orbit._periapsis = orbit._semiMajorAxis;
+
+            var xz = new Vector3(orbit._r0?.X ?? 0, 0, orbit._r0?.Z ?? 0);
+            orbit._inclination = Math.Acos(Math.Sqrt(r0x2 + r0z2) / orbit._semiMajorAxis.Value);
+            var angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
+
+            var n = new Vector3(Math.Cos(angleAscending), Math.Sin(angleAscending), 0);
+            var argPeriapsis = Math.Acos(Vector3.Dot(n, orbit.R0) / (n.Length() * orbit.Radius));
+            if ((orbit._r0?.Z ?? 0) < 0)
+            {
+                argPeriapsis = MathConstants.TwoPI - argPeriapsis;
+            }
+
+            // Calculate the perifocal vectors
+            var cosineAngleAscending = Math.Cos(angleAscending);
+            var sineAngleAscending = Math.Sin(angleAscending);
+            var cosineArgPeriapsis = Math.Cos(argPeriapsis);
+            var sineArgPeriapsis = Math.Sin(argPeriapsis);
+            var cosineInclination = Math.Cos(orbit._inclination.Value);
+            var sineInclination = Math.Sin(orbit._inclination.Value);
+
+            var qi = -(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qj = -(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qk = sineInclination * cosineArgPeriapsis;
+
+            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
+
+            orbit._trueAnomaly = 0;
+
+            orbit._alpha = orbit._standardGravitationalParameter.Value / orbit._semiMajorAxis.Value;
+            orbit.V0 = Math.Sqrt(orbit._alpha.Value) * perifocalQ;
+
+            return orbit;
+        }
+
+        internal static Vector3 GetDeltaVForCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
+        {
+            var orbit = new Orbit(orbitingObject, orbitedObject);
+
+            var h = Vector3.Cross(orbit.R0, orbit.V0);
+            var inclination = Math.Acos(h.Z / h.Length());
+            var n = Vector3.Cross(Vector3.UnitZ, h);
+            var angleAscending = Math.Acos(n.X / n.Length());
+
+            // Calculate the perifocal vector
+            var cosineAngleAscending = Math.Cos(angleAscending);
+            var sineAngleAscending = Math.Sin(angleAscending);
+            var cosineInclination = Math.Cos(inclination);
+            var sineInclination = Math.Sin(inclination);
+
+            var qi = -(sineAngleAscending * cosineInclination);
+            var qj = cosineAngleAscending * cosineInclination;
+            var qk = sineInclination;
+
+            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
+
+            return Math.Sqrt(orbit.StandardGravitationalParameter / orbit.Radius) * perifocalQ;
+        }
+
+        /// <summary>
+        /// Approximates the radius of the orbiting body's mutual Hill sphere with another
+        /// orbiting body in orbit around the same primary, in meters.
+        /// </summary>
+        /// <remarks>
+        /// Assumes the semimajor axis of both orbits is identical for the purposes of the
+        /// calculation, which obviously would not be the case, but generates reasonably close
+        /// estimates in the absence of actual values.
+        /// </remarks>
+        /// <param name="otherMass">
+        /// The mass of another celestial body presumed to be orbiting the same primary as this one.
+        /// </param>
+        /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
+        internal double GetMutualHillSphereRadius(double otherMass)
+            => Math.Pow((OrbitingObject.Mass + otherMass) / (3 * OrbitedObject.Mass), 1.0 / 3.0) * SemiMajorAxis;
+
+        internal double GetSphereOfInfluenceRadius()
+            => SemiMajorAxis * Math.Pow(OrbitingObject.Mass / OrbitedObject.Mass, 2.0 / 5.0);
+
+        internal Vector3 GetPositionForTrueAnomaly(double trueAnomaly)
+        {
+            var cosineAngleAscending = Math.Cos(_angleAscending.Value);
+            var sineAngleAscending = Math.Sin(_angleAscending.Value);
+            var sineInclination = Math.Sin(_inclination.Value);
+            var cosineInclination = Math.Cos(_inclination.Value);
+            var cosineArgPeriapsis = Math.Cos(_argumentPeriapsis.Value);
+            var sineArgPeriapsis = Math.Sin(_argumentPeriapsis.Value);
+
+            var pi = (cosineAngleAscending * cosineArgPeriapsis) - (sineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pj = (sineAngleAscending * cosineArgPeriapsis) + (cosineAngleAscending * cosineInclination * sineArgPeriapsis);
+            var pk = sineInclination * sineArgPeriapsis;
+
+            var qi = -(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qj = -(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qk = sineInclination * cosineArgPeriapsis;
+
+            var perifocalP = (pi * Vector3.UnitX) + (pj * Vector3.UnitY) + (pk * Vector3.UnitZ);
+            var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
+
+            var cosineTrueAnomaly = Math.Cos(trueAnomaly);
+            var sineTrueAnomaly = Math.Sin(trueAnomaly);
+
+            var r = (_radius.Value * cosineTrueAnomaly * perifocalP) + (_radius.Value * sineTrueAnomaly * perifocalQ);
+
+            if (OrbitedObject.Parent != OrbitingObject.Parent)
+            {
+                return r + OrbitingObject.Location.Parent.GetLocalizedPosition(OrbitedObject.Location);
+            }
+            else
+            {
+                return r + OrbitedObject.Position;
+            }
+        }
+
+        private void ClearParameters()
+        {
+            _alpha = null;
+            _apoapsis = null;
+            _eccentricity = null;
+            _inclination = null;
+            _periapsis = null;
+            _period = null;
+            _r0 = null;
+            _radius = null;
+            _semiMajorAxis = null;
+            _standardGravitationalParameter = null;
+            _trueAnomaly = null;
+            _v0 = null;
+        }
+
+        private double GetUniversalVariableFormulaRatio(double x, double t, double sqrtSGP, double accel, double f)
+        {
+            var x2 = x * x;
+            var z = Alpha * x2;
+            var ssz = StumpffS(z);
+            var scz = StumpffC(z);
+            var x2scz = x2 * scz;
+
+            var n = (accel / sqrtSGP * x2scz) + (f * Math.Pow(x, 3) * ssz) + (Radius * x) - (sqrtSGP * t);
+            var d = (accel / sqrtSGP * x * (1.0 - (Alpha * x2 * ssz))) + (f * x2scz) + Radius;
+            return n / d;
+        }
+
+        private void SetParametersFromPositionAndVelocity()
         {
             _standardGravitationalParameter = ScienceConstants.G * (OrbitingObject.Mass + OrbitedObject.Mass);
 
-            R0 = (OrbitingObject.Position - OrbitedObject.Position) * OrbitingObject.Parent.LocalScale;
+            if (OrbitedObject.Parent != OrbitingObject.Parent)
+            {
+                R0 = OrbitingObject.Location.GetLocalizedPosition(OrbitedObject.Location, OrbitedObject.Position);
+            }
+            else
+            {
+                R0 = OrbitingObject.Position - OrbitedObject.Position;
+            }
             _radius = R0.Length();
 
-            V0 = OrbitingObject.Velocity * OrbitingObject.Parent.LocalScale;
+            V0 = OrbitingObject.Velocity;
 
             _semiMajorAxis = -(_standardGravitationalParameter.Value / 2.0) * Math.Pow((Math.Pow(V0.Length(), 2) / 2.0) - (_standardGravitationalParameter.Value / _radius.Value), -1);
 
@@ -767,7 +822,7 @@ namespace WorldFoundry.Orbits
             _inclination = Math.Acos(h.Z / h.Length());
             _angleAscending = Math.Atan2(h.X, -h.Y);
 
-            var e = (Vector3.Cross(V0, h) / (float)_standardGravitationalParameter.Value) - Vector3.Normalize(R0);
+            var e = (Vector3.Cross(V0, h) / _standardGravitationalParameter.Value) - Vector3.Normalize(R0);
             _eccentricity = e.Length();
 
             var p = _semiMajorAxis.Value * (1 - (_eccentricity.Value * _eccentricity.Value));
@@ -816,15 +871,6 @@ namespace WorldFoundry.Orbits
                 var rootNegX = Math.Sqrt(-x);
                 return (Math.Sinh(rootNegX) - rootNegX) / Math.Pow(rootNegX, 3);
             }
-        }
-
-        /// <summary>
-        /// Updates an orbit with the current values of its <see cref="Orbiter"/> objects.
-        /// </summary>
-        internal void UpdateOrbit()
-        {
-            ClearParameters();
-            SetGravitationalParameters();
         }
     }
 }

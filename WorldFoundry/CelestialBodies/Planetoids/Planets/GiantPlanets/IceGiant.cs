@@ -1,8 +1,9 @@
 ﻿using Substances;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
@@ -74,41 +75,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         public IceGiant(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
+        /// Generates an appropriate density for this <see cref="Planetoid"/>.
         /// </summary>
-        private protected override void GenerateSubstance()
+        /// <remarks>
+        /// No "puffy" ice giants.
+        /// </remarks>
+        private protected override double? GetDensity() => Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
+
+        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
         {
-            var layers = new List<(IComposition substance, double proportion)>();
-
-            // Iron-nickel inner core.
-            var coreProportion = GetCoreProportion();
-            var innerCoreProportion = base.GetCoreProportion() * coreProportion;
-            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            layers.Add((new Composite(
-                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
-                (Chemical.Nickel, Phase.Solid, coreNickel)),
-                innerCoreProportion));
-
-            // Molten rock outer core.
-            layers.Add((new Material(Chemical.Rock, Phase.Liquid), coreProportion - innerCoreProportion));
-
-            var diamond = 1 - coreProportion;
-            var water = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var diamond = 1.0;
+            var water = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
             diamond -= water;
-            var nh4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var nh4 = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
             diamond -= nh4;
-            var ch4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(diamond)), 4);
+            var ch4 = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
             diamond -= ch4;
 
             // Liquid diamond mantle
             if (!Troschuetz.Random.TMath.IsZero(diamond))
             {
-                layers.Add((new Material(Chemical.Diamond, Phase.Liquid), diamond));
+                yield return (new Material(Chemical.Diamond, Phase.Liquid), diamond);
             }
 
             // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
             IComposition upperLayer = null;
-            if (ch4 >0 || nh4 > 0)
+            if (ch4 > 0 || nh4 > 0)
             {
                 upperLayer = new Composite((Chemical.Water, Phase.Liquid, water));
                 var composite = upperLayer as Composite;
@@ -126,22 +118,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 upperLayer = new Material(Chemical.Water, Phase.Liquid);
             }
             upperLayer.BalanceProportions();
-            layers.Add((upperLayer, 1 - coreProportion - diamond));
-
-            Substance = new Substance()
-            {
-                Composition = new LayeredComposite(layers),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
+            yield return (upperLayer, 1 - diamond);
         }
-
-        /// <summary>
-        /// Generates an appropriate density for this <see cref="Planetoid"/>.
-        /// </summary>
-        /// <remarks>
-        /// No "puffy" ice giants.
-        /// </remarks>
-        private protected override void GenerateDensity() => Density = Math.Round(Randomizer.Static.NextDouble(MinDensity, MaxDensity));
     }
 }

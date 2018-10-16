@@ -1,6 +1,6 @@
 ﻿using MathAndScience.Shapes;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Stars
@@ -54,50 +54,50 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
+        private protected override double GetLuminosity() => GetLuminosityFromRadius();
 
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.V;
+        private protected override LuminosityClass GetLuminosityClass() => LuminosityClass.V;
 
         /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
         /// <param name="shape">The shape of the <see cref="Star"/>.</param>
-        private protected override double GenerateMass(IShape shape) => Randomizer.Static.NextDouble(2.468e28, 1.7088e29);
+        private protected override double GenerateMass(IShape shape) => Randomizer.Instance.NextDouble(2.468e28, 1.7088e29);
 
         /// <summary>
         /// Generates the shape of this <see cref="Star"/>.
         /// </summary>
         private protected override IShape GenerateShape()
         {
-            var radius = Math.Round(Randomizer.Static.Normal(69911000, 3495550));
-            var flattening = Math.Max(Randomizer.Static.NextDouble(0.1), 0);
+            var radius = Math.Round(Randomizer.Instance.Normal(69911000, 3495550));
+            var flattening = Math.Max(Randomizer.Instance.NextDouble(0.1), 0);
             return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateSpectralClass()
+        private protected override SpectralClass GetSpectralClass()
         {
-            var chance = Randomizer.Static.NextDouble();
+            var chance = Randomizer.Instance.NextDouble();
             if (chance <= 0.29)
             {
-                SpectralClass = SpectralClass.M; // 29%
+                return SpectralClass.M; // 29%
             }
             else if (chance <= 0.79)
             {
-                SpectralClass = SpectralClass.L; // 50%
+                return SpectralClass.L; // 50%
             }
             else if (chance <= 0.99)
             {
-                SpectralClass = SpectralClass.T; // 20%
+                return SpectralClass.T; // 20%
             }
             else
             {
-                SpectralClass = SpectralClass.Y; // 1%
+                return SpectralClass.Y; // 1%
             }
         }
     }

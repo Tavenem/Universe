@@ -1,9 +1,8 @@
 ﻿using MathAndScience;
 using Substances;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.Climate;
 using WorldFoundry.Orbits;
@@ -18,6 +17,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
     /// </summary>
     public class DwarfPlanet : Planemo
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 1.5e6;
+
         private const string _baseTypeName = "Dwarf Planet";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -106,70 +111,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         public DwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Adds an appropriate icy crust with the given proportion.
-        /// </summary>
-        private protected virtual IComposition GetIcyCrust()
-        {
-            var dust = Math.Round(Randomizer.Static.NextDouble(), 3);
-            var total = dust;
-
-            // 50% chance of not including the following:
-            var waterIce = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += waterIce;
-
-            var n2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += n2;
-
-            var ch4 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += ch4;
-
-            var co = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += co;
-
-            var co2 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += co2;
-
-            var nh3 = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            total += nh3;
-
-            var ratio = 1.0 / total;
-            dust *= ratio;
-            waterIce *= ratio;
-            n2 *= ratio;
-            ch4 *= ratio;
-            co *= ratio;
-            co2 *= ratio;
-            nh3 *= ratio;
-
-            var crust = new Composite((Chemical.Dust, Phase.Solid, dust));
-            if (waterIce > 0)
-            {
-                crust.Components[(Chemical.Water, Phase.Solid)] = waterIce;
-            }
-            if (n2 > 0)
-            {
-                crust.Components[(Chemical.Nitrogen, Phase.Solid)] = n2;
-            }
-            if (ch4 > 0)
-            {
-                crust.Components[(Chemical.Methane, Phase.Solid)] = ch4;
-            }
-            if (co > 0)
-            {
-                crust.Components[(Chemical.CarbonMonoxide, Phase.Solid)] = co;
-            }
-            if (co2 > 0)
-            {
-                crust.Components[(Chemical.CarbonDioxide, Phase.Solid)] = co2;
-            }
-            if (nh3 > 0)
-            {
-                crust.Components[(Chemical.Ammonia, Phase.Solid)] = nh3;
-            }
-            return crust;
-        }
-
-        /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
         private protected override void GenerateAlbedo()
@@ -181,7 +122,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 surfaceIce = surface.GetChemicals(Phase.Solid).Sum(x => x.proportion);
             }
 
-            var albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.6), 3);
+            var albedo = Randomizer.Instance.NextDouble(0.1, 0.6);
             Albedo = (albedo * (1.0 - surfaceIce)) + (0.9 * surfaceIce);
         }
 
@@ -243,62 +184,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
-            Atmosphere = new Atmosphere(this, atmosphere, Math.Round(Randomizer.Static.NextDouble(2.5)));
-        }
-
-        /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            // rocky core
-            var coreProportion = GetCoreProportion();
-            var core = new Material(Chemical.Rock, Phase.Solid);
-
-            var crustProportion = GetCrustProportion();
-
-            // water-ice mantle
-            var mantleProportion = 1.0 - coreProportion - crustProportion;
-            var mantleIce = Math.Round(Randomizer.Static.NextDouble(0.2, 1), 3);
-            var mantle = new Composite(
-                (Chemical.Water, Phase.Solid, mantleIce),
-                (Chemical.Water, Phase.Liquid, 1 - mantleIce));
-
-            var crust = GetIcyCrust();
-
-            Substance = new Substance()
-            {
-                Composition = new LayeredComposite(
-                    (core, coreProportion),
-                    (mantle, mantleProportion),
-                    (crust, crustProportion)),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
-        }
-
-        /// <summary>
-        /// Generates the mass of this <see cref="DwarfPlanet"/>.
-        /// </summary>
-        /// <remarks>
-        /// The Stern-Levison parameter for neighborhood-clearing is used to determined maximum mass
-        /// at which the dwarf planet would not be able to do so at this orbital distance. We set the
-        /// maximum at two orders of magnitude less than this (dwarf planets in our solar system all
-        /// have masses below 5 orders of magnitude less).
-        /// </remarks>
-        private protected virtual double GenerateMass()
-        {
-            var maxMass = MaxMass;
-            if (Parent != null)
-            {
-                maxMass = Math.Min(maxMass, GetSternLevisonLambdaMass() / 100);
-                if (maxMass < MinMass)
-                {
-                    maxMass = MinMass; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
-                }
-            }
-
-            return Math.Round(Randomizer.Static.NextDouble(MinMass, maxMass));
+            Atmosphere = new Atmosphere(this, atmosphere, Math.Round(Randomizer.Instance.NextDouble(2.5)));
         }
 
         /// <summary>
@@ -315,12 +201,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                GetDistanceToTarget(orbitedObject),
+                Location.GetDistanceTo(orbitedObject),
                 Eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.9), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Instance.NextDouble(0.9), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
         }
 
         /// <summary>
@@ -335,14 +221,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             Planetoid satellite = null;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller dwarf planet.
-            if (maxMass > MinMass && Randomizer.Static.NextBoolean())
+            if (maxMass > MinMass && Randomizer.Instance.NextBoolean())
             {
                 satellite = new DwarfPlanet(Parent, maxMass);
             }
             else
             {
                 // Otherwise, it is an asteroid, selected from the standard distribution of types.
-                var chance = Randomizer.Static.NextDouble();
+                var chance = Randomizer.Instance.NextDouble();
                 if (chance <= 0.75)
                 {
                     satellite = new CTypeAsteroid(Parent, maxMass);
@@ -362,10 +248,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 this,
                 periapsis,
                 eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
 
             return satellite;
         }
@@ -373,7 +259,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
+        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        private protected override double GetCoreProportion() => Math.Round(Randomizer.Static.NextDouble(0.2, 0.55), 3);
+        private protected override double GetCoreProportion(double mass) => Math.Round(Randomizer.Instance.NextDouble(0.2, 0.55), 3);
     }
 }

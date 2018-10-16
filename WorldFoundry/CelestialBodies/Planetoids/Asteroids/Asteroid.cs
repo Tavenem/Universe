@@ -1,8 +1,7 @@
 ﻿using MathAndScience;
 using MathAndScience.Shapes;
-using Substances;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space;
@@ -14,6 +13,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     /// </summary>
     public class Asteroid : Planetoid
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 400000;
+
         private const double _maxMassForType = 3.4e20;
         /// <summary>
         /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
@@ -97,26 +102,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         public Asteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Generates the mass of this <see cref="Asteroid"/>.
-        /// </summary>
-        /// <remarks>
-        /// One half of a Gaussian distribution, with <see cref="Planetoid.MinMass"/> as the mean,
-        /// constrained to <see cref="Planetoid.MaxMass"/> as a hard limit at 3-sigma.
-        /// </remarks>
-        private protected double GenerateMass()
-        {
-            var mass = 0.0;
-            do
-            {
-                mass = MinMass + Math.Abs(Randomizer.Static.Normal(0, (MaxMass - MinMass) / 3.0));
-            } while (mass > MaxMass); // Loop rather than using Math.Min to avoid over-representing MaxMass.
-            return mass;
-        }
-
-        /// <summary>
         /// Generates an appropriate minimum distance at which a natural satellite may orbit this <see cref="Planetoid"/>.
         /// </summary>
-        private protected override void GenerateMinSatellitePeriapsis() => MinSatellitePeriapsis = Radius + 20;
+        private protected override double GetMinSatellitePeriapsis() => Radius + 20;
 
         /// <summary>
         /// Determines an orbit for this <see cref="Orbiter"/>.
@@ -132,22 +120,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                GetDistanceToTarget(orbitedObject),
-                Math.Round(Randomizer.Static.NextDouble(0.4), 2),
-                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Location.GetDistanceTo(orbitedObject),
+                Math.Round(Randomizer.Instance.NextDouble(0.4), 2),
+                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 0);
         }
 
-        /// <summary>
-        /// Generates the shape of this <see cref="Asteroid"/>.
-        /// </summary>
-        private protected void GenerateShape()
+        private protected override (double, IShape) GetMassAndShape()
         {
-            var axis = Math.Pow(Mass * 0.75 / (Density * Math.PI), 1.0 / 3.0);
-            var irregularity = Math.Round(Randomizer.Static.NextDouble(0.5, 1), 2);
-            SetShape(new Ellipsoid(axis, irregularity));
+            var mass = GetMass();
+            return (mass, GetShape(mass));
+        }
+
+        private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
+        {
+            var axis = Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
+            var irregularity = Math.Round(Randomizer.Instance.NextDouble(0.5, 1), 2);
+            return new Ellipsoid(axis, irregularity);
         }
 
         /// <summary>
@@ -162,9 +153,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 this,
                 periapsis,
                 eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
     }
 }

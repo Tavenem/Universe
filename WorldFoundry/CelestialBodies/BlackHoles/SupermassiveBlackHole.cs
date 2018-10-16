@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using MathAndScience.Numerics;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.BlackHoles
@@ -42,6 +42,6 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <remarks>
         /// ~10e5–10e10 solar masses
         /// </remarks>
-        private protected override double GenerateMass() => Randomizer.Static.NextDouble(2.0e35, 2.0e40);
+        private protected override double GenerateMass() => Randomizer.Instance.NextDouble(2.0e35, 2.0e40);
     }
 }

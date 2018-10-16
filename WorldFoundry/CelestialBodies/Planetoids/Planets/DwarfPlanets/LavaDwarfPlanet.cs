@@ -1,8 +1,9 @@
 ﻿using Substances;
 using System;
-using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
+using System.Collections.Generic;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
@@ -17,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </summary>
         internal override double DensityForType => _densityForType;
 
-        internal new static int _maxSatellites = 0;
+        internal new const int _maxSatellites = 0;
         /// <summary>
         /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
         /// actual number is determined by the orbital characteristics of the satellites it actually has.
@@ -79,45 +80,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </param>
         public LavaDwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
+        private protected override IEnumerable<(IComposition, double)> GetCrust()
         {
-            // rocky core
-            var coreProportion = GetCoreProportion();
-            var core = new Material(Chemical.Rock, Phase.Solid);
-
-            var crustProportion = GetCrustProportion();
-
-            // molten rock mantle
-            var mantleProportion = 1.0 - coreProportion - crustProportion;
-            var mantle = new Material(Chemical.Rock, Phase.Liquid);
-
             // rocky crust
             // 50% chance of dust
-            var dust = Math.Round(Math.Max(0, Randomizer.Static.NextDouble(-0.5, 0.5)), 3);
-            IComposition crust = null;
+            var dust = Math.Round(Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5)), 3);
             if (dust > 0)
             {
-                crust = new Composite(
+                yield return (new Composite(
                     (Chemical.Rock, Phase.Solid, 1 - dust),
-                    (Chemical.Dust, Phase.Solid, dust));
+                    (Chemical.Dust, Phase.Solid, dust)),
+                    1);
             }
             else
             {
-                crust = new Material(Chemical.Rock, Phase.Solid);
+                yield return (new Material(Chemical.Rock, Phase.Solid), 1);
             }
+        }
 
-            Substance = new Substance()
-            {
-                Composition = new LayeredComposite(
-                    (core, coreProportion),
-                    (mantle, mantleProportion),
-                    (crust, crustProportion)),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
+        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
+        {
+            yield return (new Material(Chemical.Rock, Phase.Liquid), 1);
         }
     }
 }

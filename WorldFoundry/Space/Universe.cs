@@ -1,8 +1,9 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
+using WorldFoundry.Place;
 using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
@@ -12,27 +13,22 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Universe : CelestialRegion
     {
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(GalaxySupercluster), GalaxySupercluster.Space, 5.8e-26),
+        };
+
         private const string _baseTypeName = "Universe";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 1.5e-82;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type,double proportion, object[] constructorParameters)>
-            {
-                (typeof(GalaxySupercluster), 1, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbits.Orbiter"/>.
@@ -52,19 +48,8 @@ namespace WorldFoundry.Space
         /// </summary>
         public Universe() { }
 
-        /// <summary>
-        /// Determines whether this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of
-        /// the specified <see cref="CelestialRegion"/>.
-        /// </summary>
-        /// <param name="other">The <see cref="CelestialRegion"/> to test for inclusion within this one.</param>
-        /// <returns>
-        /// True if this <see cref="CelestialRegion"/> contains the <see cref="CelestialEntity.Position"/> of the specified one.
-        /// </returns>
-        /// <exception cref="ArgumentNullException"><paramref name="other"/> cannot be null.</exception>
-        /// <remarks>
-        /// The universe contains everything, removing the need for any calculations.
-        /// </remarks>
-        internal override bool ContainsObject(CelestialRegion other) => true;
+        private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
+            => _location = new Region(this, null, new Sphere(1.89214e33, position ?? Vector3.Zero));
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
@@ -88,7 +73,6 @@ namespace WorldFoundry.Space
                 Mass = double.PositiveInfinity,
                 Temperature = 2.73,
             };
-            SetShape(new Sphere(1.89214e33));
         }
     }
 }

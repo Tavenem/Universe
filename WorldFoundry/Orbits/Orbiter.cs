@@ -1,7 +1,6 @@
 ﻿using MathAndScience;
+using MathAndScience.Numerics;
 using System;
-using System.Linq;
-using System.Numerics;
 using System.Text;
 using WorldFoundry.Space;
 
@@ -15,7 +14,7 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// The orbit occupied by this <see cref="Orbiter"/> (may be null).
         /// </summary>
-        public Orbit Orbit { get; set; }
+        public virtual Orbit Orbit { get; set; }
 
         /// <summary>
         /// Specifies the velocity of the <see cref="Orbiter"/>.
@@ -60,7 +59,7 @@ namespace WorldFoundry.Orbits
 
             Orbit = Orbit.GetCircularOrbit(this, orbitedObject);
 
-            Velocity = Orbit.V0 / orbitedObject.Parent.LocalScale;
+            Velocity = Orbit.V0;
         }
 
         /// <summary>
@@ -91,12 +90,12 @@ namespace WorldFoundry.Orbits
                 throw new ArgumentNullException(nameof(other));
             }
 
-            var distance = GetDistanceToTarget(other);
+            var distance = Location.GetDistanceTo(other);
 
-            var scale = (float)(-ScienceConstants.G * (Mass * other.Mass / (distance * distance)));
+            var scale = -ScienceConstants.G * (Mass * other.Mass / (distance * distance));
 
             // Get the unit vector
-            var unit = (other.Position - Position) / (float)distance;
+            var unit = (other.Position - Position) / distance;
 
             return unit * scale;
         }
@@ -133,11 +132,7 @@ namespace WorldFoundry.Orbits
                 return totalGravity;
             }
 
-            // Only the gravity from nearby siblings is considered. This may discount significant
-            // effects from more distant but extremely massive objects, but the alternative is to
-            // consider every object, which could potentially be a much too large amount (trillions, perhaps).
-            foreach (var sibling in Parent.GetNearbyChildren(Position)
-                .Where(c => c.GetType().IsSubclassOf(typeof(Orbiter))).Cast<Orbiter>())
+            foreach (var sibling in Parent.GetAllChildren<Orbiter>())
             {
                 totalGravity += GetGravityFromObject(sibling);
             }
@@ -160,39 +155,6 @@ namespace WorldFoundry.Orbits
                 sb.Append(Orbit.OrbitedObject.Title);
             }
             return sb.ToString();
-        }
-
-        /// <summary>
-        /// Updates the orbital position and velocity of this <see cref="Orbiter"/> after the
-        /// specified number of seconds have passed, assuming no influences on its motion have
-        /// occurred, aside from its orbit.
-        /// </summary>
-        /// <param name="elapsedSeconds">
-        /// The number of seconds which have elapsed since the orbit was last updated.
-        /// </param>
-        /// <remarks>Does nothing if no orbit is defined.</remarks>
-        public void UpdateOrbit(double elapsedSeconds)
-        {
-            if (Orbit == null)
-            {
-                return;
-            }
-
-            var (position, velocity) = Orbit.GetStateVectorsAtTime(elapsedSeconds);
-
-            if (Orbit.OrbitedObject.Parent != Parent)
-            {
-                Position = Orbit.OrbitedObject.TranslateToLocalCoordinates(Parent)
-                    + (position / Orbit.OrbitedObject.Parent.LocalScale);
-            }
-            else
-            {
-                Position = Orbit.OrbitedObject.Position + (position / Orbit.OrbitedObject.Parent.LocalScale);
-            }
-
-            Velocity = velocity / Orbit.OrbitedObject.Parent.LocalScale;
-
-            Orbit.UpdateOrbit();
         }
     }
 }

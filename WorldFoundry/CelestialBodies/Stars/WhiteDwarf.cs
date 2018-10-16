@@ -1,8 +1,7 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
 using System;
-using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Stars
@@ -56,12 +55,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
+        private protected override double GetLuminosity() => GetLuminosityFromRadius();
 
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.D;
+        private protected override LuminosityClass GetLuminosityClass() => LuminosityClass.D;
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
@@ -73,19 +72,19 @@ namespace WorldFoundry.CelestialBodies.Stars
                 Composition = new Composite(
                     (Chemical.Oxygen, Phase.Gas, 0.8),
                     (Chemical.Carbon, Phase.Gas, 0.3)),
-                Mass = Randomizer.Static.Normal(1.194e30, 9.95e28),
-                Temperature = Math.Round(Randomizer.Static.Normal(16850, 600)),
+                Mass = Randomizer.Instance.Normal(1.194e30, 9.95e28),
+                Temperature = Math.Round(Randomizer.Instance.Normal(16850, 600)),
             };
 
             var radius = Math.Round(Math.Pow(1.8986e27 / Mass, 1.0 / 3.0) * 69911000);
-            var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
+            var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
             SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
 
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
+        private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
 
         /// <summary>
         /// Pseudo-randomly determines whether this <see cref="Star"/> will have giant planets, based
@@ -95,7 +94,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// 12% of white dwarfs have giant planets
         /// </remarks>
-        private protected override bool GetWillHaveGiantPlanets() => Randomizer.Static.NextDouble() <= 0.12;
+        private protected override bool GetWillHaveGiantPlanets() => Randomizer.Instance.NextDouble() <= 0.12;
 
         /// <summary>
         /// Pseudo-randomly determines whether this <see cref="Star"/> will have ice giant planets,
@@ -105,7 +104,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// 12% of white dwarfs have ice giant planets
         /// </remarks>
-        private protected override bool GetWillHaveIceGiants() => Randomizer.Static.NextDouble() <= 0.12;
+        private protected override bool GetWillHaveIceGiants() => Randomizer.Instance.NextDouble() <= 0.12;
 
         /// <summary>
         /// Pseudo-randomly determines whether this <see cref="Star"/> will have terrestrial planets,
@@ -115,6 +114,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <remarks>
         /// 12% of white dwarfs have terrestrial planets
         /// </remarks>
-        private protected override bool GetWillHaveTerrestrialPlanets() => Randomizer.Static.NextDouble() <= 0.12;
+        private protected override bool GetWillHaveTerrestrialPlanets() => Randomizer.Instance.NextDouble() <= 0.12;
     }
 }

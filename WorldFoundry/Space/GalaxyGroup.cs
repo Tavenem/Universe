@@ -1,8 +1,9 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
+using WorldFoundry.Place;
 using WorldFoundry.Space.Galaxies;
 using WorldFoundry.Substances;
 
@@ -13,27 +14,28 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxyGroup : CelestialRegion
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 3.0e23;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, 1.5e-70),
+        };
+
         private const string _baseTypeName = "Galaxy Group";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 1.5e-70;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                (typeof(DwarfGalaxy), 1, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/>.
@@ -57,30 +59,32 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxyGroup"/>.</param>
         public GalaxyGroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        private void GenerateChildren()
+        internal override void PrepopulateRegion()
         {
-            var amount = Randomizer.Static.Next(1, 6);
+            if (_isPrepopulated)
+            {
+                return;
+            }
+            base.PrepopulateRegion();
+
+            if (!(Location is Region region))
+            {
+                return;
+            }
+
+            var amount = Randomizer.Instance.Next(1, 6);
             Vector3 position;
-            var counter = 0;
             for (var i = 0; i < amount; i++)
             {
-                // Pick a random spot, but make sure it isn't outside local space, and not already occupied.
-
-                // Use a sanity check counter in case the region is overcrowded by early children and
-                // the full number will not easily fit.
-                counter = 0;
-                do
+                if (region.TryGetOpenSpace(GalaxySubgroup.Space, out var location))
                 {
-                    position = new Vector3(
-                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4),
-                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4),
-                        (float)Math.Round(Randomizer.Static.NextDouble(LocalSpaceScale), 4));
-                    counter++;
-                } while ((position.Length() > LocalSpaceScale || IsGridSpacePopulated(PositionToGridCoords(position))) && counter < 100);
-                if (counter >= 100)
+                    position = location;
+                }
+                else
                 {
                     break;
                 }
+
                 new GalaxySubgroup(this, position);
             }
         }
@@ -95,27 +99,7 @@ namespace WorldFoundry.Space
                 Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
                 Mass = 2.0e44, // general average; 1.0e14 solar masses
             };
-            SetShape(new Sphere(Randomizer.Static.NextDouble(1.5e23, 3.0e23))); // ~500–1000 kpc
-        }
-
-        /// <summary>
-        /// Generates an appropriate population of child objects in local space, in an area around
-        /// the given position.
-        /// </summary>
-        /// <param name="position">The location around which to generate child objects.</param>
-        /// <remarks>
-        /// Galaxy groups have their primary subgroups generated all at once, the first time this
-        /// method is called.
-        /// </remarks>
-        public override void PopulateRegion(Vector3 position)
-        {
-            if (!IsGridSpacePopulated(Vector3.Zero))
-            {
-                GridSpaces[Vector3.Zero] = true;
-                GenerateChildren();
-            }
-
-            base.PopulateRegion(position);
+            SetShape(new Sphere(Randomizer.Instance.NextDouble(1.5e23, 3.0e23))); // ~500–1000 kpc
         }
     }
 }

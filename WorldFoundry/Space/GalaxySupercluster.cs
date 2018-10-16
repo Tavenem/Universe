@@ -1,8 +1,8 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
@@ -12,28 +12,31 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySupercluster : CelestialRegion
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 9.4607e25;
+
+        private const double ChildDensity = 1.0e-73;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, ChildDensity / 3),
+            new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, ChildDensity * 2 / 3),
+        };
+
         private const string _baseTypeName = "Galaxy Supercluster";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 1.0e-73;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                (typeof(GalaxyCluster), 1.0 / 3.0, null),
-                (typeof(GalaxyGroup), 2.0 / 3.0, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/>.
@@ -68,20 +71,20 @@ namespace WorldFoundry.Space
             Substance = new Substance
             {
                 Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
+                Mass = Randomizer.Instance.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
             };
-            var majorAxis = Randomizer.Static.NextDouble(9.4607e23, 9.4607e25);
-            var minorAxis1 = majorAxis * Randomizer.Static.NextDouble(0.02, 0.15);
+            var majorAxis = Randomizer.Instance.NextDouble(9.4607e23, 9.4607e25);
+            var minorAxis1 = majorAxis * Randomizer.Instance.NextDouble(0.02, 0.15);
             double minorAxis2;
-            if (Randomizer.Static.NextBoolean()) // Filament
+            if (Randomizer.Instance.NextBoolean()) // Filament
             {
                 minorAxis2 = minorAxis1;
             }
             else // Wall/sheet
             {
-                minorAxis2 = majorAxis * Randomizer.Static.NextDouble(0.3, 0.8);
+                minorAxis2 = majorAxis * Randomizer.Instance.NextDouble(0.3, 0.8);
             }
-            var chance = Randomizer.Static.Next(6);
+            var chance = Randomizer.Instance.Next(6);
             if (chance == 0)
             {
                 SetShape(new Ellipsoid(majorAxis, minorAxis1, minorAxis2));

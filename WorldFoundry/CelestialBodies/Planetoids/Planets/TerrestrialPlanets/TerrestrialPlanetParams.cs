@@ -1,5 +1,6 @@
 ﻿using Substances;
 using System.Collections.Generic;
+using System.Linq;
 using WorldFoundry.Climate;
 using WorldFoundry.WorldGrids;
 
@@ -61,6 +62,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The default ratio of water coverage, used if none is specified.
         /// </summary>
         public const double DefaultWaterRatio = 0.65;
+
+        /// <summary>
+        /// The default mass fraction of water in the atmosphere, used if none is specified.
+        /// </summary>
+        public const double DefaultWaterVaporRatio = 0.0025;
 
         /// <summary>
         /// The target atmospheric pressure, in kPa.
@@ -133,6 +139,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public double? WaterRatio { get; set; }
 
         /// <summary>
+        /// The target mass fraction of water in the atmosphere.
+        /// </summary>
+        public double? WaterVaporRatio { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.
         /// </summary>
         /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
@@ -149,9 +160,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
         /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
         /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
+        /// <param name="waterVaporRatio">The target mass fraction of water in the atmosphere.</param>
         public TerrestrialPlanetParams(
             double? atmosphericPressure = null,
-            List<Requirement> atmosphericRequirements = null,
+            IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = null,
             double? eccentricity = null,
             int? gridSize = null,
@@ -163,10 +175,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? rotationalPeriod = null,
             double? surfaceGravity = null,
             double? surfaceTemperature = null,
-            double? waterRatio = null)
+            double? waterRatio = null,
+            double? waterVaporRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = atmosphericRequirements;
+            AtmosphericRequirements = atmosphericRequirements.ToList();
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
@@ -179,6 +192,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             SurfaceGravity = surfaceGravity;
             SurfaceTemperature = surfaceTemperature;
             WaterRatio = waterRatio;
+            WaterVaporRatio = waterVaporRatio;
         }
 
         /// <summary>
@@ -198,9 +212,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
         /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
         /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
+        /// <param name="waterVaporRatio">The target mass fraction of water in the atmosphere.</param>
         public static TerrestrialPlanetParams FromDefaults(
             double? atmosphericPressure = DefaultAtmosphericPressure,
-            List<Requirement> atmosphericRequirements = null,
+            IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
             int? gridSize = null,
@@ -212,7 +227,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? rotationalPeriod = DefaultRotationalPeriod,
             double? surfaceGravity = DefaultSurfaceGravity,
             double? surfaceTemperature = DefaultSurfaceTemperature,
-            double? waterRatio = DefaultWaterRatio)
+            double? waterRatio = DefaultWaterRatio,
+            double? waterVaporRatio = DefaultWaterVaporRatio)
         {
             if (atmosphericRequirements == null)
             {
@@ -236,7 +252,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 rotationalPeriod,
                 surfaceGravity,
                 surfaceTemperature,
-                waterRatio);
+                waterRatio,
+                waterVaporRatio);
         }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
@@ -26,6 +26,17 @@ namespace WorldFoundry.Space.AsteroidFields
     public class AsteroidField : CelestialRegion
     {
         private const string AsteroidBeltTypeName = "Asteroid Belt";
+        private const double ChildDensity = 5.8e-26;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(CTypeAsteroid), Asteroid.Space, ChildDensity * 0.74),
+            new ChildDefinition(typeof(STypeAsteroid), Asteroid.Space, ChildDensity * 0.14),
+            new ChildDefinition(typeof(MTypeAsteroid), Asteroid.Space, ChildDensity * 0.1),
+            new ChildDefinition(typeof(Comet), Comet.Space, ChildDensity * 0.02),
+            new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, ChildDensity * 3e-10),
+            new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, ChildDensity * 1e-10),
+        };
 
         private readonly double? _majorRadius;
         private readonly double? _minorRadius;
@@ -36,26 +47,11 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 5.8e-26;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                (typeof(CTypeAsteroid), 0.74, null),
-                (typeof(STypeAsteroid), 0.14, null),
-                (typeof(MTypeAsteroid), 0.1, null),
-                (typeof(Comet), 0.0199999996, null),
-                (typeof(DwarfPlanet), 3.0e-10, null),
-                (typeof(RockyDwarfPlanet), 1.0e-10, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
@@ -113,23 +109,9 @@ namespace WorldFoundry.Space.AsteroidFields
             GenerateSubstance();
         }
 
-        /// <summary>
-        /// Generates a child of the specified type within this <see cref="CelestialRegion"/>.
-        /// </summary>
-        /// <param name="type">
-        /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="Orbiter"/>.
-        /// </param>
-        /// <param name="position">
-        /// The location at which to generate the child. If null, a randomly-selected free space will
-        /// be selected.
-        /// </param>
-        /// <param name="constructorParameters">
-        /// A list of parameters with which the child's constructor will be called. May be null.
-        /// </param>
-        public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
+        internal override Orbiter GenerateChild(ChildDefinition definition)
         {
-            var child = base.GenerateChildOfType(type, position, constructorParameters);
+            var child = base.GenerateChild(definition);
 
             if (Orbit != null)
             {
@@ -158,8 +140,8 @@ namespace WorldFoundry.Space.AsteroidFields
             IShape shape = null;
             if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
             {
-                var axis = _majorRadius ?? Randomizer.Static.NextDouble(1.5e11, 3.15e12);
-                shape = new Ellipsoid(axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis, Randomizer.Static.NextDouble(0.5, 1.5) * axis);
+                var axis = _majorRadius ?? Randomizer.Instance.NextDouble(1.5e11, 3.15e12);
+                shape = new Ellipsoid(axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis);
             }
             else
             {

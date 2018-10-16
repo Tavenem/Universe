@@ -1,10 +1,11 @@
 ﻿using Substances;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.Space;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -84,95 +85,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public CarbonPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            var layers = new List<(IComposition substance, double proportion)>();
-
-            // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
-            var coreProportion = GetCoreProportion();
-            var coreNickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 4);
-            var coreSteel = Math.Round(Randomizer.Static.NextDouble(1 - coreNickel), 4);
-            layers.Add((new Composite(
-                (Chemical.Iron, Phase.Solid, 1 - coreNickel - coreSteel),
-                (Chemical.Nickel, Phase.Solid, coreNickel),
-                (Chemical.Steel, Phase.Solid, coreSteel)),
-                coreProportion));
-
-            var crustProportion = GetCrustProportion();
-
-            // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
-            var mantleProportion = 1 - coreProportion - crustProportion;
-            var diamond = Math.Round(Randomizer.Static.NextDouble(0.01, 0.05), 4);
-            layers.Add((new Composite(
-                (Chemical.Diamond, Phase.Solid, diamond),
-                (Chemical.Rock, Phase.Liquid, 1 - diamond)),
-                mantleProportion));
-
-            // Rocky crust with trace elements
-            // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = Math.Round(Randomizer.Static.Normal(MetalProportion, 0.05 * MetalProportion), 4);
-
-            var nickel = Math.Round(Randomizer.Static.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = Math.Round(Randomizer.Static.NextDouble(0.075, 0.225) * metals, 4);
-
-            var titanium = Math.Round(Randomizer.Static.NextDouble(0.05, 0.3) * metals, 4);
-
-            var iron = metals - nickel - aluminum - titanium;
-            diamond = Math.Round(iron * Randomizer.Static.NextDouble(0.01, 0.05), 4);
-            iron -= diamond;
-            var steel = Math.Round(Randomizer.Static.NextDouble(iron), 4);
-            iron -= steel;
-
-            var copper = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
-            titanium -= copper;
-
-            var lead = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
-            titanium -= lead;
-
-            var uranium = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
-            titanium -= uranium;
-
-            var tin = titanium > 0 ? Math.Round(Randomizer.Static.NextDouble(titanium), 4) : 0;
-            titanium -= tin;
-
-            var silver = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
-            titanium -= silver;
-
-            var gold = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
-            titanium -= gold;
-
-            var platinum = Math.Round(Randomizer.Static.NextDouble(titanium), 4);
-            titanium -= platinum;
-
-            var sulfur = Math.Round(Randomizer.Static.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
-
-            var rock = 1 - metals - sulfur;
-
-            layers.Add((new Composite(
-                (Chemical.Aluminium, Phase.Solid, aluminum),
-                (Chemical.Copper, Phase.Solid, copper),
-                (Chemical.Diamond, Phase.Solid, diamond),
-                (Chemical.Gold, Phase.Solid, gold),
-                (Chemical.Iron, Phase.Solid, iron),
-                (Chemical.Lead, Phase.Solid, lead),
-                (Chemical.Nickel, Phase.Solid, nickel),
-                (Chemical.Platinum, Phase.Solid, platinum),
-                (Chemical.Rock, Phase.Solid, rock),
-                (Chemical.Silver, Phase.Solid, silver),
-                (Chemical.Steel, Phase.Solid, steel),
-                (Chemical.Sulfur, Phase.Solid, sulfur),
-                (Chemical.Tin, Phase.Solid, tin),
-                (Chemical.Titanium, Phase.Solid, titanium),
-                (Chemical.Uranium, Phase.Solid, uranium)),
-                crustProportion));
-
-            Substance = new Substance() { Composition = new LayeredComposite(layers) };
-            GenerateShape();
-        }
-
-        /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
         /// </summary>
         /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
@@ -182,10 +94,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
-            var chance = Randomizer.Static.NextDouble();
+            var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _minMassForType && Randomizer.Static.NextBoolean())
+            if (maxMass > _minMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -213,7 +125,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Static.NextBoolean())
+            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
@@ -254,20 +166,104 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     this,
                     periapsis,
                     eccentricity,
-                    Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
-                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4),
-                    Math.Round(Randomizer.Static.NextDouble(Math.PI * 2), 4));
+                    Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4));
             }
 
             return satellite;
         }
 
+        private protected override IEnumerable<(IComposition, double)> GetCore(double mass)
+        {
+            // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
+            var coreNickel = Math.Round(Randomizer.Instance.NextDouble(0.03, 0.15), 4);
+            var coreSteel = Math.Round(Randomizer.Instance.NextDouble(1 - coreNickel), 4);
+            yield return (new Composite(
+                (Chemical.Iron, Phase.Solid, 1 - coreNickel - coreSteel),
+                (Chemical.Nickel, Phase.Solid, coreNickel),
+                (Chemical.Steel, Phase.Solid, coreSteel)),
+                1);
+        }
+
         /// <summary>
         /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
         /// </summary>
+        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
         /// <returns>A proportion, from 0.0 to 1.0.</returns>
         /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        private protected override double GetCoreProportion() => CoreProportion;
+        private protected override double GetCoreProportion(double mass) => CoreProportion;
+
+        private protected override IEnumerable<(IComposition, double)> GetCrust()
+        {
+            // Rocky crust with trace elements
+            // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
+            var metals = Math.Round(Randomizer.Instance.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+
+            var nickel = Math.Round(Randomizer.Instance.NextDouble(0.025, 0.075) * metals, 4);
+            var aluminum = Math.Round(Randomizer.Instance.NextDouble(0.075, 0.225) * metals, 4);
+
+            var titanium = Math.Round(Randomizer.Instance.NextDouble(0.05, 0.3) * metals, 4);
+
+            var iron = metals - nickel - aluminum - titanium;
+            var diamond = Math.Round(iron * Randomizer.Instance.NextDouble(0.01, 0.05), 4);
+            iron -= diamond;
+            var steel = Math.Round(Randomizer.Instance.NextDouble(iron), 4);
+            iron -= steel;
+
+            var copper = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= copper;
+
+            var lead = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= lead;
+
+            var uranium = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= uranium;
+
+            var tin = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= tin;
+
+            var silver = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= silver;
+
+            var gold = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= gold;
+
+            var platinum = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
+            titanium -= platinum;
+
+            var sulfur = Math.Round(Randomizer.Instance.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
+
+            var rock = 1 - metals - sulfur;
+
+            yield return (new Composite(
+                (Chemical.Aluminium, Phase.Solid, aluminum),
+                (Chemical.Copper, Phase.Solid, copper),
+                (Chemical.Diamond, Phase.Solid, diamond),
+                (Chemical.Gold, Phase.Solid, gold),
+                (Chemical.Iron, Phase.Solid, iron),
+                (Chemical.Lead, Phase.Solid, lead),
+                (Chemical.Nickel, Phase.Solid, nickel),
+                (Chemical.Platinum, Phase.Solid, platinum),
+                (Chemical.Rock, Phase.Solid, rock),
+                (Chemical.Silver, Phase.Solid, silver),
+                (Chemical.Steel, Phase.Solid, steel),
+                (Chemical.Sulfur, Phase.Solid, sulfur),
+                (Chemical.Tin, Phase.Solid, tin),
+                (Chemical.Titanium, Phase.Solid, titanium),
+                (Chemical.Uranium, Phase.Solid, uranium)),
+                1);
+        }
+
+        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
+        {
+            // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
+            var diamond = Math.Round(Randomizer.Instance.NextDouble(0.01, 0.05), 4);
+            yield return (new Composite(
+                (Chemical.Diamond, Phase.Solid, diamond),
+                (Chemical.Rock, Phase.Liquid, 1 - diamond)),
+                1);
+        }
     }
 }

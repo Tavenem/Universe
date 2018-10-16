@@ -1,8 +1,8 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Stars;
@@ -16,6 +16,16 @@ namespace WorldFoundry.Space.AsteroidFields
     /// </summary>
     public class OortCloud : AsteroidField
     {
+        private const double ChildDensity = 8.31e-38;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(Comet), Comet.Space, ChildDensity * 0.85),
+            new ChildDefinition(typeof(CTypeAsteroid), Asteroid.Space, ChildDensity * 0.11),
+            new ChildDefinition(typeof(STypeAsteroid), Asteroid.Space, ChildDensity * 0.025),
+            new ChildDefinition(typeof(MTypeAsteroid), Asteroid.Space, ChildDensity * 0.015),
+        };
+
         private readonly double? starSystemRadius;
 
         private const string _baseTypeName = "Oort Cloud";
@@ -24,24 +34,11 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        internal new static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                (typeof(Comet), 0.85, null),
-                (typeof(CTypeAsteroid), 0.11, null),
-                (typeof(STypeAsteroid), 0.025, null),
-                (typeof(MTypeAsteroid), 0.015, null),
-            };
         /// <summary>
-        /// The types of children this region of space might have.
+        /// The types of children found in this region.
         /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
-
-        private const double _childDensity = 8.31e-38;
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => _childDensity;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="OortCloud"/>.
@@ -82,23 +79,9 @@ namespace WorldFoundry.Space.AsteroidFields
             GenerateSubstance();
         }
 
-        /// <summary>
-        /// Generates a child of the specified type within this <see cref="CelestialRegion"/>.
-        /// </summary>
-        /// <param name="type">
-        /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="Orbiter"/>.
-        /// </param>
-        /// <param name="position">
-        /// The location at which to generate the child. If null, a randomly-selected free space will
-        /// be selected.
-        /// </param>
-        /// <param name="constructorParameters">
-        /// An optional list of parameters with which to call the child's constructor. May be null.
-        /// </param>
-        public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
+        internal override Orbiter GenerateChild(ChildDefinition definition)
         {
-            var child = base.GenerateChildOfType(type, position, constructorParameters);
+            var child = base.GenerateChild(definition);
 
             if (Star != null)
             {

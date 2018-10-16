@@ -1,6 +1,6 @@
 ﻿using MathAndScience.Shapes;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Stars
@@ -66,27 +66,27 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             if (LuminosityClass == LuminosityClass.Zero)
             {
-                return Randomizer.Static.NextDouble(1.0e31, 8.96e31); // Hypergiants
+                return Randomizer.Instance.NextDouble(1.0e31, 8.96e31); // Hypergiants
             }
             else if (LuminosityClass == LuminosityClass.Ia
                 || LuminosityClass == LuminosityClass.Ib)
             {
-                return Randomizer.Static.NextDouble(5.97e31, 6.97e31); // Supergiants
+                return Randomizer.Instance.NextDouble(5.97e31, 6.97e31); // Supergiants
             }
             else
             {
-                return Randomizer.Static.NextDouble(5.97e29, 1.592e31); // (Bright)giants
+                return Randomizer.Instance.NextDouble(5.97e29, 1.592e31); // (Bright)giants
             }
         }
 
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateSpectralClass() => SpectralClass = GetSpectralClassFromTemperature(Temperature ?? 0);
+        private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
 
         /// <summary>
         /// Determines a temperature for this <see cref="Star"/>, in K.
         /// </summary>
-        private protected override double GenerateTemperature() => Math.Round(Randomizer.Static.Normal(7600, 800));
+        private protected override double GenerateTemperature() => Math.Round(Randomizer.Instance.Normal(7600, 800));
     }
 }

@@ -28,7 +28,7 @@
 //
 
 // Uncomment the line below to swap all the inputs/outputs/calculations of FastNoise to doubles instead of floats
-//#define FN_USE_DOUBLES
+#define FN_USE_DOUBLES
 
 #if FN_USE_DOUBLES
 using FN_DECIMAL = System.Double;
@@ -75,7 +75,36 @@ public class FastNoise
 	{
 		m_seed = seed;
 		CalculateFractalBounding();
-	}
+    }
+
+    public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, int octaves)
+    {
+        m_seed = seed;
+        m_frequency = frequency;
+        m_noiseType = noiseType;
+        m_octaves = octaves;
+        CalculateFractalBounding();
+    }
+
+    public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, FractalType fractalType, int octaves, FN_DECIMAL gradientPerturbAmp)
+    {
+        m_seed = seed;
+        m_frequency = frequency;
+        m_noiseType = noiseType;
+        m_octaves = octaves;
+        m_fractalType = fractalType;
+        m_gradientPerturbAmp = gradientPerturbAmp;
+        CalculateFractalBounding();
+    }
+
+    public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, FN_DECIMAL gain)
+    {
+        m_seed = seed;
+        m_frequency = frequency;
+        m_noiseType = noiseType;
+        m_gain = gain;
+        CalculateFractalBounding();
+    }
 
     // Returns a 0 float/double
     public static FN_DECIMAL GetDecimalType() => 0;
@@ -512,6 +541,12 @@ public class FastNoise
 				return 0;
 		}
 	}
+
+    public FN_DECIMAL GetPerturbedNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z)
+    {
+        GradientPerturbFractal(ref x, ref y, ref z);
+        return GetNoise(x, y, z);
+    }
 
 	public FN_DECIMAL GetNoise(FN_DECIMAL x, FN_DECIMAL y)
 	{

@@ -1,7 +1,7 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
 
@@ -29,11 +29,11 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </remarks>
         public override double? ChanceOfLife => _chanceOfLife;
 
-        private const string designatorPrefix = "X";
+        private const string _designatorPrefix = "X";
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
-        protected override string DesignatorPrefix => designatorPrefix;
+        protected override string DesignatorPrefix => _designatorPrefix;
 
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/>.
@@ -61,12 +61,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosity() => Luminosity = GetLuminosityFromRadius();
+        private protected override double GetLuminosity() => GetLuminosityFromRadius();
 
         /// <summary>
         /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.Other;
+        private protected override LuminosityClass GetLuminosityClass() => LuminosityClass.Other;
 
         /// <summary>
         /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
@@ -76,18 +76,18 @@ namespace WorldFoundry.CelestialBodies.Stars
             Substance = new Substance
             {
                 Composition = new Material(CosmicSubstances.NeutronDegenerateMatter, Phase.Plasma),
-                Mass = Randomizer.Static.Normal(4.4178e30, 5.174e29), // between 1.44 and 3 times solar mass
-                Temperature = Math.Round(Randomizer.Static.Normal(600000, 133333)),
+                Mass = Randomizer.Instance.Normal(4.4178e30, 5.174e29), // between 1.44 and 3 times solar mass
+                Temperature = Math.Round(Randomizer.Instance.Normal(600000, 133333)),
             };
 
-            var radius = Math.Round(Randomizer.Static.NextDouble(1000, 2000));
-            var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
+            var radius = Math.Round(Randomizer.Instance.NextDouble(1000, 2000));
+            var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
             SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
         }
 
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
         /// </summary>
-        private protected override void GenerateSpectralClass() => SpectralClass = SpectralClass.Other;
+        private protected override SpectralClass GetSpectralClass() => SpectralClass.Other;
     }
 }

@@ -5,7 +5,7 @@ using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
+using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
@@ -22,6 +22,12 @@ namespace WorldFoundry.Space
     /// </summary>
     public class StarSystem : CelestialRegion
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 3.5e16;
+
         private const string _baseTypeName = "Star System";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -161,6 +167,41 @@ namespace WorldFoundry.Space
             SpectralClass? spectralClass = null,
             LuminosityClass? luminosityClass = null) : this(parent, position, starType, spectralClass, luminosityClass, false) { }
 
+        /// <summary>
+        /// Returns a string that represents the celestial object.
+        /// </summary>
+        /// <returns>A string that represents the celestial object.</returns>
+        public override string ToString() => $"{TypeName} {Title}";
+
+        internal override void PrepopulateRegion()
+        {
+            if (_isPrepopulated)
+            {
+                return;
+            }
+            base.PrepopulateRegion();
+
+            if ((Stars?.Count ?? 0) == 0)
+            {
+                return;
+            }
+
+            var outerApoapsis = Stars.Max(x => x.Orbit?.Apoapsis ?? 0);
+
+            // All single and close-binary systems are presumed to have Oort clouds. Systems with
+            // higher multiplicity are presumed to disrupt any Oort clouds.
+            if (Stars.Count == 1 || (Stars.Count == 2 && outerApoapsis < 1.5e13))
+            {
+                var primary = Stars.FirstOrDefault(x => x.Orbit == null);
+                new OortCloud(this, primary, outerApoapsis);
+            }
+
+            foreach (var star in Stars)
+            {
+                GeneratePlanetsForStar(star);
+            }
+        }
+
         private static double GetTotalApoapsis(
             List<(
             Star star,
@@ -211,14 +252,14 @@ namespace WorldFoundry.Space
 
             // 20% chance that a white dwarf has a twin, and that a neutron star has a white dwarf companion.
             if ((orbited.GetType() == typeof(WhiteDwarf) || orbited.GetType() == typeof(NeutronStar))
-                && Randomizer.Static.NextDouble() <= 0.2)
+                && Randomizer.Instance.NextDouble() <= 0.2)
             {
                 star = new WhiteDwarf(this, Vector3.Zero);
             }
             // There is a chance that a giant will have a giant companion.
             else if (orbited is GiantStar)
             {
-                var chance = Randomizer.Static.NextDouble();
+                var chance = Randomizer.Instance.NextDouble();
                 // Bright, super, and hypergiants are not generated as companions; if these exist in
                 // the system, they are expected to be the primary.
                 if (chance <= 0.25)
@@ -244,7 +285,7 @@ namespace WorldFoundry.Space
             }
 
             // Eccentricity tends to be low but increase with longer periods.
-            var eccentricity = Math.Round(Math.Abs(Randomizer.Static.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
+            var eccentricity = Math.Round(Math.Abs(Randomizer.Instance.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
 
             // Assuming an effective 2-body system, the period lets us determine the semi-major axis.
             var semiMajorAxis = Math.Pow(Math.Pow(period / MathConstants.TwoPI, 2) * ScienceConstants.G * (orbited.Mass + star.Mass), 1.0 / 3.0);
@@ -272,7 +313,7 @@ namespace WorldFoundry.Space
             // loop rather than constraining to limits in order to avoid over-representing the limits
             do
             {
-                value = Randomizer.Static.Normal(mu, sigma);
+                value = Randomizer.Instance.Normal(mu, sigma);
                 if (value >= min && value <= max)
                 {
                     return value;
@@ -309,14 +350,14 @@ namespace WorldFoundry.Space
             // close binary, however.
             var close = false;
             var companionPeriod = 0.0;
-            if (Randomizer.Static.NextDouble() <= 0.2)
+            if (Randomizer.Instance.NextDouble() <= 0.2)
             {
                 close = true;
                 companionPeriod = GetClosePeriod();
             }
             else
             {
-                companionPeriod = Randomizer.Static.Lognormal(0, 1) * 1.5768e9;
+                companionPeriod = Randomizer.Instance.Lognormal(0, 1) * 1.5768e9;
             }
             var companion = AddCompanionStar(companions, orbited, companionPeriod);
 
@@ -329,14 +370,14 @@ namespace WorldFoundry.Space
 
             // If the second star was given a close orbit, the third will automatically orbit the
             // original star with a long period.
-            orbited = close || Randomizer.Static.NextBoolean() ? primary : companion.star;
+            orbited = close || Randomizer.Instance.NextBoolean() ? primary : companion.star;
 
             // Long periods are about 50 years, in a log normal distribution, shifted out to avoid
             // being too close to the 2nd star's close orbit.
             if (close)
             {
                 AddCompanionStar(companions, orbited,
-                    (Randomizer.Static.Lognormal(0, 1) * 1.5768e9)
+                    (Randomizer.Instance.Lognormal(0, 1) * 1.5768e9)
                     + (Orbit.GetHillSphereRadius(
                         companion.star,
                         companion.orbited,
@@ -465,7 +506,7 @@ namespace WorldFoundry.Space
                     && (periapsis < (planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis)
                     || (maxApoapsis.HasValue && periapsis > maxApoapsis)))
                 {
-                    periapsis = Randomizer.Static.Lognormal(0, mean);
+                    periapsis = Randomizer.Instance.Lognormal(0, mean);
                     count++;
                 }
                 if (count == 100)
@@ -482,7 +523,7 @@ namespace WorldFoundry.Space
             }
             // Terrestrial planets may be in either lower or higher orbits, with lower ones being
             // more likely.
-            else if (Randomizer.Static.NextDouble() <= 0.75)
+            else if (Randomizer.Instance.NextDouble() <= 0.75)
             {
                 periapsis = medianOrbit / 2;
             }
@@ -500,7 +541,7 @@ namespace WorldFoundry.Space
                     // calculation since the planet hasn't been generated yet, which should produce
                     // reasonable values.
                     var spacing = innerPlanet.Orbit.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
-                        * Math.Max(1, Randomizer.Static.Normal(21.7, 9.5));
+                        * Math.Max(1, Randomizer.Instance.Normal(21.7, 9.5));
                     periapsis = innerPlanet.Orbit.Periapsis - spacing;
                     if (periapsis < (planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis))
                     {
@@ -517,7 +558,7 @@ namespace WorldFoundry.Space
                     if (!(planet is GiantPlanet) || outerPeriod <= 1.728e7)
                     {
                         var spacing = outerPlanet.Orbit.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
-                            * Math.Max(1, Randomizer.Static.Normal(21.7, 9.5));
+                            * Math.Max(1, Randomizer.Instance.Normal(21.7, 9.5));
                         periapsis = outerPlanet.Orbit.Apoapsis + spacing;
                         if (periapsis > maxApoapsis)
                         {
@@ -528,7 +569,7 @@ namespace WorldFoundry.Space
                     // of 2.2 is used to determine orbital spacing for giant planets.
                     else
                     {
-                        var newPeriod = Randomizer.Static.Normal(outerPeriod * 2.2, outerPeriod);
+                        var newPeriod = Randomizer.Instance.Normal(outerPeriod * 2.2, outerPeriod);
 
                         // Assuming no eccentricity and an average mass, calculate a periapsis from
                         // the selected period, but set their mutual Hill sphere radius as a minimum separation.
@@ -554,39 +595,8 @@ namespace WorldFoundry.Space
         /// <param name="periapsis">The periapsis of the belt.</param>
         private void GenerateAsteroidBelt(Star star, GiantPlanet planet, double periapsis)
         {
-            var separation = periapsis - (planet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Static.Normal(21.7, 9.5));
+            var separation = periapsis - (planet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
             new AsteroidField(this, star.Position, star, separation * 0.8, separation * 0.1);
-        }
-
-        /// <summary>
-        /// Generates the planetary systems of this star system, along with all small star system bodies.
-        /// </summary>
-        /// <remarks>
-        /// This is called automatically the first time PopulateRegion is called. Any planets already
-        /// added to the star system manually will be taken into account by the automatic generation
-        /// procedures when filling in the rest of the system.
-        /// </remarks>
-        private void GenerateChildren()
-        {
-            if ((Stars?.Count ?? 0) == 0)
-            {
-                return;
-            }
-
-            var outerApoapsis = Stars.Max(x => x.Orbit?.Apoapsis ?? 0);
-
-            // All single and close-binary systems are presumed to have Oort clouds. Systems with
-            // higher multiplicity are presumed to disrupt any Oort clouds.
-            if (Stars.Count == 1 || (Stars.Count == 2 && outerApoapsis < 1.5e13))
-            {
-                var primary = Stars.FirstOrDefault(x => x.Orbit == null);
-                new OortCloud(this, primary, outerApoapsis);
-            }
-
-            foreach (var star in Stars)
-            {
-                GeneratePlanetsForStar(star);
-            }
         }
 
         /// <summary>
@@ -599,10 +609,10 @@ namespace WorldFoundry.Space
         private void GenerateDebrisDisc(Star star, Planemo outerPlanet, double? maxApoapsis)
         {
             var outerApoapsis = outerPlanet.Orbit.Apoapsis;
-            var innerRadius = outerApoapsis + (outerPlanet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Static.Normal(21.7, 9.5));
-            var width = (Stars.Count > 1 || Randomizer.Static.NextDouble() <= 0.5)
-                ? Randomizer.Static.NextDouble(3.0e12, 4.5e12)
-                : Randomizer.Static.Lognormal(0, 1) * 7.5e12;
+            var innerRadius = outerApoapsis + (outerPlanet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
+            var width = (Stars.Count > 1 || Randomizer.Instance.NextDouble() <= 0.5)
+                ? Randomizer.Instance.NextDouble(3.0e12, 4.5e12)
+                : Randomizer.Instance.Lognormal(0, 1) * 7.5e12;
             if (maxApoapsis.HasValue)
             {
                 width = Math.Min(width, maxApoapsis.Value - innerRadius);
@@ -629,7 +639,7 @@ namespace WorldFoundry.Space
             {
                 return 0;
             }
-            var chance = Randomizer.Static.NextDouble();
+            var chance = Randomizer.Instance.NextDouble();
             if (primary is BrownDwarf)
             {
                 return 0;
@@ -737,12 +747,12 @@ namespace WorldFoundry.Space
             if (planet is GiantPlanet giant)
             {
                 // Giants may get Trojan asteroid fields at their L4 & L5 Lagrangian points.
-                if (Randomizer.Static.NextDouble() <= 0.5)
+                if (Randomizer.Instance.NextDouble() <= 0.5)
                 {
                     GenerateTrojans(star, giant, periapsis.Value);
                 }
                 // There is a chance of an inner-system asteroid belt inside the orbit of a giant.
-                if (periapsis < medianOrbit && Randomizer.Static.NextDouble() <= 0.2)
+                if (periapsis < medianOrbit && Randomizer.Instance.NextDouble() <= 0.2)
                 {
                     GenerateAsteroidBelt(star, giant, periapsis.Value);
                 }
@@ -864,10 +874,10 @@ namespace WorldFoundry.Space
                     orbited,
                     periapsis,
                     eccentricity,
-                    Math.Round(Randomizer.Static.NextDouble(Math.PI), 4),
-                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                    Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4));
+                    Math.Round(Randomizer.Instance.NextDouble(Math.PI), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                    Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
 
                 Stars.Add(star);
             }
@@ -880,8 +890,8 @@ namespace WorldFoundry.Space
 
             // The maximum mass and density are used to calculate an outer Roche limit (may not be
             // the actual Roche limit for the body which gets generated).
-            var chance = Randomizer.Static.NextDouble();
-            var position = ((star.Position * LocalScale) + (Vector3.UnitX * (float)periapsis)) / LocalScale;
+            var chance = Randomizer.Instance.NextDouble();
+            var position = star.Position + (Vector3.UnitX * periapsis);
             if (periapsis < star.GetRocheLimit(TerrestrialPlanet._maxDensity) * 1.05 || chance <= 0.01)
             {
                 return new LavaPlanet(this, position);
@@ -916,7 +926,7 @@ namespace WorldFoundry.Space
         private void GenerateTrojans(Star star, GiantPlanet planet, double periapsis)
         {
             var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
-            var asteroids = new AsteroidField(this, -Vector3.UnitZ * (float)periapsis / LocalScale, star, doubleHillRadius);
+            var asteroids = new AsteroidField(this, -Vector3.UnitZ * periapsis, star, doubleHillRadius);
             var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755; // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
@@ -927,12 +937,12 @@ namespace WorldFoundry.Space
                 star,
                 periapsis,
                 planet.Orbit.Eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
 
-            asteroids = new AsteroidField(this, Vector3.UnitZ * (float)periapsis / LocalScale, star, doubleHillRadius);
+            asteroids = new AsteroidField(this, Vector3.UnitZ * periapsis, star, doubleHillRadius);
             trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755; // -60°
             while (trueAnomaly < 0)
             {
@@ -943,9 +953,9 @@ namespace WorldFoundry.Space
                 star,
                 periapsis,
                 planet.Orbit.Eccentricity,
-                Math.Round(Randomizer.Static.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Static.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
         }
 
@@ -1024,7 +1034,7 @@ namespace WorldFoundry.Space
             // Otherwise, select the type to generate on this pass randomly.
             else
             {
-                var chance = Randomizer.Static.NextDouble();
+                var chance = Randomizer.Instance.NextDouble();
                 if (numGiants > 0 && (numTerrestrials + numIceGiants == 0 || chance <= 0.333333))
                 {
                     planet = new GiantPlanet(this);
@@ -1058,7 +1068,7 @@ namespace WorldFoundry.Space
             {
                 if (planet is GiantPlanet)
                 {
-                    Children.Remove(planet);
+                    RemoveChild(planet);
                 }
                 return null;
             }
@@ -1067,7 +1077,7 @@ namespace WorldFoundry.Space
             // (Terrestrials get their positions set during construction, below).
             if (planet is GiantPlanet)
             {
-                planet.Position = ((star.Position * LocalScale) + (Vector3.UnitX * (float)periapsis.Value)) / LocalScale;
+                planet.Position = star.Position + (Vector3.UnitX * periapsis.Value);
             }
             else
             {
@@ -1082,7 +1092,7 @@ namespace WorldFoundry.Space
 
         private SpectralClass GetSpectralClassForCompanionStar(Star primary)
         {
-            var chance = Randomizer.Static.NextDouble();
+            var chance = Randomizer.Instance.NextDouble();
             if (primary.SpectralClass == SpectralClass.O)
             {
                 if (chance <= 0.2133)
@@ -1214,29 +1224,5 @@ namespace WorldFoundry.Space
                 return SpectralClass.M;
             }
         }
-
-        /// <summary>
-        /// Generates an appropriate population of child objects in local space, in an area around
-        /// the given position.
-        /// </summary>
-        /// <param name="position">The location around which to generate child objects.</param>
-        /// <remarks>
-        /// Star systems have all their immediate children generated at once, the first time this
-        /// method is called.
-        /// </remarks>
-        public override void PopulateRegion(Vector3 position)
-        {
-            if (!IsGridSpacePopulated(Vector3.Zero))
-            {
-                GridSpaces[Vector3.Zero] = true;
-                GenerateChildren();
-            }
-        }
-
-        /// <summary>
-        /// Returns a string that represents the celestial object.
-        /// </summary>
-        /// <returns>A string that represents the celestial object.</returns>
-        public override string ToString() => $"{TypeName} {Title}";
     }
 }

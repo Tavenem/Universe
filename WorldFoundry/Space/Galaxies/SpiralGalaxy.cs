@@ -1,6 +1,6 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
@@ -45,8 +45,8 @@ namespace WorldFoundry.Space.Galaxies
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
 
-            var radius = Randomizer.Static.NextDouble(2.4e20, 2.5e21); // 25000–75000 ly
-            var axis = radius * Randomizer.Static.Normal(0.02, 0.001);
+            var radius = Randomizer.Instance.NextDouble(2.4e20, 2.5e21); // 25000–75000 ly
+            var axis = radius * Randomizer.Instance.Normal(0.02, 0.001);
             var shape = new Ellipsoid(radius, axis);
 
             Substance.Mass = GenerateMass(shape);

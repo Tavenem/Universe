@@ -1,13 +1,10 @@
-﻿using MathAndScience.Numerics;
+﻿using MathAndScience.Shapes;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Space;
 
 namespace WorldFoundry.Place
 {
-    /// <summary>
-    /// A <see cref="Location"/> on the surface of a <see cref="Planetoid"/>.
-    /// </summary>
-    public class PlanetLocation : Location
+    public class PlanetRegion : Region
     {
         private double _elevation;
         /// <summary>
@@ -87,28 +84,26 @@ namespace WorldFoundry.Place
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="PlanetLocation"/>.
+        /// Initializes a new instance of <see cref="PlanetRegion"/>.
         /// </summary>
-        private protected PlanetLocation() { }
+        private protected PlanetRegion() { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="PlanetLocation"/>.
+        /// Initializes a new instance of <see cref="PlanetRegion"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// entity.</param>
-        public PlanetLocation(CelestialEntity celestialEntity, Vector3 position) : base(celestialEntity, position) { }
+        /// <param name="planet">The <see cref="Planetoid"/> which represents this location (may be
+        /// <see langword="null"/>).</param>
+        /// <param name="shape">The shape of the region.</param>
+        public PlanetRegion(Planetoid planet, IShape shape) : base(planet, shape) { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="PlanetLocation"/>.
+        /// Initializes a new instance of <see cref="Region"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
+        /// <param name="planet">The <see cref="Planetoid"/> which represents this location (may be
+        /// <see langword="null"/>).</param>
         /// <param name="parent">The parent location in which this one is found.</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// entity.</param>
-        public PlanetLocation(CelestialEntity celestialEntity, Location parent, Vector3 position) : base(celestialEntity, parent, position) { }
+        /// <param name="shape">The shape of the region.</param>
+        public PlanetRegion(Planetoid planet, Location parent, IShape shape) : base(planet, parent, shape) { }
 
         /// <summary>
         /// Gets a deep clone of this <see cref="Place"/>.
@@ -116,8 +111,8 @@ namespace WorldFoundry.Place
         public override Location GetDeepClone() => GetDeepCopy();
 
         /// <summary>
-        /// Gets a deep clone of this <see cref="PlanetLocation"/>.
+        /// Gets a deep clone of this <see cref="PlanetRegion"/>.
         /// </summary>
-        public PlanetLocation GetDeepCopy() => new PlanetLocation(CelestialEntity, Parent, Position);
+        public new PlanetRegion GetDeepCopy() => new PlanetRegion(Planet, Parent, Shape);
     }
 }

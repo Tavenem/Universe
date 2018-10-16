@@ -1,8 +1,8 @@
 ﻿using MathAndScience.Shapes;
 using Substances;
-using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.Orbits;
 using WorldFoundry.Space.Galaxies;
 using WorldFoundry.Substances;
@@ -14,39 +14,38 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySubgroup : CelestialRegion
     {
+        /// <summary>
+        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
+        /// in meters.
+        /// </summary>
+        public const double Space = 2.5e22;
+
+        private const double ChildDensity = 1.0e-70;
+
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, ChildDensity * 0.26),
+            new ChildDefinition(typeof(GlobularCluster), GlobularCluster.Space, ChildDensity * 0.74),
+        };
+
         private const string _baseTypeName = "Galaxy Subgroup";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _childDensity = 1.0e-70;
         /// <summary>
-        /// The average number of children within the grid per m³.
+        /// The types of children found in this region.
         /// </summary>
-        public override double ChildDensity => _childDensity;
-
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type,double proportion, object[] constructorParameters)>
-            {
-                (typeof(DwarfGalaxy), 0.26, null),
-                (typeof(GlobularCluster), 0.74, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        public override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         private Galaxy _mainGalaxy;
         /// <summary>
         /// The main <see cref="Galaxy"/> around which the other objects in this <see
         /// cref="GalaxySubgroup"/> orbit.
         /// </summary>
-        public Galaxy MainGalaxy
-        {
-            get => GetProperty(ref _mainGalaxy, GenerateMainGalaxy);
-            private set => _mainGalaxy = value;
-        }
+        public Galaxy MainGalaxy => _mainGalaxy ?? (_mainGalaxy = GetMainGalaxy());
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/>.
@@ -70,47 +69,27 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxySubgroup"/>.</param>
         public GalaxySubgroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates a child of the specified type within this <see cref="CelestialRegion"/>.
-        /// </summary>
-        /// <param name="type">
-        /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="Orbiter"/>.
-        /// </param>
-        /// <param name="position">
-        /// The location at which to generate the child. If null, a randomly-selected free space will
-        /// be selected.
-        /// </param>
-        /// <param name="constructorParameters">
-        /// An optional list of parameters with which to call the child's constructor. May be null.
-        /// </param>
-        public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
+        internal override Orbiter GenerateChild(ChildDefinition definition)
         {
-            var child = base.GenerateChildOfType(type, position, constructorParameters);
+            var child = base.GenerateChild(definition);
 
             Orbit.SetOrbit(
                 child,
                 MainGalaxy,
-                Math.Round(Randomizer.Static.NextDouble(0.1), 3));
+                Randomizer.Instance.NextDouble(0.1));
 
             return child;
         }
 
-        /// <summary>
-        /// Randomly determines the main <see cref="Galaxy"/> of this <see cref="GalaxySubgroup"/>,
-        /// which all other objects orbit.
-        /// </summary>
-        /// <remarks>70% of large galaxies are spirals.</remarks>
-        private void GenerateMainGalaxy()
+        internal override void PrepopulateRegion()
         {
-            if (Randomizer.Static.NextDouble() <= 0.7)
+            if (_isPrepopulated)
             {
-                MainGalaxy = new SpiralGalaxy(this);
+                return;
             }
-            else
-            {
-                MainGalaxy = new EllipticalGalaxy(this);
-            }
+            base.PrepopulateRegion();
+
+            GetMainGalaxy();
         }
 
         /// <summary>
@@ -125,5 +104,15 @@ namespace WorldFoundry.Space
             };
             SetShape(new Sphere(MainGalaxy.Radius * 10));
         }
+
+        /// <summary>
+        /// Randomly determines the main <see cref="Galaxy"/> of this <see cref="GalaxySubgroup"/>,
+        /// which all other objects orbit.
+        /// </summary>
+        /// <remarks>70% of large galaxies are spirals.</remarks>
+        private Galaxy GetMainGalaxy()
+            => Randomizer.Instance.NextDouble() <= 0.7
+                ? new SpiralGalaxy(this)
+                : (Galaxy)new EllipticalGalaxy(this);
     }
 }

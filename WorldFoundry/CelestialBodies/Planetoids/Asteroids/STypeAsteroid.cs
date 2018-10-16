@@ -1,8 +1,8 @@
 ﻿using Substances;
 using System;
-using System.Collections.Generic;
-using System.Numerics;
+using MathAndScience.Numerics;
 using WorldFoundry.Space;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -76,32 +76,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
         /// </summary>
-        private protected override void GenerateAlbedo() => Albedo = Math.Round(Randomizer.Static.NextDouble(0.1, 0.22), 2);
-
-        /// <summary>
-        /// Determines the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            var iron = 0.568;
-
-            var nickel = Math.Round(Randomizer.Static.NextDouble(0.03, 0.15), 3);
-            iron -= nickel;
-
-            var gold = Math.Round(Randomizer.Static.NextDouble(0.005), 3);
-
-            Substance = new Substance
-            {
-                Composition = new Composite(
-                    (Chemical.Rock, Phase.Solid, 0.427),
-                    (Chemical.Iron, Phase.Solid, iron),
-                    (Chemical.Nickel, Phase.Solid, nickel),
-                    (Chemical.Gold, Phase.Solid, gold),
-                    (Chemical.Platinum, Phase.Solid, 0.005 - gold)),
-                Mass = GenerateMass(),
-            };
-            GenerateShape();
-        }
+        private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.1, 0.22);
 
         /// <summary>
         /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
@@ -115,6 +90,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             var satellite = new STypeAsteroid(Parent, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
             return satellite;
+        }
+
+        private protected override IComposition GetComposition(double mass, IShape shape)
+        {
+            var iron = 0.568;
+
+            var nickel = Math.Round(Randomizer.Instance.NextDouble(0.03, 0.15), 3);
+            iron -= nickel;
+
+            var gold = Math.Round(Randomizer.Instance.NextDouble(0.005), 3);
+
+            return new Composite(
+                (Chemical.Rock, Phase.Solid, 0.427),
+                (Chemical.Iron, Phase.Solid, iron),
+                (Chemical.Nickel, Phase.Solid, nickel),
+                (Chemical.Gold, Phase.Solid, gold),
+                (Chemical.Platinum, Phase.Solid, 0.005 - gold));
         }
     }
 }
