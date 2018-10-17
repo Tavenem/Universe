@@ -65,6 +65,7 @@ namespace WorldFoundry.Test
             var sb = new StringBuilder();
 
             AddTempString(sb, planet);
+            AddTerrainString(sb, planet);
             AddSimpleClimateString(sb, planet);
             AddPrecipitationString(sb, planet);
 
@@ -381,6 +382,19 @@ namespace WorldFoundry.Test
             sb.AppendLine();
 
             sb.AppendFormat("Avg Surface Pressure:      {0} kPa", planet.Topography.Tiles.Average(x => x.AtmosphericPressure.Avg));
+            sb.AppendLine();
+        }
+
+        private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet)
+        {
+            if (planet.Topography.Tiles[0].BiomeType == BiomeType.None)
+            {
+                return;
+            }
+
+            sb.AppendFormat("% Land:                    {0}%", planet.Topography.Tiles.Count(t => t.TerrainType != TerrainType.Water) * 100.0 / planet.Topography.Tiles.Length);
+            sb.AppendLine();
+            sb.AppendFormat("% Water:                   {0}%", planet.Topography.Tiles.Count(t => t.TerrainType == TerrainType.Water) * 100.0 / planet.Topography.Tiles.Length);
             sb.AppendLine();
         }
 

@@ -36,6 +36,8 @@ namespace WorldFoundry.Climate
 
         internal static readonly double TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure(TMath.Tolerance);
 
+        internal double? _averageSeaLevelDensity;
+
         /// <summary>
         /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
         /// </summary>
@@ -56,6 +58,19 @@ namespace WorldFoundry.Climate
         internal bool ContainsWaterVapor
             => _containsWaterVapor ?? (_containsWaterVapor = Composition?.ContainsSubstance(Chemical.Water, Phase.Gas) ?? false).Value;
 
+        private double? _densityRatio;
+        internal double DensityRatio
+        {
+            get
+            {
+                if (!_densityRatio.HasValue && _averageSeaLevelDensity.HasValue)
+                {
+                    _densityRatio = _averageSeaLevelDensity.Value / 1.2;
+                }
+                return _densityRatio ?? 0;
+            }
+        }
+
         private double? _greenhouseFactor;
         /// <summary>
         /// The total greenhouse factor for this <see cref="Atmosphere"/>.
@@ -75,6 +90,13 @@ namespace WorldFoundry.Climate
         private double? _waterRatio;
         internal double WaterRatio
             => _waterRatio ?? (_waterRatio = Composition?.GetProportion(Chemical.Water, Phase.Gas) ?? 0).Value;
+
+        private double? _wetness;
+        /// <summary>
+        /// The total mass of water in this atmosphere relative to that of Earth.
+        /// </summary>
+        internal double Wetness
+            => _wetness ?? (_wetness = WaterRatio * Mass / 1.287e16).Value;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Atmosphere"/>.
@@ -101,6 +123,8 @@ namespace WorldFoundry.Climate
             var temp = tIF + planet.GreenhouseEffect;
             SetAtmosphericHeight(planet, temp);
             Shape = GetShape(planet);
+
+            _averageSeaLevelDensity = GetAtmosphericDensity(temp, AtmosphericPressure);
         }
 
         /// <summary>
@@ -278,6 +302,7 @@ namespace WorldFoundry.Climate
             Mass = GetAtmosphericMass(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
+            _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
         }
 
         internal void ResetTemperatureDependentProperties(Planetoid planet)
@@ -285,12 +310,14 @@ namespace WorldFoundry.Climate
             SetAtmosphericScaleHeight(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
+            _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
         }
 
         internal void ResetWater()
         {
             _containsWaterVapor = null;
             _waterRatio = null;
+            _wetness = null;
         }
 
         internal void SetAtmosphericPressure(double value) => _atmosphericPressure = value;
@@ -318,18 +345,20 @@ namespace WorldFoundry.Climate
 
         /// <summary>
         /// Calculates the total height of the <see cref="Atmosphere"/>, defined as the point at
-        /// which atmospheric pressure is roughly equal to 0.01 Pa, in meters.
+        /// which atmospheric pressure is roughly equal to 0.5 Pa, in meters (the mesopause on Earth
+        /// is around this pressure).
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
         /// made.</param>
-        /// <param name="temp">An optional temperature to supply for the surface of the planet.</param>
+        /// <param name="temp">An optional temperature to supply for the surface of the
+        /// planet.</param>
         /// <returns>The height of the atmosphere, in meters.</returns>
         /// <remarks>
         /// Uses the molar mass of air on Earth, which is clearly not correct for other atmospheres,
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
         private void SetAtmosphericHeight(Planetoid planet, double? temp = null)
-            => AtmosphericHeight = Math.Log(1.0e-5 / AtmosphericPressure) * ScienceConstants.R * (temp ?? planet.AverageSurfaceTemperature) / (-planet.SurfaceGravity * ScienceConstants.MAir);
+            => AtmosphericHeight = Math.Log(5e-4 / AtmosphericPressure) * ScienceConstants.R * (temp ?? planet.AverageSurfaceTemperature) / (-planet.SurfaceGravity * ScienceConstants.MAir);
 
         private double GetAtmosphericMass(Planetoid planet)
             => MathConstants.FourPI * planet.RadiusSquared * AtmosphericPressure * 1000 / planet.SurfaceGravity;

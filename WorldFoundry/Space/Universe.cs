@@ -66,13 +66,11 @@ namespace WorldFoundry.Space
         /// </para>
         /// </remarks>
         private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
+            => Substance = new Substance
             {
                 Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
                 Mass = double.PositiveInfinity,
                 Temperature = 2.73,
             };
-        }
     }
 }

@@ -135,6 +135,10 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         public Vector3 Vector { get; internal set; }
 
+        /// <summary>
+        /// Strength of the global wind due to the Coriolis effect at this location, as a value
+        /// between 0 and 1.
+        /// </summary>
         internal float WindFactor { get; set; }
 
         /// <summary>

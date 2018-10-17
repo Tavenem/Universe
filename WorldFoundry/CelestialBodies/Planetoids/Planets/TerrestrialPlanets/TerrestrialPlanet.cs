@@ -1565,15 +1565,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var ratio = PlanetParams.WaterRatio.Value;
                 if (ratio <= 0)
                 {
-                    Terrain.SeaLevel = -Terrain.MaxElevation;
+                    Terrain.SeaLevel = -Terrain.MaxElevation * 1.1;
                     return 0;
                 }
                 if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
                 {
-                    Terrain.SeaLevel = (Radius * ratio) - Radius;
-                    return new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume;
+                    Terrain.SeaLevel = Terrain.MaxElevation * ratio;
+                    return new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
+                        - new HollowSphere(Radius, Radius + (Terrain.MaxElevation / 2)).Volume;
                 }
-                Terrain.SeaLevel = (ratio - 0.5) * 2 * Terrain.MaxElevation;
+                Terrain.SeaLevel = (ratio - 0.5) * 1.2 * Terrain.MaxElevation;
                 return ratio * ratio * 0.5 * Mass * Terrain.MaxElevation / Radius;
             }
             else
@@ -1589,7 +1590,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 {
                     Terrain.SeaLevel = Math.Pow(3 * (mass + new Sphere(Radius).Volume) / MathConstants.FourPI, 1.0 / 3.0) - Radius;
                 }
-                Terrain.SeaLevel = Math.Sqrt(Terrain.MaxElevation * mass * Radius * 8 / Mass) - Terrain.MaxElevation;
+                else
+                {
+                    Terrain.SeaLevel = Math.Sqrt(Terrain.MaxElevation * mass * Radius * 8 / Mass) - Terrain.MaxElevation;
+                }
                 return mass;
             }
         }

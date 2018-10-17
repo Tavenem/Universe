@@ -19,16 +19,15 @@ namespace WorldFoundry.Climate
         private const int AirCellLayerHeight = 2000;
         private const double SeaIcePerSecond = 1.53935e-4;
         private const float SnowToRainRatio = 13;
-        private const double PiOver1000 = Math.PI / 1000;
         private const double PrecipitationTempScale = 0.027;
 
         /// <summary>
-        /// Hadley lifts are a pure function of latitude, and do not vary with any property of the
+        /// Hadley values are a pure function of latitude, and do not vary with any property of the
         /// planet, atmosphere, or season. Since the calculation is relatively expensive, retrieved
         /// values can be stored for the lifetime of the program for future retrieval for the same
         /// (or very similar) location.
         /// </summary>
-        private static readonly Dictionary<double, double> HadleyLifts = new Dictionary<double, double>();
+        private static readonly Dictionary<double, double> HadleyValues = new Dictionary<double, double>();
 
         private static readonly double SaltWaterMeltingPointOffset = Chemical.Water.MeltingPoint - Chemical.Water_Salt.MeltingPoint;
 
@@ -182,53 +181,54 @@ namespace WorldFoundry.Climate
 
         private void SetPrecipitation()
         {
-            var mp = Chemical.Water.MeltingPoint;
+            var lowTemp = Chemical.Water.MeltingPoint - 8;
 
-            // Proportion of water vapor in atmosphere relative to Earth.
-            var wetness = Planet.Atmosphere.WaterRatio / 0.0025;
+            // Water in atmosphere relative to Earth.
+            var wetness = Planet.Atmosphere.Wetness;
 
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
             {
                 var t = Planet.Topography.Tiles[i];
                 var tc = TileClimates[i];
 
-                // Range of ~-0.2-0.2 adjusted to ~-1-2, further adjusted by wetness to raise the
-                // range, and cut off below 0.
-                var relativeHumidity = Math.Max(0, (Noise.GetNoise(t.Vector.X, t.Vector.Y, t.Vector.Z) + (wetness * 0.8)) * 2);
+                // Range of ~-0.2-0.2 adjusted to ~0-1, and cut off below 0.
+                var relativeHumidity = ((Noise.GetNoise(t.Vector.X, t.Vector.Y, t.Vector.Z) * 5) + 1) / 2;
+
+                // Hadley cells scale by ~1.3 near the equator, ~0.2 ±15º lat, ~1 ±60º lat, and ~0.2
+                // ±90º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
+                // the polar deserts.
+                var roundedAbsLatitude = Math.Abs(Math.Round(_latitudes[i], 3));
+                if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
+                {
+                    hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / 2) - (roundedAbsLatitude / Math.PI) + MathConstants.QuarterPI;
+                    HadleyValues.Add(roundedAbsLatitude, hadleyValue);
+                }
+                relativeHumidity *= hadleyValue;
+
+                // The strength of global winds (due to the Coriolis effect) can adjust the value up
+                // by as much as the local Hadley value, to as much as 1, but does not adjust down.
+                relativeHumidity += ((1 - relativeHumidity) * t.WindFactor).Clamp(0, hadleyValue);
+
+                // In a band ±8K around freezing, the value is scaled down; below that range it is
+                // cut off completely; above it is unchanged.
+                relativeHumidity *= ((tc.Temperature - lowTemp) / 16).Clamp(0, 1);
+
                 if (relativeHumidity.IsZero())
                 {
                     continue;
                 }
 
-                var tempFactor = ((tc.Temperature - mp) / 8).Clamp(0, 1);
-                relativeHumidity *= tempFactor * (1 + t.WindFactor);
-                if (relativeHumidity.IsZero())
-                {
-                    continue;
-                }
-
-                var roundedLatitude = Math.Round(_latitudes[i] / PiOver1000) * PiOver1000;
-                if (!HadleyLifts.TryGetValue(roundedLatitude, out var hadleyLift))
-                {
-                    hadleyLift = 1 + ((Math.Cos(6 * roundedLatitude) + 1) * (1 - (Math.Abs(roundedLatitude) / Math.PI)) / 4);
-                    HadleyLifts.Add(roundedLatitude, hadleyLift);
-                }
-
-                relativeHumidity *= hadleyLift;
-                if (relativeHumidity < 1)
-                {
-                    continue;
-                }
-
-                var mixingRatio = relativeHumidity * Atmosphere.GetSaturationMixingRatio(
+                var stdMixingRatio = Atmosphere.GetSaturationMixingRatio(
+                    Atmosphere.GetSaturationVaporPressure(tc.Temperature),
+                    TerrestrialPlanetParams.DefaultAtmosphericPressure);
+                var mixingRatio = Atmosphere.GetSaturationMixingRatio(
                     Atmosphere.GetSaturationVaporPressure(tc.Temperature * Planet.Atmosphere.Exner(tc.AtmosphericPressure)),
                     tc.AtmosphericPressure);
-                if (mixingRatio.IsZero())
-                {
-                    continue;
-                }
+                var mixingRatioRatio = mixingRatio / stdMixingRatio;
 
-                tc.Precipitation = (float)(Atmosphere.GetAtmosphericDensity(tc.Temperature, tc.AtmosphericPressure) * _airHeights[i] * mixingRatio * ProportionOfYear);
+                var airMassRatio = Planet.Atmosphere.AtmosphericHeight / 103493;
+
+                tc.Precipitation = (float)(10000 * relativeHumidity * airMassRatio * Planet.Atmosphere.DensityRatio * mixingRatioRatio * ProportionOfYear);
 
                 if (tc.Temperature <= Chemical.Water.MeltingPoint)
                 {
@@ -259,11 +259,11 @@ namespace WorldFoundry.Climate
                     continue;
                 }
 
-                var roundedLatitude = Math.Round(_latitudes[i] / PiOver1000) * PiOver1000;
-                if (!HadleyLifts.TryGetValue(roundedLatitude, out var hadleyLift))
+                var roundedLatitude = Math.Round(_latitudes[i], 3);
+                if (!HadleyValues.TryGetValue(roundedLatitude, out var hadleyLift))
                 {
                     hadleyLift = ((Math.Cos(6 * roundedLatitude) * (1 - (Math.Abs(roundedLatitude) / MathConstants.TwoPI))) + 1) / 2; // less dropoff with latitude
-                    HadleyLifts.Add(roundedLatitude, hadleyLift);
+                    HadleyValues.Add(roundedLatitude, hadleyLift);
                 }
 
                 var relativeHumidity = warmAir;
@@ -399,9 +399,6 @@ namespace WorldFoundry.Climate
             var latitudeTemperatures = new Dictionary<double, double>();
             var elevationTemperatures = new Dictionary<(double, double), double>();
             var elevationPressures = new Dictionary<(double, double), double>();
-            var zeroSVPIndexes = new Dictionary<(double, double), int>();
-            var exners = new Dictionary<double, double>();
-            var saturationVaporPressures = new Dictionary<(double, double), double>();
 
             for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
             {
@@ -430,56 +427,6 @@ namespace WorldFoundry.Climate
                     elevationPressures.Add((roundedTemperature, roundedElevation), pressureAtElevation);
                 }
                 tc.AtmosphericPressure = (float)pressureAtElevation;
-
-                var nearestLayerHeight = Math.Round(elevation / AirCellLayerHeight) * AirCellLayerHeight;
-                _airHeights[i] = nearestLayerHeight - elevation;
-                if (!elevationPressures.TryGetValue((roundedTemperature, roundedElevation), out var pressureAtLayerHeight))
-                {
-                    pressureAtLayerHeight = Planet.GetAtmosphericPressureFromTempAndElevation(roundedTemperature, nearestLayerHeight);
-                    elevationPressures.Add((roundedTemperature, nearestLayerHeight), pressureAtLayerHeight);
-                }
-
-                var layers = Math.Max(1, (int)Math.Floor((Planet.Atmosphere.AtmosphericHeight - elevation) / AirCellLayerHeight));
-                if (!zeroSVPIndexes.TryGetValue((nearestLayerHeight, roundedTemperature), out var layerIndex))
-                {
-                    layerIndex = (int)Math.Ceiling(Planet.GetHeightForTemperature(Atmosphere.TemperatureAtNearlyZeroSaturationVaporPressure, roundedTemperature, nearestLayerHeight) / AirCellLayerHeight).Clamp(1, layers);
-                    zeroSVPIndexes.Add((nearestLayerHeight, roundedTemperature), layerIndex);
-                }
-                var layer = layerIndex;
-
-                var height = nearestLayerHeight;
-                var saturationVaporPressure = 1.0;
-                do
-                {
-                    height += AirCellLayerHeight;
-                    if (!elevationTemperatures.TryGetValue((roundedTemperature, height), out var tempAtHeight))
-                    {
-                        tempAtHeight = Planet.GetTemperatureAtElevation(roundedTemperature, height);
-                        elevationTemperatures.Add((roundedTemperature, height), tempAtHeight);
-                    }
-
-                    if (!saturationVaporPressures.TryGetValue((tempAtHeight, pressureAtLayerHeight), out saturationVaporPressure))
-                    {
-                        if (!exners.TryGetValue(pressureAtLayerHeight, out var exner))
-                        {
-                            exner = Planet.Atmosphere.Exner(pressureAtLayerHeight);
-                            exners.Add(pressureAtLayerHeight, exner);
-                        }
-
-                        saturationVaporPressure = Atmosphere.GetSaturationVaporPressure(tempAtHeight * exner);
-                        saturationVaporPressures.Add((tempAtHeight, pressureAtLayerHeight), saturationVaporPressure);
-                    }
-
-                    if (saturationVaporPressure.IsZero())
-                    {
-                        break;
-                    }
-                    else
-                    {
-                        layer++;
-                    }
-                } while (layer < layers);
-                _airHeights[i] += height;
             }
         }
 
