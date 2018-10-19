@@ -13,6 +13,12 @@ namespace WorldFoundry.WorldGrids
     public class WorldGrid
     {
         /// <summary>
+        /// The maximum grid size (level of detail). Even values below this limit may be impractical,
+        /// depending on system resources.
+        /// </summary>
+        public const short MaxGridSize = 14;
+
+        /// <summary>
         /// Indicates the desired radius for <see cref="Tile"/>s, in m. Null by default, which
         /// indicates that the <see cref="DefaultGridSize"/> will be used instead.
         /// </summary>
@@ -58,12 +64,6 @@ namespace WorldFoundry.WorldGrids
         /// allowable. Null by default, which indicates that the maximum is the absolute <see cref="MaxGridSize"/>.
         /// </summary>
         public static short? MaxGeneratedGridSize { get; set; }
-
-        /// <summary>
-        /// The maximum grid size (level of detail). Even values below this limit may be impractical,
-        /// depending on system resources.
-        /// </summary>
-        public const short MaxGridSize = 14;
 
         /// <summary>
         /// The array of all <see cref="Corner"/>s which make up the <see cref="WorldGrid"/>.

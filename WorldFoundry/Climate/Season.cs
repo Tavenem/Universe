@@ -103,13 +103,13 @@ namespace WorldFoundry.Climate
             ProportionOfYear = 1.0 / amount;
             ElapsedYearToDate = ProportionOfYear * index;
 
-            _latitudes = new double[planet.Topography.Tiles.Length];
+            _latitudes = new double[planet.Grid.Tiles.Length];
             var tropicalEquator = -planet.AxialTilt * Math.Cos(MathConstants.TwoPI * ElapsedYearToDate) * (2.0 / 3.0);
 
-            TileClimates = new TileClimate[planet.Topography.Tiles.Length];
-            for (var j = 0; j < planet.Topography.Tiles.Length; j++)
+            TileClimates = new TileClimate[planet.Grid.Tiles.Length];
+            for (var j = 0; j < planet.Grid.Tiles.Length; j++)
             {
-                var t = planet.Topography.Tiles[j];
+                var t = planet.Grid.Tiles[j];
 
                 TileClimates[j] = new TileClimate();
                 var seasonalLatitude = t.Latitude - tropicalEquator;
@@ -123,10 +123,10 @@ namespace WorldFoundry.Climate
                 }
                 _latitudes[j] = seasonalLatitude;
             }
-            EdgeRiverFlows = new float[planet.Topography.Edges.Length];
+            EdgeRiverFlows = new float[planet.Grid.Edges.Length];
 
-            _airHeights = new double[planet.Topography.Tiles.Length];
-            _airCellLayers = new int[planet.Topography.Tiles.Length];
+            _airHeights = new double[planet.Grid.Tiles.Length];
+            _airCellLayers = new int[planet.Grid.Tiles.Length];
 
             SetTemperature(trueAnomaly);
             SetSeaIce(previous);
@@ -145,9 +145,9 @@ namespace WorldFoundry.Climate
 
         private void SetGroundWater(Season previous)
         {
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
-                var t = Planet.Topography.Tiles[i];
+                var t = Planet.Grid.Tiles[i];
                 if (t.TerrainType != TerrainType.Water)
                 {
                     var tc = TileClimates[i];
@@ -186,9 +186,9 @@ namespace WorldFoundry.Climate
             // Water in atmosphere relative to Earth.
             var wetness = Planet.Atmosphere.Wetness;
 
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
-                var t = Planet.Topography.Tiles[i];
+                var t = Planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
 
                 // Range of ~-0.2-0.2 adjusted to ~0-1, and cut off below 0.
@@ -241,9 +241,9 @@ namespace WorldFoundry.Climate
         {
             var mp = Chemical.Water.MeltingPoint;
 
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
-                var t = Planet.Topography.Tiles[i];
+                var t = Planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
 
                 var relTemp = PrecipitationTempScale * (tc.Temperature - mp);
@@ -296,11 +296,11 @@ namespace WorldFoundry.Climate
             var cornerFlows = new Dictionary<int, float>();
             var endpoints = new SortedSet<Corner>(Comparer<Corner>.Create((c1, c2) => c2.Elevation.CompareTo(c1.Elevation) * -1));
 
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
                 if (TileClimates[i].Runoff > 0)
                 {
-                    var lowest = Planet.Topography.Tiles[i].GetLowestCorner(Planet.Topography);
+                    var lowest = Planet.Grid.Tiles[i].GetLowestCorner(Planet.Grid);
 
                     cornerFlows[lowest.Index] = TileClimates[i].Runoff;
 
@@ -313,32 +313,32 @@ namespace WorldFoundry.Climate
                 var c = endpoints.First();
                 endpoints.Remove(c);
 
-                var index = Array.Find(Planet.Topography.Edges, x => x.RiverSource == c.Index)?.RiverDirection ?? -1;
-                var next = index == -1 ? null : Planet.Topography.Corners[index];
+                var index = Array.Find(Planet.Grid.Edges, x => x.RiverSource == c.Index)?.RiverDirection ?? -1;
+                var next = index == -1 ? null : Planet.Grid.Corners[index];
                 if (next == null)
                 {
-                    next = c.GetLowestCorner(Planet.Topography, true);
+                    next = c.GetLowestCorner(Planet.Grid, true);
                     if (next.Elevation > c.Elevation)
                     {
-                        next = c.GetLowestCorner(Planet.Topography, false);
+                        next = c.GetLowestCorner(Planet.Grid, false);
                     }
                     if (next.Elevation > c.Elevation && (prev?.LakeDepth ?? 0) == 0)
                     {
                         c.LakeDepth = Math.Min(
-                            c.Corners.Min(x => Planet.Topography.Corners[x].Elevation),
-                            c.Tiles.Min(x => Planet.Topography.Tiles[x].Elevation)) - c.Elevation;
+                            c.Corners.Min(x => Planet.Grid.Corners[x].Elevation),
+                            c.Tiles.Min(x => Planet.Grid.Tiles[x].Elevation)) - c.Elevation;
                     }
                 }
 
                 if ((prev?.LakeDepth ?? 0) == 0 || c.LakeDepth + c.Elevation >= next.Elevation)
                 {
                     var edgeIndex = c.Edges[c.IndexOfCorner(next.Index)];
-                    var edge = Planet.Topography.Edges[edgeIndex];
+                    var edge = Planet.Grid.Edges[edgeIndex];
                     edge.RiverSource = c.Index;
 
                     cornerFlows.TryGetValue(c.Index, out var flow);
                     flow += c.Edges
-                        .Where(e => Planet.Topography.Edges[e].RiverDirection == c.Index)
+                        .Where(e => Planet.Grid.Edges[e].RiverDirection == c.Index)
                         .Sum(e => EdgeRiverFlows[e]);
                     EdgeRiverFlows[edgeIndex] = flow;
 
@@ -346,12 +346,12 @@ namespace WorldFoundry.Climate
                     var nextRiverEdge = -1;
                     do
                     {
-                        var nextRiverEdges = rc.Edges.Where(e => Planet.Topography.Edges[e].RiverSource == rc.Index).ToList();
+                        var nextRiverEdges = rc.Edges.Where(e => Planet.Grid.Edges[e].RiverSource == rc.Index).ToList();
                         if (nextRiverEdges.Count > 0)
                         {
                             nextRiverEdge = nextRiverEdges[0];
                             EdgeRiverFlows[nextRiverEdge] += flow;
-                            rc = Planet.Topography.Corners[Planet.Topography.Edges[nextRiverEdge].RiverDirection];
+                            rc = Planet.Grid.Corners[Planet.Grid.Edges[nextRiverEdge].RiverDirection];
                         }
                         else
                         {
@@ -362,7 +362,7 @@ namespace WorldFoundry.Climate
                     if (next.TerrainType == TerrainType.Land
                         && next.LakeDepth == 0
                         && !endpoints.Contains(next)
-                        && !next.Edges.Any(e => Planet.Topography.Edges[e].RiverSource == next.Index))
+                        && !next.Edges.Any(e => Planet.Grid.Edges[e].RiverSource == next.Index))
                     {
                         endpoints.Add(next);
                     }
@@ -374,10 +374,10 @@ namespace WorldFoundry.Climate
 
         private void SetSeaIce(Season previous)
         {
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
                 var tc = TileClimates[i];
-                if (Planet.Topography.Tiles[i].TerrainType.HasFlag(TerrainType.Water))
+                if (Planet.Grid.Tiles[i].TerrainType.HasFlag(TerrainType.Water))
                 {
                     double previousIce = previous?.TileClimates[i].SeaIce ?? 0;
                     var ice = 0.0;
@@ -400,9 +400,9 @@ namespace WorldFoundry.Climate
             var elevationTemperatures = new Dictionary<(double, double), double>();
             var elevationPressures = new Dictionary<(double, double), double>();
 
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
-                var t = Planet.Topography.Tiles[i];
+                var t = Planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
                 var latitude = Math.Abs(_latitudes[i]);
                 if (!latitudeTemperatures.TryGetValue(latitude, out var surfaceTemp))
@@ -439,9 +439,9 @@ namespace WorldFoundry.Climate
             var exners = new Dictionary<double, double>();
             var saturationVaporPressures = new Dictionary<(double, double), double>();
 
-            for (var i = 0; i < Planet.Topography.Tiles.Length; i++)
+            for (var i = 0; i < Planet.Grid.Tiles.Length; i++)
             {
-                var t = Planet.Topography.Tiles[i];
+                var t = Planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
                 var latitude = Math.Abs(_latitudes[i]);
                 if (!latitudeTemperatures.TryGetValue(latitude, out var surfaceTemp))

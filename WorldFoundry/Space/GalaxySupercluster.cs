@@ -87,27 +87,27 @@ namespace WorldFoundry.Space
             var chance = Randomizer.Instance.Next(6);
             if (chance == 0)
             {
-                SetShape(new Ellipsoid(majorAxis, minorAxis1, minorAxis2));
+                Shape = new Ellipsoid(majorAxis, minorAxis1, minorAxis2);
             }
             else if (chance == 1)
             {
-                SetShape(new Ellipsoid(majorAxis, minorAxis2, minorAxis1));
+                Shape = new Ellipsoid(majorAxis, minorAxis2, minorAxis1);
             }
             else if (chance == 2)
             {
-                SetShape(new Ellipsoid(minorAxis1, majorAxis, minorAxis2));
+                Shape = new Ellipsoid(minorAxis1, majorAxis, minorAxis2);
             }
             else if (chance == 3)
             {
-                SetShape(new Ellipsoid(minorAxis2, majorAxis, minorAxis1));
+                Shape = new Ellipsoid(minorAxis2, majorAxis, minorAxis1);
             }
             else if (chance == 4)
             {
-                SetShape(new Ellipsoid(minorAxis1, minorAxis2, majorAxis));
+                Shape = new Ellipsoid(minorAxis1, minorAxis2, majorAxis);
             }
             else
             {
-                SetShape(new Ellipsoid(minorAxis2, minorAxis1, majorAxis));
+                Shape = new Ellipsoid(minorAxis2, minorAxis1, majorAxis);
             }
         }
     }

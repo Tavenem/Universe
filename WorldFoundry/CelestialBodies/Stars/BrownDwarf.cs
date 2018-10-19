@@ -16,17 +16,16 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
-        /// biosphere, if it is habitable.
+        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
+        /// cannot support life.
         /// </summary>
         /// <remarks>
-        /// 0 for brown dwarfs; their habitable zones, if any, are moving targets due to rapid
-        /// cooling, and intersect soon with severe tidal forces, making it unlikely that life could
-        /// develop before a planet becomes uninhabitable.
+        /// <see langword="false"/> for brown dwarfs; their habitable zones, if any, are moving
+        /// targets due to rapid cooling, and intersect soon with severe tidal forces, making it
+        /// unlikely that life could develop before a planet becomes uninhabitable.
         /// </remarks>
-        public override double? ChanceOfLife => _chanceOfLife;
+        public override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/>.

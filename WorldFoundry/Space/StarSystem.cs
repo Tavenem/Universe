@@ -865,7 +865,7 @@ namespace WorldFoundry.Space
             // as a close-enough approximation, plus a bit of extra.
             Substance.Mass = ((Stars?.Sum(s => s.Mass) ?? 0) + (companions?.Sum(s => s.star.Mass) ?? 0)) * 1.001;
 
-            SetShape(new Sphere(radius));
+            Shape = new Sphere(radius);
 
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {

@@ -12,11 +12,6 @@ namespace WorldFoundry.Space
     /// </summary>
     public class CelestialEntity : IEquatable<CelestialEntity>
     {
-        /// <summary>
-        /// Local space is a coordinate system with a range of -1000000 to 1000000.
-        /// </summary>
-        internal const int LocalSpaceScale = 1000000;
-
         private const string _baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -25,22 +20,12 @@ namespace WorldFoundry.Space
         public virtual string BaseTypeName => _baseTypeName;
 
         /// <summary>
-        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually
-        /// have a biosphere, if it is habitable.
-        /// </summary>
-        /// <remarks>
-        /// A value of 1 (or null) indicates that every body which could sustain life, does. A value
-        /// of 0.5 indicates that only half of potentially habitable worlds actually have living
-        /// organisms. The lowest value in a world's parent hierarchy is used, which allows parent
-        /// objects to override children to reflect inhospitable conditions (e.g. excessive radiation).
-        /// </remarks>
-        public virtual double? ChanceOfLife => null;
-
-        private string _designation;
-        /// <summary>
         /// A string that uniquely identifies this <see cref="CelestialEntity"/>.
         /// </summary>
-        public string Designation => _designation ?? (_designation = GetDesgination());
+        public string Designation
+            => string.IsNullOrEmpty(DesignatorPrefix)
+                ? ID.ToString("B")
+                : $"{DesignatorPrefix} {ID.ToString("B")}";
 
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="Designation"/>.
@@ -51,6 +36,12 @@ namespace WorldFoundry.Space
         /// The primary key for this <see cref="CelestialEntity"/>.
         /// </summary>
         public Guid ID { get; }
+
+        /// <summary>
+        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
+        /// cannot support life.
+        /// </summary>
+        public virtual bool IsHospitable => Parent?.IsHospitable ?? true;
 
         /// <summary>
         /// The total mass of this <see cref="CelestialEntity"/>, in kg.
@@ -70,23 +61,12 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The location of this <see cref="CelestialEntity"/>.
         /// </summary>
-        public Location Location
-        {
-            get
-            {
-                if (_location == null)
-                {
-                    GenerateLocation(null);
-                }
-                return _location;
-            }
-            private protected set => _location = value;
-        }
+        public Location Location => _location;
 
         /// <summary>
         /// The <see cref="CelestialRegion"/> which directly contains this <see cref="CelestialEntity"/>.
         /// </summary>
-        public CelestialRegion Parent => Location.Parent?.CelestialEntity as CelestialRegion;
+        public CelestialRegion Parent => Location?.Parent?.CelestialEntity as CelestialRegion;
 
         /// <summary>
         /// Specifies the location of this <see cref="CelestialEntity"/>'s center in the local space
@@ -110,27 +90,24 @@ namespace WorldFoundry.Space
         /// </summary>
         public double Radius => Shape.ContainingRadius;
 
-        private double? _radiusSquared;
-        /// <summary>
-        /// Gets the <see cref="Radius"/>, squared, in meters.
-        /// </summary>
-        public double RadiusSquared => (_radiusSquared ?? (_radiusSquared = Shape.ContainingRadius * Shape.ContainingRadius)).Value;
-
         /// <summary>
         /// The shape of this <see cref="CelestialEntity"/>.
         /// </summary>
         public IShape Shape
         {
             get => Substance?.Shape ?? SinglePoint.Origin;
-            private set
+            protected set
             {
-                Substance.Shape = value;
-                if (Location is Region region)
+                if (Substance != null)
                 {
-                    region.Shape = value;
+                    Substance.Shape = value.GetCloneAtPosition(Position);
+                    if (Location is Region region)
+                    {
+                        region.Shape = Substance.Shape;
+                    }
+                    _radiusSquared = null;
+                    _surfaceGravity = null;
                 }
-                _radiusSquared = null;
-                _surfaceGravity = null;
             }
         }
 
@@ -164,7 +141,17 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The average force of gravity at the surface of this <see cref="CelestialEntity"/>, in N.
         /// </summary>
-        public double SurfaceGravity => (_surfaceGravity ?? (_surfaceGravity = Substance.GetSurfaceGravity())).Value;
+        public double SurfaceGravity
+        {
+            get
+            {
+                if (_surfaceGravity == null && Substance != null)
+                {
+                    _surfaceGravity = Substance.GetSurfaceGravity();
+                }
+                return _surfaceGravity ?? 0;
+            }
+        }
 
         /// <summary>
         /// The average temperature of this <see cref="CelestialEntity"/>, in K.
@@ -181,6 +168,19 @@ namespace WorldFoundry.Space
         /// The name for this type of <see cref="CelestialEntity"/>.
         /// </summary>
         public virtual string TypeName => BaseTypeName;
+
+        private double? _radiusSquared;
+        internal double RadiusSquared
+        {
+            get
+            {
+                if (_radiusSquared == null && Substance?.Shape != null)
+                {
+                    _radiusSquared = Shape.ContainingRadius * Shape.ContainingRadius;
+                }
+                return _radiusSquared ?? 0;
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialEntity"/>.
@@ -220,7 +220,7 @@ namespace WorldFoundry.Space
         /// one.</param>
         /// <returns><see langword="true"/> if the specified <see cref="CelestialEntity"/> instance
         /// is equal to this once; otherwise, <see langword="false"/>.</returns>
-        public bool Equals(CelestialEntity other) => ID == other?.ID;
+        public bool Equals(CelestialEntity other) => ID != Guid.Empty && ID == other?.ID;
 
         private protected virtual void GenerateLocation(CelestialRegion parent, Vector3? position = null)
             => _location = new Location(this, parent?.Location, position ?? Vector3.Zero);
@@ -232,39 +232,10 @@ namespace WorldFoundry.Space
         private protected virtual void GenerateSubstance() { }
 
         /// <summary>
-        /// Determines the chance that this <see cref="CelestialEntity"/> and its children will
-        /// actually have a biosphere, if it is habitable: a value between 0.0 and 1.0.
-        /// </summary>
-        /// <returns>
-        /// The chance that this <see cref="CelestialEntity"/> and its children will actually have a
-        /// biosphere, if it is habitable: a value between 0.0 and 1.0.
-        /// </returns>
-        private protected double GetChanceOfLife() => Math.Min(Parent?.GetChanceOfLife() ?? 1.0, ChanceOfLife ?? 1.0);
-
-        private protected string GetDesgination()
-            => string.IsNullOrEmpty(DesignatorPrefix)
-                ? ID.ToString("B")
-                : $"{DesignatorPrefix} {ID.ToString("B")}";
-
-        /// <summary>
         /// Returns the hash code for this instance.
         /// </summary>
         /// <returns>The hash code for this instance.</returns>
         public override int GetHashCode() => ID.GetHashCode();
-
-        /// <summary>
-        /// Sets this <see cref="CelestialEntity"/>'s shape to the given value.
-        /// </summary>
-        /// <param name="shape">The shape to set.</param>
-        protected void SetShape(IShape shape)
-        {
-            if (_substance == null)
-            {
-                throw new Exception($"{nameof(Substance)} must be initialized before calling {nameof(SetShape)}.");
-            }
-
-            Shape = (shape ?? throw new ArgumentNullException(nameof(shape))).GetCloneAtPosition(Position);
-        }
 
         /// <summary>
         /// Returns a string that represents the celestial object.

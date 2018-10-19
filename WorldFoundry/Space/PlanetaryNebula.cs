@@ -75,7 +75,7 @@ namespace WorldFoundry.Space
                 Mass = Math.Round(Randomizer.Instance.NextDouble(1.99e29, 1.99e30)), // ~0.1–1 solar mass.
                 Temperature = 10000,
             };
-            SetShape(new Sphere(Space));
+            Shape = new Sphere(Space);
         }
     }
 }

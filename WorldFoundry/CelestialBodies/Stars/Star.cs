@@ -158,11 +158,9 @@ namespace WorldFoundry.CelestialBodies.Stars
                 Temperature = GenerateTemperature(),
             };
 
-            var shape = GenerateShape();
+            Shape = GenerateShape();
 
-            Substance.Mass = GenerateMass(shape);
-
-            SetShape(shape);
+            Substance.Mass = GenerateMass(Shape);
         }
 
         /// <summary>

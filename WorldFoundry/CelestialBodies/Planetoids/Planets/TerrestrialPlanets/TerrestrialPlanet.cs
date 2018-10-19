@@ -199,6 +199,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             internal set => _surfaceAlbedo = value;
         }
 
+        private WorldGrid _grid;
+        /// <summary>
+        /// The <see cref="WorldGrid"/> which describes this <see cref="TerrestrialPlanet"/>'s
+        /// surface.
+        /// </summary>
+        public WorldGrid Grid => _grid ?? (_grid = GetGrid());
+
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
         /// </summary>
@@ -405,8 +412,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // Convert the target average surface temperature to an estimated target equatorial
                 // surface temperature, for which orbit/luminosity requirements can be calculated.
-                targetTemp *= 1.06;
-                var targetEquatorialEffectiveTemp = targetTemp;
+                var targetEquatorialEffectiveTemp = targetTemp * 1.06;
 
                 // Due to atmospheric effects, the target is likely to be missed considerably on the
                 // first attempt, since the calculations for orbit/luminosity will not be able to
@@ -423,7 +429,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                     if (PlanetParams?.SurfaceTemperature.HasValue == true)
                     {
-                        delta = targetTemp - AverageSurfaceTemperature;
+                        delta = targetTemp - SurfaceTemperature;
                     }
                     else
                     {
@@ -452,6 +458,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     {
                         prevDelta = 0;
                         Atmosphere = null;
+                        ResetCachedTemperatures();
                         targetEquatorialEffectiveTemp = targetTemp * 1.06;
                     }
                     else
@@ -542,7 +549,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             reason = UninhabitabilityReason.None;
 
-            if (TMath.IsZero(GetChanceOfLife()))
+            if (!IsHospitable)
             {
                 reason = UninhabitabilityReason.Other;
             }
@@ -776,6 +783,63 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     Atmosphere.Composition = ReduceCO2(Atmosphere.Composition);
                 }
                 Atmosphere.ResetGreenhouseFactor();
+            }
+        }
+
+        private void ClassifyTerrain()
+        {
+            foreach (var t in Grid.Tiles)
+            {
+                var land = 0;
+                var water = 0;
+                for (var i = 0; i < t.EdgeCount; i++)
+                {
+                    if (Grid.Corners[t.Corners[i]].Elevation < 0)
+                    {
+                        water++;
+                    }
+                    else
+                    {
+                        land++;
+                    }
+                }
+                if (t.Elevation < 0)
+                {
+                    water++;
+                }
+                else
+                {
+                    land++;
+                }
+                t.TerrainType = (land > 0 && water > 0)
+                    ? TerrainType.Coast
+                    : (land > 0 ? TerrainType.Land : TerrainType.Water);
+            }
+            foreach (var c in Grid.Corners)
+            {
+                var land = 0;
+                for (var i = 0; i < 3; i++)
+                {
+                    if (Grid.Corners[c.Corners[i]].Elevation >= 0)
+                    {
+                        land++;
+                    }
+                }
+                c.TerrainType = c.Elevation < 0
+                    ? (land > 0 ? TerrainType.Coast : TerrainType.Water)
+                    : TerrainType.Land;
+            }
+            foreach (var e in Grid.Edges)
+            {
+                var type = TerrainType.Land;
+                for (var i = 0; i < 2; i++)
+                {
+                    if (Grid.Corners[e.Corners[i]].TerrainType != type)
+                    {
+                        type = i == 0 ? Grid.Tiles[e.Tiles[i]].TerrainType : TerrainType.Coast;
+                    }
+                }
+                e.TerrainType = type;
             }
         }
 
@@ -1147,7 +1211,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // Recalculate temperatures based on the new atmosphere.
                 ResetCachedTemperatures();
                 surfaceTemp = AverageSurfaceTemperature;
-                var polarTemp = AveragePolarSurfaceTemperature;
 
                 // Recalculate the phases of water based on the new temperature.
                 CalculateGasPhaseMix(
@@ -1161,21 +1224,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // recalculated once again.
                 if (GenerateLife())
                 {
-                    _atmosphere.ResetTemperatureDependentProperties(this);
+                    ResetCachedTemperatures();
                     surfaceTemp = AverageSurfaceTemperature;
-                    polarTemp = AveragePolarSurfaceTemperature;
                     CalculateGasPhaseMix(
                         CanHaveOxygen,
                         Chemical.Water,
                         surfaceTemp,
                         ref hydrosphereAtmosphereRatio,
                         ref adjustedAtmosphericPressure);
+                    ResetCachedTemperatures();
+                    surfaceTemp = AverageSurfaceTemperature;
                 }
             }
             else
             {
                 // Recalculate temperature based on the new atmosphere.
-                _atmosphere.ResetTemperatureDependentProperties(this);
+                ResetCachedTemperatures();
                 surfaceTemp = AverageSurfaceTemperature;
             }
 
@@ -1560,42 +1624,53 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private double GenerateHydrosphereMass()
         {
-            if (PlanetParams?.WaterRatio.HasValue == true)
+            var ratio = PlanetParams?.WaterRatio ?? Randomizer.Instance.NextDouble();
+
+            if (ratio <= 0)
             {
-                var ratio = PlanetParams.WaterRatio.Value;
-                if (ratio <= 0)
-                {
-                    Terrain.SeaLevel = -Terrain.MaxElevation * 1.1;
-                    return 0;
-                }
-                if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
-                {
-                    Terrain.SeaLevel = Terrain.MaxElevation * ratio;
-                    return new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
-                        - new HollowSphere(Radius, Radius + (Terrain.MaxElevation / 2)).Volume;
-                }
-                Terrain.SeaLevel = (ratio - 0.5) * 1.2 * Terrain.MaxElevation;
-                return ratio * ratio * 0.5 * Mass * Terrain.MaxElevation / Radius;
+                Terrain.SeaLevel = -Terrain.MaxElevation * 1.1;
+                return 0;
             }
-            else
+
+            if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
             {
-                var factor = Mass / 8.75e5;
-                var mass = Randomizer.Instance.Lognormal(0, factor * 4).Clamp(0, factor);
-                if (mass.IsZero())
-                {
-                    Terrain.SeaLevel = -1;
-                    return 0;
-                }
-                if (HasFlatSurface || Terrain.MaxElevation.IsZero())
-                {
-                    Terrain.SeaLevel = Math.Pow(3 * (mass + new Sphere(Radius).Volume) / MathConstants.FourPI, 1.0 / 3.0) - Radius;
-                }
-                else
-                {
-                    Terrain.SeaLevel = Math.Sqrt(Terrain.MaxElevation * mass * Radius * 8 / Mass) - Terrain.MaxElevation;
-                }
-                return mass;
+                Terrain.SeaLevel = Terrain.MaxElevation * ratio;
+                return new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
+                    - (new HollowSphere(Radius, Radius + Terrain.MaxElevation).Volume / 2);
             }
+
+            if (ratio.IsEqualTo(0.5))
+            {
+                Terrain.SeaLevel = 0;
+                // Approx 5/6 of the total area is filled (elevations roughly follow an
+                // exponential distribution).
+                var v = new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume;
+                return v - (v * 5 / 6);
+            }
+
+            SetGridElevations();
+            var orderedTiles = Grid.Tiles.OrderBy(t => t.Elevation);
+            var targetWaterTileCount = (Grid.Tiles.Length * ratio).RoundToInt();
+            var landTiles = orderedTiles.Skip(targetWaterTileCount);
+            if (landTiles.Any())
+            {
+                var first = landTiles.First();
+                if (!landTiles.All(t => t.Elevation == first.Elevation))
+                {
+                    var lowestLandElevation = first.Elevation;
+                    var nextLowestLandElevation = landTiles.SkipWhile(t => t.Elevation == first.Elevation).First().Elevation;
+
+                    Terrain.SeaLevel = (first.Elevation + nextLowestLandElevation) / 2;
+
+                    OffsetGridElevations((float)Terrain.SeaLevel);
+                    ClassifyTerrain();
+
+                    var oceanTileCount = orderedTiles.TakeWhile(t => t.Elevation <= first.Elevation).Count();
+                    return orderedTiles.Take(oceanTileCount).Sum(x => x.Area * (Terrain.SeaLevel - x.Elevation));
+                }
+            }
+            Terrain.SeaLevel = 0;
+            return 0;
         }
 
         /// <summary>
@@ -1607,7 +1682,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </returns>
         private bool GenerateLife()
         {
-            if (!IsHabitable() || Randomizer.Instance.NextDouble() > GetChanceOfLife())
+            if (!IsHospitable || !IsHabitable())
             {
                 HasBiosphere = false;
                 return false;
@@ -1894,6 +1969,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Generates a new <see cref="Topography"/> for this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        private WorldGrid GetGrid()
+        {
+            var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
+
+            if (PlanetParams?.GridTileRadius.HasValue ?? false)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
+            {
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
+            }
+
+            return new WorldGrid(this, size);
+        }
+
+        /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
         /// </summary>
         private protected override bool GetHasMagnetosphere() => PlanetParams?.HasMagnetosphere ?? base.GetHasMagnetosphere();
@@ -2097,27 +2191,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         private double GetTempForThinAtmosphere() => ScienceConstants.TwoG * Mass * 7.0594833834763e-5 / Radius;
 
-        /// <summary>
-        /// Generates a new <see cref="Topography"/> for this <see cref="Planetoid"/>.
-        /// </summary>
-        private protected override WorldGrid GetTopography()
-        {
-            var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
-
-            if (PlanetParams?.GridTileRadius.HasValue ?? false)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-
-            var grid = new WorldGrid(this, size);
-
-            return grid;
-        }
-
         private double GetTrueAnomalyForSeason(int amount, int index)
         {
             var seasonAngle = MathConstants.TwoPI / amount;
@@ -2154,6 +2227,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private bool IsHabitable()
             => Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Liquid)
             || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid);
+
+        private void OffsetGridElevations(float seaLevel)
+        {
+            foreach (var t in Grid.Tiles)
+            {
+                t.Elevation -= seaLevel;
+                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)((t.Elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
+            }
+            foreach (var c in Grid.Corners)
+            {
+                c.Elevation -= seaLevel;
+            }
+        }
 
         private Season SetClimate()
         {
@@ -2192,20 +2278,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 seasons.Add(season);
             }
 
-            for (var i = 0; i < Topography.Tiles.Length; i++)
+            for (var i = 0; i < Grid.Tiles.Length; i++)
             {
-                Topography.Tiles[i].SetClimate(seasons);
+                Grid.Tiles[i].SetClimate(seasons);
             }
 
-            for (var i = 0; i < Topography.Edges.Length; i++)
+            for (var i = 0; i < Grid.Edges.Length; i++)
             {
-                Topography.Edges[i].RiverFlow = new FloatRange(
+                Grid.Edges[i].RiverFlow = new FloatRange(
                     seasons.Min(x => x.EdgeRiverFlows[i]),
                     seasons.Average(x => x.EdgeRiverFlows[i]),
                     seasons.Max(x => x.EdgeRiverFlows[i]));
             }
 
             return season;
+        }
+
+        private void SetGridElevations()
+        {
+            foreach (var t in Grid.Tiles)
+            {
+                t.Elevation = (float)Terrain.GetElevationAt(t.Vector);
+            }
+            foreach (var c in Grid.Corners)
+            {
+                c.Elevation = (float)Terrain.GetElevationAt(c.Vector);
+            }
         }
 
         private void SetHydrosphereProportion(

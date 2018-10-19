@@ -62,11 +62,9 @@ namespace WorldFoundry.Space.Galaxies
 
             var radius = Randomizer.Instance.NextDouble(9.5e18, 2.5e18); // ~200–1800 ly
             var axis = radius * Randomizer.Instance.Normal(0.02, 1);
-            var shape = new Ellipsoid(radius, axis);
+            Shape = new Ellipsoid(radius, axis);
 
-            Substance.Mass = GenerateMass(shape);
-
-            SetShape(shape);
+            Substance.Mass = GenerateMass(Shape);
         }
     }
 }

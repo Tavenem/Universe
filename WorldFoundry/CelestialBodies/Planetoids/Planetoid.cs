@@ -390,33 +390,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public List<Planetoid> Satellites { get; private set; }
 
+        private double? _surfaceTemperature;
+        /// <summary>
+        /// The current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
+        /// </summary>
+        public double SurfaceTemperature
+            => _surfaceTemperature ?? (_surfaceTemperature = GetCurrentSurfaceTemperature()).Value;
+
         private Terrain _terrain;
         /// <summary>
         /// The <see cref="Terrain"/> which describes this <see cref="Planetoid"/>'s surface.
         /// </summary>
         public Terrain Terrain => _terrain ?? (_terrain = GetTerrain());
-
-        private WorldGrid _topography;
-        /// <summary>
-        /// The <see cref="WorldGrid"/> which describes this <see cref="Planetoid"/>'s surface.
-        /// </summary>
-        public WorldGrid Topography
-        {
-            get
-            {
-                if (_topography == null)
-                {
-                    _topography = GetTopography();
-
-                    var t = AverageSurfaceTemperature; // Ensure sea level is set.
-
-                    ClassifyTerrain();
-
-                    _topography.SetCoriolisCoefficients();
-                }
-                return _topography;
-            }
-        }
 
         private double? _eccentricity;
         /// <summary>
@@ -972,73 +957,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private void ClassifyTerrain()
-        {
-            foreach (var t in Topography.Tiles)
-            {
-                t.Elevation = (float)Terrain.GetElevationAt(t.Vector);
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)((t.Elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
-            }
-            foreach (var c in Topography.Corners)
-            {
-                c.Elevation = (float)Terrain.GetElevationAt(c.Vector);
-            }
-
-            foreach (var t in Topography.Tiles)
-            {
-                var land = 0;
-                var water = 0;
-                for (var i = 0; i < t.EdgeCount; i++)
-                {
-                    if (Topography.Corners[t.Corners[i]].Elevation < Terrain.SeaLevel)
-                    {
-                        water++;
-                    }
-                    else
-                    {
-                        land++;
-                    }
-                }
-                if (t.Elevation < Terrain.SeaLevel)
-                {
-                    water++;
-                }
-                else
-                {
-                    land++;
-                }
-                t.TerrainType = (land > 0 && water > 0)
-                    ? TerrainType.Coast
-                    : (land > 0 ? TerrainType.Land : TerrainType.Water);
-            }
-            foreach (var c in Topography.Corners)
-            {
-                var land = 0;
-                for (var i = 0; i < 3; i++)
-                {
-                    if (Topography.Corners[c.Corners[i]].Elevation >= Terrain.SeaLevel)
-                    {
-                        land++;
-                    }
-                }
-                c.TerrainType = c.Elevation < Terrain.SeaLevel
-                    ? (land > 0 ? TerrainType.Coast : TerrainType.Water)
-                    : TerrainType.Land;
-            }
-            foreach (var e in Topography.Edges)
-            {
-                var type = TerrainType.Land;
-                for (var i = 0; i < 2; i++)
-                {
-                    if (Topography.Corners[e.Corners[i]].TerrainType != type)
-                    {
-                        type = i == 0 ? Topography.Tiles[e.Tiles[i]].TerrainType : TerrainType.Coast;
-                    }
-                }
-                e.TerrainType = type;
-            }
-        }
-
         /// <summary>
         /// Determines an angle between the Y-axis and the axis of rotation for this <see cref="Planetoid"/>.
         /// </summary>
@@ -1113,19 +1031,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 Mass = mass,
                 Temperature = GetInternalTemperature(),
             };
-            SetShape(shape);
-        }
-
-        private protected virtual WorldGrid GetTopography()
-        {
-            var size = WorldGrid.DefaultGridSize;
-
-            if (WorldGrid.DefaultDesiredTileRadius.HasValue)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value);
-            }
-
-            return new WorldGrid(this, size);
+            Shape = shape;
         }
 
         private double GetAirMass(double atmosphericScaleHeight, double cosLatitude)
@@ -1141,6 +1047,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => (AverageBlackbodySurfaceTemperature * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial)) + GreenhouseEffect;
 
         private protected virtual IComposition GetComposition(double mass, IShape shape) => new Material(Chemical.Rock, Phase.Solid);
+
+        private double GetCurrentSurfaceTemperature() => (BlackbodySurfaceTemperature * InsolationFactor_Equatorial) + GreenhouseEffect;
 
         private protected virtual double? GetDensity() => null;
 
@@ -1309,6 +1217,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _insolationFactor_Polar = null;
             _maxSurfaceTemperature = null;
             _minSurfaceTemperature = null;
+            _surfaceTemperature = null;
             _atmosphere?.ResetTemperatureDependentProperties(this);
         }
 

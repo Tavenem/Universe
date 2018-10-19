@@ -137,20 +137,17 @@ namespace WorldFoundry.Space.AsteroidFields
         {
             Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
 
-            IShape shape = null;
             if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
             {
                 var axis = _majorRadius ?? Randomizer.Instance.NextDouble(1.5e11, 3.15e12);
-                shape = new Ellipsoid(axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis);
+                Shape = new Ellipsoid(axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis);
             }
             else
             {
-                shape = new Torus(_majorRadius ?? 0, _minorRadius ?? 0);
+                Shape = new Torus(_majorRadius ?? 0, _minorRadius ?? 0);
             }
 
-            Substance.Mass = shape.Volume * 7.0e-8;
-
-            SetShape(shape);
+            Substance.Mass = Shape.Volume * 7.0e-8;
         }
     }
 }

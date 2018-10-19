@@ -17,17 +17,18 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _chanceOfLife = 0;
-        /// <summary>The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
-        /// biosphere, if it is habitable.
+        /// <summary>
+        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
+        /// cannot support life.
         /// </summary>
         /// <remarks>
-        /// 0 for white dwarfs; their habitable zones, if any, are moving targets due to rapid
-        /// cooling, and intersect soon with severe tidal forces, and additionally severe UV
-        /// radiation is expected in early stages at the close distances where a habitable zone could
-        /// be expected, making it unlikely that life could develop before a planet becomes uninhabitable.
+        /// <see langword="false"/> for white dwarfs; their habitable zones, if any, are moving
+        /// targets due to rapid cooling, and intersect soon with severe tidal forces, and
+        /// additionally severe UV radiation is expected in early stages at the close distances
+        /// where a habitable zone could be expected, making it unlikely that life could develop
+        /// before a planet becomes uninhabitable.
         /// </remarks>
-        public override double? ChanceOfLife => _chanceOfLife;
+        public override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/>.
@@ -78,7 +79,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             var radius = Math.Round(Math.Pow(1.8986e27 / Mass, 1.0 / 3.0) * 69911000);
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>

@@ -138,7 +138,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         {
             var axis = Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = Math.Round(Randomizer.Instance.NextDouble(0.5, 1), 2);
-            return new Ellipsoid(axis, irregularity);
+            return new Ellipsoid(axis, axis * irregularity, axis / irregularity);
         }
 
         /// <summary>

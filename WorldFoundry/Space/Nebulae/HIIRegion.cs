@@ -76,10 +76,10 @@ namespace WorldFoundry.Space
             {
                 axis = Math.Round(1.0e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.0e17));
             } while (axis > Space);
-            SetShape(new Ellipsoid(
+            Shape = new Ellipsoid(
                 axis,
                 Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5)),
-                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5))));
+                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5)));
         }
     }
 }

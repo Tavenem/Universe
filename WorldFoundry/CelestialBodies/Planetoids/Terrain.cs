@@ -18,13 +18,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         public double SeaLevel { get; set; }
 
-        internal double MaxElevation { get; set; }
+        public double MaxElevation { get; set; }
 
         private FastNoise _noise1;
-        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 10, FastNoise.NoiseType.CubicFractal, FastNoise.FractalType.RigidMulti, octaves: 6, gradientPerturbAmp: 20));
+        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 1, FastNoise.NoiseType.CubicFractal, octaves: 5));
 
         private FastNoise _noise2;
-        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 10, FastNoise.NoiseType.CubicFractal, octaves: 2));
+        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 1, FastNoise.NoiseType.Cubic));
 
         private Terrain()
         {
@@ -55,18 +55,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
 
             // Initial noise map, magnified to a range of approximately -1-1.
-            var baseNoise = Noise1.GetPerturbedNoise(position.X, position.Y, position.Z) * 3;
+            var baseNoise = Noise1.GetPerturbedNoise(position.X, position.Y, position.Z) * 4;
 
             // In order to avoid an appearance of excessive uniformity, with all mountains reaching
             // the same height, distributed uniformly over the surface, the initial noise is
             // multiplied by a second, independent noise map whose values are shifted up and
-            // magnified to a range of approximately 0-1.2. This has the effect of moving most
+            // magnified to a range of approximately 0.65-1.25. This has the effect of moving most
             // values on the initial noise map towards zero, while pushing a few away from zero. The
             // resulting map will have irregular features that are mostly flat, with select few high
             // points.
-            var irregularity = Math.Abs((Noise2.GetNoise(position.X, position.Y, position.Z) + 0.25) * 2.4);
+            var irregularity = (Noise2.GetNoise(position.X, position.Y, position.Z) / 2) + 0.85;
 
-            var e = baseNoise * irregularity;
+            var e = baseNoise * irregularity * 1.15;
 
             return (e * MaxElevation) - SeaLevel;
         }

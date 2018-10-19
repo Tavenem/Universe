@@ -102,7 +102,7 @@ namespace WorldFoundry.Space
                 Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
                 Mass = MainGalaxy.Mass * 1.25, // the main galaxy is expected to comprise the bulk of the mass
             };
-            SetShape(new Sphere(MainGalaxy.Radius * 10));
+            Shape = new Sphere(MainGalaxy.Radius * 10);
         }
 
         /// <summary>

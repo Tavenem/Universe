@@ -63,10 +63,10 @@ namespace WorldFoundry.Space
             {
                 axis = 1.5e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.5e17);
             } while (axis > Space);
-            SetShape(new Ellipsoid(
+            Shape = new Ellipsoid(
                 axis,
                 axis * Randomizer.Instance.NextDouble(0.5, 1.5),
-                axis * Randomizer.Instance.NextDouble(0.5, 1.5)));
+                axis * Randomizer.Instance.NextDouble(0.5, 1.5));
         }
     }
 }

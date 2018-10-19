@@ -16,17 +16,16 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _chanceOfLife = 0;
         /// <summary>
-        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
-        /// biosphere, if it is habitable.
+        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
+        /// cannot support life.
         /// </summary>
         /// <remarks>
-        /// 0 for blue giants; although they may have a habitable zone, it is not likely to exist
+        /// <see langword="false"/> for blue giants; although they may have a habitable zone, it is not likely to exist
         /// in the same place long enough for life to develop before the star evolves into another
         /// type, or dies.
         /// </remarks>
-        public override double? ChanceOfLife => _chanceOfLife;
+        public override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/>.

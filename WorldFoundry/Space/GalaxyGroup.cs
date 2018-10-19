@@ -99,7 +99,7 @@ namespace WorldFoundry.Space
                 Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
                 Mass = 2.0e44, // general average; 1.0e14 solar masses
             };
-            SetShape(new Sphere(Randomizer.Instance.NextDouble(1.5e23, 3.0e23))); // ~500–1000 kpc
+            Shape = new Sphere(Randomizer.Instance.NextDouble(1.5e23, 3.0e23)); // ~500–1000 kpc
         }
     }
 }

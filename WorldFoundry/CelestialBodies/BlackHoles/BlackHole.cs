@@ -68,7 +68,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
                 Composition = new Material(CosmicSubstances.Fuzzball, Phase.Plasma),
                 Mass = GenerateMass(),
             };
-            SetShape(new Sphere(Math.Round(1.48e-27 * Substance.Mass)));
+            Shape = new Sphere(Math.Round(1.48e-27 * Substance.Mass));
         }
     }
 }

@@ -18,22 +18,21 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string BaseTypeName => _baseTypeName;
 
-        private const double _chanceOfLife = 0;
-        /// <summary>
-        /// The chance that this type of <see cref="CelestialEntity"/> and its children will actually have a
-        /// biosphere, if it is habitable.
-        /// </summary>
-        /// <remarks>
-        /// 0 for Neutron stars, due to their excessive ionizing radiation, which makes the
-        /// development of life nearby highly unlikely.
-        /// </remarks>
-        public override double? ChanceOfLife => _chanceOfLife;
-
         private const string _designatorPrefix = "X";
         /// <summary>
         /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
         /// </summary>
         protected override string DesignatorPrefix => _designatorPrefix;
+
+        /// <summary>
+        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
+        /// cannot support life.
+        /// </summary>
+        /// <remarks>
+        /// <see langword="false"/> for neutron stars, due to their excessive ionizing radiation,
+        /// which makes the development of life nearby highly unlikely.
+        /// </remarks>
+        public override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/>.
@@ -82,7 +81,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             var radius = Math.Round(Randomizer.Instance.NextDouble(1000, 2000));
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            SetShape(new Ellipsoid(radius, Math.Round(radius * (1 - flattening))));
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
         /// <summary>

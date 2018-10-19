@@ -26,7 +26,7 @@ namespace WorldFoundry.Space.AsteroidFields
             new ChildDefinition(typeof(MTypeAsteroid), Asteroid.Space, ChildDensity * 0.015),
         };
 
-        private readonly double? starSystemRadius;
+        private readonly double? _starSystemRadius;
 
         private const string _baseTypeName = "Oort Cloud";
         /// <summary>
@@ -75,7 +75,7 @@ namespace WorldFoundry.Space.AsteroidFields
         public OortCloud(CelestialRegion parent, Star star, double starSystemRadius) : base(parent)
         {
             Star = star;
-            this.starSystemRadius = starSystemRadius;
+            _starSystemRadius = starSystemRadius;
             GenerateSubstance();
         }
 
@@ -101,7 +101,7 @@ namespace WorldFoundry.Space.AsteroidFields
                 Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy(),
                 Mass = 3.0e25,
             };
-            SetShape(new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0)));
+            Shape = new HollowSphere(3.0e15 + (_starSystemRadius ?? 0), 7.5e15 + (_starSystemRadius ?? 0));
         }
     }
 }
