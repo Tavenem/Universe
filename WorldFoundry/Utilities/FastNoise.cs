@@ -93,6 +93,17 @@ public class FastNoise
         CalculateFractalBounding();
     }
 
+    public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, FractalType fractalType, int octaves, FN_DECIMAL gradientPerturbAmp)
+    {
+        m_seed = seed;
+        m_frequency = frequency;
+        m_noiseType = noiseType;
+        m_fractalType = fractalType;
+        m_octaves = octaves;
+        m_gradientPerturbAmp = gradientPerturbAmp;
+        CalculateFractalBounding();
+    }
+
     public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, FN_DECIMAL gain)
     {
         m_seed = seed;

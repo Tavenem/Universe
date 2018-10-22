@@ -12,6 +12,12 @@ namespace WorldFoundry.Space
     /// </summary>
     public class CelestialEntity : IEquatable<CelestialEntity>
     {
+        internal int _seed1;
+        internal int _seed2;
+        internal int _seed3;
+        internal int _seed4;
+        internal int _seed5;
+
         private const string _baseTypeName = "Celestial Object";
         /// <summary>
         /// The base name for this type of <see cref="CelestialEntity"/>.
@@ -46,7 +52,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The total mass of this <see cref="CelestialEntity"/>, in kg.
         /// </summary>
-        public double Mass => Substance?.Mass ?? 0;
+        public double Mass => Substance.Mass;
 
         /// <summary>
         /// An optional name for this <see cref="CelestialEntity"/>.
@@ -95,19 +101,16 @@ namespace WorldFoundry.Space
         /// </summary>
         public IShape Shape
         {
-            get => Substance?.Shape ?? SinglePoint.Origin;
+            get => Substance.Shape;
             protected set
             {
-                if (Substance != null)
+                Substance.Shape = value.GetCloneAtPosition(Position);
+                if (Location is Region region)
                 {
-                    Substance.Shape = value.GetCloneAtPosition(Position);
-                    if (Location is Region region)
-                    {
-                        region.Shape = Substance.Shape;
-                    }
-                    _radiusSquared = null;
-                    _surfaceGravity = null;
+                    region.Shape = Substance.Shape;
                 }
+                _radiusSquared = null;
+                _surfaceGravity = null;
             }
         }
 
@@ -145,7 +148,7 @@ namespace WorldFoundry.Space
         {
             get
             {
-                if (_surfaceGravity == null && Substance != null)
+                if (_surfaceGravity == null)
                 {
                     _surfaceGravity = Substance.GetSurfaceGravity();
                 }
@@ -157,7 +160,7 @@ namespace WorldFoundry.Space
         /// The average temperature of this <see cref="CelestialEntity"/>, in K.
         /// </summary>
         /// <remarks>No less than <see cref="Parent"/>'s ambient temperature.</remarks>
-        public double? Temperature => Math.Max(Substance?.Temperature ?? 0, Parent?.Temperature ?? 0);
+        public double? Temperature => Math.Max(Substance.Temperature, Parent?.Temperature ?? 0);
 
         /// <summary>
         /// The <see cref="CelestialEntity"/>'s <see cref="Name"/>, if it has one; otherwise its <see cref="Designation"/>.
@@ -174,7 +177,7 @@ namespace WorldFoundry.Space
         {
             get
             {
-                if (_radiusSquared == null && Substance?.Shape != null)
+                if (_radiusSquared == null && Substance.Shape != null)
                 {
                     _radiusSquared = Shape.ContainingRadius * Shape.ContainingRadius;
                 }
@@ -185,7 +188,15 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialEntity"/>.
         /// </summary>
-        public CelestialEntity() => ID = Guid.NewGuid();
+        public CelestialEntity()
+        {
+            ID = Guid.NewGuid();
+            _seed1 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed2 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed3 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed4 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed5 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialEntity"/> with the given parameters.

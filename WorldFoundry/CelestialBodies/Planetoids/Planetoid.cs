@@ -208,7 +208,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The diurnal temperature variation for this body, in K.
         /// </summary>
         public double DiurnalTemperatureVariation
-            => _diurnalTemperatureVariation ?? (_diurnalTemperatureVariation = GenerateDiurnalTemperatureVariation()).Value;
+            => _diurnalTemperatureVariation ?? (_diurnalTemperatureVariation = GetDiurnalTemperatureVariation()).Value;
 
         private const int _extremeRotationalPeriod = 1100000;
         private protected virtual int ExtremeRotationalPeriod => _extremeRotationalPeriod;
@@ -414,7 +414,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         private double? _insolationAreaRatio;
-        private double InsolationAreaRatio => _insolationAreaRatio ?? (_insolationAreaRatio = GetInsolationAreaRatio()).Value;
+        private protected double InsolationAreaRatio => _insolationAreaRatio ?? (_insolationAreaRatio = GetInsolationAreaRatio()).Value;
 
         private double? _insolationFactor_Equatorial;
         /// <summary>
@@ -438,7 +438,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Specifies the dry adiabatic lapse rate within the <see cref="Atmosphere"/> of this <see
         /// cref="Planetoid"/>, in K/m.
         /// </summary>
-        private double LapseRateDry
+        private protected double LapseRateDry
             => _lapseRateDry ?? (_lapseRateDry = GetLapseRateDry()).Value;
 
         private double? _tropicalEquator;
@@ -975,12 +975,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual void GenerateAtmosphere() { }
 
-        private double GenerateDiurnalTemperatureVariation()
-        {
-            var factor = Math.Pow(1 / InsolationAreaRatio, 0.25);
-            return (AverageSurfaceTemperature * factor) + (InsolationFactor_Equatorial * factor);
-        }
-
         private protected virtual void GenerateResources()
             => AddResources(Substance.Composition.GetSurface()
                 .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
@@ -1052,6 +1046,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual double? GetDensity() => null;
 
+        private double GetDiurnalTemperatureVariation()
+        {
+            var factor = Math.Pow(1 / InsolationAreaRatio, 0.25);
+            return (AverageSurfaceTemperature * factor) + (InsolationFactor_Equatorial * factor);
+        }
+
         private double GetEccentricity() => Math.Abs(Randomizer.Instance.Normal(0, 0.05));
 
         /// <summary>
@@ -1073,7 +1073,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual bool GetHasMagnetosphere()
             => Randomizer.Instance.NextDouble() <= Mass * 2.88e-19 / RotationalPeriod * MagnetosphereChanceFactor;
 
-        private double GetInsolationAreaRatio()
+        private protected double GetInsolationAreaRatio()
         {
             var period = RotationalPeriod;
             if (period <= 2500)
@@ -1103,32 +1103,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double GetInsolationFactor(double latitude)
             => InsolationFactor_Polar + ((InsolationFactor_Equatorial - InsolationFactor_Polar) * Math.Cos(latitude * 0.8));
-
-        /// <summary>
-        /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
-        /// position, in K.
-        /// </summary>
-        /// <param name="position">
-        /// A hypothetical position for this <see cref="CelestialBody"/> at which the heat of
-        /// insolation will be calculated.
-        /// </param>
-        /// <returns>
-        /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
-        /// in K.
-        /// </returns>
-        /// <remarks>
-        /// Rotating bodies radiate some heat as they rotate away from the source. The degree
-        /// depends on the speed of the rotation, but is constrained to limits (with very fast
-        /// rotation, every spot comes back into an insolated position quickly; and very slow
-        /// rotation results in long-term hot/cold hemispheres rather than continuous
-        /// heat-shedding). Here, we merely approximate very roughly since accurate calculations
-        /// depends on many factors and would involve either circular logic, or extremely extensive
-        /// calculus, if we attempted to calculate it accurately.
-        /// </remarks>
-        private protected override double GetInsolationHeat(Vector3 position)
-            => InsolationAreaRatio == 1
-                ? base.GetInsolationHeat(position)
-                : base.GetInsolationHeat(position) * Math.Pow(InsolationAreaRatio, 0.25);
 
         private protected virtual double GetInternalTemperature() => 0;
 

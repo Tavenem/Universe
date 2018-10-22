@@ -11,6 +11,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     {
         private readonly int _seed1;
         private readonly int _seed2;
+        private readonly int _seed3;
 
         /// <summary>
         /// The elevation of sea level relative to the mean surface elevation of the planet, in
@@ -21,15 +22,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double MaxElevation { get; set; }
 
         private FastNoise _noise1;
-        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 1, FastNoise.NoiseType.CubicFractal, octaves: 5));
+        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6));
 
         private FastNoise _noise2;
-        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 1, FastNoise.NoiseType.Cubic));
+        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 5));
+
+        private FastNoise _noise3;
+        private FastNoise Noise3 => _noise3 ?? (_noise3 = new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4));
 
         private Terrain()
         {
-            _seed1 = Randomizer.Instance.NextInclusiveMaxValue();
-            _seed2 = Randomizer.Instance.NextInclusiveMaxValue();
+            _seed1 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed2 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed3 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
         }
 
         /// <summary>
@@ -37,7 +42,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> which this <see cref="Terrain"/>
         /// maps.</param>
-        public Terrain(Planetoid planet) : this() => Initialize(planet);
+        public Terrain(Planetoid planet)
+        {
+            _seed1 = planet._seed1;
+            _seed2 = planet._seed2;
+            _seed3 = planet._seed3;
+            Initialize(planet);
+        }
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, in meters. Negative values
@@ -54,19 +65,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return 0;
             }
 
-            // Initial noise map, magnified to a range of approximately -1-1.
-            var baseNoise = Noise1.GetPerturbedNoise(position.X, position.Y, position.Z) * 4;
+            // The magnitude of the position vector is magnified to increase the surface area of the
+            // noise map, thus providing a more diverse range of results without introducing
+            // excessive noise (as increasing frequency would).
+            var p = position * 100;
+
+            // Initial noise map.
+            var baseNoise = Noise1.GetNoise(p.X, p.Y, p.Z);
 
             // In order to avoid an appearance of excessive uniformity, with all mountains reaching
             // the same height, distributed uniformly over the surface, the initial noise is
-            // multiplied by a second, independent noise map whose values are shifted up and
-            // magnified to a range of approximately 0.65-1.25. This has the effect of moving most
-            // values on the initial noise map towards zero, while pushing a few away from zero. The
-            // resulting map will have irregular features that are mostly flat, with select few high
-            // points.
-            var irregularity = (Noise2.GetNoise(position.X, position.Y, position.Z) / 2) + 0.85;
+            // multiplied by a second, independent noise map. The resulting map will have more
+            // randomly distributed high and low points.
+            var irregularity1 = Math.Abs(Noise2.GetNoise(p.X, p.Y, p.Z));
 
-            var e = baseNoise * irregularity * 1.15;
+            // This process is repeated.
+            var irregularity2 = Math.Abs(Noise3.GetNoise(p.X, p.Y, p.Z));
+
+            var e = baseNoise * irregularity1 * irregularity2;
+
+            // The overall value is magnified to compensate for excessive normalization.
+            e *= 6;
 
             return (e * MaxElevation) - SeaLevel;
         }
@@ -90,10 +109,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var d = 0.0;
             for (var i = 0; i < 5; i++)
             {
-                d += Math.Pow(r.NextDouble(), 3);
+                d += r.NextDouble() * 0.5;
             }
             d /= 5;
-            MaxElevation = (max * (d + 3) / 8) + (max / 2);
+            MaxElevation = max * (0.5 + d);
         }
     }
 }

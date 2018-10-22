@@ -15,6 +15,8 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Atmosphere : Substance
     {
+        private const double StandardHeightDensity = 124191.6;
+
         private static readonly List<Requirement> _humanBreathabilityRequirements = new List<Requirement>()
         {
             new Requirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07, MaximumProportion = 0.53, Phase = Phase.Gas },
@@ -36,7 +38,7 @@ namespace WorldFoundry.Climate
 
         internal static readonly double TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure(TMath.Tolerance);
 
-        internal double? _averageSeaLevelDensity;
+        internal double _averageSeaLevelDensity;
 
         /// <summary>
         /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
@@ -58,19 +60,6 @@ namespace WorldFoundry.Climate
         internal bool ContainsWaterVapor
             => _containsWaterVapor ?? (_containsWaterVapor = Composition?.ContainsSubstance(Chemical.Water, Phase.Gas) ?? false).Value;
 
-        private double? _densityRatio;
-        internal double DensityRatio
-        {
-            get
-            {
-                if (!_densityRatio.HasValue && _averageSeaLevelDensity.HasValue)
-                {
-                    _densityRatio = _averageSeaLevelDensity.Value / 1.2;
-                }
-                return _densityRatio ?? 0;
-            }
-        }
-
         private double? _greenhouseFactor;
         /// <summary>
         /// The total greenhouse factor for this <see cref="Atmosphere"/>.
@@ -90,6 +79,13 @@ namespace WorldFoundry.Climate
         private double? _waterRatio;
         internal double WaterRatio
             => _waterRatio ?? (_waterRatio = Composition?.GetProportion(Chemical.Water, Phase.Gas) ?? 0).Value;
+
+        private double? _precipitationFactor;
+        /// <summary>
+        /// The proportion of precipitation produced by this atmosphere relative to that of Earth.
+        /// </summary>
+        internal double PrecipitationFactor
+            => _precipitationFactor ?? (_precipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity).Value;
 
         private double? _wetness;
         /// <summary>
@@ -298,6 +294,8 @@ namespace WorldFoundry.Climate
 
         internal void ResetPressureDependentProperties(Planetoid planet)
         {
+            _greenhouseFactor = null;
+            _precipitationFactor = null;
             SetAtmosphericScaleHeight(planet);
             Mass = GetAtmosphericMass(planet);
             SetAtmosphericHeight(planet);
@@ -307,6 +305,7 @@ namespace WorldFoundry.Climate
 
         internal void ResetTemperatureDependentProperties(Planetoid planet)
         {
+            _precipitationFactor = null;
             SetAtmosphericScaleHeight(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
@@ -316,6 +315,7 @@ namespace WorldFoundry.Climate
         internal void ResetWater()
         {
             _containsWaterVapor = null;
+            _precipitationFactor = null;
             _waterRatio = null;
             _wetness = null;
         }

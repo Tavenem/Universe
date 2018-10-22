@@ -292,7 +292,7 @@ namespace WorldFoundry.WorldGrids
             {
                 ClimateType = ClimateType.Subtropical;
             }
-            else if (temperature <= Chemical.Water.MeltingPoint + 36)
+            else if (temperature <= Chemical.Water.MeltingPoint + 68)
             {
                 ClimateType = ClimateType.Tropical;
             }
@@ -543,8 +543,6 @@ namespace WorldFoundry.WorldGrids
                 case ClimateType.Supertropical:
                     BiomeType = BiomeType.HotDesert;
                     EcologyType = EcologyType.Desert;
-                    break;
-                default:
                     break;
             }
         }

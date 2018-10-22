@@ -114,6 +114,78 @@ namespace WorldFoundry.CelestialBodies.Stars
         }
 
         /// <summary>
+        /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.
+        /// The final number may be affected by other factors.
+        /// </summary>
+        /// <returns>
+        /// A value tuple with the number of giants, ice giants, and terrestrial planets, in that order.
+        /// </returns>
+        internal (int numGiants, int numIceGiants, int numTerrestrial) GetNumPlanets()
+        {
+            var hasGiants = GetWillHaveGiantPlanets();
+            var hasIceGiants = GetWillHaveIceGiants();
+            var hasTerrestrial = GetWillHaveTerrestrialPlanets();
+
+            var numPlanets = 0;
+            if (hasGiants || hasIceGiants || hasTerrestrial)
+            {
+                // Slightly less than half of systems have a large collection of planets. The rest
+                // have just a few. White dwarfs never have many.
+                if (!(this is WhiteDwarf) && Randomizer.Instance.NextDouble() <= 0.45)
+                {
+                    numPlanets = Randomizer.Instance.NextDouble(4.2, 8).RoundToInt(); // 6.1 +/-1.9
+                }
+                // 1-3 in a Gaussian distribution, with 1 as the mean
+                else
+                {
+                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Instance.Normal(0, 1)));
+                }
+            }
+
+            // If any, then up to 1/3 the total (but at least 1).
+            var numGiants = hasGiants ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt() : 0;
+
+            // If any, and the total is not already taken up by giants (may happen if only 1 total
+            // but both types of giant are indicated), then up to 1/3 the total (but at least 1).
+            var numIceGiants = (hasIceGiants && numGiants < numPlanets)
+                ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt()
+                : 0;
+
+            var numTerrestrial = 0;
+            if (hasTerrestrial)
+            {
+                // If the giants and ice giants have already filled the total,
+                // and the total is greater than 2, take one slot back.
+                if (numGiants + numIceGiants >= numPlanets && numPlanets > 2)
+                {
+                    // Pick the type form which to take the slot back at random.
+                    if (Randomizer.Instance.NextBoolean())
+                    {
+                        numGiants--;
+                    }
+                    else
+                    {
+                        numIceGiants--;
+                    }
+                }
+                // Take all the remaining slots.
+                numTerrestrial = Math.Max(0, numPlanets - numGiants - numIceGiants);
+            }
+            return (numGiants, numIceGiants, numTerrestrial);
+        }
+
+        /// <summary>
+        /// Calculates the temperature this <see cref="Star"/> would have to be in order to cause
+        /// the given effective temperature at the given distance.
+        /// </summary>
+        /// <param name="star">The star.</param>
+        /// <param name="temperature">The desired temperature, in K.</param>
+        /// <param name="distance">The desired distance, in meters.</param>
+        /// <param name="albedo">The albedo of the target body.</param>
+        internal void SetTempForTargetPlanetTemp(double temperature, double distance, double albedo = 0)
+            => Substance.Temperature = temperature / (Math.Sqrt(Radius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
+
+        /// <summary>
         /// Generates the mass of this <see cref="Star"/>.
         /// </summary>
         /// <param name="shape">The shape of the <see cref="Star"/>.</param>
@@ -269,67 +341,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         private protected double GetLuminosityFromRadius()
             => MathConstants.FourPI * RadiusSquared * ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
-
-        /// <summary>
-        /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.
-        /// The final number may be affected by other factors.
-        /// </summary>
-        /// <returns>
-        /// A value tuple with the number of giants, ice giants, and terrestrial planets, in that order.
-        /// </returns>
-        internal (int numGiants, int numIceGiants, int numTerrestrial) GetNumPlanets()
-        {
-            var hasGiants = GetWillHaveGiantPlanets();
-            var hasIceGiants = GetWillHaveIceGiants();
-            var hasTerrestrial = GetWillHaveTerrestrialPlanets();
-
-            var numPlanets = 0;
-            if (hasGiants || hasIceGiants || hasTerrestrial)
-            {
-                // Slightly less than half of systems have a large collection of planets. The rest
-                // have just a few. White dwarfs never have many.
-                if (!(this is WhiteDwarf) && Randomizer.Instance.NextDouble() <= 0.45)
-                {
-                    numPlanets = Randomizer.Instance.NextDouble(4.2, 8).RoundToInt(); // 6.1 +/-1.9
-                }
-                // 1-3 in a Gaussian distribution, with 1 as the mean
-                else
-                {
-                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Instance.Normal(0, 1)));
-                }
-            }
-
-            // If any, then up to 1/3 the total (but at least 1).
-            var numGiants = hasGiants ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt() : 0;
-
-            // If any, and the total is not already taken up by giants (may happen if only 1 total
-            // but both types of giant are indicated), then up to 1/3 the total (but at least 1).
-            var numIceGiants = (hasIceGiants && numGiants < numPlanets)
-                ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt()
-                : 0;
-
-            var numTerrestrial = 0;
-            if (hasTerrestrial)
-            {
-                // If the giants and ice giants have already filled the total,
-                // and the total is greater than 2, take one slot back.
-                if (numGiants + numIceGiants >= numPlanets && numPlanets > 2)
-                {
-                    // Pick the type form which to take the slot back at random.
-                    if (Randomizer.Instance.NextBoolean())
-                    {
-                        numGiants--;
-                    }
-                    else
-                    {
-                        numIceGiants--;
-                    }
-                }
-                // Take all the remaining slots.
-                numTerrestrial = Math.Max(0, numPlanets - numGiants - numIceGiants);
-            }
-            return (numGiants, numIceGiants, numTerrestrial);
-        }
 
         /// <summary>
         /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.

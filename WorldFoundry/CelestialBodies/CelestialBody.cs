@@ -189,10 +189,10 @@ namespace WorldFoundry.CelestialBodies
         /// W/m².
         /// </returns>
         private double GetInsolation(Vector3 position)
-            => (1 - Albedo) * Parent
+            => Math.Pow(1 - Albedo, 0.25) * Parent
                 .GetAllChildren<Star>()
                 .Where(x => x != this)
-                .Sum(x => x.Luminosity / (MathConstants.FourPI * Math.Pow(Location.GetDistanceFromPositionTo(position, x.Location), 2)));
+                .Sum(x => (x.Temperature ?? 0) * Math.Sqrt(x.Radius / (2 * Location.GetDistanceFromPositionTo(position, x.Location))));
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -206,8 +206,7 @@ namespace WorldFoundry.CelestialBodies
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        private protected virtual double GetInsolationHeat(Vector3 position)
-            => Math.Pow(GetInsolation(position) / ScienceConstants.FourSigma, 0.25);
+        private protected virtual double GetInsolationHeat(Vector3 position) => GetInsolation(position);
 
         /// <summary>
         /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this

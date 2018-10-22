@@ -57,12 +57,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private protected override int ExtremeRotationalPeriod => _extremeRotationalPeriod;
 
         /// <summary>
-        /// Any <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified for this <see
-        /// cref="TerrestrialPlanet"/>.
-        /// </summary>
-        private protected HabitabilityRequirements? HabitabilityRequirements { get; set; }
-
-        /// <summary>
         /// Indicates whether or not this planet has a native population of living organisms.
         /// </summary>
         /// <remarks>
@@ -207,6 +201,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public WorldGrid Grid => _grid ?? (_grid = GetGrid());
 
         /// <summary>
+        /// Any <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified for this <see
+        /// cref="TerrestrialPlanet"/>.
+        /// </summary>
+        private protected HabitabilityRequirements? HabitabilityRequirements { get; set; }
+
+        /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
         /// </summary>
         public TerrestrialPlanet() { }
@@ -281,12 +281,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <returns>A human-habitable planet with default parameters.</returns>
         public static TerrestrialPlanet DefaultHumanPlanetForStar(Star star, TerrestrialPlanetParams planetParams = null)
         {
-            var planet = new TerrestrialPlanet(
-                star?.Parent,
-                Vector3.Zero,
-                planetParams ?? TerrestrialPlanetParams.FromDefaults(),
-                TerrestrialPlanets.HabitabilityRequirements.HumanHabitabilityRequirements);
-            planet.GenerateOrbit(star);
+            TerrestrialPlanet planet = null;
+            var sanityCheck = 0;
+            do
+            {
+                planet = new TerrestrialPlanet(
+                    star?.Parent,
+                    Vector3.Zero,
+                    planetParams ?? TerrestrialPlanetParams.FromDefaults(),
+                    TerrestrialPlanets.HabitabilityRequirements.HumanHabitabilityRequirements);
+                planet.GenerateOrbit(star);
+
+                sanityCheck++;
+                if (planet.IsHabitable(TerrestrialPlanets.HabitabilityRequirements.HumanHabitabilityRequirements, out var reason))
+                {
+                    break;
+                }
+                else if (sanityCheck < 100)
+                {
+                    planet._location = null;
+                }
+            } while (sanityCheck <= 100);
             return planet;
         }
 
@@ -412,7 +427,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // Convert the target average surface temperature to an estimated target equatorial
                 // surface temperature, for which orbit/luminosity requirements can be calculated.
-                var targetEquatorialEffectiveTemp = targetTemp * 1.06;
+                var targetEquatorialEffectiveTemp = targetTemp * 1.0275;
+                // Use the typical average elevation to determine average surface
+                // temperature, since the average temperature at sea level is not the same
+                // as the average overall surface temperature.
+                var avgElevation = Terrain.MaxElevation * 0.07;
+                var targetEffectiveTemp = targetEquatorialEffectiveTemp + (avgElevation * LapseRateDry);
+                var currentTargetTemp = targetEffectiveTemp;
 
                 // Due to atmospheric effects, the target is likely to be missed considerably on the
                 // first attempt, since the calculations for orbit/luminosity will not be able to
@@ -425,11 +446,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 do
                 {
                     prevDelta = delta;
-                    AdjustOrbitForTemperature(star, semiMajorAxis, ta, targetEquatorialEffectiveTemp);
+                    AdjustOrbitForTemperature(star, semiMajorAxis, ta, currentTargetTemp);
 
                     if (PlanetParams?.SurfaceTemperature.HasValue == true)
                     {
-                        delta = targetTemp - SurfaceTemperature;
+                        delta = targetEffectiveTemp - GetTemperatureAtElevation(AverageSurfaceTemperature, avgElevation);
                     }
                     else
                     {
@@ -456,14 +477,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                         && (delta >= 0) == (prevDelta >= 0)
                         && Math.Abs(delta) > Math.Abs(prevDelta))
                     {
-                        prevDelta = 0;
                         Atmosphere = null;
                         ResetCachedTemperatures();
-                        targetEquatorialEffectiveTemp = targetTemp * 1.06;
+                        currentTargetTemp = targetEffectiveTemp;
                     }
                     else
                     {
-                        targetEquatorialEffectiveTemp += delta;
+                        currentTargetTemp += delta;
                     }
                     count++;
                 } while (count < 10 && Math.Abs(delta) > TemperatureErrorTolerance);
@@ -615,8 +635,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // orbital temperature (rather than the temperature at the current position).
             if (PlanetParams?.RevolutionPeriod.HasValue == true)
             {
-                var distance = semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2));
-                star.Luminosity = GetLuminosityForTemperature(targetTemp, distance);
+                star.SetTempForTargetPlanetTemp(targetTemp, semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2)), Albedo);
             }
             else
             {
@@ -1246,6 +1265,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(HabitabilityRequirements?.AtmosphericRequirements)
                 .Concat(Atmosphere.ConvertRequirementsForPressure(PlanetParams?.AtmosphericRequirements)))
             {
+                var modified = false;
                 var proportion = Atmosphere.Composition.GetProportion(requirement.Chemical, requirement.Phase);
                 if (proportion.IsZero())
                 {
@@ -1259,14 +1279,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                                     ? Phase.Liquid
                                     : Phase.Solid,
                         requirement.MinimumProportion);
+                    modified = true;
                 }
                 else if (proportion < requirement.MinimumProportion)
                 {
                     Atmosphere.Composition.SetProportion(requirement.Chemical, requirement.Phase, requirement.MinimumProportion);
+                    modified = true;
                 }
                 else if (requirement.MaximumProportion.HasValue && proportion > requirement.MaximumProportion)
                 {
                     Atmosphere.Composition.SetProportion(requirement.Chemical, requirement.Phase, requirement.MaximumProportion.Value);
+                    modified = true;
+                }
+                if (modified)
+                {
+                    Atmosphere.ResetGreenhouseFactor();
                 }
             }
 
@@ -1275,6 +1302,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             if (PlanetParams?.AtmosphericPressure.HasValue != true && HabitabilityRequirements == null)
             {
                 SetAtmosphericPressure(Math.Max(0, adjustedAtmosphericPressure));
+                Atmosphere.ResetPressureDependentProperties(this);
             }
 
             // If the adjustments have led to the loss of liquid water, then there is no life after
@@ -1624,53 +1652,48 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private double GenerateHydrosphereMass()
         {
+            var mass = 0.0;
+
             var ratio = PlanetParams?.WaterRatio ?? Randomizer.Instance.NextDouble();
+
+            SetGridElevations();
 
             if (ratio <= 0)
             {
                 Terrain.SeaLevel = -Terrain.MaxElevation * 1.1;
-                return 0;
             }
-
-            if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
+            else if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
             {
                 Terrain.SeaLevel = Terrain.MaxElevation * ratio;
-                return new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
+                mass = new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
                     - (new HollowSphere(Radius, Radius + Terrain.MaxElevation).Volume / 2);
             }
-
-            if (ratio.IsEqualTo(0.5))
+            else
             {
-                Terrain.SeaLevel = 0;
-                // Approx 5/6 of the total area is filled (elevations roughly follow an
-                // exponential distribution).
-                var v = new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume;
-                return v - (v * 5 / 6);
-            }
-
-            SetGridElevations();
-            var orderedTiles = Grid.Tiles.OrderBy(t => t.Elevation);
-            var targetWaterTileCount = (Grid.Tiles.Length * ratio).RoundToInt();
-            var landTiles = orderedTiles.Skip(targetWaterTileCount);
-            if (landTiles.Any())
-            {
-                var first = landTiles.First();
-                if (!landTiles.All(t => t.Elevation == first.Elevation))
+                if (ratio.IsEqualTo(0.5))
                 {
-                    var lowestLandElevation = first.Elevation;
-                    var nextLowestLandElevation = landTiles.SkipWhile(t => t.Elevation == first.Elevation).First().Elevation;
-
-                    Terrain.SeaLevel = (first.Elevation + nextLowestLandElevation) / 2;
-
-                    OffsetGridElevations((float)Terrain.SeaLevel);
-                    ClassifyTerrain();
-
-                    var oceanTileCount = orderedTiles.TakeWhile(t => t.Elevation <= first.Elevation).Count();
-                    return orderedTiles.Take(oceanTileCount).Sum(x => x.Area * (Terrain.SeaLevel - x.Elevation));
+                    Terrain.SeaLevel = 0;
                 }
+                else
+                {
+                    // Midway between the elevations of the first two tiles beyond the amount indicated by
+                    // the ratio when ordered by elevation.
+                    Terrain.SeaLevel = Grid.Tiles
+                        .OrderBy(t => t.Elevation)
+                        .Skip((Grid.Tiles.Length * ratio).RoundToInt())
+                        .Take(2).Average(t => t.Elevation);
+                }
+                mass = Grid.Tiles.Where(t => t.Elevation < 0).Sum(x => x.Area * (Terrain.SeaLevel - x.Elevation));
             }
-            Terrain.SeaLevel = 0;
-            return 0;
+
+            if (!Terrain.SeaLevel.IsZero())
+            {
+                OffsetGridElevations((float)Terrain.SeaLevel);
+            }
+
+            ClassifyTerrain();
+
+            return mass;
         }
 
         /// <summary>
@@ -1991,38 +2014,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
         /// </summary>
         private protected override bool GetHasMagnetosphere() => PlanetParams?.HasMagnetosphere ?? base.GetHasMagnetosphere();
-
-        /// <summary>
-        /// Calculates the luminosity (in Watts) the given <see cref="Star"/> would have to be
-        /// in order to cause the given effective temperature at the given distance.
-        /// </summary>
-        /// <remarks>
-        /// It is assumed that this <see cref="TerrestrialPlanet"/> has no internal temperature of
-        /// its own. The effects of other nearby stars are ignored.
-        /// </remarks>
-        /// <param name="temperature">The desired temperature, in K.</param>
-        /// <param name="distance">The desired distance, in meters.</param>
-        private double GetLuminosityForTemperature(double temperature, double distance)
-        {
-            var areaRatio = 1.0;
-            if (RotationalPeriod > 2500)
-            {
-                if (RotationalPeriod <= 75000)
-                {
-                    areaRatio = 0.25;
-                }
-                else if (RotationalPeriod <= 150000)
-                {
-                    areaRatio = 1.0 / 3.0;
-                }
-                else if (RotationalPeriod <= 300000)
-                {
-                    areaRatio = 0.5;
-                }
-            }
-
-            return Math.Pow(temperature / Math.Pow(areaRatio, 0.25), 4) * ScienceConstants.FourSigma * MathConstants.FourPI * distance * distance / (1 - Albedo);
-        }
 
         private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
         {
