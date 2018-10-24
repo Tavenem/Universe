@@ -29,9 +29,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public const double Space = 1.75e7;
 
+        private const int SnowToRainRatio = 13;
         private const double TemperatureErrorTolerance = 0.5;
+        private const double ThirtySixthPI = Math.PI / 36;
 
+        /// <summary>
+        /// Hadley values are a pure function of latitude, and do not vary with any property of the
+        /// planet, atmosphere, or season. Since the calculation is relatively expensive, retrieved
+        /// values can be stored for the lifetime of the program for future retrieval for the same
+        /// (or very similar) location.
+        /// </summary>
+        private static readonly Dictionary<double, double> HadleyValues = new Dictionary<double, double>();
+
+        private static readonly double LowTemp = Chemical.Water.MeltingPoint - 8;
+
+        private readonly Lazy<List<Season>> _seasons = new Lazy<List<Season>>();
+
+        private bool _climateSet;
         private double? _gravity;
+        private uint _seasonCount;
 
         internal static bool _canHaveOxygen = true;
         /// <summary>
@@ -159,22 +175,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         protected override double RingChance => _ringChance;
 
-        /// <summary>
-        /// The number of <see cref="Season"/>s in a year, based on the last <see cref="Season"/> set.
-        /// </summary>
-        public int SeasonCount { get; private set; }
-
-        /// <summary>
-        /// The collection of <see cref="Season"/>s which make up a year of this <see
-        /// cref="TerrestrialPlanet"/>'s weather.
-        /// </summary>
-        /// <remarks>
-        /// This collection should not be used directly. Instead, use <see cref="GetSeason(int,
-        /// int)"/> or <see cref="GetSeasons(int)"/>, both of which use this cached list when
-        /// possible, and generate new <see cref="Season"/>s when needed.
-        /// </remarks>
-        public IList<Season> Seasons { get; private set; }
-
         private double? _surfaceAlbedo;
         /// <summary>
         /// Since the total albedo of a terrestrial planet may change based on surface ice and cloud
@@ -193,18 +193,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             internal set => _surfaceAlbedo = value;
         }
 
-        private WorldGrid _grid;
-        /// <summary>
-        /// The <see cref="WorldGrid"/> which describes this <see cref="TerrestrialPlanet"/>'s
-        /// surface.
-        /// </summary>
-        public WorldGrid Grid => _grid ?? (_grid = GetGrid());
-
         /// <summary>
         /// Any <see cref="TerrestrialPlanets.HabitabilityRequirements"/> specified for this <see
         /// cref="TerrestrialPlanet"/>.
         /// </summary>
         private protected HabitabilityRequirements? HabitabilityRequirements { get; set; }
+
+        private FastNoise _noise1;
+        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3));
+
+        private FastNoise _noise2;
+        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex));
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
@@ -491,6 +490,134 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Determines the average precipitation at the given <paramref name="position"/> under the
+        /// given conditions, over the given duration, in mm.
+        /// </summary>
+        /// <param name="position">The position on the planet's surface at which to determine
+        /// precipitation.</param>
+        /// <param name="seasonalLatitude">The "seasonal" latitude of the position relative to the
+        /// solar equator, rather than the rotational equator.</param>
+        /// <param name="temperature">The current surface temperature at the position.</param>
+        /// <param name="proportionOfYear">The proportion of the year over which to determine
+        /// precipitation.</param>
+        /// <param name="snow">
+        /// <para>
+        /// When the method returns, will be set to the amount of snow which falls. Note that this
+        /// amount <i>replaces</i> any precipitation that would have fallen as rain; the return
+        /// value is to be considered a water-equivalent total value which is equal to the snow.
+        /// </para>
+        /// </param>
+        /// <returns>The average precipitation at the given <paramref name="position"/> and time of
+        /// year, given the specified conditions, in mm.</returns>
+        public double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
+        {
+            snow = 0;
+
+            var avgPrecipitation = 990 * proportionOfYear * Atmosphere.PrecipitationFactor;
+
+            var v = position * 100;
+
+            // Noise map with smooth, broad areas. Random range ~-1-1.
+            var r1 = Noise2.GetNoise(v.X, v.Y, v.Z);
+
+            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
+            var r2 = Math.Abs((Noise1.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
+
+            // Combined map is noise with broad similarity over regions, and minor local
+            // diversity, with range of ~-1-1.
+            var r = r1 * r2;
+
+            // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
+            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
+            // the polar deserts.
+            var roundedAbsLatitude = Math.Round(Math.Max(0, seasonalLatitude - ThirtySixthPI), 3);
+            if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
+            {
+                hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
+                HadleyValues.Add(roundedAbsLatitude, hadleyValue);
+            }
+
+            // Relative humidity is the Hadley cell value added to the random value, and cut off
+            // below 0. Range 0-~2.5.
+            var relativeHumidity = Math.Max(0, r + hadleyValue);
+
+            // In a band ±8K around freezing, the value is scaled down; below that range it is
+            // cut off completely; above it is unchanged.
+            relativeHumidity *= ((temperature - LowTemp) / 16).Clamp(0, 1);
+
+            if (relativeHumidity <= 0)
+            {
+                return 0;
+            }
+
+            // Scale by distance from target.
+            var factor = (relativeHumidity * ((relativeHumidity * 0.1) - 0.15)) + 1;
+            factor *= factor;
+
+            var precipitation = avgPrecipitation * relativeHumidity * factor;
+
+            if (temperature <= Chemical.Water.MeltingPoint)
+            {
+                snow = precipitation * SnowToRainRatio;
+            }
+
+            return precipitation;
+        }
+
+        /// <summary>
+        /// Determines the average precipitation at the given <paramref name="position"/> under the
+        /// given conditions, over the given duration, in mm.
+        /// </summary>
+        /// <param name="position">The position on the planet's surface at which to determine
+        /// precipitation.</param>
+        /// <param name="proportionOfYear">The proportion of the year over which to determine
+        /// precipitation.</param>
+        /// <param name="trueAnomaly">The true anomaly of the planet's orbit at the beginning of the
+        /// period during which precipitation is to be determined.</param>
+        /// <param name="snow">
+        /// <para>
+        /// When the method returns, will be set to the amount of snow which falls. Note that this
+        /// amount <i>replaces</i> any precipitation that would have fallen as rain; the return
+        /// value is to be considered a water-equivalent total value which is equal to the snow.
+        /// </para>
+        /// </param>
+        /// <returns>The average precipitation at the given <paramref name="position"/> and time of
+        /// year, in mm.</returns>
+        public double GetPrecipitation(Vector3 position, double proportionOfYear, double trueAnomaly, out double snow)
+        {
+            var latitude = VectorToLatitude(position);
+            var seasonalLatitude = Math.Abs(GetSeasonalLatitude(latitude, trueAnomaly));
+            return GetPrecipitation(
+                position,
+                seasonalLatitude,
+                GetTemperatureAtElevation(
+                    GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly, seasonalLatitude),
+                    GetElevationAt(position)),
+                proportionOfYear,
+                out snow);
+        }
+
+        /// <summary>
+        /// Determines the average precipitation at the given <paramref name="position"/> over the
+        /// given duration, in mm.
+        /// </summary>
+        /// <param name="position">The position on the planet's surface at which to determine
+        /// precipitation.</param>
+        /// <param name="proportionOfYear">The proportion of the year over which to determine
+        /// precipitation.</param>
+        /// <param name="snow">
+        /// <para>
+        /// When the method returns, will be set to the amount of snow which falls. Note that this
+        /// amount <i>replaces</i> any precipitation that would have fallen as rain; the return
+        /// value is to be considered a water-equivalent total value which is equal to the snow.
+        /// </para>
+        /// </param>
+        /// <returns>The average precipitation at the given <paramref name="position"/>, in
+        /// mm.</returns>
+        public double GetPrecipitation(Vector3 position, double proportionOfYear, out double snow)
+            => GetPrecipitation(position, proportionOfYear, Orbit?.TrueAnomaly ?? 0, out snow);
+
+        /// <summary>
         /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <param name="amount">
@@ -500,7 +627,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The 0-based index of the new <see cref="Season"/> out of one year's worth.
         /// </param>
         /// <returns>A <see cref="Season"/>.</returns>
-        public Season GetSeason(int amount, int index)
+        public Season GetSeason(uint amount, uint index)
         {
             if (Orbit == null)
             {
@@ -508,46 +635,46 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
             if (amount < 1)
             {
-                throw new ArgumentException($"{nameof(amount)} must be greater than or equal to 1.", nameof(amount));
-            }
-            if (index < 0)
-            {
-                throw new ArgumentException($"{nameof(index)} must be greater than or equal to 0.", nameof(index));
+                return null;
             }
 
             Season season;
-            if (amount == SeasonCount)
+            if (amount == _seasonCount)
             {
-                season = Seasons?.FirstOrDefault(x => x.Index == index);
+                season = _seasons.Value?.FirstOrDefault(x => x.Index == index);
                 if (season != null)
                 {
                     return season;
                 }
             }
 
+            if (!_climateSet)
+            {
+                SetClimate();
+            }
+
             var position = GetTrueAnomalyForSeason(amount, index);
-            var previousSeason = GetPreviousSeason(amount, index);
 
             season = new Season(
                 this,
                 index,
                 amount,
-                position,
-                previousSeason);
-            (Seasons ?? (Seasons = new List<Season>())).Add(season);
+                position);
+            _seasonCount = amount;
+            _seasons.Value.Add(season);
             return season;
         }
 
         /// <summary>
-        /// Gets or generates a set of <see cref="Season"/>s for this <see cref="TerrestrialPlanet"/>.
+        /// Gets a set of seasons for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <param name="amount">
-        /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
+        /// The number of seasons in one year.
         /// </param>
-        /// <returns>An enumeration of <see cref="Season"/>s.</returns>
-        public IEnumerable<Season> GetSeasons(int amount)
+        /// <returns>An enumeration of <see cref="Season"/> instances.</returns>
+        public IEnumerable<Season> GetSeasons(uint amount)
         {
-            for (var i = 0; i < amount; i++)
+            for (uint i = 0; i < amount; i++)
             {
                 yield return GetSeason(amount, i);
             }
@@ -1585,23 +1712,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        /// <summary>
-        /// Generates an appropriate density for this <see cref="Planetoid"/>.
-        /// </summary>
-        private protected override double? GetDensity()
+        private protected override void GenerateGrid()
         {
-            if (PlanetParams?.Radius.HasValue == true && PlanetParams?.SurfaceGravity.HasValue == true)
+            var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
+
+            if (PlanetParams?.GridTileRadius.HasValue ?? false)
             {
-                return Mass.IsZero()
-                    ? 0
-                    : Shape.Volume.IsZero()
-                        ? double.PositiveInfinity
-                        : Mass / Shape.Volume;
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
             }
-            else
+            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
             {
-                return Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
+                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
             }
+
+            GenerateGrid(size);
         }
 
         private void GenerateHydrocarbons()
@@ -1655,8 +1779,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var mass = 0.0;
 
             var ratio = PlanetParams?.WaterRatio ?? Randomizer.Instance.NextDouble();
-
-            SetGridElevations();
 
             if (ratio <= 0)
             {
@@ -1960,6 +2082,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Generates an appropriate density for this <see cref="Planetoid"/>.
+        /// </summary>
+        private protected override double? GetDensity()
+        {
+            if (PlanetParams?.Radius.HasValue == true && PlanetParams?.SurfaceGravity.HasValue == true)
+            {
+                return Mass.IsZero()
+                    ? 0
+                    : Shape.Volume.IsZero()
+                        ? double.PositiveInfinity
+                        : Mass / Shape.Volume;
+            }
+            else
+            {
+                return Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
+            }
+        }
+
+        /// <summary>
         /// Calculates the distance (in meters) this <see cref="TerrestrialPlanet"/> would have to be
         /// from a <see cref="Star"/> in order to have the given effective temperature.
         /// </summary>
@@ -1989,25 +2130,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             return Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * MathConstants.FourPI * ScienceConstants.sigma * areaRatio);
-        }
-
-        /// <summary>
-        /// Generates a new <see cref="Topography"/> for this <see cref="TerrestrialPlanet"/>.
-        /// </summary>
-        private WorldGrid GetGrid()
-        {
-            var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
-
-            if (PlanetParams?.GridTileRadius.HasValue ?? false)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-
-            return new WorldGrid(this, size);
         }
 
         /// <summary>
@@ -2111,59 +2233,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 ? Math.Max(0, PlanetParams.RotationalPeriod.Value)
                 : base.GetRotationalPeriod();
 
-        private Season GetPreviousSeason(int amount, int index)
-        {
-            Season previousSeason = null;
-            if (amount != SeasonCount)
-            {
-                if (index == 0)
-                {
-                    previousSeason = Seasons?.FirstOrDefault(x => x.Index == SeasonCount - 1);
-                }
-                else
-                {
-                    GetSeason(amount, 0);
-                }
-            }
-
-            if (Seasons == null)
-            {
-                Seasons = new List<Season>();
-            }
-            else if (SeasonCount != amount)
-            {
-                Seasons.Clear();
-            }
-            SeasonCount = amount;
-
-            if (previousSeason != null)
-            {
-                return previousSeason;
-            }
-
-            previousSeason = index == 0
-                ? Seasons?.FirstOrDefault(x => x.Index == SeasonCount - 1)
-                : Seasons?.FirstOrDefault(x => x.Index == index - 1);
-            if (previousSeason != null)
-            {
-                return previousSeason;
-            }
-
-            if (index == 0)
-            {
-                return SetClimate();
-            }
-            else
-            {
-                for (var i = 0; i < index; i++)
-                {
-                    previousSeason = Seasons?.FirstOrDefault(x => x.Index == i) ?? GetSeason(amount, i);
-                }
-            }
-
-            return previousSeason;
-        }
-
         /// <summary>
         /// Calculates the radius required to produce the given surface gravity, if mass is already defined.
         /// </summary>
@@ -2182,7 +2251,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         private double GetTempForThinAtmosphere() => ScienceConstants.TwoG * Mass * 7.0594833834763e-5 / Radius;
 
-        private double GetTrueAnomalyForSeason(int amount, int index)
+        private double GetTrueAnomalyForSeason(uint amount, uint index)
         {
             var seasonAngle = MathConstants.TwoPI / amount;
 
@@ -2224,7 +2293,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             foreach (var t in Grid.Tiles)
             {
                 t.Elevation -= seaLevel;
-                t.FrictionCoefficient = t.Elevation <= 0 ? 0.000025f : (float)((t.Elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
             }
             foreach (var c in Grid.Corners)
             {
@@ -2232,14 +2300,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private Season SetClimate()
+        private protected override void ResetCachedTemperatures()
         {
-            // A year is pre-generated as a single season, and another as 12 seasons, to prime the
-            // algorithms, which produce better values with historical data.
+            base.ResetCachedTemperatures();
+            _climateSet = false;
+        }
 
-            var position = GetTrueAnomalyForSeason(1, 0);
-
-            var season = new Season(this, 0, 1, position);
+        private void SetClimate()
+        {
+            // A year of 12 seasons is pre-generated to provide climate data.
 
             const double seasonAngle = Math.PI / 6;
             const double halfSeasonAngle = Math.PI / 12;
@@ -2257,7 +2326,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             var seasons = new List<Season>(12);
-            for (var i = 0; i < 12; i++)
+            for (uint i = 0; i < 12; i++)
             {
                 seasonTrueAnomaly += seasonAngle * i;
                 if (seasonTrueAnomaly >= MathConstants.TwoPI)
@@ -2265,8 +2334,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     seasonTrueAnomaly -= MathConstants.TwoPI;
                 }
 
-                season = new Season(this, i, 12, seasonTrueAnomaly, season);
-                seasons.Add(season);
+                seasons.Add(new Season(this, i, 12, seasonTrueAnomaly));
             }
 
             for (var i = 0; i < Grid.Tiles.Length; i++)
@@ -2274,27 +2342,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 Grid.Tiles[i].SetClimate(seasons);
             }
 
-            for (var i = 0; i < Grid.Edges.Length; i++)
-            {
-                Grid.Edges[i].RiverFlow = new FloatRange(
-                    seasons.Min(x => x.EdgeRiverFlows[i]),
-                    seasons.Average(x => x.EdgeRiverFlows[i]),
-                    seasons.Max(x => x.EdgeRiverFlows[i]));
-            }
+            SetSnowAndIce(winterAngle);
 
-            return season;
-        }
+            SetRiverFlows();
 
-        private void SetGridElevations()
-        {
-            foreach (var t in Grid.Tiles)
-            {
-                t.Elevation = (float)Terrain.GetElevationAt(t.Vector);
-            }
-            foreach (var c in Grid.Corners)
-            {
-                c.Elevation = (float)Terrain.GetElevationAt(c.Vector);
-            }
+            _climateSet = true;
         }
 
         private void SetHydrosphereProportion(
@@ -2321,6 +2373,189 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
+        }
+
+        private void SetRiverFlows()
+        {
+            var cornerFlows = new Dictionary<int, float>();
+            var endpoints = new SortedSet<Corner>(Comparer<Corner>.Create((c1, c2) => c2.Elevation.CompareTo(c1.Elevation) * -1));
+
+            for (var i = 0; i < Grid.Tiles.Length; i++)
+            {
+                var t = Grid.Tiles[i];
+                if (t.TerrainType == TerrainType.Water)
+                {
+                    continue;
+                }
+
+                var runoff = (float)(t.Precipitation * 0.001 * t.Area / Orbit.Period);
+                if (runoff.IsZero())
+                {
+                    continue;
+                }
+
+                var lowest = t.GetLowestCorner(Grid);
+
+                cornerFlows[lowest.Index] = runoff;
+
+                endpoints.Add(lowest);
+            }
+
+            Corner prev = null;
+            while (endpoints.Count > 0)
+            {
+                var c = endpoints.First();
+                endpoints.Remove(c);
+
+                var index = Array.Find(Grid.Edges, x => x.RiverSource == c.Index)?.RiverDirection ?? -1;
+                var next = index == -1 ? null : Grid.Corners[index];
+                if (next == null)
+                {
+                    next = c.GetLowestCorner(Grid, true);
+                    if (next.Elevation > c.Elevation)
+                    {
+                        next = c.GetLowestCorner(Grid, false);
+                    }
+                    if (next.Elevation > c.Elevation && (prev?.LakeDepth ?? 0) == 0)
+                    {
+                        c.LakeDepth = Math.Min(
+                            c.Corners.Min(x => Grid.Corners[x].Elevation),
+                            c.Tiles.Min(x => Grid.Tiles[x].Elevation)) - c.Elevation;
+                    }
+                }
+
+                if ((prev?.LakeDepth ?? 0) == 0 || c.LakeDepth + c.Elevation >= next.Elevation)
+                {
+                    var edgeIndex = c.Edges[c.IndexOfCorner(next.Index)];
+                    var edge = Grid.Edges[edgeIndex];
+                    edge.RiverSource = c.Index;
+
+                    cornerFlows.TryGetValue(c.Index, out var flow);
+                    flow += c.Edges
+                        .Where(e => Grid.Edges[e].RiverDirection == c.Index)
+                        .Sum(e => Grid.Edges[e].RiverFlow);
+                    Grid.Edges[edgeIndex].RiverFlow = flow;
+
+                    if (!flow.IsZero())
+                    {
+                        var rc = next;
+                        var nextRiverEdge = -1;
+                        var previous = -1;
+                        do
+                        {
+                            previous = nextRiverEdge;
+                            var nextRiverEdges = rc.Edges.Where(e => Grid.Edges[e].RiverSource == rc.Index).ToList();
+                            if (nextRiverEdges.Count > 0)
+                            {
+                                nextRiverEdge = nextRiverEdges[0];
+                                Grid.Edges[nextRiverEdge].RiverFlow += flow;
+                                rc = Grid.Corners[Grid.Edges[nextRiverEdge].RiverDirection];
+                            }
+                            else
+                            {
+                                nextRiverEdge = -1;
+                            }
+                        } while (nextRiverEdge != -1 && nextRiverEdge != previous);
+                    }
+
+                    if (next.TerrainType == TerrainType.Land
+                        && next.LakeDepth == 0
+                        && !endpoints.Contains(next)
+                        && !next.Edges.Any(e => Grid.Edges[e].RiverSource == next.Index))
+                    {
+                        endpoints.Add(next);
+                    }
+                }
+
+                prev = c;
+            }
+        }
+
+        private void SetSnowAndIce(double winterAngle)
+        {
+            var winterEquator = -AxialTilt * (2.0 / 3.0);
+
+            var summerAngle = AxialPrecession + MathConstants.ThreeHalvesPI;
+            if (summerAngle >= MathConstants.TwoPI)
+            {
+                summerAngle -= MathConstants.TwoPI;
+            }
+            var summerEquator = AxialTilt * (2.0 / 3.0);
+
+            for (var i = 0; i < Grid.Tiles.Length; i++)
+            {
+                var t = Grid.Tiles[i];
+                if (t.TerrainType != TerrainType.Water && t.HumidityType <= HumidityType.Perarid)
+                {
+                    continue;
+                }
+
+                var winterLatitude = t.Latitude - (winterEquator * (t.Latitude < 0 ? -1 : 1));
+                if (winterLatitude > MathConstants.HalfPI)
+                {
+                    winterLatitude = Math.PI - winterLatitude;
+                }
+                else if (winterLatitude < -MathConstants.HalfPI)
+                {
+                    winterLatitude = -winterLatitude - Math.PI;
+                }
+                var minTemp = GetSurfaceTemperatureAtTrueAnomaly(winterAngle, winterLatitude);
+
+                if (minTemp > Chemical.Water_Salt.MeltingPoint)
+                {
+                    continue;
+                }
+
+                var summerLatitude = t.Latitude - (summerEquator * (t.Latitude < 0 ? -1 : 1));
+                if (summerLatitude > MathConstants.HalfPI)
+                {
+                    summerLatitude = Math.PI - summerLatitude;
+                }
+                else if (summerLatitude < -MathConstants.HalfPI)
+                {
+                    summerLatitude = -summerLatitude - Math.PI;
+                }
+                var maxTemp = GetSurfaceTemperatureAtTrueAnomaly(summerAngle, summerLatitude);
+
+                if (maxTemp < Chemical.Water_Salt.MeltingPoint)
+                {
+                    t.SeaIce = t.TerrainType == TerrainType.Water ? FloatRange.ZeroToOne : FloatRange.Zero;
+                    t.SnowCover = t.HumidityType <= HumidityType.Perarid ? FloatRange.Zero : FloatRange.ZeroToOne;
+                    continue;
+                }
+
+                var freezeProportion = MathUtility.InverseLerp(minTemp, maxTemp, Chemical.Water_Salt.MeltingPoint);
+                // Freezes more than melts; never fully melts.
+                if (freezeProportion >= 0.5)
+                {
+                    t.SeaIce = t.TerrainType == TerrainType.Water ? FloatRange.ZeroToOne : FloatRange.Zero;
+                    t.SnowCover = t.HumidityType <= HumidityType.Perarid ? FloatRange.Zero : FloatRange.ZeroToOne;
+                    continue;
+                }
+
+                var meltStart = freezeProportion / 2;
+                var iceMeltFinish = freezeProportion;
+                var snowMeltFinish = freezeProportion * 3 / 4;
+                var freezeStart = 1 - (freezeProportion / 2);
+                if (t.Latitude < 0)
+                {
+                    iceMeltFinish += 0.5;
+                    if (iceMeltFinish > 1)
+                    {
+                        iceMeltFinish--;
+                    }
+
+                    snowMeltFinish += 0.5;
+                    if (snowMeltFinish > 1)
+                    {
+                        snowMeltFinish--;
+                    }
+
+                    freezeStart -= 0.5;
+                }
+                t.SeaIce = t.TerrainType == TerrainType.Water ? new FloatRange((float)freezeStart, (float)iceMeltFinish) : FloatRange.Zero;
+                t.SnowCover = t.HumidityType <= HumidityType.Perarid ? FloatRange.Zero : new FloatRange((float)freezeStart, (float)snowMeltFinish);
+            }
         }
     }
 }

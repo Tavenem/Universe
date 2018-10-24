@@ -91,7 +91,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The target grid size (level of detail).
         /// </summary>
-        public int? GridSize { get; set; }
+        public byte? GridSize { get; set; }
 
         /// <summary>
         /// The target tile radius.
@@ -166,7 +166,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = null,
             double? eccentricity = null,
-            int? gridSize = null,
+            byte? gridSize = null,
             double? gridTileRadius = null,
             bool? hasMagnetosphere = null,
             int? maxGridSize = null,
@@ -218,7 +218,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
-            int? gridSize = null,
+            byte? gridSize = null,
             double? gridTileRadius = null,
             int? maxGridSize = null,
             bool? hasMagnetosphere = true,

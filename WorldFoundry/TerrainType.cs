@@ -6,11 +6,19 @@
     /// </summary>
     public enum TerrainType
     {
-#pragma warning disable CS1591
-        None = 0,
-        Land = 1,
-        Water = 2,
-        Coast = 3
-#pragma warning restore CS1591
+        /// <summary>
+        /// The center and all corners of this tile are above sea level.
+        /// </summary>
+        Land = 0,
+
+        /// <summary>
+        /// The center and all corners of this tile are below sea level.
+        /// </summary>
+        Water = 1,
+
+        /// <summary>
+        /// The center and at least one corner of this tile are on opposite sides of sea level.
+        /// </summary>
+        Coast = 2,
     }
 }

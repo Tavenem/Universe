@@ -1,59 +1,78 @@
-﻿namespace WorldFoundry
+﻿using MathAndScience;
+
+namespace WorldFoundry
 {
     /// <summary>
-    /// A floating-point value which specifies an average, and optionally a range (minimum to maximum), and a total (sum).
+    /// A floating-point value which specifies an average, and optionally a range (minimum to maximum).
     /// </summary>
     public struct FloatRange
-
     {
+        /// <summary>
+        /// A <see cref="FloatRange"/> with all values set to zero.
+        /// </summary>
+        public static readonly FloatRange Zero = new FloatRange();
+
+        /// <summary>
+        /// A <see cref="FloatRange"/> with the minimum set to 0, the average set to 0.5, and the
+        /// maximum set to 1.
+        /// </summary>
+        public static readonly FloatRange ZeroToOne = new FloatRange(0, 1);
+
         /// <summary>
         /// The average value.
         /// </summary>
-        public float Avg { get; set; }
-
-        private float? _max;
-        /// <summary>
-        /// The maximum value. Defaults to <see cref="Avg"/> if unset.
-        /// </summary>
-        public float Max
-        {
-            get => _max ?? Avg;
-            set => _max = value;
-        }
-
-        private float? _min;
-        /// <summary>
-        /// The minimum value. Defaults to <see cref="Avg"/> if unset.
-        /// </summary>
-        public float Min
-        {
-            get => _min ?? Avg;
-            set => _min = value;
-        }
+        public float Average { get; }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="FloatRange"/> with an <see cref="Avg"/> but no
-        /// <see cref="Min"/> or <see cref="Max"/>.
+        /// Whether this range begins and ends at zero.
         /// </summary>
-        /// <param name="value">The value at which <see cref="Avg"/> is to be set.</param>
+        public bool IsZero => Min.IsZero() && Max.IsZero();
+
+        /// <summary>
+        /// The maximum value.
+        /// </summary>
+        public float Max { get; }
+
+        /// <summary>
+        /// The minimum value.
+        /// </summary>
+        public float Min { get; }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="FloatRange"/> with  set to the same value.
+        /// </summary>
+        /// <param name="value">The value to set for all three properties (<see cref="Average"/>,
+        /// <see cref="Min"/> and <see cref="Max"/>).</param>
         public FloatRange(float value)
         {
-            Avg = value;
-            _max = null;
-            _min = null;
+            Average = value;
+            Max = value;
+            Min = value;
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="FloatRange"/> with the specified values.
+        /// Initializes a new instance of <see cref="FloatRange"/>.
         /// </summary>
         /// <param name="min">The value at which <see cref="Min"/> is to be set.</param>
-        /// <param name="avg">The value at which <see cref="Avg"/> is to be set.</param>
         /// <param name="max">The value at which <see cref="Max"/> is to be set.</param>
-        public FloatRange(float min, float avg, float max)
+        public FloatRange(float min, float max)
         {
-            Avg = avg;
-            _max = max;
-            _min = min;
+            Average = min + ((max - min) / 2);
+            Max = max;
+            Min = min;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="FloatRange"/>.
+        /// </summary>
+        /// <param name="min">The value at which <see cref="Min"/> is to be set.</param>
+        /// <param name="average">The value at which <see cref="Average"/> is to be set.</param>
+        /// <param name="max">The value at which <see cref="Max"/> is to be set.</param>
+        public FloatRange(float min, float average, float max)
+        {
+            Average = average;
+            Max = max;
+            Min = min;
         }
     }
 }

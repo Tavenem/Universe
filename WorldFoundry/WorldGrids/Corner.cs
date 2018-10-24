@@ -47,7 +47,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Corner"/>.
         /// </summary>
-        public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
+        public TerrainType TerrainType { get; internal set; }
 
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.

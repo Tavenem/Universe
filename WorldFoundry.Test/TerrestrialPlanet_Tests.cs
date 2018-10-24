@@ -1,8 +1,5 @@
-using Antmicro.Migrant;
-using Antmicro.Migrant.Customization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.IO;
 using System.Linq;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
@@ -13,23 +10,10 @@ namespace WorldFoundry.Test
     [TestClass]
     public class TerrestrialPlanet_Tests
     {
-        private static Serializer Serializer;
-        private static Settings SerializerSettings;
         private const int GridSize = 6;
         private const double GridTileRadius = 160000;
         private const int MaxGridSize = 7;
         private const int NumSeasons = 4;
-
-#pragma warning disable RCS1163 // Unused parameter.
-        [ClassInitialize]
-        public static void Init(TestContext context)
-        {
-            Serializer = new Serializer();
-            Serializer.ForObject<Type>().SetSurrogate(x => Activator.CreateInstance(typeof(TypeSurrogate<>).MakeGenericType(new[] { x })));
-            Serializer.ForSurrogate<ITypeSurrogate>().SetObject(x => x.Restore());
-            SerializerSettings = new Settings(versionTolerance: VersionToleranceLevel.AllowAssemblyVersionChange | VersionToleranceLevel.AllowFieldAddition | VersionToleranceLevel.AllowFieldRemoval);
-        }
-#pragma warning restore RCS1163 // Unused parameter.
 
         [TestMethod]
         public void TerrestrialPlanet_Generate()
@@ -47,6 +31,16 @@ namespace WorldFoundry.Test
         }
 
         [TestMethod]
+        public void TerrestrialPlanet_Generate_NoOutput()
+        {
+            //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: GridTileRadius, maxGridSize: MaxGridSize);
+
+            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
+            Assert.IsNotNull(planet);
+        }
+
+        [TestMethod]
         public void TerrestrialPlanet_Generate_WithSeasons()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
@@ -61,8 +55,6 @@ namespace WorldFoundry.Test
             var seasons = planet.GetSeasons(NumSeasons)?.ToList();
             Assert.IsNotNull(seasons);
             Assert.AreEqual(NumSeasons, seasons.Count);
-            Assert.IsNotNull(planet.Seasons);
-            Assert.AreEqual(NumSeasons, planet.Seasons.Count);
 
             var sb = new StringBuilder();
 
@@ -78,178 +70,17 @@ namespace WorldFoundry.Test
         }
 
         [TestMethod]
-        public void TerrestrialPlanet_Save()
+        public void TerrestrialPlanet_Generate_WithSeasons_NoOutput()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var stringData = SaveAsString(planet);
-            Assert.IsNotNull(stringData);
-
-            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData).ToString()}");
+            var seasons = planet.GetSeasons(NumSeasons)?.ToList();
+            Assert.IsNotNull(seasons);
+            Assert.AreEqual(NumSeasons, seasons.Count);
         }
-
-        [TestMethod]
-        public void TerrestrialPlanet_Save_Load()
-        {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
-
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
-            Assert.IsNotNull(planet);
-            Assert.IsNotNull(planet.PlanetParams);
-
-            var stringData = SaveAsString(planet);
-            Assert.IsNotNull(stringData);
-
-            planet = LoadFromString(stringData);
-            Assert.IsNotNull(planet);
-            Assert.IsNotNull(planet.PlanetParams);
-            Assert.AreEqual(GridSize, planet.PlanetParams.GridSize);
-        }
-
-        [TestMethod]
-        public void TerrestrialPlanet_Save_WithSeasons()
-        {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
-
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
-            Assert.IsNotNull(planet);
-            planet.GetSeasons(NumSeasons).ToList();
-
-            var stringData = SaveAsString(planet);
-            Assert.IsNotNull(stringData);
-
-            Console.WriteLine($"Saved size: {Encoding.Unicode.GetByteCount(stringData).ToString()}");
-        }
-
-        [TestMethod]
-        public void TerrestrialPlanet_Save_Load_WithSeasons()
-        {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
-
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
-            Assert.IsNotNull(planet);
-            planet.GetSeasons(NumSeasons).ToList();
-
-            var stringData = SaveAsString(planet);
-            Assert.IsNotNull(stringData);
-
-            planet = LoadFromString(stringData);
-            Assert.IsNotNull(planet);
-
-            Assert.IsNotNull(planet.Seasons);
-            Assert.AreEqual(NumSeasons, planet.Seasons.Count);
-        }
-
-#pragma warning disable RCS1213 // Remove unused member declaration.
-        private static void AddClimateString(StringBuilder sb, TerrestrialPlanet planet)
-        {
-            if (planet.Grid.Tiles[0].BiomeType == BiomeType.None)
-            {
-                return;
-            }
-
-            sb.AppendLine("Climates:");
-            sb.AppendFormat("  % Desert (land):         {0}%", planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water));
-            sb.AppendLine();
-            sb.AppendFormat("  % Rain Forest (land):    {0}%", planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0 / planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water));
-            sb.AppendLine();
-            sb.AppendFormat("  Polar:                   {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Polar));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Ice:                   {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Ice));
-            sb.AppendLine();
-            sb.AppendFormat("  Subpolar:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subpolar));
-            sb.AppendLine();
-            sb.AppendFormat("    Dry Tundra:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subpolar && t.EcologyType == EcologyType.DryTundra));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Tundra:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subpolar && t.EcologyType == EcologyType.MoistTundra));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Tundra:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subpolar && t.EcologyType == EcologyType.WetTundra));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Tundra:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subpolar && t.EcologyType == EcologyType.RainTundra));
-            sb.AppendLine();
-            sb.AppendFormat("  Boreal:                  {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Dry Scrub:             {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal && t.EcologyType == EcologyType.DryScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Forest:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal && t.EcologyType == EcologyType.MoistForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal && t.EcologyType == EcologyType.WetForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Forest:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Boreal && t.EcologyType == EcologyType.RainForest));
-            sb.AppendLine();
-            sb.AppendFormat("  Cool Temperate:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert Scrub:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.DesertScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Steppe:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.Steppe));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Forest:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.MoistForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.WetForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Forest:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.CoolTemperate && t.EcologyType == EcologyType.RainForest));
-            sb.AppendLine();
-            sb.AppendFormat("  Warm Temperate:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert Scrub:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.DesertScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Thorn Scrub:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.ThornScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Dry Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.DryForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Forest:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.MoistForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.WetForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Forest:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.EcologyType == EcologyType.RainForest));
-            sb.AppendLine();
-            sb.AppendFormat("  Subtropical:             {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert Scrub:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.DesertScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Thorn Woodland:        {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.ThornWoodland));
-            sb.AppendLine();
-            sb.AppendFormat("    Dry Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.DryForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Forest:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.MoistForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.WetForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Forest:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Subtropical && t.EcologyType == EcologyType.RainForest));
-            sb.AppendLine();
-            sb.AppendFormat("  Tropical:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.Desert));
-            sb.AppendLine();
-            sb.AppendFormat("    Desert Scrub:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.DesertScrub));
-            sb.AppendLine();
-            sb.AppendFormat("    Thorn Woodland:        {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.ThornWoodland));
-            sb.AppendLine();
-            sb.AppendFormat("    Very Dry Forest:       {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.VeryDryForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Dry Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.DryForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Moist Forest:          {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.MoistForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Wet Forest:            {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.WetForest));
-            sb.AppendLine();
-            sb.AppendFormat("    Rain Forest:           {0}", planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Tropical && t.EcologyType == EcologyType.RainForest));
-            sb.AppendLine();
-        }
-#pragma warning restore RCS1213 // Remove unused member declaration.
 
         private static void AddSimpleClimateString(StringBuilder sb, TerrestrialPlanet planet)
         {
@@ -321,10 +152,17 @@ namespace WorldFoundry.Test
                 var avg90 = list.Take((int)Math.Floor(list.Count * 0.9)).Average();
                 sb.AppendFormat("  Avg (<=P90):             {0}mm ({1})", Math.Round(avg90), Math.Round(avg90 - 990, 2));
                 sb.AppendLine();
-                var avgT = planet.Grid.Tiles
-                    .Where(t => t.TerrainType != TerrainType.Water && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate))
-                    .Select(t => t.Precipitation).Average();
-                sb.AppendFormat("  Avg (Temperate):         {0}mm ({1})", Math.Round(avgT), Math.Round(avgT - 1100, 2));
+                var temperates = planet.Grid.Tiles
+                    .Where(t => t.TerrainType != TerrainType.Water && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate));
+                if (temperates.Any())
+                {
+                    var avgT = temperates.Select(t => t.Precipitation).Average();
+                    sb.AppendFormat("  Avg (Temperate):         {0}mm ({1})", Math.Round(avgT), Math.Round(avgT - 1100, 2));
+                }
+                else
+                {
+                    sb.AppendFormat("  Avg (Temperate):         0mm (-1100)");
+                }
                 sb.AppendLine();
                 sb.AppendFormat("  Min:                     {0}mm", Math.Round(list[0]));
                 sb.AppendLine();
@@ -359,7 +197,7 @@ namespace WorldFoundry.Test
         private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet)
         {
             sb.AppendLine("Temp:");
-            var avg = planet.Grid.Tiles.Average(x => x.Temperature.Avg);
+            var avg = planet.Grid.Tiles.Average(x => x.Temperature.Average);
             sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - planet.PlanetParams.SurfaceTemperature.Value, 2));
             sb.AppendLine();
 
@@ -373,7 +211,7 @@ namespace WorldFoundry.Test
 
             var avgSeaLevel = water ? planet.Grid.Tiles
                 .Where(x => x.TerrainType == TerrainType.Water)
-                .Average(x => x.Temperature.Avg)
+                .Average(x => x.Temperature.Average)
                 : 0;
             sb.AppendFormat("  Avg Sea-Level:           {0} K", Math.Round(avgSeaLevel));
             sb.AppendLine();
@@ -381,7 +219,7 @@ namespace WorldFoundry.Test
             sb.AppendFormat("  Max:                     {0} K", Math.Round(planet.Grid.Tiles.Max(x => x.Temperature.Max)));
             sb.AppendLine();
 
-            var maxAvg = planet.Grid.Tiles.Max(x => x.Temperature.Avg);
+            var maxAvg = planet.Grid.Tiles.Max(x => x.Temperature.Average);
             sb.AppendFormat("  Max Avg:          {0} K", Math.Round(maxAvg));
             sb.AppendLine();
 
@@ -392,9 +230,6 @@ namespace WorldFoundry.Test
                 .First()
                 : (0, 0);
             sb.AppendFormat("  Min Max (water):  {0} K [{1}]", Math.Round(minMaxTemp), minMaxIndex);
-            sb.AppendLine();
-
-            sb.AppendFormat("Avg Surface Pressure:      {0} kPa", Math.Round(planet.Grid.Tiles.Average(x => x.AtmosphericPressure.Avg), 3));
             sb.AppendLine();
         }
 
@@ -464,27 +299,5 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 #pragma warning restore RCS1213 // Remove unused member declaration.
-
-        private static TerrestrialPlanet LoadFromString(string data)
-        {
-            TerrestrialPlanet planet;
-            using (var ms = new MemoryStream(Convert.FromBase64String(data)))
-            {
-                planet = Serializer.Deserialize<TerrestrialPlanet>(ms);
-            }
-            return planet;
-        }
-
-        private static string SaveAsString(TerrestrialPlanet planet)
-        {
-            string stringData;
-            using (var ms = new MemoryStream())
-            {
-                Serializer.Serialize(planet, ms);
-
-                stringData = Convert.ToBase64String(ms.ToArray());
-            }
-            return stringData;
-        }
     }
 }

@@ -19,7 +19,7 @@
         /// <summary>
         /// The volume of water flowing in the river along this <see cref="Edge"/>, in m³/s.
         /// </summary>
-        public FloatRange RiverFlow { get; internal set; }
+        public float RiverFlow { get; internal set; }
 
         /// <summary>
         /// The index of the <see cref="Corner"/> from which a river on this <see cref="Edge"/>
@@ -30,7 +30,7 @@
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Edge"/>.
         /// </summary>
-        public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
+        public TerrainType TerrainType { get; internal set; }
 
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this <see cref="Edge"/> is connected.

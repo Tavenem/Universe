@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Substance" Version="0.2.7" />
+    <PackageReference Include="Substance" Version="0.2.8" />
     <PackageReference Include="Troschuetz.Random" Version="4.3.0" />
   </ItemGroup>
 

@@ -16,7 +16,7 @@ namespace WorldFoundry.WorldGrids
         /// The maximum grid size (level of detail). Even values below this limit may be impractical,
         /// depending on system resources.
         /// </summary>
-        public const short MaxGridSize = 14;
+        public const byte MaxGridSize = 14;
 
         /// <summary>
         /// Indicates the desired radius for <see cref="Tile"/>s, in m. Null by default, which
@@ -29,11 +29,11 @@ namespace WorldFoundry.WorldGrids
         /// </remarks>
         public static double? DefaultDesiredTileRadius { get; set; }
 
-        private static short _defaultGridSize = 6;
+        private static byte _defaultGridSize = 6;
         /// <summary>
         /// The default grid size (level of detail). Initial value is 6; maximum is <see cref="MaxGridSize"/>.
         /// </summary>
-        public static short DefaultGridSize
+        public static byte DefaultGridSize
         {
             get => _defaultGridSize;
             set => _defaultGridSize = Math.Min(value, MaxGridSize);
@@ -63,7 +63,7 @@ namespace WorldFoundry.WorldGrids
         /// cref="DefaultDesiredTileRadius"/>), this property indicates an optional maximum size
         /// allowable. Null by default, which indicates that the maximum is the absolute <see cref="MaxGridSize"/>.
         /// </summary>
-        public static short? MaxGeneratedGridSize { get; set; }
+        public static byte? MaxGeneratedGridSize { get; set; }
 
         /// <summary>
         /// The array of all <see cref="Corner"/>s which make up the <see cref="WorldGrid"/>.
@@ -102,7 +102,7 @@ namespace WorldFoundry.WorldGrids
         /// The <see cref="Planetoid"/> this <see cref="WorldGrid"/> will map.
         /// </param>
         /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
-        public WorldGrid(Planetoid planet, int size)
+        public WorldGrid(Planetoid planet, byte size)
         {
             Planet = planet;
             SubdivideGrid(size);
@@ -121,10 +121,10 @@ namespace WorldFoundry.WorldGrids
         /// The grid size which will produce <see cref="Tile"/>s with the nearest radius to the
         /// desired value.
         /// </returns>
-        public static short GetGridSizeForTileRadius(double radiusSquared, double tileRadius, int? max = null)
+        public static byte GetGridSizeForTileRadius(double radiusSquared, double tileRadius, int? max = null)
         {
             var prevDiff = 0.0;
-            for (short i = 0; i < GridAreas.Count; i++)
+            for (byte i = 0; i < GridAreas.Count; i++)
             {
                 var tileArea = i == 0 ? GridAreas[i].fiveSided : GridAreas[i].sixSided;
                 tileArea *= radiusSquared;
@@ -145,7 +145,7 @@ namespace WorldFoundry.WorldGrids
                         }
                         else
                         {
-                            return (short)(i - 1);
+                            return (byte)(i - 1);
                         }
                     }
                 }
@@ -154,7 +154,7 @@ namespace WorldFoundry.WorldGrids
                     prevDiff = radius - tileRadius;
                 }
             }
-            return (short)(GridAreas.Count - 1);
+            return (byte)(GridAreas.Count - 1);
         }
 
         private void AddCorner(int index, int[] tileIndexes)
@@ -229,20 +229,6 @@ namespace WorldFoundry.WorldGrids
                 }
             }
             return tile;
-        }
-
-        internal void SetCoriolisCoefficients()
-        {
-            var coriolisCoefficients = new Dictionary<double, double>();
-            foreach (var t in Tiles)
-            {
-                if (!coriolisCoefficients.ContainsKey(t.Latitude))
-                {
-                    coriolisCoefficients.Add(t.Latitude, Planet.GetCoriolisCoefficient(t.Latitude));
-                }
-
-                t.WindFactor = (float)(((Math.Atan2(coriolisCoefficients[t.Latitude], t.FrictionCoefficient) / MathConstants.HalfPI) + 1) / 2);
-            }
         }
 
         private void SetGridSize0()
@@ -336,7 +322,7 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        private (Corner[], Edge[], Tile[]) SetNewGridSize(short size)
+        private (Corner[], Edge[], Tile[]) SetNewGridSize(byte size)
         {
             GridSize = size;
 
@@ -374,7 +360,7 @@ namespace WorldFoundry.WorldGrids
 
         private void SubdivideGrid()
         {
-            var (prevCorners, prevEdges, prevTiles) = SetNewGridSize((short)(GridSize + 1));
+            var (prevCorners, prevEdges, prevTiles) = SetNewGridSize((byte)(GridSize + 1));
 
             for (var i = 0; i < prevTiles.Length; i++)
             {
@@ -443,7 +429,7 @@ namespace WorldFoundry.WorldGrids
         /// resulting in the same height map (can be used to maintain a similar look when changing
         /// <see cref="GridSize"/>, rather than an entirely new geography).
         /// </param>
-        internal void SubdivideGrid(int size)
+        internal void SubdivideGrid(byte size)
         {
             size = Math.Min(MaxGridSize, size);
             if (GridSize < 0 || size < GridSize)

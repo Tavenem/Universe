@@ -233,6 +233,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             internal set => _greenhouseEffect = value;
         }
 
+        private WorldGrid _grid;
+        /// <summary>
+        /// The <see cref="WorldGrid"/> which maps the surface of this <see cref="Planetoid"/>.
+        /// </summary>
+        public WorldGrid Grid
+        {
+            get
+            {
+                if (_grid == null)
+                {
+                    GenerateGrid();
+                }
+                return _grid;
+            }
+        }
+
         private const bool _hasFlatSurface = false;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
@@ -441,8 +457,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected double LapseRateDry
             => _lapseRateDry ?? (_lapseRateDry = GetLapseRateDry()).Value;
 
-        private double? _tropicalEquator;
-        private double TropicalEquator => _tropicalEquator ?? (_tropicalEquator = GetTropicalEquator()).Value;
+        private double? _solarEquator;
+        private double SolarEquator => _solarEquator ?? (_solarEquator = GetSolarEquator()).Value;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -563,6 +579,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public double GetDistance(double latitude1, double longitude1, double latitude2, double longitude2)
             => GetDistance(LatitudeAndLongitudeToVector(latitude1, longitude1), LatitudeAndLongitudeToVector(latitude2, longitude2));
+
+        /// <summary>
+        /// Gets the elevation at the given <paramref name="position"/>, in meters.
+        /// </summary>
+        /// <param name="position">The position at which to determine elevation.</param>
+        /// <returns>The elevation at the given <paramref name="position"/>, in meters.</returns>
+        public double GetElevationAt(Vector3 position) => Terrain.GetElevationAt(position);
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
@@ -796,17 +819,44 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         internal double GetSeasonalLatitude(double latitude)
         {
-            var seasonalLatitude = latitude - TropicalEquator;
+            var seasonalLatitude = latitude - SolarEquator;
             if (seasonalLatitude > MathConstants.HalfPI)
             {
-                return MathConstants.HalfPI - (seasonalLatitude - MathConstants.HalfPI);
+                return Math.PI - seasonalLatitude;
             }
             else if (seasonalLatitude < -MathConstants.HalfPI)
             {
-                return -MathConstants.HalfPI - (seasonalLatitude + MathConstants.HalfPI);
+                return -seasonalLatitude - Math.PI;
             }
             return seasonalLatitude;
         }
+
+        internal double GetSeasonalLatitude(double latitude, double trueAnomaly)
+        {
+            var solarEquator = -AxialTilt * Math.Cos(trueAnomaly) * (2.0 / 3.0);
+            var seasonalLatitude = latitude - solarEquator;
+            if (seasonalLatitude > MathConstants.HalfPI)
+            {
+                return Math.PI - seasonalLatitude;
+            }
+            else if (seasonalLatitude < -MathConstants.HalfPI)
+            {
+                return -seasonalLatitude - Math.PI;
+            }
+            return seasonalLatitude;
+        }
+
+        /// <summary>
+        /// Calculates the effective surface temperature at the given surface position, including
+        /// greenhouse effects, in K.
+        /// </summary>
+        /// <param name="seasonalLatitude">
+        /// The latitude at which temperature will be calculated, relative to the seasonal tropical
+        /// equator, rather than the rotational equator.
+        /// </param>
+        /// <returns>The surface temperature, in K.</returns>
+        internal double GetSurfaceTemperature(double seasonalLatitude)
+            => (GetSurfaceTemperature() * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -816,13 +866,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// A hypothetical position for this <see cref="Planet"/> at which its temperature will be
         /// calculated.
         /// </param>
-        /// <param name="latitude">
-        /// The latitude (relative to the seasonal tropical equator, rather than the rotational
-        /// equator) at which temperature will be calculated.
+        /// <param name="seasonalLatitude">
+        /// The latitude at which temperature will be calculated, relative to the solar equator,
+        /// rather than the rotational equator.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        internal double GetSurfaceTemperatureAtPosition(Vector3 position, double latitude)
-            => (GetSurfaceTemperatureAtPosition(position) * GetInsolationFactor(latitude)) + GreenhouseEffect;
+        internal double GetSurfaceTemperatureAtPosition(Vector3 position, double seasonalLatitude)
+            => (GetSurfaceTemperatureAtPosition(position) * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -847,9 +897,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="trueAnomaly">
         /// A true anomaly at which its temperature will be calculated.
         /// </param>
-        /// <param name="latitude">
-        /// The latitude (relative to the seasonal tropical equator, rather than the rotational
-        /// equator) at which temperature will be calculated.
+        /// <param name="seasonalLatitude">
+        /// The latitude at which temperature will be calculated, relative to the solar equator at
+        /// the time, rather than the rotational equator.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
         /// <remarks>
@@ -861,8 +911,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// faster for successive calls than calculating the temperature at specific positions
         /// precisely.
         /// </remarks>
-        internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double latitude)
-            => (GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly) * GetInsolationFactor(latitude)) + GreenhouseEffect;
+        internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
+            => (GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly) * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -974,6 +1024,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         private protected virtual void GenerateAtmosphere() { }
+
+        private protected virtual void GenerateGrid()
+            => GenerateGrid(WorldGrid.DefaultDesiredTileRadius.HasValue
+                ? WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value)
+                : WorldGrid.DefaultGridSize);
+
+        private protected void GenerateGrid(byte size)
+        {
+            _grid = new WorldGrid(this, size);
+
+            SetGridElevations();
+        }
 
         private protected virtual void GenerateResources()
             => AddResources(Substance.Composition.GetSurface()
@@ -1176,10 +1238,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // Gaussian distribution with most values between 1km and 19km.
             => new Ellipsoid(Math.Max(0, Randomizer.Instance.Normal(10000, 4500)), Randomizer.Instance.NextDouble(0.5, 1));
 
-        private Terrain GetTerrain() => new Terrain(this);
-
-        private double GetTropicalEquator()
+        private double GetSolarEquator()
             => -AxialTilt * (Orbit == null ? 1 : Math.Cos(Orbit.TrueAnomaly)) * (2.0 / 3.0);
+
+        private Terrain GetTerrain() => new Terrain(this);
 
         private protected override void ResetCachedTemperatures()
         {
@@ -1197,7 +1259,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected override void ResetOrbitalProperties()
         {
-            _tropicalEquator = null;
+            _solarEquator = null;
             ResetCachedTemperatures();
         }
 
@@ -1208,8 +1270,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var q = Quaternion.CreateFromAxisAngle(precessionVector, AngleOfRotation);
             _axis = Vector3.Transform(Vector3.UnitY, q);
             _axisRotation = Quaternion.Conjugate(q);
-            _tropicalEquator = null;
+            _solarEquator = null;
             ResetOrbitalProperties();
+        }
+
+        private protected void SetGridElevations()
+        {
+            foreach (var t in Grid.Tiles)
+            {
+                t.Elevation = (float)Terrain.GetElevationAt(t.Vector);
+            }
+            foreach (var c in Grid.Corners)
+            {
+                c.Elevation = (float)Terrain.GetElevationAt(c.Vector);
+            }
         }
     }
 }

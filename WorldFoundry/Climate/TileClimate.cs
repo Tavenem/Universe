@@ -6,11 +6,6 @@
     public class TileClimate
     {
         /// <summary>
-        /// The avergae atmospheric pressure in this location during this time, in kPa.
-        /// </summary>
-        public float AtmosphericPressure { get; internal set; }
-
-        /// <summary>
         /// The total precipitation in this location during this time, in mm. Counts all forms of
         /// precipitation, including the water-equivalent amount of snowfall (even though snow is
         /// also reported separately).
@@ -18,26 +13,14 @@
         public float Precipitation { get; internal set; }
 
         /// <summary>
-        /// The total runoff in this location during this time, in m³/s.
+        /// Whether sea ice is present in this location during this time.
         /// </summary>
-        internal float Runoff { get; set; }
+        public bool SeaIce { get; internal set; }
 
         /// <summary>
-        /// The average thickness of sea ice in this location during this time, in meters.
+        /// Whether there is snow cover on the ground in this location during this time.
         /// </summary>
-        public float SeaIce { get; internal set; }
-
-        /// <summary>
-        /// The depth of persistent snow cover in this location during this time, in mm. Assumes a
-        /// typical ratio of 1mm water-equivalent = 13mm snow.
-        /// </summary>
-        /// <remarks>
-        /// Snow depth at any given time during the season will depend on the amount of time since
-        /// the last snow event, the accumulation during that event, and the snow cover prior to the
-        /// event. This number reflects the minimum level which remains unmelted between events, and
-        /// at the end of the season.
-        /// </remarks>
-        public float SnowCover { get; internal set; }
+        public bool SnowCover { get; internal set; }
 
         /// <summary>
         /// The total amount of snow which falls in this location during this time, in mm.

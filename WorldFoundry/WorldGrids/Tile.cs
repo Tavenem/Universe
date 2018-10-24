@@ -19,11 +19,6 @@ namespace WorldFoundry.WorldGrids
         public double Area { get; internal set; }
 
         /// <summary>
-        /// The average atmospheric pressure in this <see cref="Tile"/>, in kPa.
-        /// </summary>
-        public FloatRange AtmosphericPressure { get; internal set; }
-
-        /// <summary>
         /// The <see cref="Climate.BiomeType"/> of this <see cref="Tile"/>.
         /// </summary>
         public BiomeType BiomeType { get; internal set; }
@@ -57,8 +52,6 @@ namespace WorldFoundry.WorldGrids
         /// The elevation above sea level of this <see cref="Tile"/>, in meters.
         /// </summary>
         public float Elevation { get; internal set; }
-
-        internal float FrictionCoefficient { get; set; }
 
         /// <summary>
         /// The <see cref="Climate.HumidityType"/> of this <see cref="Tile"/>.
@@ -94,19 +87,33 @@ namespace WorldFoundry.WorldGrids
         public double Radius { get; internal set; }
 
         /// <summary>
-        /// The resources which can be found in this <see cref="Tile"/>, along with a value from 0 to
-        /// 1 (inclusive) indicating the relative richness of the resource in that location.
-        /// </summary>
-        public Dictionary<Chemical, float> Resources { get; internal set; }
-
-        /// <summary>
-        /// The average thickness of sea ice in this <see cref="Tile"/>, in meters.
+        /// <para>
+        /// The range of proportions of the year that sea ice in present in this <see cref="Tile"/>.
+        /// </para>
+        /// <para>
+        /// Note that the <see cref="FloatRange.Min"/> value will be larger than the <see
+        /// cref="FloatRange.Max"/> value in the northern hemisphere (when the range is not a full
+        /// 0-1), since ice will form towards the end of a year, and melt after the year begins. In
+        /// the southern hemisphere <see cref="FloatRange.Min"/> will be somewhat below 0.5 and <see
+        /// cref="FloatRange.Max"/> above 0.5, in the expected order, since ice forms towards the
+        /// midpoint of a year.
+        /// </para>
         /// </summary>
         public FloatRange SeaIce { get; internal set; }
 
         /// <summary>
-        /// The average depth of persistent snow cover in this <see cref="Tile"/>, in mm. Assumes a
-        /// typical ratio of 1mm water-equivalent = 13mm snow.
+        /// <para>
+        /// The range of proportions of the year that snow cover in present in this <see
+        /// cref="Tile"/>.
+        /// </para>
+        /// <para>
+        /// Note that the <see cref="FloatRange.Min"/> value will be larger than the <see
+        /// cref="FloatRange.Max"/> value in the northern hemisphere (when the range is not a full
+        /// 0-1), since snow will fall towards the end of a year, and melt after the year begins. In
+        /// the southern hemisphere <see cref="FloatRange.Min"/> will be somewhat below 0.5 and <see
+        /// cref="FloatRange.Max"/> above 0.5, in the expected order, since snow falls towards the
+        /// midpoint of a year.
+        /// </para>
         /// </summary>
         public FloatRange SnowCover { get; internal set; }
 
@@ -123,7 +130,7 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Tile"/>.
         /// </summary>
-        public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
+        public TerrainType TerrainType { get; internal set; }
 
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this one is connected.
@@ -134,12 +141,6 @@ namespace WorldFoundry.WorldGrids
         /// The <see cref="Vector3"/> which defines the position of this <see cref="Tile"/>.
         /// </summary>
         public Vector3 Vector { get; internal set; }
-
-        /// <summary>
-        /// Strength of the global wind due to the Coriolis effect at this location, as a value
-        /// between 0 and 1.
-        /// </summary>
-        internal float WindFactor { get; set; }
 
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
@@ -240,28 +241,16 @@ namespace WorldFoundry.WorldGrids
 
         internal void SetClimate(IEnumerable<Season> seasons)
         {
-            AtmosphericPressure = new FloatRange(
-                seasons.Min(s => s.TileClimates[Index].AtmosphericPressure),
-                seasons.Average(s => s.TileClimates[Index].AtmosphericPressure),
-                seasons.Max(s => s.TileClimates[Index].AtmosphericPressure));
             Temperature = new FloatRange(
                 seasons.Min(s => s.TileClimates[Index].Temperature),
                 seasons.Average(s => s.TileClimates[Index].Temperature),
                 seasons.Max(s => s.TileClimates[Index].Temperature));
             Precipitation = seasons.Sum(s => s.TileClimates[Index].Precipitation);
-            SeaIce = new FloatRange(
-                seasons.Min(s => s.TileClimates[Index].SeaIce),
-                seasons.Average(s => s.TileClimates[Index].SeaIce),
-                seasons.Max(s => s.TileClimates[Index].SeaIce));
-            SnowCover = new FloatRange(
-                seasons.Min(s => s.TileClimates[Index].SnowCover),
-                seasons.Average(s => s.TileClimates[Index].SnowCover),
-                seasons.Max(s => s.TileClimates[Index].SnowCover));
             SnowFall = seasons.Sum(s => s.TileClimates[Index].SnowFall);
 
             SetHumidityType(Precipitation);
 
-            SetClimateType(Temperature.Avg);
+            SetClimateType(Temperature.Average);
 
             SetEcologyType();
         }
