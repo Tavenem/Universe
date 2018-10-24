@@ -76,7 +76,7 @@ namespace WorldFoundry.Climate
             SetPrecipitation(planet, latitudes);
             latitudes = null;
 
-            SetSnowAndIce(planet.Grid);
+            SetSnowAndIce(planet, trueAnomaly);
         }
 
         private void SetPrecipitation(TerrestrialPlanet planet, double[] latitudes)
@@ -90,39 +90,24 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private void SetSnowAndIce(WorldGrid grid)
+        private void SetSnowAndIce(TerrestrialPlanet planet, double trueAnomaly)
         {
-            for (var i = 0; i < grid.Tiles.Length; i++)
+            for (var i = 0; i < planet.Grid.Tiles.Length; i++)
             {
-                var t = grid.Tiles[i];
+                var t = planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
 
-                if (t.TerrainType == TerrainType.Water && !t.SeaIce.IsZero)
+                if (t.TerrainType == TerrainType.Water)
                 {
-                    if (t.SeaIce.Min > t.SeaIce.Max)
-                    {
-                        tc.SeaIce = ProportionOfYear >= t.SeaIce.Min || ProportionOfYear <= t.SeaIce.Max;
-                    }
-                    else
-                    {
-                        tc.SeaIce = ProportionOfYear >= t.SeaIce.Min && ProportionOfYear <= t.SeaIce.Max;
-                    }
+                    tc.SeaIce = planet.GetSeaIce(trueAnomaly, t.SeaIce);
                 }
-
-                if (t.TerrainType != TerrainType.Water && !t.SnowCover.IsZero)
+                else if (tc.SnowFall > 0)
                 {
-                    if (tc.SnowFall > 0)
-                    {
-                        tc.SnowCover = true;
-                    }
-                    else if (t.SnowCover.Min > t.SnowCover.Max)
-                    {
-                        tc.SnowCover = ProportionOfYear >= t.SnowCover.Min || ProportionOfYear <= t.SnowCover.Max;
-                    }
-                    else
-                    {
-                        tc.SnowCover = ProportionOfYear >= t.SnowCover.Min && ProportionOfYear <= t.SnowCover.Max;
-                    }
+                    tc.SnowCover = true;
+                }
+                else
+                {
+                    tc.SnowCover = planet.GetSnowCover(trueAnomaly, t.SnowCover);
                 }
             }
         }

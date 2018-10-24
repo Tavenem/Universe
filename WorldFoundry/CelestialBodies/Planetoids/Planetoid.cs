@@ -664,6 +664,56 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => GetSurfaceTemperatureAt(VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>
+        /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
+        /// <paramref name="elevation"/>, from winter to summer, in K.
+        /// </summary>
+        /// <param name="latitude">The latitude at which to calculate the temperature range, in
+        /// radians.</param>
+        /// <param name="elevation">The elevation at which to calculate the temperature range, in
+        /// meters.</param>
+        /// <returns>A <see cref="FloatRange"/> giving the range of temperatures at the given
+        /// <paramref name="latitude"/> and <paramref name="elevation"/>, from winter to summer, in
+        /// K.</returns>
+        public FloatRange GetSurfaceTemperatureRangeAt(double latitude, double elevation)
+        {
+            var winterAngle = AxialPrecession + MathConstants.HalfPI;
+            if (winterAngle >= MathConstants.TwoPI)
+            {
+                winterAngle -= MathConstants.TwoPI;
+            }
+            var winterEquator = -AxialTilt * (2.0 / 3.0);
+            var winterLatitude = latitude - (winterEquator * (latitude < 0 ? -1 : 1));
+            if (winterLatitude > MathConstants.HalfPI)
+            {
+                winterLatitude = Math.PI - winterLatitude;
+            }
+            else if (winterLatitude < -MathConstants.HalfPI)
+            {
+                winterLatitude = -winterLatitude - Math.PI;
+            }
+            var minTemp = GetTemperatureAtElevation(GetSurfaceTemperatureAtTrueAnomaly(winterAngle, winterLatitude), elevation);
+
+            var summerAngle = AxialPrecession + MathConstants.ThreeHalvesPI;
+            if (summerAngle >= MathConstants.TwoPI)
+            {
+                summerAngle -= MathConstants.TwoPI;
+            }
+            var summerEquator = AxialTilt * (2.0 / 3.0);
+            var summerLatitude = latitude - (summerEquator * (latitude < 0 ? -1 : 1));
+            if (summerLatitude > MathConstants.HalfPI)
+            {
+                summerLatitude = Math.PI - summerLatitude;
+            }
+            else if (summerLatitude < -MathConstants.HalfPI)
+            {
+                summerLatitude = -summerLatitude - Math.PI;
+            }
+            var maxTemp = GetTemperatureAtElevation(GetSurfaceTemperatureAtTrueAnomaly(summerAngle, summerLatitude), elevation);
+
+            return new FloatRange((float)minTemp, (float)maxTemp);
+        }
+
+        /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
         /// </summary>
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
