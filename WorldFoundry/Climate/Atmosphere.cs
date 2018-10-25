@@ -56,6 +56,20 @@ namespace WorldFoundry.Climate
         /// </summary>
         public double AtmosphericScaleHeight { get; private set; }
 
+        private double? _maxPrecipitation;
+        /// <summary>
+        /// The maximum annual precipitation expected to be produced by this atmosphere.
+        /// </summary>
+        public double MaxPrecipitation
+            => _maxPrecipitation ?? (_maxPrecipitation = AveragePrecipitation * (0.05 + Math.Exp(1.25))).Value;
+
+        private double? _averagePrecipitation;
+        /// <summary>
+        /// The average annual precipitation expected to be produced by this atmosphere.
+        /// </summary>
+        internal double AveragePrecipitation
+            => _averagePrecipitation ?? (_averagePrecipitation = PrecipitationFactor * 990).Value;
+
         private bool? _containsWaterVapor;
         internal bool ContainsWaterVapor
             => _containsWaterVapor ?? (_containsWaterVapor = Composition?.ContainsSubstance(Chemical.Water, Phase.Gas) ?? false).Value;
@@ -294,8 +308,7 @@ namespace WorldFoundry.Climate
 
         internal void ResetPressureDependentProperties(Planetoid planet)
         {
-            _greenhouseFactor = null;
-            _precipitationFactor = null;
+            ResetPrecipitation();
             SetAtmosphericScaleHeight(planet);
             Mass = GetAtmosphericMass(planet);
             SetAtmosphericHeight(planet);
@@ -305,7 +318,7 @@ namespace WorldFoundry.Climate
 
         internal void ResetTemperatureDependentProperties(Planetoid planet)
         {
-            _precipitationFactor = null;
+            ResetPrecipitation();
             SetAtmosphericScaleHeight(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
@@ -314,8 +327,8 @@ namespace WorldFoundry.Climate
 
         internal void ResetWater()
         {
+            ResetPrecipitation();
             _containsWaterVapor = null;
-            _precipitationFactor = null;
             _waterRatio = null;
             _wetness = null;
         }
@@ -393,5 +406,13 @@ namespace WorldFoundry.Climate
         /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
         /// made.</param>
         private IShape GetShape(Planetoid planet) => new HollowSphere(planet.Radius, AtmosphericHeight);
+
+        private void ResetPrecipitation()
+        {
+            _averagePrecipitation = null;
+            _greenhouseFactor = null;
+            _maxPrecipitation = null;
+            _precipitationFactor = null;
+        }
     }
 }

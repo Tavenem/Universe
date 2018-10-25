@@ -18,11 +18,6 @@ namespace WorldFoundry.Climate
     public class Season
     {
         /// <summary>
-        /// The index of this item.
-        /// </summary>
-        public uint Index { get; }
-
-        /// <summary>
         /// Indicates the proportion of one year represented by this <see cref="Season"/>.
         /// </summary>
         public double ProportionOfYear { get; }
@@ -33,6 +28,12 @@ namespace WorldFoundry.Climate
         public TileClimate[] TileClimates { get; }
 
         /// <summary>
+        /// The true anomaly of the planet's orbit at the midpoint of this <see cref="Season"/>.
+        /// Always 0 if the planet is not in orbit.
+        /// </summary>
+        public double TrueAnomaly { get; }
+
+        /// <summary>
         /// Initializes a new instance of <see cref="Season"/>.
         /// </summary>
         private Season() { }
@@ -40,39 +41,28 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Initializes a new instance of <see cref="Season"/>.
         /// </summary>
-        /// <param name="planet">The <see cref="TerrestrialPlanet"/> on which this season occurs.</param>
-        /// <param name="index">The index of this season among the collection of a year.</param>
-        /// <param name="amount">The number of seasons being generated for the current year.</param>
+        /// <param name="planet">The <see cref="TerrestrialPlanet"/> on which this season
+        /// occurs.</param>
+        /// <param name="proportionOfYear">The proportion of one year taken by this season. Can be 1
+        /// to indicate a full year, or for a planet not in orbit.</param>
         /// <param name="trueAnomaly">The true anomaly of the <paramref name="planet"/>'s orbit at
         /// the time of this season (zero if not in orbit).</param>
-        internal Season(TerrestrialPlanet planet, uint index, uint amount, double trueAnomaly)
+        internal Season(TerrestrialPlanet planet, double proportionOfYear, double trueAnomaly)
         {
-            Index = index;
-
-            ProportionOfYear = 1.0 / amount;
+            ProportionOfYear = proportionOfYear;
+            TrueAnomaly = trueAnomaly;
 
             TileClimates = new TileClimate[planet.Grid.Tiles.Length];
 
-            var solarEquator = -planet.AxialTilt * Math.Cos(MathConstants.TwoPI * ProportionOfYear * index) * (2.0 / 3.0);
+            var solarEquator = planet.GetSolarEquator(trueAnomaly);
             var latitudes = new double[planet.Grid.Tiles.Length];
             for (var j = 0; j < planet.Grid.Tiles.Length; j++)
             {
-                var t = planet.Grid.Tiles[j];
-
                 TileClimates[j] = new TileClimate();
-                var seasonalLatitude = t.Latitude - solarEquator;
-                if (seasonalLatitude > MathConstants.HalfPI)
-                {
-                    seasonalLatitude = Math.PI - seasonalLatitude;
-                }
-                else if (seasonalLatitude < -MathConstants.HalfPI)
-                {
-                    seasonalLatitude = -seasonalLatitude - Math.PI;
-                }
-                latitudes[j] = Math.Abs(seasonalLatitude);
+                latitudes[j] = Math.Abs(planet.GetSeasonalLatitudeFromEquator(planet.Grid.Tiles[j].Latitude, solarEquator));
             }
 
-            SetTemperature(planet, trueAnomaly, latitudes);
+            SetTemperature(planet, planet.Orbit == null ? (double?)null : trueAnomaly, latitudes);
             SetPrecipitation(planet, latitudes);
             latitudes = null;
 
@@ -97,7 +87,7 @@ namespace WorldFoundry.Climate
                 var t = planet.Grid.Tiles[i];
                 var tc = TileClimates[i];
 
-                if (t.TerrainType == TerrainType.Water)
+                if (t.IsWater)
                 {
                     tc.SeaIce = planet.GetSeaIce(trueAnomaly, t.SeaIce);
                 }

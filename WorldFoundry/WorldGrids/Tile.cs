@@ -1,5 +1,4 @@
 ﻿using ExtensionLib;
-using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -64,6 +63,16 @@ namespace WorldFoundry.WorldGrids
         public int Index { get; }
 
         /// <summary>
+        /// Indicates that this tile is at least partially above sea level.
+        /// </summary>
+        public bool IsLand { get; internal set; }
+
+        /// <summary>
+        /// Indicates that this tile is at least partially below sea level.
+        /// </summary>
+        public bool IsWater { get; internal set; }
+
+        /// <summary>
         /// The latitude of this <see cref="Tile"/>, as an angle in radians from the equator.
         /// </summary>
         public float Latitude { get; internal set; }
@@ -126,11 +135,6 @@ namespace WorldFoundry.WorldGrids
         /// The average temperature in this <see cref="Tile"/>, in K.
         /// </summary>
         public FloatRange Temperature { get; internal set; }
-
-        /// <summary>
-        /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Tile"/>.
-        /// </summary>
-        public TerrainType TerrainType { get; internal set; }
 
         /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this one is connected.

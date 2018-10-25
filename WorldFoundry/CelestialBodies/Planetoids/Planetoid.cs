@@ -8,6 +8,7 @@ using System.Linq;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
+using WorldFoundry.SurfaceMaps;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
@@ -406,6 +407,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public List<Planetoid> Satellites { get; private set; }
 
+        private double? _summerSolsticeTrueAnomaly;
+        /// <summary>
+        /// The true anomaly of the orbit of this <see cref="Planetoid"/> when at the summer
+        /// solstice of its northern hemisphere.
+        /// </summary>
+        public double SummerSolsticeTrueAnomaly
+        {
+            get
+            {
+                if (!_summerSolsticeTrueAnomaly.HasValue)
+                {
+                    GenerateAngleOfRotation();
+                }
+                return _summerSolsticeTrueAnomaly ?? 0;
+            }
+        }
+
         private double? _surfaceTemperature;
         /// <summary>
         /// The current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
@@ -418,6 +436,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The <see cref="Terrain"/> which describes this <see cref="Planetoid"/>'s surface.
         /// </summary>
         public Terrain Terrain => _terrain ?? (_terrain = GetTerrain());
+
+        private double? _winterSolsticeTrueAnomaly;
+        /// <summary>
+        /// The true anomaly of the orbit of this <see cref="Planetoid"/> when at the winter
+        /// solstice of its northern hemisphere.
+        /// </summary>
+        public double WinterSolsticeTrueAnomaly
+        {
+            get
+            {
+                if (!_winterSolsticeTrueAnomaly.HasValue)
+                {
+                    GenerateAngleOfRotation();
+                }
+                return _winterSolsticeTrueAnomaly ?? 0;
+            }
+        }
 
         private double? _eccentricity;
         /// <summary>
@@ -459,6 +494,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double? _solarEquator;
         private double SolarEquator => _solarEquator ?? (_solarEquator = GetSolarEquator()).Value;
+
+        private double? _summerSolarEquator;
+        private double SummerSolarEquator
+            => _summerSolarEquator ?? (_summerSolarEquator = AxialTilt * (2.0 / 3.0)).Value;
+
+        private double? _winterSolarEquator;
+        private double WinterSolarEquator
+            => _winterSolarEquator ?? (_winterSolarEquator = -AxialTilt * (2.0 / 3.0)).Value;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -599,6 +642,45 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => Terrain.GetElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
 
         /// <summary>
+        /// Produces an equirectangular projection of an elevation map of the specified region.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        /// <returns>
+        /// A two-dimensional array of <see cref="double"/> values corresponding to points on an
+        /// equirectangular projected map of the surface. The first index corresponds to the X
+        /// coordinate, and the second index corresponds to the Y coordinate. The values are
+        /// normalized elevations from -1 to 1, where negative values are below sea level and
+        /// positive values are above sea level, and 1 is equal to the maximum elevation of this
+        /// <see cref="Planetoid"/>. <seealso cref="Terrain.MaxElevation"/>
+        /// </returns>
+        public double[,] GetElevationMap(
+            uint resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null)
+            => SurfaceMap.GetSurfaceMap(
+                GetNormalizedElevationAt,
+                resolution,
+                centralMeridian,
+                centralParallel,
+                standardParallels,
+                range);
+
+        /// <summary>
         /// Gets the richness of the resources at the given <paramref name="latitude"/> and
         /// <paramref name="longitude"/>.
         /// </summary>
@@ -675,43 +757,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <paramref name="latitude"/> and <paramref name="elevation"/>, from winter to summer, in
         /// K.</returns>
         public FloatRange GetSurfaceTemperatureRangeAt(double latitude, double elevation)
-        {
-            var winterAngle = AxialPrecession + MathConstants.HalfPI;
-            if (winterAngle >= MathConstants.TwoPI)
-            {
-                winterAngle -= MathConstants.TwoPI;
-            }
-            var winterEquator = -AxialTilt * (2.0 / 3.0);
-            var winterLatitude = latitude - (winterEquator * (latitude < 0 ? -1 : 1));
-            if (winterLatitude > MathConstants.HalfPI)
-            {
-                winterLatitude = Math.PI - winterLatitude;
-            }
-            else if (winterLatitude < -MathConstants.HalfPI)
-            {
-                winterLatitude = -winterLatitude - Math.PI;
-            }
-            var minTemp = GetTemperatureAtElevation(GetSurfaceTemperatureAtTrueAnomaly(winterAngle, winterLatitude), elevation);
-
-            var summerAngle = AxialPrecession + MathConstants.ThreeHalvesPI;
-            if (summerAngle >= MathConstants.TwoPI)
-            {
-                summerAngle -= MathConstants.TwoPI;
-            }
-            var summerEquator = AxialTilt * (2.0 / 3.0);
-            var summerLatitude = latitude - (summerEquator * (latitude < 0 ? -1 : 1));
-            if (summerLatitude > MathConstants.HalfPI)
-            {
-                summerLatitude = Math.PI - summerLatitude;
-            }
-            else if (summerLatitude < -MathConstants.HalfPI)
-            {
-                summerLatitude = -summerLatitude - Math.PI;
-            }
-            var maxTemp = GetTemperatureAtElevation(GetSurfaceTemperatureAtTrueAnomaly(summerAngle, summerLatitude), elevation);
-
-            return new FloatRange((float)minTemp, (float)maxTemp);
-        }
+            => new FloatRange(
+                (float)GetTemperatureAtElevation(
+                    GetSurfaceTemperatureAtTrueAnomaly(WinterSolsticeTrueAnomaly, GetSeasonalLatitudeFromEquator(latitude, WinterSolarEquator)),
+                    elevation),
+                (float)GetTemperatureAtElevation(
+                    GetSurfaceTemperatureAtTrueAnomaly(SummerSolsticeTrueAnomaly, GetSeasonalLatitudeFromEquator(latitude, SummerSolarEquator)),
+                    elevation));
 
         /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
@@ -882,9 +934,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         internal double GetSeasonalLatitude(double latitude, double trueAnomaly)
+            => GetSeasonalLatitudeFromEquator(latitude, GetSolarEquator(trueAnomaly));
+
+        internal double GetSeasonalLatitudeFromEquator(double latitude, double solarEquator)
         {
-            var solarEquator = -AxialTilt * Math.Cos(trueAnomaly) * (2.0 / 3.0);
-            var seasonalLatitude = latitude - solarEquator;
+            var seasonalLatitude = latitude + solarEquator;
             if (seasonalLatitude > MathConstants.HalfPI)
             {
                 return Math.PI - seasonalLatitude;
@@ -895,6 +949,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
             return seasonalLatitude;
         }
+
+        internal double GetSolarEquator(double trueAnomaly)
+            => -AxialTilt * Math.Cos(trueAnomaly) * (2.0 / 3.0);
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -1019,15 +1076,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        internal double GetWindFactorAt(double latitude, double elevation)
-        {
-            var wind = ((Math.Atan2(GetCoriolisCoefficient(latitude), Terrain.GetFrictionCoefficientAt(elevation)) / MathConstants.HalfPI) + 1) / 2;
-            return 0.5 + ((wind - 0.5) * 0.5); // lessen impact
-        }
-
-        internal double GetWindFactorAt(Vector3 position)
-            => GetWindFactorAt(VectorToLatitude(position), Terrain.GetElevationAt(position));
-
         internal void ResetPressureDependentProperties()
         {
             _averagePolarSurfaceTemperature = null;
@@ -1070,6 +1118,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             else
             {
                 AngleOfRotation = Math.Round(Randomizer.Instance.NextDouble(MathConstants.QuarterPI), 4);
+            }
+            _winterSolsticeTrueAnomaly = AxialPrecession + MathConstants.HalfPI;
+            if (_winterSolsticeTrueAnomaly >= MathConstants.TwoPI)
+            {
+                _winterSolsticeTrueAnomaly -= MathConstants.TwoPI;
+            }
+            _summerSolsticeTrueAnomaly = AxialPrecession + MathConstants.ThreeHalvesPI;
+            if (_summerSolsticeTrueAnomaly >= MathConstants.TwoPI)
+            {
+                _summerSolsticeTrueAnomaly -= MathConstants.TwoPI;
             }
         }
 
@@ -1283,6 +1341,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual double GetMinSatellitePeriapsis() => 0;
 
         private double GetMinSurfaceTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + GreenhouseEffect;
+
+        private double GetNormalizedElevationAt(double latitude, double longitude)
+            => Terrain.GetNormalizedElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
 
         private protected virtual IShape GetShape(double? mass = null, double? knownRadius = null)
             // Gaussian distribution with most values between 1km and 19km.

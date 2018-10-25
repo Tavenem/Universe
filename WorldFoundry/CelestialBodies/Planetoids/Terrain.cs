@@ -13,13 +13,33 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private readonly int _seed2;
         private readonly int _seed3;
 
+        private double _normalizedSeaLevel;
+
+        private double _seaLevel;
         /// <summary>
         /// The elevation of sea level relative to the mean surface elevation of the planet, in
         /// meters.
         /// </summary>
-        public double SeaLevel { get; set; }
+        public double SeaLevel
+        {
+            get => _seaLevel;
+            set
+            {
+                _seaLevel = value;
+                _normalizedSeaLevel = value / MaxElevation;
+            }
+        }
 
-        public double MaxElevation { get; set; }
+        private double _maxElevation;
+        public double MaxElevation
+        {
+            get => _maxElevation;
+            set
+            {
+                _maxElevation = value;
+                _seaLevel = _normalizedSeaLevel * value;
+            }
+        }
 
         private FastNoise _noise1;
         private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6));
@@ -59,6 +79,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns>The elevation at the given <paramref name="position"/>, in meters. Negative
         /// values are below sea level.</returns>
         public double GetElevationAt(Vector3 position)
+            => GetNormalizedElevationAt(position) * MaxElevation;
+
+        /// <summary>
+        /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
+        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
+        /// below sea level.
+        /// </summary>
+        /// <param name="position">A normalized position vector representing a direction from the
+        /// center of the <see cref="Planetoid"/>.</param>
+        /// <returns>The elevation at the given <paramref name="position"/>, as a normalized value
+        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
+        /// below sea level.</returns>
+        public double GetNormalizedElevationAt(Vector3 position)
         {
             if (MaxElevation.IsZero())
             {
@@ -87,20 +120,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // The overall value is magnified to compensate for excessive normalization.
             e *= 6;
 
-            return (e * MaxElevation) - SeaLevel;
+            return e - _normalizedSeaLevel;
         }
-
-        internal double GetFrictionCoefficientAt(double elevation)
-            => elevation <= 0 ? 0.000025f : ((elevation * 6.667e-9) + 0.000025); // 0.000045 at 3000
-
-        internal double GetFrictionCoefficientAt(Vector3 position)
-            => GetFrictionCoefficientAt(GetElevationAt(position));
 
         private void Initialize(Planetoid planet)
         {
             if (planet.HasFlatSurface)
             {
-                MaxElevation = 0;
+                _maxElevation = 0;
                 return;
             }
 
@@ -112,7 +139,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 d += r.NextDouble() * 0.5;
             }
             d /= 5;
-            MaxElevation = max * (0.5 + d);
+            _maxElevation = max * (0.5 + d);
         }
     }
 }

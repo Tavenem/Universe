@@ -47,7 +47,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private bool _climateSet;
         private double? _gravity;
-        private uint _seasonCount;
 
         internal static bool _canHaveOxygen = true;
         /// <summary>
@@ -513,7 +512,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             snow = 0;
 
-            var avgPrecipitation = 990 * proportionOfYear * Atmosphere.PrecipitationFactor;
+            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
 
             var v = position * 100;
 
@@ -620,49 +619,68 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
-        /// <param name="amount">
-        /// The number of <see cref="Season"/>s in one year. Must be greater than or equal to 1.
+        /// <param name="proportionOfYear">
+        /// The proportion of a year which the season comprises. Can be 1 to get a full year, or to
+        /// get any information for a planet not in orbit.
         /// </param>
-        /// <param name="index">
-        /// The 0-based index of the new <see cref="Season"/> out of one year's worth.
+        /// <param name="trueAnomaly">
+        /// The true anomaly of the orbit at the midpoint of the season. Can be 0 if the planet is
+        /// not in orbit.
         /// </param>
         /// <returns>A <see cref="Season"/>.</returns>
-        public Season GetSeason(uint amount, uint index)
+        public Season GetSeason(double proportionOfYear, double trueAnomaly)
         {
-            if (Orbit == null)
+            if (!_climateSet)
             {
-                throw new Exception("Can only generate seasons for planets in orbit.");
-            }
-            if (amount < 1)
-            {
-                return null;
+                SetClimate();
             }
 
             Season season;
-            if (amount == _seasonCount)
+            if (_seasons.Value.Count > 0 && _seasons.Value[0].ProportionOfYear.IsEqualTo(proportionOfYear))
             {
-                season = _seasons.Value?.FirstOrDefault(x => x.Index == index);
+                season = _seasons.Value?.FirstOrDefault(x => x.TrueAnomaly.IsEqualTo(trueAnomaly));
                 if (season != null)
                 {
                     return season;
                 }
             }
 
-            if (!_climateSet)
-            {
-                SetClimate();
-            }
-
-            var position = GetTrueAnomalyForSeason(amount, index);
-
             season = new Season(
                 this,
-                index,
-                amount,
-                position);
-            _seasonCount = amount;
-            _seasons.Value.Add(season);
+                proportionOfYear,
+                trueAnomaly);
+            if (season != null)
+            {
+                _seasons.Value.Add(season);
+            }
             return season;
+        }
+
+        /// <summary>
+        /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
+        /// </summary>
+        /// <param name="amount">
+        /// The number of seasons in one year. Must be greater than or equal to 1.
+        /// </param>
+        /// <param name="index">
+        /// The 0-based index of the expected season in the seasons of the year.
+        /// </param>
+        /// <returns>A <see cref="Season"/>.</returns>
+        public Season GetSeason(uint amount, uint index)
+        {
+            if (amount < 1)
+            {
+                return null;
+            }
+
+            var seasonAngle = MathConstants.TwoPI / amount;
+            var trueAnomaly = WinterSolsticeTrueAnomaly + (seasonAngle * index);
+            if (trueAnomaly >= MathConstants.TwoPI)
+            {
+                trueAnomaly -= MathConstants.TwoPI;
+            }
+
+            return GetSeason(1.0 / amount, trueAnomaly);
         }
 
         /// <summary>
@@ -674,9 +692,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <returns>An enumeration of <see cref="Season"/> instances.</returns>
         public IEnumerable<Season> GetSeasons(uint amount)
         {
+            if (!_climateSet)
+            {
+                SetClimate();
+            }
+
+            var proportionOfYear = 1.0 / amount;
+
+            if (_seasons.Value.Count == amount && _seasons.Value[0].ProportionOfYear.IsEqualTo(proportionOfYear))
+            {
+                foreach (var season in _seasons.Value)
+                {
+                    yield return season;
+                }
+                yield break;
+            }
+
+            var trueAnomaly = WinterSolsticeTrueAnomaly;
+            var seasonAngle = MathConstants.TwoPI / amount;
             for (uint i = 0; i < amount; i++)
             {
-                yield return GetSeason(amount, i);
+                yield return new Season(this, proportionOfYear, trueAnomaly);
+                trueAnomaly += seasonAngle;
+                if (trueAnomaly > MathConstants.TwoPI)
+                {
+                    trueAnomaly -= MathConstants.TwoPI;
+                }
             }
         }
 
@@ -729,6 +770,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
+            if (double.IsNaN(freezeProportion))
+            {
+                return FloatRange.Zero;
+            }
             // Freezes more than melts; never fully melts.
             if (freezeProportion >= 0.5)
             {
@@ -827,6 +872,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
+            if (double.IsNaN(freezeProportion))
+            {
+                return FloatRange.Zero;
+            }
             // Freezes more than melts; never fully melts.
             if (freezeProportion >= 0.5)
             {
@@ -1138,56 +1187,33 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             foreach (var t in Grid.Tiles)
             {
-                var land = 0;
-                var water = 0;
+                if (t.Elevation < 0)
+                {
+                    t.IsWater = true;
+                }
+                else
+                {
+                    t.IsLand = true;
+                }
                 for (var i = 0; i < t.EdgeCount; i++)
                 {
                     if (Grid.Corners[t.Corners[i]].Elevation < 0)
                     {
-                        water++;
+                        t.IsWater = true;
+                        if (t.IsLand)
+                        {
+                            break;
+                        }
                     }
                     else
                     {
-                        land++;
+                        t.IsLand = true;
+                        if (t.IsWater)
+                        {
+                            break;
+                        }
                     }
                 }
-                if (t.Elevation < 0)
-                {
-                    water++;
-                }
-                else
-                {
-                    land++;
-                }
-                t.TerrainType = (land > 0 && water > 0)
-                    ? TerrainType.Coast
-                    : (land > 0 ? TerrainType.Land : TerrainType.Water);
-            }
-            foreach (var c in Grid.Corners)
-            {
-                var land = 0;
-                for (var i = 0; i < 3; i++)
-                {
-                    if (Grid.Corners[c.Corners[i]].Elevation >= 0)
-                    {
-                        land++;
-                    }
-                }
-                c.TerrainType = c.Elevation < 0
-                    ? (land > 0 ? TerrainType.Coast : TerrainType.Water)
-                    : TerrainType.Land;
-            }
-            foreach (var e in Grid.Edges)
-            {
-                var type = TerrainType.Land;
-                for (var i = 0; i < 2; i++)
-                {
-                    if (Grid.Corners[e.Corners[i]].TerrainType != type)
-                    {
-                        type = i == 0 ? Grid.Tiles[e.Tiles[i]].TerrainType : TerrainType.Coast;
-                    }
-                }
-                e.TerrainType = type;
             }
         }
 
@@ -2453,31 +2479,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         private double GetTempForThinAtmosphere() => ScienceConstants.TwoG * Mass * 7.0594833834763e-5 / Radius;
 
-        private double GetTrueAnomalyForSeason(uint amount, uint index)
-        {
-            var seasonAngle = MathConstants.TwoPI / amount;
-
-            var winterAngle = AxialPrecession + MathConstants.HalfPI;
-            if (winterAngle >= MathConstants.TwoPI)
-            {
-                winterAngle -= MathConstants.TwoPI;
-            }
-
-            var seasonTrueAnomaly = Orbit.TrueAnomaly + (winterAngle + (seasonAngle / 2) - new Vector3(Orbit.R0.X, 0, Orbit.R0.Z).Angle(Vector3.UnitX));
-            if (seasonTrueAnomaly < 0)
-            {
-                seasonTrueAnomaly += MathConstants.TwoPI;
-            }
-
-            seasonTrueAnomaly += seasonAngle * index;
-            if (seasonTrueAnomaly >= MathConstants.TwoPI)
-            {
-                seasonTrueAnomaly -= MathConstants.TwoPI;
-            }
-
-            return seasonTrueAnomaly;
-        }
-
         /// <summary>
         /// Determines if this <see cref="TerrestrialPlanet"/> is "habitable," defined as possessing
         /// liquid water. Does not rule out exotic lifeforms which subsist in non-aqueous
@@ -2510,33 +2511,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private void SetClimate()
         {
-            // A year of 12 seasons is pre-generated to provide climate data.
+            var seasons = new List<Season>();
 
-            const double seasonAngle = Math.PI / 6;
-            const double halfSeasonAngle = Math.PI / 12;
-
-            var winterAngle = AxialPrecession + MathConstants.HalfPI;
-            if (winterAngle >= MathConstants.TwoPI)
+            // For planets not in orbit, a single season representing the current moment is all that
+            // can be generated.
+            if (Orbit == null)
             {
-                winterAngle -= MathConstants.TwoPI;
+                seasons.Add(new Season(this, 1, 0));
             }
-
-            var seasonTrueAnomaly = Orbit.TrueAnomaly + (winterAngle + halfSeasonAngle - new Vector3(Orbit.R0.X, 0, Orbit.R0.Z).Angle(Vector3.UnitX));
-            if (seasonTrueAnomaly < 0)
+            else
             {
-                seasonTrueAnomaly += MathConstants.TwoPI;
-            }
+                // A year of 12 seasons is pre-generated to provide climate data.
 
-            var seasons = new List<Season>(12);
-            for (uint i = 0; i < 12; i++)
-            {
-                seasonTrueAnomaly += seasonAngle * i;
-                if (seasonTrueAnomaly >= MathConstants.TwoPI)
+                const double seasonAngle = Math.PI / 6;
+                const double proportionOfYear = 1.0 / 12;
+
+                var seasonTrueAnomaly = WinterSolsticeTrueAnomaly;
+
+                for (uint i = 0; i < 12; i++)
                 {
-                    seasonTrueAnomaly -= MathConstants.TwoPI;
+                    seasons.Add(new Season(this, proportionOfYear, seasonTrueAnomaly));
+                    seasonTrueAnomaly += seasonAngle;
+                    if (seasonTrueAnomaly >= MathConstants.TwoPI)
+                    {
+                        seasonTrueAnomaly -= MathConstants.TwoPI;
+                    }
                 }
-
-                seasons.Add(new Season(this, i, 12, seasonTrueAnomaly));
             }
 
             for (var i = 0; i < Grid.Tiles.Length; i++)
@@ -2586,7 +2586,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             for (var i = 0; i < Grid.Tiles.Length; i++)
             {
                 var t = Grid.Tiles[i];
-                if (t.TerrainType == TerrainType.Water)
+                if (!t.IsLand)
                 {
                     continue;
                 }
@@ -2664,7 +2664,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                         } while (nextRiverEdge != -1 && !visited.Contains(nextRiverEdge));
                     }
 
-                    if (next.TerrainType == TerrainType.Land
+                    if (next.Elevation > 0
                         && next.LakeDepth == 0
                         && !endpoints.Contains(next)
                         && !next.Edges.Any(e => Grid.Edges[e].RiverSource == next.Index))

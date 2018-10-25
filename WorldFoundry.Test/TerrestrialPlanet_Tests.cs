@@ -89,7 +89,7 @@ namespace WorldFoundry.Test
                 return;
             }
 
-            var landTiles = planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water);
+            var landTiles = planet.Grid.Tiles.Count(t => t.IsLand);
             sb.AppendLine("Climates:");
             var desert = planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / landTiles;
             sb.AppendFormat("  Desert (all):            {0}% ({1})", Math.Round(desert, 2), Math.Round(desert - 30, 2));
@@ -102,13 +102,13 @@ namespace WorldFoundry.Test
             sb.AppendLine();
             sb.AppendFormat("  Tundra:                  {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.Tundra) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Boreal:                  {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water && t.ClimateType == ClimateType.Boreal) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Boreal:                  {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.Boreal) * 100.0 / landTiles, 2));
             sb.AppendLine();
             sb.AppendFormat("    Lichen Woodland:       {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.LichenWoodland) * 100.0 / landTiles, 2));
             sb.AppendLine();
             sb.AppendFormat("    Coniferous Forest:     {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.ConiferousForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water && t.ClimateType == ClimateType.CoolTemperate) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.CoolTemperate) * 100.0 / landTiles, 2));
             sb.AppendLine();
             sb.AppendFormat("    Cold Desert:           {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.ColdDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
@@ -116,7 +116,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
             sb.AppendFormat("    Mixed Forest:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.MixedForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water && t.ClimateType == ClimateType.WarmTemperate) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.WarmTemperate) * 100.0 / landTiles, 2));
             sb.AppendLine();
             sb.AppendFormat("    Desert:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
@@ -124,7 +124,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
             sb.AppendFormat("    Deciduous Forest:      {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.DeciduousForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Tropical:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType != TerrainType.Water && (t.ClimateType == ClimateType.Subtropical || t.ClimateType == ClimateType.Tropical || t.ClimateType == ClimateType.Supertropical)) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Tropical:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && (t.ClimateType == ClimateType.Subtropical || t.ClimateType == ClimateType.Tropical || t.ClimateType == ClimateType.Supertropical)) * 100.0 / landTiles, 2));
             sb.AppendLine();
             sb.AppendFormat("    Desert:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.ClimateType != ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
@@ -140,7 +140,7 @@ namespace WorldFoundry.Test
         private static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet)
         {
             sb.AppendLine("Precipitation (annual average, land):");
-            var list = planet.Grid.Tiles.Where(x => x.TerrainType != TerrainType.Water)
+            var list = planet.Grid.Tiles.Where(x => x.IsLand)
                 .Select(x => x.Precipitation)
                 .ToList();
             if (list.Count > 0)
@@ -153,7 +153,7 @@ namespace WorldFoundry.Test
                 sb.AppendFormat("  Avg (<=P90):             {0}mm ({1})", Math.Round(avg90), Math.Round(avg90 - 990, 2));
                 sb.AppendLine();
                 var temperates = planet.Grid.Tiles
-                    .Where(t => t.TerrainType != TerrainType.Water && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate));
+                    .Where(t => t.IsLand && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate));
                 if (temperates.Any())
                 {
                     var avgT = temperates.Select(t => t.Precipitation).Average();
@@ -201,16 +201,16 @@ namespace WorldFoundry.Test
             sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - planet.PlanetParams.SurfaceTemperature.Value, 2));
             sb.AppendLine();
 
-            var water = planet.Grid.Tiles.Any(x => x.TerrainType == TerrainType.Water);
+            var water = planet.Grid.Tiles.Any(x => x.IsWater);
             var min = water ? planet.Grid.Tiles
-                .Where(x => x.TerrainType == TerrainType.Water)
+                .Where(x => x.IsWater)
                 .Min(x => x.Temperature.Min)
                 : 0;
             sb.AppendFormat("  Min Sea-Level:           {0} K", Math.Round(min));
             sb.AppendLine();
 
             var avgSeaLevel = water ? planet.Grid.Tiles
-                .Where(x => x.TerrainType == TerrainType.Water)
+                .Where(x => x.IsWater)
                 .Average(x => x.Temperature.Average)
                 : 0;
             sb.AppendFormat("  Avg Sea-Level:           {0} K", Math.Round(avgSeaLevel));
@@ -224,7 +224,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
 
             var (minMaxTemp, minMaxIndex) = water ? planet.Grid.Tiles
-                .Where(x => x.TerrainType == TerrainType.Water)
+                .Where(x => x.IsWater)
                 .Select(x => (temp: x.Temperature.Max, x.Index))
                 .OrderBy(x => x.temp)
                 .First()
@@ -246,11 +246,11 @@ namespace WorldFoundry.Test
 #pragma warning disable RCS1213 // Remove unused member declaration.
         private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet)
         {
-            sb.AppendFormat("% Land:                    {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType == TerrainType.Land) * 100.0 / planet.Grid.Tiles.Length), 2);
+            sb.AppendFormat("% Land:                    {0}%", Math.Round(planet.Grid.Tiles.Count(t => !t.IsWater) * 100.0 / planet.Grid.Tiles.Length), 2);
             sb.AppendLine();
-            sb.AppendFormat("% Coast:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType == TerrainType.Coast) * 100.0 / planet.Grid.Tiles.Length), 2);
+            sb.AppendFormat("% Coast:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.IsWater) * 100.0 / planet.Grid.Tiles.Length), 2);
             sb.AppendLine();
-            sb.AppendFormat("% Water:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.TerrainType == TerrainType.Water) * 100.0 / planet.Grid.Tiles.Length), 2);
+            sb.AppendFormat("% Water:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => !t.IsLand) * 100.0 / planet.Grid.Tiles.Length), 2);
             sb.AppendLine();
             sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.Terrain.SeaLevel));
             sb.AppendLine();

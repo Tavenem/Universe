@@ -28,11 +28,6 @@
         public int RiverSource { get; internal set; }
 
         /// <summary>
-        /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Edge"/>.
-        /// </summary>
-        public TerrainType TerrainType { get; internal set; }
-
-        /// <summary>
         /// The indexes of the <see cref="Tile"/>s to which this <see cref="Edge"/> is connected.
         /// </summary>
         public int[] Tiles { get; }
