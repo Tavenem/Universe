@@ -15,6 +15,7 @@ namespace WorldFoundry.Climate
     /// </summary>
     public class Atmosphere : Substance
     {
+        internal const int SnowToRainRatio = 13;
         private const double StandardHeightDensity = 124191.6;
 
         private static readonly List<Requirement> _humanBreathabilityRequirements = new List<Requirement>()
@@ -62,6 +63,13 @@ namespace WorldFoundry.Climate
         /// </summary>
         public double MaxPrecipitation
             => _maxPrecipitation ?? (_maxPrecipitation = AveragePrecipitation * (0.05 + Math.Exp(1.25))).Value;
+
+        private double? _maxSnowfall;
+        /// <summary>
+        /// The maximum annual snowfall expected to be produced by this atmosphere.
+        /// </summary>
+        public double MaxSnowfall
+            => _maxSnowfall ?? (_maxSnowfall = MaxPrecipitation * SnowToRainRatio).Value;
 
         private double? _averagePrecipitation;
         /// <summary>
@@ -412,6 +420,7 @@ namespace WorldFoundry.Climate
             _averagePrecipitation = null;
             _greenhouseFactor = null;
             _maxPrecipitation = null;
+            _maxSnowfall = null;
             _precipitationFactor = null;
         }
     }

@@ -1,8 +1,12 @@
 ﻿using MathAndScience;
 using System;
 
-namespace WorldFoundry.SurfaceMaps
+namespace WorldFoundry.CelestialBodies.Planetoids
 {
+    /// <summary>
+    /// Static methods to assist with producing equirectangular projections that map the surface of
+    /// a planet.
+    /// </summary>
     public static class SurfaceMap
     {
         /// <summary>
@@ -66,7 +70,7 @@ namespace WorldFoundry.SurfaceMaps
         {
             if (resolution > int.MaxValue / 2)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed {(int.MaxValue / 2).ToString()}.");
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
             }
             var map = new double[resolution * 2, resolution];
             var scale = range.HasValue && range.Value < Math.PI && !range.Value.IsZero()

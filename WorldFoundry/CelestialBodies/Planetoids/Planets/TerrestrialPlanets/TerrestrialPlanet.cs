@@ -29,7 +29,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         public const double Space = 1.75e7;
 
-        private const int SnowToRainRatio = 13;
         private const double TemperatureErrorTolerance = 0.5;
         private const double ThirtySixthPI = Math.PI / 36;
 
@@ -557,7 +556,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (temperature <= Chemical.Water.MeltingPoint)
             {
-                snow = precipitation * SnowToRainRatio;
+                snow = precipitation * Atmosphere.SnowToRainRatio;
             }
 
             return precipitation;
@@ -918,6 +917,173 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// the proportion of the year when it stops.</returns>
         public FloatRange GetSeaIceRange(double latitude, double elevation)
             => GetSeaIceRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation);
+
+        /// <summary>
+        /// Produces a set of equirectangular projections of the specified region describing the
+        /// climate.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        /// <param name="start">The true anomaly of the beginning of the period for which to
+        /// generate maps, offset from the winter solstice. Zero (the default) indicates the winter
+        /// solstice. Values below zero, or greater than or equal to 1, are treated as zero.</param>
+        /// <param name="end">The true anomaly of the end of the period for which to generate maps,
+        /// offset from the winter solstice. One (the default) indicates the winter solstice of the
+        /// following year (i.e. one full year, if <paramref name="start"/> was zero). Values less
+        /// than or equal to zero, or greater than one, are treated as one.</param>
+        /// <returns>
+        /// <para>
+        /// An array of surface maps. Each map is a two-dimensional array of <see cref="double"/>
+        /// values corresponding to points on equirectangular projected maps of the surface. The
+        /// first index of each two-dimensional array corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate.
+        /// </para>
+        /// <para>
+        /// The first two-dimensional array in the set (at index 0) is a temperature map, showing
+        /// the average temperature during the specified period. Values range from 0 to 1, with 1
+        /// indicating the maximum temperature of the planet.
+        /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
+        /// </para>
+        /// <para>
+        /// The second array in the set (at index 1) is a precipitation map, showing the total
+        /// amount of precipitation which falls during the specified period. Values range from 0 to
+        /// 1, with 1 indicating the maximum potential precipitation of the planet's atmosphere.
+        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
+        /// </para>
+        /// <para>
+        /// The third array in the set is a snowfall map, showing the total amount of snow which
+        /// falls during the specified period. Values range from 0 to 1, with 1 indicating the
+        /// maximum potential snowfall of the planet's atmosphere.
+        /// <seealso cref="Atmosphere.MaxSnowfall"/>
+        /// </para>
+        /// <para>
+        /// The fourth array in the set is a snow cover map, showing where persistent snow cover is
+        /// present during the specified period. Values are either 0 or 1, with 0 indicating no
+        /// persistent snow cover and 1 indicating persistent snow cover is present.
+        /// </para>
+        /// <para>
+        /// The fifth array in the set is a sea ice map, showing where sea ice is present during the
+        /// specified period. Values are either 0 or 1, with 0 indicating no sea ice and 1
+        /// indicating sea ice is present.
+        /// </para>
+        /// </returns>
+        public double[][,] GetWeatherMaps(
+            uint resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null,
+            double start = 0,
+            double end = 1)
+        {
+            if (resolution > int.MaxValue / 2)
+            {
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
+            }
+            var set = new double[5][,];
+
+            throw new NotImplementedException();
+
+            return set;
+        }
+
+        /// <summary>
+        /// Produces a set of equirectangular projections of the specified region describing the
+        /// climate.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        /// <param name="steps">The number of map sets which will be generated, at equal times
+        /// throughout the course of one solar year. The greater the number of sets (and thus, the
+        /// shorter the time span represented by each step), the more accurate the results will be,
+        /// at the cost of increased processing time.</param>
+        /// <returns>
+        /// <para>
+        /// An array of arrays. The index to the outer array corresponds to the step (or season) for
+        /// which maps were generated. There will be an equal number of values to <paramref
+        /// name="steps"/>.
+        /// </para>
+        /// <para>
+        /// The second level of arrays are sets of maps. Each map is a two-dimensional array, the
+        /// values of which correspond to points on equirectangular projected maps of the surface.
+        /// The first index of each third-level, two-dimensional array corresponds to the X
+        /// coordinate, and the second index corresponds to the Y coordinate.
+        /// </para>
+        /// <para>
+        /// The first two-dimensional array in each set (at index 0) is a temperature map, showing
+        /// the average temperature during the specified period. Values range from 0 to 1, with 1
+        /// indicating the maximum temperature of the planet.
+        /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
+        /// </para>
+        /// <para>
+        /// The second array in each set (at index 1) is a precipitation map, showing the total
+        /// amount of precipitation which falls during the specified period. Values range from 0 to
+        /// 1, with 1 indicating the maximum potential precipitation of the planet's atmosphere.
+        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
+        /// </para>
+        /// <para>
+        /// The third array in each set is a snowfall map, showing the total amount of snow which
+        /// falls during the specified period. Values range from 0 to 1, with 1 indicating the
+        /// maximum potential snowfall of the planet's atmosphere.
+        /// <seealso cref="Atmosphere.MaxSnowfall"/>
+        /// </para>
+        /// <para>
+        /// The third array in each set is a snow cover map, showing where persistent snow cover is
+        /// present during the specified period. Values are either 0 or 1, with 0 indicating no
+        /// persistent snow cover and 1 indicating persistent snow cover is present.
+        /// </para>
+        /// <para>
+        /// The third array in each set is a sea ice map, showing where sea ice is present during
+        /// the specified period. Values are either 0 or 1, with 0 indicating no sea ice and 1
+        /// indicating sea ice is present.
+        /// </para>
+        /// </returns>
+        public double[][][,] GetWeatherMapSet(
+            uint resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null,
+            uint steps = 12)
+        {
+            if (resolution > int.MaxValue / 2)
+            {
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
+            }
+            if (steps > int.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException(nameof(steps), $"The value of {nameof(steps)} cannot exceed int.MaxValue ({int.MaxValue.ToString()}).");
+            }
+            var sets = new double[steps][][,];
+
+            throw new NotImplementedException();
+
+            return sets;
+        }
 
         /// <summary>
         /// Determines if the planet is habitable by a species with the given requirements. Does not

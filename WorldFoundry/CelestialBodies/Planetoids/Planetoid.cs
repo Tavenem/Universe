@@ -8,7 +8,6 @@ using System.Linq;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
 using WorldFoundry.Substances;
-using WorldFoundry.SurfaceMaps;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
