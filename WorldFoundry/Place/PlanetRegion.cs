@@ -19,7 +19,7 @@ namespace WorldFoundry.Place
                 _elevation = value;
                 if (Planet != null)
                 {
-                    Position = Vector3.Normalize(Position) * (Planet.Terrain.SeaLevel + Elevation);
+                    Position = Vector3.Normalize(Position) * (Planet.SeaLevel + Elevation);
                 }
             }
         }
@@ -78,7 +78,7 @@ namespace WorldFoundry.Place
                 {
                     _latitude = Planet.VectorToLatitude(value);
                     _longitude = Planet.VectorToLongitude(value);
-                    _elevation = value.Length() - Planet.Terrain.SeaLevel;
+                    _elevation = value.Length() - Planet.SeaLevel;
                 }
             }
         }

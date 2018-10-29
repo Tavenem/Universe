@@ -1,7 +1,5 @@
-﻿using MathAndScience;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 
@@ -17,17 +15,6 @@ namespace WorldFoundry.WorldGrids
         /// depending on system resources.
         /// </summary>
         public const byte MaxGridSize = 14;
-
-        /// <summary>
-        /// Indicates the desired radius for <see cref="Tile"/>s, in m. Null by default, which
-        /// indicates that the <see cref="DefaultGridSize"/> will be used instead.
-        /// </summary>
-        /// <remarks>
-        /// If this property is set, a <see cref="GridSize"/> will automatically be set based on a
-        /// <see cref="Planetoid"/>'s radius in order to produce <see cref="Tile"/>s with radii as
-        /// close to the intended value as possible.
-        /// </remarks>
-        public static double? DefaultDesiredTileRadius { get; set; }
 
         private static byte _defaultGridSize = 6;
         /// <summary>
@@ -59,13 +46,6 @@ namespace WorldFoundry.WorldGrids
         };
 
         /// <summary>
-        /// When generating a <see cref="GridSize"/> automatically (such as through <see
-        /// cref="DefaultDesiredTileRadius"/>), this property indicates an optional maximum size
-        /// allowable. Null by default, which indicates that the maximum is the absolute <see cref="MaxGridSize"/>.
-        /// </summary>
-        public static byte? MaxGeneratedGridSize { get; set; }
-
-        /// <summary>
         /// The array of all <see cref="Corner"/>s which make up the <see cref="WorldGrid"/>.
         /// </summary>
         public Corner[] Corners { get; private set; }
@@ -79,11 +59,6 @@ namespace WorldFoundry.WorldGrids
         /// The current grid size (level of detail).
         /// </summary>
         public short GridSize { get; private set; } = -1;
-
-        /// <summary>
-        /// The <see cref="Planetoid"/> which this <see cref="WorldGrid"/> maps.
-        /// </summary>
-        internal Planetoid Planet { get; set; }
 
         /// <summary>
         /// The array of all <see cref="Tile"/>s which make up the <see cref="WorldGrid"/>.
@@ -102,60 +77,7 @@ namespace WorldFoundry.WorldGrids
         /// The <see cref="Planetoid"/> this <see cref="WorldGrid"/> will map.
         /// </param>
         /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
-        public WorldGrid(Planetoid planet, byte size)
-        {
-            Planet = planet;
-            SubdivideGrid(size);
-        }
-
-        /// <summary>
-        /// Calculates the grid size which would most closely approximate the given <see
-        /// cref="Tile"/> radius, given a <see cref="Planetoid"/>'s radius squared.
-        /// </summary>
-        /// <param name="radiusSquared">A <see cref="Planetoid"/>'s radius squared, in m.</param>
-        /// <param name="tileRadius">The desired approximate <see cref="Tile"/> radius, in m.</param>
-        /// <param name="max">
-        /// An optional maximum grid size, which will not be exceeded by the calculation.
-        /// </param>
-        /// <returns>
-        /// The grid size which will produce <see cref="Tile"/>s with the nearest radius to the
-        /// desired value.
-        /// </returns>
-        public static byte GetGridSizeForTileRadius(double radiusSquared, double tileRadius, int? max = null)
-        {
-            var prevDiff = 0.0;
-            for (byte i = 0; i < GridAreas.Count; i++)
-            {
-                var tileArea = i == 0 ? GridAreas[i].fiveSided : GridAreas[i].sixSided;
-                tileArea *= radiusSquared;
-                var radius = Math.Sqrt(tileArea / Math.PI);
-
-                if (radius <= tileRadius || (max.HasValue && i >= max))
-                {
-                    if (i == 0)
-                    {
-                        return 0;
-                    }
-                    else
-                    {
-                        var diff = tileRadius - radius;
-                        if (diff < prevDiff)
-                        {
-                            return i;
-                        }
-                        else
-                        {
-                            return (byte)(i - 1);
-                        }
-                    }
-                }
-                else
-                {
-                    prevDiff = radius - tileRadius;
-                }
-            }
-            return (byte)(GridAreas.Count - 1);
-        }
+        public WorldGrid(Planetoid planet, byte size) => SubdivideGrid(planet, size);
 
         private void AddCorner(int index, int[] tileIndexes)
         {
@@ -188,47 +110,6 @@ namespace WorldFoundry.WorldGrids
                 var c = Corners[e.Corners[i]];
                 c.Edges[c.IndexOfCorner(e.Corners[(i + 1) % 2])] = index;
             }
-        }
-
-        /// <summary>
-        /// Finds the closest <see cref="Tile"/> to the given <see cref="Vector3"/>.
-        /// </summary>
-        /// <param name="vector">A <see cref="Vector3"/> representing a position on this <see cref="WorldGrid"/>.</param>
-        /// <returns>
-        /// The <see cref="Tile"/> whose position on the grid most closely matches the given <see
-        /// cref="Vector3"/>; or null, if this grid has not yet been initialized.
-        /// </returns>
-        public Tile GetClosestTile(Vector3 vector)
-        {
-            if (Tiles.Length == 0)
-            {
-                return null;
-            }
-            var shortestDistance = double.PositiveInfinity;
-            Tile closestTile = null;
-            for (var i = 0; i < 12; i++)
-            {
-                var distanceSq = (Tiles[i].Vector - vector).LengthSquared();
-                if (distanceSq < shortestDistance)
-                {
-                    shortestDistance = distanceSq;
-                    closestTile = Tiles[i];
-                }
-            }
-            return GetClosestTile(closestTile, vector, shortestDistance);
-        }
-
-        private Tile GetClosestTile(Tile tile, Vector3 vector, double distanceSq)
-        {
-            for (var i = 0; i < 12; i++)
-            {
-                var dSq = (Tiles[i].Vector - vector).LengthSquared();
-                if (dSq < distanceSq)
-                {
-                    return GetClosestTile(Tiles[i], vector, dSq);
-                }
-            }
-            return tile;
         }
 
         private void SetGridSize0()
@@ -334,7 +215,7 @@ namespace WorldFoundry.WorldGrids
             Corners = new Corner[cornerCount];
             for (var i = 0; i < cornerCount; i++)
             {
-                Corners[i] = new Corner(i);
+                Corners[i] = new Corner();
             }
 
             var prevEdges = new Edge[Edges?.Length ?? 0];
@@ -429,7 +310,7 @@ namespace WorldFoundry.WorldGrids
         /// resulting in the same height map (can be used to maintain a similar look when changing
         /// <see cref="GridSize"/>, rather than an entirely new geography).
         /// </param>
-        internal void SubdivideGrid(byte size)
+        internal void SubdivideGrid(Planetoid planet, byte size)
         {
             size = Math.Min(MaxGridSize, size);
             if (GridSize < 0 || size < GridSize)
@@ -443,24 +324,23 @@ namespace WorldFoundry.WorldGrids
 
             foreach (var c in Corners)
             {
-                c.Latitude = (float)Planet.VectorToLatitude(c.Vector);
-                c.Longitude = (float)Planet.VectorToLongitude(c.Vector);
+                c.Latitude = (float)planet.VectorToLatitude(c.Vector);
+                c.Longitude = (float)planet.VectorToLongitude(c.Vector);
+                c.Elevation = (float)planet.GetElevationAt(c.Vector);
             }
 
             var fiveSided = Array.Find(Tiles, x => x.EdgeCount == 5);
             var sixSided = Array.Find(Tiles, x => x.EdgeCount == 6);
 
-            var fiveSidedRadius = Planet.RadiusSquared * (fiveSided.Vector - Corners[fiveSided.Corners[0]].Vector).Length();
-            var sixSidedRadius = sixSided == null ? 0 : Planet.RadiusSquared * (sixSided.Vector - Corners[sixSided.Corners[0]].Vector).Length();
-            var fiveSidedArea = Planet.RadiusSquared * GridAreas[size].fiveSided;
-            var sixSidedArea = sixSided == null ? 0 : Planet.RadiusSquared * GridAreas[size].sixSided;
+            var fiveSidedArea = planet.RadiusSquared * GridAreas[size].fiveSided;
+            var sixSidedArea = sixSided == null ? 0 : planet.RadiusSquared * GridAreas[size].sixSided;
 
             foreach (var t in Tiles)
             {
-                t.Radius = t.EdgeCount == 5 ? fiveSidedRadius : sixSidedRadius;
                 t.Area = t.EdgeCount == 5 ? fiveSidedArea : sixSidedArea;
-                t.Latitude = (float)Planet.VectorToLatitude(t.Vector);
-                t.Longitude = (float)Planet.VectorToLongitude(t.Vector);
+                t.Latitude = (float)planet.VectorToLatitude(t.Vector);
+                t.Longitude = (float)planet.VectorToLongitude(t.Vector);
+                t.Elevation = (float)planet.GetElevationAt(t.Vector);
             }
         }
     }

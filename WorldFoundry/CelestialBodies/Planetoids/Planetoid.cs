@@ -26,6 +26,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         internal const double PolarLatitude = 1.5277247828211;
 
+        private WorldGrid _grid;
+        private float _normalizedSeaLevel;
+
         private double? _angleOfRotation;
         /// <summary>
         /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
@@ -233,27 +236,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             internal set => _greenhouseEffect = value;
         }
 
-        private WorldGrid _grid;
-        /// <summary>
-        /// The <see cref="WorldGrid"/> which maps the surface of this <see cref="Planetoid"/>.
-        /// </summary>
-        public WorldGrid Grid
-        {
-            get
-            {
-                if (_grid == null)
-                {
-                    GenerateGrid();
-                }
-                return _grid;
-            }
-        }
-
         private const bool _hasFlatSurface = false;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
-        /// (i.e. is non-solid). Prevents generation of a height map during <see cref="Terrain"/>
-        /// generation.
+        /// (i.e. is non-solid). Prevents generation of a height map.
         /// </summary>
         public virtual bool HasFlatSurface => _hasFlatSurface;
 
@@ -261,6 +247,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
         /// </summary>
         public virtual double MagnetosphereChanceFactor => 1;
+
+        private double? _maxElevation;
+        public double MaxElevation
+        {
+            get => _maxElevation ?? (_maxElevation = GetMaxElevation()).Value;
+            set
+            {
+                _maxElevation = value;
+                _seaLevel = _normalizedSeaLevel * value;
+            }
+        }
 
         private double? _maxMass;
         /// <summary>
@@ -406,6 +403,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public List<Planetoid> Satellites { get; private set; }
 
+        private double _seaLevel;
+        /// <summary>
+        /// The elevation of sea level relative to the mean surface elevation of the planet, in
+        /// meters.
+        /// </summary>
+        public double SeaLevel
+        {
+            get => _seaLevel;
+            set
+            {
+                _seaLevel = value;
+                _normalizedSeaLevel = (float)(value / MaxElevation);
+            }
+        }
+
         private double? _summerSolsticeTrueAnomaly;
         /// <summary>
         /// The true anomaly of the orbit of this <see cref="Planetoid"/> when at the summer
@@ -430,12 +442,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double SurfaceTemperature
             => _surfaceTemperature ?? (_surfaceTemperature = GetCurrentSurfaceTemperature()).Value;
 
-        private Terrain _terrain;
-        /// <summary>
-        /// The <see cref="Terrain"/> which describes this <see cref="Planetoid"/>'s surface.
-        /// </summary>
-        public Terrain Terrain => _terrain ?? (_terrain = GetTerrain());
-
         private double? _winterSolsticeTrueAnomaly;
         /// <summary>
         /// The true anomaly of the orbit of this <see cref="Planetoid"/> when at the winter
@@ -452,6 +458,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return _winterSolsticeTrueAnomaly ?? 0;
             }
         }
+
+        private double? _summerSolarEquator;
+        internal double SummerSolarEquator
+            => _summerSolarEquator ?? (_summerSolarEquator = AxialTilt * (2.0 / 3.0)).Value;
+
+        private double? _winterSolarEquator;
+        internal double WinterSolarEquator
+            => _winterSolarEquator ?? (_winterSolarEquator = -AxialTilt * (2.0 / 3.0)).Value;
 
         private double? _eccentricity;
         /// <summary>
@@ -491,16 +505,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected double LapseRateDry
             => _lapseRateDry ?? (_lapseRateDry = GetLapseRateDry()).Value;
 
+        private FastNoise _noise1;
+        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6));
+
+        private FastNoise _noise2;
+        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 5));
+
+        private FastNoise _noise3;
+        private FastNoise Noise3 => _noise3 ?? (_noise3 = new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4));
+
         private double? _solarEquator;
         private double SolarEquator => _solarEquator ?? (_solarEquator = GetSolarEquator()).Value;
-
-        private double? _summerSolarEquator;
-        private double SummerSolarEquator
-            => _summerSolarEquator ?? (_summerSolarEquator = AxialTilt * (2.0 / 3.0)).Value;
-
-        private double? _winterSolarEquator;
-        private double WinterSolarEquator
-            => _winterSolarEquator ?? (_winterSolarEquator = -AxialTilt * (2.0 / 3.0)).Value;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -627,7 +642,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="position">The position at which to determine elevation.</param>
         /// <returns>The elevation at the given <paramref name="position"/>, in meters.</returns>
-        public double GetElevationAt(Vector3 position) => Terrain.GetElevationAt(position);
+        public double GetElevationAt(Vector3 position)
+            => GetNormalizedElevationAt(position) * MaxElevation;
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
@@ -638,46 +654,114 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns>The elevation at the given <paramref name="latitude"/> and <paramref
         /// name="longitude"/>, in meters.</returns>
         public double GetElevationAt(double latitude, double longitude)
-            => Terrain.GetElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
+            => GetElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
 
         /// <summary>
-        /// Produces an equirectangular projection of an elevation map of the specified region.
+        /// Gets a <see cref="WorldGrid"/> depicting the topology of this planet, with the default
+        /// level of detail.
         /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
-        /// in radians.</param>
-        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
-        /// radians.</param>
-        /// <param name="standardParallels">The latitude of the standard parallels (north and south
-        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
-        /// equator (the plate carrée projection). It does not matter whether the positive or
-        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
-        /// <paramref name="centralParallel"/> will be used.</param>
-        /// <param name="range">If provided, indicates the latitude range (north and south of
-        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
-        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
-        /// shown.</param>
-        /// <returns>
-        /// A two-dimensional array of <see cref="double"/> values corresponding to points on an
-        /// equirectangular projected map of the surface. The first index corresponds to the X
-        /// coordinate, and the second index corresponds to the Y coordinate. The values are
-        /// normalized elevations from -1 to 1, where negative values are below sea level and
-        /// positive values are above sea level, and 1 is equal to the maximum elevation of this
-        /// <see cref="Planetoid"/>. <seealso cref="Terrain.MaxElevation"/>
-        /// </returns>
-        public double[,] GetElevationMap(
-            uint resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
-            double? standardParallels = null,
-            double? range = null)
-            => SurfaceMap.GetSurfaceMap(
-                GetNormalizedElevationAt,
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
+        /// <returns>A <see cref="WorldGrid"/> instance depicting the topology of this
+        /// planet.</returns>
+        public virtual WorldGrid GetGrid() => GetGrid(WorldGrid.DefaultGridSize);
+
+        /// <summary>
+        /// Gets a <see cref="WorldGrid"/> depicting the topology of this planet, which has at least
+        /// the given level of detail.
+        /// </summary>
+        /// <param name="detailLevel">The minimum level of detail of the grid. Because grid
+        /// generating is an expensive and potentially slow process, especially at high detail, the
+        /// latest requested grid for each planet is cached. If the cached grid has a higher level
+        /// then the specified level, the cached grid will be returned instead of generating a new,
+        /// lower-detail grid.</param>
+        /// <returns>A <see cref="WorldGrid"/> instance depicting the topology of this
+        /// planet.</returns>
+        public WorldGrid GetGrid(byte detailLevel)
+        {
+            if (_grid != null && _grid.GridSize >= detailLevel)
+            {
+                return _grid;
+            }
+
+            _grid = new WorldGrid(this, detailLevel);
+
+            return _grid;
+        }
+
+        /// <summary>
+        /// Determines if the given position is mountainous (see Remarks).
+        /// </summary>
+        /// <param name="latitude">The latitude of the position to check.</param>
+        /// <param name="longitude">The longitude of the position to check.</param>
+        /// <returns><see langword="true"/> if the given position is mountainous; otherwise
+        /// <see langword="false"/>.</returns>
+        /// <remarks>
+        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
+        /// elevation of this planet, or a maximum elevation greater than 5% of the maximum and a
+        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
+        /// slope greater than 0.0875.
+        /// </remarks>
+        public bool GetIsMountainous(double latitude, double longitude)
+        {
+            var position = LatitudeAndLongitudeToVector(latitude, longitude);
+            var elevation = GetNormalizedElevationAt(position);
+
+            if (elevation < 0.035)
+            {
+                return false;
+            }
+            if (elevation > 0.085)
+            {
+                return true;
+            }
+            var slope = GetSlope(position, latitude, longitude, elevation);
+            if (elevation > 0.05)
+            {
+                return slope > 0.035;
+            }
+            return slope > 0.0875;
+        }
+
+        /// <summary>
+        /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
+        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
+        /// below sea level.
+        /// </summary>
+        /// <param name="position">A normalized position vector representing a direction from the
+        /// center of the <see cref="Planetoid"/>.</param>
+        /// <returns>The elevation at the given <paramref name="position"/>, as a normalized value
+        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
+        /// below sea level.</returns>
+        public float GetNormalizedElevationAt(Vector3 position)
+        {
+            if (MaxElevation.IsZero())
+            {
+                return 0;
+            }
+
+            // The magnitude of the position vector is magnified to increase the surface area of the
+            // noise map, thus providing a more diverse range of results without introducing
+            // excessive noise (as increasing frequency would).
+            var p = position * 100;
+
+            // Initial noise map.
+            var baseNoise = Noise1.GetNoise(p.X, p.Y, p.Z);
+
+            // In order to avoid an appearance of excessive uniformity, with all mountains reaching
+            // the same height, distributed uniformly over the surface, the initial noise is
+            // multiplied by a second, independent noise map. The resulting map will have more
+            // randomly distributed high and low points.
+            var irregularity1 = Math.Abs(Noise2.GetNoise(p.X, p.Y, p.Z));
+
+            // This process is repeated.
+            var irregularity2 = Math.Abs(Noise3.GetNoise(p.X, p.Y, p.Z));
+
+            var e = baseNoise * irregularity1 * irregularity2;
+
+            // The overall value is magnified to compensate for excessive normalization.
+            e *= 6;
+
+            return (float)e - _normalizedSeaLevel;
+        }
 
         /// <summary>
         /// Gets the richness of the resources at the given <paramref name="latitude"/> and
@@ -715,6 +799,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 return 0;
             }
+        }
+
+        /// <summary>
+        /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
+        /// point to the point 1 arc-second away in the cardinal direction which is at the steepest
+        /// angle.
+        /// </summary>
+        /// <param name="latitude">The latitude of the point.</param>
+        /// <param name="latitude">The longitude of the point.</param>
+        /// <returns>The slope at the given coordinates.</returns>
+        public double GetSlope(double latitude, double longitude)
+        {
+            var position = LatitudeAndLongitudeToVector(latitude, longitude);
+            return GetSlope(position, latitude, longitude, GetNormalizedElevationAt(position));
         }
 
         /// <summary>
@@ -1132,18 +1230,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual void GenerateAtmosphere() { }
 
-        private protected virtual void GenerateGrid()
-            => GenerateGrid(WorldGrid.DefaultDesiredTileRadius.HasValue
-                ? WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value)
-                : WorldGrid.DefaultGridSize);
-
-        private protected void GenerateGrid(byte size)
-        {
-            _grid = new WorldGrid(this, size);
-
-            SetGridElevations();
-        }
-
         private protected virtual void GenerateResources()
             => AddResources(Substance.Composition.GetSurface()
                 .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
@@ -1332,6 +1418,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual (double, IShape) GetMassAndShape() => (GetMass(), GetShape());
 
+        private double GetMaxElevation()
+        {
+            if (HasFlatSurface)
+            {
+                return 0;
+            }
+
+            var max = 2e5 / SurfaceGravity;
+            var r = new Random(_seed1);
+            var d = 0.0;
+            for (var i = 0; i < 5; i++)
+            {
+                d += r.NextDouble() * 0.5;
+            }
+            d /= 5;
+            return max * (0.5 + d);
+        }
+
         private double GetMaxSurfaceTemperature() => (SurfaceTemperatureAtPeriapsis * InsolationFactor_Equatorial) + GreenhouseEffect;
 
         /// <summary>
@@ -1341,17 +1445,49 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double GetMinSurfaceTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + GreenhouseEffect;
 
-        private double GetNormalizedElevationAt(double latitude, double longitude)
-            => Terrain.GetNormalizedElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
-
         private protected virtual IShape GetShape(double? mass = null, double? knownRadius = null)
             // Gaussian distribution with most values between 1km and 19km.
             => new Ellipsoid(Math.Max(0, Randomizer.Instance.Normal(10000, 4500)), Randomizer.Instance.NextDouble(0.5, 1));
 
+        private double GetSlope(Vector3 position, double latitude, double longitude, float elevation)
+        {
+            const double sec = MathConstants.PIOver180 / 3600;
+
+            // north
+            var otherCoords = (lat: latitude + sec, lon: longitude);
+            if (otherCoords.lat > Math.PI)
+            {
+                otherCoords = (MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathConstants.TwoPI);
+            }
+            var otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
+            var otherElevation = GetNormalizedElevationAt(otherPos);
+            var slope = Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos);
+
+            // east
+            otherCoords = (lat: latitude, lon: (longitude + sec) % MathConstants.TwoPI);
+            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos);
+            slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
+
+            // south
+            otherCoords = (lat: latitude - sec, lon: longitude);
+            if (otherCoords.lat < -Math.PI)
+            {
+                otherCoords = (-MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathConstants.TwoPI);
+            }
+            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos);
+            slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
+
+            // west
+            otherCoords = (lat: latitude, lon: (longitude - sec) % MathConstants.TwoPI);
+            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos);
+            return Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
+        }
+
         private double GetSolarEquator()
             => -AxialTilt * (Orbit == null ? 1 : Math.Cos(Orbit.TrueAnomaly)) * (2.0 / 3.0);
-
-        private Terrain GetTerrain() => new Terrain(this);
 
         private protected override void ResetCachedTemperatures()
         {
@@ -1382,18 +1518,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _axisRotation = Quaternion.Conjugate(q);
             _solarEquator = null;
             ResetOrbitalProperties();
-        }
-
-        private protected void SetGridElevations()
-        {
-            foreach (var t in Grid.Tiles)
-            {
-                t.Elevation = (float)Terrain.GetElevationAt(t.Vector);
-            }
-            foreach (var c in Grid.Corners)
-            {
-                c.Elevation = (float)Terrain.GetElevationAt(c.Vector);
-            }
         }
     }
 }

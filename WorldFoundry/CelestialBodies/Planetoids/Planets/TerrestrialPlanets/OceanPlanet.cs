@@ -17,8 +17,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private const bool _hasFlatSurface = true;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
-        /// (i.e. is non-solid). Prevents generation of a height map during <see
-        /// cref="Planetoid.Terrain"/> generation.
+        /// (i.e. is non-solid). Prevents generation of a height map.
         /// </summary>
         public override bool HasFlatSurface => _hasFlatSurface;
 
@@ -110,6 +109,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             _hydrosphere = new Composite(
                 (Chemical.Water, Phase.Liquid, 1 - saltWater),
                 (Chemical.Water_Salt, Phase.Liquid, saltWater));
+            SeaLevel = -shape.ContainingRadius * mantleProportion;
 
             // Thin magma mantle
             var magmaMantle = mantleProportion * 0.2;

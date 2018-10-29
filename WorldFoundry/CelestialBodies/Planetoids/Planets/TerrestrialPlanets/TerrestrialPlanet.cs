@@ -14,6 +14,7 @@ using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using WorldFoundry.Space.Galaxies;
 using WorldFoundry.Substances;
+using WorldFoundry.SurfaceMaps;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -42,9 +43,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private static readonly double LowTemp = Chemical.Water.MeltingPoint - 16;
 
-        private readonly Lazy<List<Season>> _seasons = new Lazy<List<Season>>();
-
-        private bool _climateSet;
         private double? _gravity;
 
         internal static bool _canHaveOxygen = true;
@@ -424,11 +422,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // Convert the target average surface temperature to an estimated target equatorial
                 // surface temperature, for which orbit/luminosity requirements can be calculated.
-                var targetEquatorialEffectiveTemp = targetTemp * 1.0275;
+                var targetEquatorialEffectiveTemp = targetTemp * 1.005;
                 // Use the typical average elevation to determine average surface
                 // temperature, since the average temperature at sea level is not the same
                 // as the average overall surface temperature.
-                var avgElevation = Terrain.MaxElevation * 0.07;
+                var avgElevation = MaxElevation * 0.07;
                 var targetEffectiveTemp = targetEquatorialEffectiveTemp + (avgElevation * LapseRateDry);
                 var currentTargetTemp = targetEffectiveTemp;
 
@@ -488,6 +486,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
+        /// Gets a <see cref="WorldGrid"/> depicting the topology of this planet, with the level of
+        /// detail specified in the planet's creation parameters, or the default level of detail if
+        /// none was specified.
+        /// </summary>
+        /// <returns>A <see cref="WorldGrid"/> instance depicting the topology of this
+        /// planet.</returns>
+        public override WorldGrid GetGrid() => GetGrid(PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize);
+
+        /// <summary>
         /// Determines the average precipitation at the given <paramref name="position"/> under the
         /// given conditions, over the given duration, in mm.
         /// </summary>
@@ -528,7 +535,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
             // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
             // the polar deserts.
-            var roundedAbsLatitude = Math.Round(Math.Max(0, seasonalLatitude - ThirtySixthPI), 3);
+            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
             if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
             {
                 hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
@@ -549,7 +556,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Scale by distance from target.
-            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.1) - 0.15)) + Math.Max(0, Math.Exp(relativeHumidity / 2) - 1.2);
+            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.3) - 0.5)) + Math.Max(0, Math.Exp(relativeHumidity - 1.5) - 0.4);
             factor *= factor;
 
             var precipitation = avgPrecipitation * relativeHumidity * factor;
@@ -614,476 +621,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// mm.</returns>
         public double GetPrecipitation(Vector3 position, double proportionOfYear, out double snow)
             => GetPrecipitation(position, proportionOfYear, Orbit?.TrueAnomaly ?? 0, out snow);
-
-        /// <summary>
-        /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
-        /// </summary>
-        /// <param name="proportionOfYear">
-        /// The proportion of a year which the season comprises. Can be 1 to get a full year, or to
-        /// get any information for a planet not in orbit.
-        /// </param>
-        /// <param name="trueAnomaly">
-        /// The true anomaly of the orbit at the midpoint of the season. Can be 0 if the planet is
-        /// not in orbit.
-        /// </param>
-        /// <returns>A <see cref="Season"/>.</returns>
-        public Season GetSeason(double proportionOfYear, double trueAnomaly)
-        {
-            if (!_climateSet)
-            {
-                SetClimate();
-            }
-
-            Season season;
-            if (_seasons.Value.Count > 0 && _seasons.Value[0].ProportionOfYear.IsEqualTo(proportionOfYear))
-            {
-                season = _seasons.Value?.FirstOrDefault(x => x.TrueAnomaly.IsEqualTo(trueAnomaly));
-                if (season != null)
-                {
-                    return season;
-                }
-            }
-
-            season = new Season(
-                this,
-                proportionOfYear,
-                trueAnomaly);
-            if (season != null)
-            {
-                _seasons.Value.Add(season);
-            }
-            return season;
-        }
-
-        /// <summary>
-        /// Gets or generates a <see cref="Season"/> for this <see cref="TerrestrialPlanet"/>.
-        /// </summary>
-        /// <param name="amount">
-        /// The number of seasons in one year. Must be greater than or equal to 1.
-        /// </param>
-        /// <param name="index">
-        /// The 0-based index of the expected season in the seasons of the year.
-        /// </param>
-        /// <returns>A <see cref="Season"/>.</returns>
-        public Season GetSeason(uint amount, uint index)
-        {
-            if (amount < 1)
-            {
-                return null;
-            }
-
-            var seasonAngle = MathConstants.TwoPI / amount;
-            var trueAnomaly = WinterSolsticeTrueAnomaly + (seasonAngle * index);
-            if (trueAnomaly >= MathConstants.TwoPI)
-            {
-                trueAnomaly -= MathConstants.TwoPI;
-            }
-
-            return GetSeason(1.0 / amount, trueAnomaly);
-        }
-
-        /// <summary>
-        /// Gets a set of seasons for this <see cref="TerrestrialPlanet"/>.
-        /// </summary>
-        /// <param name="amount">
-        /// The number of seasons in one year.
-        /// </param>
-        /// <returns>An enumeration of <see cref="Season"/> instances.</returns>
-        public IEnumerable<Season> GetSeasons(uint amount)
-        {
-            if (!_climateSet)
-            {
-                SetClimate();
-            }
-
-            var proportionOfYear = 1.0 / amount;
-
-            if (_seasons.Value.Count == amount && _seasons.Value[0].ProportionOfYear.IsEqualTo(proportionOfYear))
-            {
-                foreach (var season in _seasons.Value)
-                {
-                    yield return season;
-                }
-                yield break;
-            }
-
-            var trueAnomaly = WinterSolsticeTrueAnomaly;
-            var seasonAngle = MathConstants.TwoPI / amount;
-            for (uint i = 0; i < amount; i++)
-            {
-                yield return new Season(this, proportionOfYear, trueAnomaly);
-                trueAnomaly += seasonAngle;
-                if (trueAnomaly > MathConstants.TwoPI)
-                {
-                    trueAnomaly -= MathConstants.TwoPI;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Determines whether there is persistent snow cover in a location with the given
-        /// conditions at the given proportion of a year.
-        /// </summary>
-        /// <param name="proportionOfYear">The current elapsed proportion of the year at which to
-        /// determine the presence of snow cover.</param>
-        /// <param name="position">The normalized position vector of the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns><see langword="true"/> if there is persistent snow cover under the given
-        /// conditions; otherwise <see langword="false"/>.</returns>
-        public bool GetSnowCover(double proportionOfYear, Vector3 position, double latitude, double elevation)
-        {
-            var annualPrecipitation = GetPrecipitation(position, 1 / 12, out var snow) * 12;
-            if (snow > 0)
-            {
-                return true;
-            }
-            return GetSnowCover(proportionOfYear, GetSnowCoverRange(latitude, elevation, annualPrecipitation));
-        }
-
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <param name="humidityType">The <see cref="HumidityType"/> of the location.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
-        public FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, HumidityType humidityType)
-        {
-            if (elevation <= 0
-                || humidityType <= HumidityType.Perarid
-                || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.Zero;
-            }
-            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
-            if (double.IsNaN(freezeProportion))
-            {
-                return FloatRange.Zero;
-            }
-            // Freezes more than melts; never fully melts.
-            if (freezeProportion >= 0.5)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var meltStart = freezeProportion / 2;
-            var iceMeltFinish = freezeProportion;
-            var snowMeltFinish = freezeProportion * 3 / 4;
-            var freezeStart = 1 - (freezeProportion / 2);
-            if (latitude < 0)
-            {
-                iceMeltFinish += 0.5;
-                if (iceMeltFinish > 1)
-                {
-                    iceMeltFinish--;
-                }
-
-                snowMeltFinish += 0.5;
-                if (snowMeltFinish > 1)
-                {
-                    snowMeltFinish--;
-                }
-
-                freezeStart -= 0.5;
-            }
-            return new FloatRange((float)freezeStart, (float)snowMeltFinish);
-        }
-
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <param name="annualPrecipitation">The average annual precipitation in the location, in
-        /// mm.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
-        public FloatRange GetSnowCoverRange(double latitude, double elevation, double annualPrecipitation)
-            => GetSnowCoverRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation, ClimateTypes.GetHumidityType(annualPrecipitation));
-
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="position">The normalized position vector of the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
-        public FloatRange GetSnowCoverRange(Vector3 position, double latitude, double elevation)
-            => GetSnowCoverRange(latitude, elevation, GetPrecipitation(position, 1, out var _));
-
-        /// <summary>
-        /// Determines whether there is persistent sea ice in a location with the given
-        /// conditions at the given proportion of a year.
-        /// </summary>
-        /// <param name="proportionOfYear">The current elapsed proportion of the year at which to
-        /// determine the presence of snow cover.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns><see langword="true"/> if there is persistent sea ice under the given
-        /// conditions; otherwise <see langword="false"/>.</returns>
-        public bool GetSeaIce(double proportionOfYear, double latitude, double elevation)
-            => GetSeaIce(proportionOfYear, GetSeaIceRange(latitude, elevation));
-
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent sea ice in a location
-        /// with the given conditions.
-        /// </summary>
-        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent sea ice in a location with the given conditions. The minimum
-        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
-        /// the proportion of the year when it stops.</returns>
-        public FloatRange GetSeaIceRange(FloatRange temperatureRange, double latitude, double elevation)
-        {
-            if (elevation > 0 || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.Zero;
-            }
-            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
-            if (double.IsNaN(freezeProportion))
-            {
-                return FloatRange.Zero;
-            }
-            // Freezes more than melts; never fully melts.
-            if (freezeProportion >= 0.5)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var meltStart = freezeProportion / 2;
-            var iceMeltFinish = freezeProportion;
-            var snowMeltFinish = freezeProportion * 3 / 4;
-            var freezeStart = 1 - (freezeProportion / 2);
-            if (latitude < 0)
-            {
-                iceMeltFinish += 0.5;
-                if (iceMeltFinish > 1)
-                {
-                    iceMeltFinish--;
-                }
-
-                snowMeltFinish += 0.5;
-                if (snowMeltFinish > 1)
-                {
-                    snowMeltFinish--;
-                }
-
-                freezeStart -= 0.5;
-            }
-            return new FloatRange((float)freezeStart, (float)iceMeltFinish);
-        }
-
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent sea ice in a location
-        /// with the given conditions.
-        /// </summary>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent sea ice in a location with the given conditions. The minimum
-        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
-        /// the proportion of the year when it stops.</returns>
-        public FloatRange GetSeaIceRange(double latitude, double elevation)
-            => GetSeaIceRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation);
-
-        /// <summary>
-        /// Produces a set of equirectangular projections of the specified region describing the
-        /// climate.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
-        /// in radians.</param>
-        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
-        /// radians.</param>
-        /// <param name="standardParallels">The latitude of the standard parallels (north and south
-        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
-        /// equator (the plate carrée projection). It does not matter whether the positive or
-        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
-        /// <paramref name="centralParallel"/> will be used.</param>
-        /// <param name="range">If provided, indicates the latitude range (north and south of
-        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
-        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
-        /// shown.</param>
-        /// <param name="start">The true anomaly of the beginning of the period for which to
-        /// generate maps, offset from the winter solstice. Zero (the default) indicates the winter
-        /// solstice. Values below zero, or greater than or equal to 1, are treated as zero.</param>
-        /// <param name="end">The true anomaly of the end of the period for which to generate maps,
-        /// offset from the winter solstice. One (the default) indicates the winter solstice of the
-        /// following year (i.e. one full year, if <paramref name="start"/> was zero). Values less
-        /// than or equal to zero, or greater than one, are treated as one.</param>
-        /// <returns>
-        /// <para>
-        /// An array of surface maps. Each map is a two-dimensional array of <see cref="double"/>
-        /// values corresponding to points on equirectangular projected maps of the surface. The
-        /// first index of each two-dimensional array corresponds to the X coordinate, and the
-        /// second index corresponds to the Y coordinate.
-        /// </para>
-        /// <para>
-        /// The first two-dimensional array in the set (at index 0) is a temperature map, showing
-        /// the average temperature during the specified period. Values range from 0 to 1, with 1
-        /// indicating the maximum temperature of the planet.
-        /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
-        /// </para>
-        /// <para>
-        /// The second array in the set (at index 1) is a precipitation map, showing the total
-        /// amount of precipitation which falls during the specified period. Values range from 0 to
-        /// 1, with 1 indicating the maximum potential precipitation of the planet's atmosphere.
-        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
-        /// </para>
-        /// <para>
-        /// The third array in the set is a snowfall map, showing the total amount of snow which
-        /// falls during the specified period. Values range from 0 to 1, with 1 indicating the
-        /// maximum potential snowfall of the planet's atmosphere.
-        /// <seealso cref="Atmosphere.MaxSnowfall"/>
-        /// </para>
-        /// <para>
-        /// The fourth array in the set is a snow cover map, showing where persistent snow cover is
-        /// present during the specified period. Values are either 0 or 1, with 0 indicating no
-        /// persistent snow cover and 1 indicating persistent snow cover is present.
-        /// </para>
-        /// <para>
-        /// The fifth array in the set is a sea ice map, showing where sea ice is present during the
-        /// specified period. Values are either 0 or 1, with 0 indicating no sea ice and 1
-        /// indicating sea ice is present.
-        /// </para>
-        /// </returns>
-        public double[][,] GetWeatherMaps(
-            uint resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
-            double? standardParallels = null,
-            double? range = null,
-            double start = 0,
-            double end = 1)
-        {
-            if (resolution > int.MaxValue / 2)
-            {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
-            }
-            var set = new double[5][,];
-
-            throw new NotImplementedException();
-
-            return set;
-        }
-
-        /// <summary>
-        /// Produces a set of equirectangular projections of the specified region describing the
-        /// climate.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
-        /// in radians.</param>
-        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
-        /// radians.</param>
-        /// <param name="standardParallels">The latitude of the standard parallels (north and south
-        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
-        /// equator (the plate carrée projection). It does not matter whether the positive or
-        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
-        /// <paramref name="centralParallel"/> will be used.</param>
-        /// <param name="range">If provided, indicates the latitude range (north and south of
-        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
-        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
-        /// shown.</param>
-        /// <param name="steps">The number of map sets which will be generated, at equal times
-        /// throughout the course of one solar year. The greater the number of sets (and thus, the
-        /// shorter the time span represented by each step), the more accurate the results will be,
-        /// at the cost of increased processing time.</param>
-        /// <returns>
-        /// <para>
-        /// An array of arrays. The index to the outer array corresponds to the step (or season) for
-        /// which maps were generated. There will be an equal number of values to <paramref
-        /// name="steps"/>.
-        /// </para>
-        /// <para>
-        /// The second level of arrays are sets of maps. Each map is a two-dimensional array, the
-        /// values of which correspond to points on equirectangular projected maps of the surface.
-        /// The first index of each third-level, two-dimensional array corresponds to the X
-        /// coordinate, and the second index corresponds to the Y coordinate.
-        /// </para>
-        /// <para>
-        /// The first two-dimensional array in each set (at index 0) is a temperature map, showing
-        /// the average temperature during the specified period. Values range from 0 to 1, with 1
-        /// indicating the maximum temperature of the planet.
-        /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
-        /// </para>
-        /// <para>
-        /// The second array in each set (at index 1) is a precipitation map, showing the total
-        /// amount of precipitation which falls during the specified period. Values range from 0 to
-        /// 1, with 1 indicating the maximum potential precipitation of the planet's atmosphere.
-        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
-        /// </para>
-        /// <para>
-        /// The third array in each set is a snowfall map, showing the total amount of snow which
-        /// falls during the specified period. Values range from 0 to 1, with 1 indicating the
-        /// maximum potential snowfall of the planet's atmosphere.
-        /// <seealso cref="Atmosphere.MaxSnowfall"/>
-        /// </para>
-        /// <para>
-        /// The third array in each set is a snow cover map, showing where persistent snow cover is
-        /// present during the specified period. Values are either 0 or 1, with 0 indicating no
-        /// persistent snow cover and 1 indicating persistent snow cover is present.
-        /// </para>
-        /// <para>
-        /// The third array in each set is a sea ice map, showing where sea ice is present during
-        /// the specified period. Values are either 0 or 1, with 0 indicating no sea ice and 1
-        /// indicating sea ice is present.
-        /// </para>
-        /// </returns>
-        public double[][][,] GetWeatherMapSet(
-            uint resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
-            double? standardParallels = null,
-            double? range = null,
-            uint steps = 12)
-        {
-            if (resolution > int.MaxValue / 2)
-            {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
-            }
-            if (steps > int.MaxValue)
-            {
-                throw new ArgumentOutOfRangeException(nameof(steps), $"The value of {nameof(steps)} cannot exceed int.MaxValue ({int.MaxValue.ToString()}).");
-            }
-            var sets = new double[steps][][,];
-
-            throw new NotImplementedException();
-
-            return sets;
-        }
 
         /// <summary>
         /// Determines if the planet is habitable by a species with the given requirements. Does not
@@ -1158,6 +695,55 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return reason == UninhabitabilityReason.None;
         }
 
+        /// <summary>
+        /// Configures the given <see cref="WorldGrid"/> for this <see cref="TerrestrialPlanet"/>
+        /// with climate data.
+        /// </summary>
+        /// <param name="grid">Thw <see cref="WorldGrid"/> to configure.</param>
+        /// <param name="seasons">The number of seasons to use when calculating climate data. The
+        /// greater the number of seasons, the more accurate the results, but the longer the
+        /// calculation will take.</param>
+        /// <param name="elevationMap">A pre-calculated elevation map for the planet. If left <see
+        /// langword="null"/> one will be generated.</param>
+        /// <param name="weatherMapSet">A pre-calculated set of weather maps for the planet. If left
+        /// <see langword="null"/> a set will be generated.</param>
+        /// <returns>A <see cref="HydrologyMaps"/> instance for this planet.</returns>
+        public HydrologyMaps SetClimate(WorldGrid grid, int seasons, float[,] elevationMap = null, WeatherMapSet? weatherMapSet = null)
+        {
+            var resolution = elevationMap?.GetLength(1) ?? 90;
+            var scale = Math.PI / resolution;
+
+            if (elevationMap == null)
+            {
+                elevationMap = this.GetElevationMap(90);
+            }
+            if (!weatherMapSet.HasValue)
+            {
+                weatherMapSet = this.GetWeatherMapSet(90, steps: seasons, elevationMap: elevationMap);
+            }
+
+            for (var i = 0; i < grid.Tiles.Length; i++)
+            {
+                var t = grid.Tiles[i];
+                var (x, y) = SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(t.Latitude, t.Longitude, resolution, scale);
+
+                t.Temperature = weatherMapSet.Value.TemperatureRanges[x, y];
+                t.SeaIce = weatherMapSet.Value.SeaIceRanges[x, y];
+                t.SnowCover = weatherMapSet.Value.SnowCoverRanges[x, y];
+
+                t.Precipitation = (float)(weatherMapSet.Value.TotalPrecipitation[x, y] * Atmosphere.MaxPrecipitation);
+                t.SnowFall = (float)(weatherMapSet.Value.WeatherMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
+
+                t.ClimateType = ClimateTypes.GetClimateType(t.Temperature.Average);
+                t.HumidityType = ClimateTypes.GetHumidityType(t.Precipitation);
+
+                t.EcologyType = ClimateTypes.GetEcologyType(t.ClimateType, t.HumidityType, t.Elevation);
+                t.BiomeType = ClimateTypes.GetBiomeType(t.ClimateType, t.HumidityType, t.Elevation);
+            }
+
+            return this.GetHydrologyMaps(resolution, elevationMap: elevationMap, precipitationMap: weatherMapSet.Value.TotalPrecipitation);
+        }
+
         internal double GetHydrosphereAtmosphereRatio() => Math.Min(1, HydrosphereProportion * Mass / Atmosphere.Mass);
 
         internal bool GetSeaIce(double proportionOfYear, FloatRange seaIceRange)
@@ -1166,11 +752,113 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 ? proportionOfYear >= seaIceRange.Min || proportionOfYear <= seaIceRange.Max
                 : proportionOfYear >= seaIceRange.Min && proportionOfYear <= seaIceRange.Max);
 
+        /// <summary>
+        /// Gets the proportion of the year during which there is persistent sea ice in a location
+        /// with the given conditions.
+        /// </summary>
+        /// <param name="latitude">The latitude of the location, in radians.</param>
+        /// <param name="elevation">The elevation of the location above sea level, in
+        /// meters.</param>
+        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
+        /// which there is persistent sea ice in a location with the given conditions. The minimum
+        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
+        /// the proportion of the year when it stops.</returns>
+        internal FloatRange GetSeaIceRange(double latitude, double elevation)
+            => GetSeaIceRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation);
+
+        /// <summary>
+        /// Gets the proportion of the year during which there is persistent sea ice in a location
+        /// with the given conditions.
+        /// </summary>
+        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
+        /// <param name="latitude">The latitude of the location, in radians.</param>
+        /// <param name="elevation">The elevation of the location above sea level, in
+        /// meters.</param>
+        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
+        /// which there is persistent sea ice in a location with the given conditions. The minimum
+        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
+        /// the proportion of the year when it stops.</returns>
+        internal FloatRange GetSeaIceRange(FloatRange temperatureRange, double latitude, double elevation)
+        {
+            if (elevation > 0 || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
+            {
+                return FloatRange.Zero;
+            }
+            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
+            {
+                return FloatRange.ZeroToOne;
+            }
+
+            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
+            if (double.IsNaN(freezeProportion))
+            {
+                return FloatRange.Zero;
+            }
+            // Freezes more than melts; never fully melts.
+            if (freezeProportion >= 0.5)
+            {
+                return FloatRange.ZeroToOne;
+            }
+
+            var meltStart = freezeProportion / 2;
+            var iceMeltFinish = freezeProportion;
+            var snowMeltFinish = freezeProportion * 3 / 4;
+            var freezeStart = 1 - (freezeProportion / 2);
+            if (latitude < 0)
+            {
+                iceMeltFinish += 0.5;
+                if (iceMeltFinish > 1)
+                {
+                    iceMeltFinish--;
+                }
+
+                snowMeltFinish += 0.5;
+                if (snowMeltFinish > 1)
+                {
+                    snowMeltFinish--;
+                }
+
+                freezeStart -= 0.5;
+            }
+            return new FloatRange((float)freezeStart, (float)iceMeltFinish);
+        }
+
         internal bool GetSnowCover(double proportionOfYear, FloatRange snowCoverRange)
             => !snowCoverRange.IsZero
             && (snowCoverRange.Min > snowCoverRange.Max
                 ? proportionOfYear >= snowCoverRange.Min || proportionOfYear <= snowCoverRange.Max
                 : proportionOfYear >= snowCoverRange.Min && proportionOfYear <= snowCoverRange.Max);
+
+        /// <summary>
+        /// Gets the proportion of the year during which there is persistent snow cover in a
+        /// location with the given conditions.
+        /// </summary>
+        /// <param name="position">The normalized position vector of the location.</param>
+        /// <param name="latitude">The latitude of the location, in radians.</param>
+        /// <param name="elevation">The elevation of the location above sea level, in
+        /// meters.</param>
+        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
+        /// which there is persistent snow cover in a location with the given conditions. The
+        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
+        /// and the maximum specifies the proportion of the year when it stops.</returns>
+        internal FloatRange GetSnowCoverRange(Vector3 position, double latitude, double elevation)
+            => GetSnowCoverRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation, GetPrecipitation(position, 1, out var _));
+
+        /// <summary>
+        /// Gets the proportion of the year during which there is persistent snow cover in a
+        /// location with the given conditions.
+        /// </summary>
+        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
+        /// <param name="latitude">The latitude of the location, in radians.</param>
+        /// <param name="elevation">The elevation of the location above sea level, in
+        /// meters.</param>
+        /// <param name="humidityType">The <see cref="HumidityType"/> of the location.</param>
+        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
+        /// which there is persistent snow cover in a location with the given conditions. The
+        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
+        /// and the maximum specifies the proportion of the year when it stops.</returns>
+        internal FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, double annualPrecipitation)
+            => GetSnowCoverRange(temperatureRange, latitude, elevation, ClimateTypes.GetHumidityType(annualPrecipitation));
 
         private void AdjustOrbitForTemperature(Star star, double? semiMajorAxis, double trueAnomaly, double targetTemp)
         {
@@ -1349,40 +1037,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private void ClassifyTerrain()
-        {
-            foreach (var t in Grid.Tiles)
-            {
-                if (t.Elevation < 0)
-                {
-                    t.IsWater = true;
-                }
-                else
-                {
-                    t.IsLand = true;
-                }
-                for (var i = 0; i < t.EdgeCount; i++)
-                {
-                    if (Grid.Corners[t.Corners[i]].Elevation < 0)
-                    {
-                        t.IsWater = true;
-                        if (t.IsLand)
-                        {
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        t.IsLand = true;
-                        if (t.IsWater)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
         private void CondenseAtmosphericComponent(
             bool _canHaveOxygen,
             Chemical chemical,
@@ -1479,7 +1133,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (chemical == Chemical.Water)
             {
-                Atmosphere.ResetWater();
+                Atmosphere.ResetWater(this);
 
                 // A subsurface liquid water ocean may persist if it's deep enough.
                 if (HydrosphereProportion >= 0.01)
@@ -1564,7 +1218,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             if (chemical == Chemical.Water)
             {
-                Atmosphere.ResetWater();
+                Atmosphere.ResetWater(this);
 
                 // If the hydrosphere was a surface of water ice with a subsurface ocean, melt the
                 // surface and return to a single layer.
@@ -1622,7 +1276,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             if (chemical == Chemical.Water)
             {
                 Hydrosphere.Homogenize();
-                Atmosphere.ResetWater();
+                Atmosphere.ResetWater(this);
             }
 
             var gasProportion = hydrosphereProportion * hydrosphereAtmosphereRatio;
@@ -2106,22 +1760,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private protected override void GenerateGrid()
-        {
-            var size = PlanetParams?.GridSize ?? WorldGrid.DefaultGridSize;
-
-            if (PlanetParams?.GridTileRadius.HasValue ?? false)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, PlanetParams.GridTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-            else if (WorldGrid.DefaultDesiredTileRadius.HasValue)
-            {
-                size = WorldGrid.GetGridSizeForTileRadius(RadiusSquared, WorldGrid.DefaultDesiredTileRadius.Value, PlanetParams.MaxGridSize);
-            }
-
-            GenerateGrid(size);
-        }
-
         private void GenerateHydrocarbons()
         {
             // It is presumed that it is statistically likely that the current eon is not the first
@@ -2145,71 +1783,59 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         private protected virtual void GenerateHydrosphere()
         {
-            if (CanHaveWater)
+            if (!CanHaveWater)
             {
-                var mass = GenerateHydrosphereMass();
-
-                HydrosphereProportion = mass / Mass;
-                if (!HydrosphereProportion.IsZero())
-                {
-                    // Surface water is mostly salt water.
-                    var saltWater = Math.Round(Randomizer.Instance.Normal(0.945, 0.015), 3);
-                    _hydrosphere = new Composite(
-                        (Chemical.Water, Phase.Liquid, 1 - saltWater),
-                        (Chemical.Water_Salt, Phase.Liquid, saltWater));
-
-                    // Salt water indicates sedimentary halite deposits.
-                    AddResource(Chemical.Salt, 0.013, false);
-                }
+                SeaLevel = -MaxElevation * 1.1;
+                return;
             }
-            if (_hydrosphere == null)
-            {
-                _hydrosphere = Material.Empty();
-            }
-        }
 
-        private double GenerateHydrosphereMass()
-        {
             var mass = 0.0;
 
             var ratio = PlanetParams?.WaterRatio ?? Randomizer.Instance.NextDouble();
 
             if (ratio <= 0)
             {
-                Terrain.SeaLevel = -Terrain.MaxElevation * 1.1;
+                SeaLevel = -MaxElevation * 1.1;
             }
-            else if (ratio >= 1 && (HasFlatSurface || Terrain.MaxElevation.IsZero()))
+            else if (ratio >= 1 && (HasFlatSurface || MaxElevation.IsZero()))
             {
-                Terrain.SeaLevel = Terrain.MaxElevation * ratio;
-                mass = new HollowSphere(Radius, Radius + Terrain.SeaLevel).Volume
-                    - (new HollowSphere(Radius, Radius + Terrain.MaxElevation).Volume / 2);
+                SeaLevel = MaxElevation * ratio;
+                mass = new HollowSphere(Radius, Radius + SeaLevel).Volume
+                    - (new HollowSphere(Radius, Radius + MaxElevation).Volume / 2);
             }
             else
             {
+                var grid = GetGrid();
                 if (ratio.IsEqualTo(0.5))
                 {
-                    Terrain.SeaLevel = 0;
+                    SeaLevel = 0;
                 }
                 else
                 {
                     // Midway between the elevations of the first two tiles beyond the amount indicated by
                     // the ratio when ordered by elevation.
-                    Terrain.SeaLevel = Grid.Tiles
+                    SeaLevel = grid.Tiles
                         .OrderBy(t => t.Elevation)
-                        .Skip((Grid.Tiles.Length * ratio).RoundToInt())
+                        .Skip((grid.Tiles.Length * ratio).RoundToInt())
                         .Take(2).Average(t => t.Elevation);
                 }
-                mass = Grid.Tiles.Where(t => t.Elevation < 0).Sum(x => x.Area * (Terrain.SeaLevel - x.Elevation));
+                mass = grid.Tiles.Where(t => t.Elevation < 0).Sum(x => x.Area * (SeaLevel - x.Elevation));
             }
 
-            if (!Terrain.SeaLevel.IsZero())
+            HydrosphereProportion = mass / Mass;
+            if (HydrosphereProportion.IsZero())
             {
-                OffsetGridElevations((float)Terrain.SeaLevel);
+                return;
             }
 
-            ClassifyTerrain();
+            // Surface water is mostly salt water.
+            var saltWater = Math.Round(Randomizer.Instance.Normal(0.945, 0.015), 3);
+            _hydrosphere = new Composite(
+                (Chemical.Water, Phase.Liquid, 1 - saltWater),
+                (Chemical.Water_Salt, Phase.Liquid, saltWater));
 
-            return mass;
+            // Salt water indicates sedimentary halite deposits.
+            AddResource(Chemical.Salt, 0.013, false);
         }
 
         /// <summary>
@@ -2635,6 +2261,66 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt(Mass * ScienceConstants.G / gravity);
 
         /// <summary>
+        /// Gets the proportion of the year during which there is persistent snow cover in a
+        /// location with the given conditions.
+        /// </summary>
+        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
+        /// <param name="latitude">The latitude of the location, in radians.</param>
+        /// <param name="elevation">The elevation of the location above sea level, in
+        /// meters.</param>
+        /// <param name="humidityType">The <see cref="HumidityType"/> of the location.</param>
+        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
+        /// which there is persistent snow cover in a location with the given conditions. The
+        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
+        /// and the maximum specifies the proportion of the year when it stops.</returns>
+        private FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, HumidityType humidityType)
+        {
+            if (elevation <= 0
+                || humidityType <= HumidityType.Perarid
+                || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
+            {
+                return FloatRange.Zero;
+            }
+            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
+            {
+                return FloatRange.ZeroToOne;
+            }
+
+            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
+            if (double.IsNaN(freezeProportion))
+            {
+                return FloatRange.Zero;
+            }
+            // Freezes more than melts; never fully melts.
+            if (freezeProportion >= 0.5)
+            {
+                return FloatRange.ZeroToOne;
+            }
+
+            var meltStart = freezeProportion / 2;
+            var iceMeltFinish = freezeProportion;
+            var snowMeltFinish = freezeProportion * 3 / 4;
+            var freezeStart = 1 - (freezeProportion / 2);
+            if (latitude < 0)
+            {
+                iceMeltFinish += 0.5;
+                if (iceMeltFinish > 1)
+                {
+                    iceMeltFinish--;
+                }
+
+                snowMeltFinish += 0.5;
+                if (snowMeltFinish > 1)
+                {
+                    snowMeltFinish--;
+                }
+
+                freezeStart -= 0.5;
+            }
+            return new FloatRange((float)freezeStart, (float)snowMeltFinish);
+        }
+
+        /// <summary>
         /// Calculates the temperature at which this <see cref="TerrestrialPlanet"/> will retain only
         /// a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
         /// </summary>
@@ -2656,67 +2342,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private bool IsHabitable()
             => Hydrosphere.ContainsSubstance(Chemical.Water, Phase.Liquid)
             || Hydrosphere.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid);
-
-        private void OffsetGridElevations(float seaLevel)
-        {
-            foreach (var t in Grid.Tiles)
-            {
-                t.Elevation -= seaLevel;
-            }
-            foreach (var c in Grid.Corners)
-            {
-                c.Elevation -= seaLevel;
-            }
-        }
-
-        private protected override void ResetCachedTemperatures()
-        {
-            base.ResetCachedTemperatures();
-            _climateSet = false;
-        }
-
-        private void SetClimate()
-        {
-            var seasons = new List<Season>();
-
-            // For planets not in orbit, a single season representing the current moment is all that
-            // can be generated.
-            if (Orbit == null)
-            {
-                seasons.Add(new Season(this, 1, 0));
-            }
-            else
-            {
-                // A year of 12 seasons is pre-generated to provide climate data.
-
-                const double seasonAngle = Math.PI / 6;
-                const double proportionOfYear = 1.0 / 12;
-
-                var seasonTrueAnomaly = WinterSolsticeTrueAnomaly;
-
-                for (uint i = 0; i < 12; i++)
-                {
-                    seasons.Add(new Season(this, proportionOfYear, seasonTrueAnomaly));
-                    seasonTrueAnomaly += seasonAngle;
-                    if (seasonTrueAnomaly >= MathConstants.TwoPI)
-                    {
-                        seasonTrueAnomaly -= MathConstants.TwoPI;
-                    }
-                }
-            }
-
-            for (var i = 0; i < Grid.Tiles.Length; i++)
-            {
-                var t = Grid.Tiles[i];
-                Grid.Tiles[i].SetClimate(seasons);
-                t.SeaIce = GetSeaIceRange(t.Temperature, t.Latitude, t.Elevation);
-                t.SnowCover = GetSnowCoverRange(t.Temperature, t.Latitude, t.Elevation, t.HumidityType);
-            }
-
-            SetRiverFlows();
-
-            _climateSet = true;
-        }
 
         private void SetHydrosphereProportion(
             Chemical chemical,
@@ -2742,105 +2367,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
-        }
-
-        private void SetRiverFlows()
-        {
-            var cornerFlows = new Dictionary<int, float>();
-            var endpoints = new SortedSet<Corner>(Comparer<Corner>.Create((c1, c2) => c2.Elevation.CompareTo(c1.Elevation) * -1));
-
-            for (var i = 0; i < Grid.Tiles.Length; i++)
-            {
-                var t = Grid.Tiles[i];
-                if (!t.IsLand)
-                {
-                    continue;
-                }
-
-                var runoff = (float)(t.Precipitation * 0.001 * t.Area / Orbit.Period);
-                if (runoff.IsZero())
-                {
-                    continue;
-                }
-
-                var lowest = t.GetLowestCorner(Grid);
-
-                cornerFlows[lowest.Index] = runoff;
-
-                endpoints.Add(lowest);
-            }
-
-            Corner prev = null;
-            while (endpoints.Count > 0)
-            {
-                var c = endpoints.First();
-                endpoints.Remove(c);
-
-                var index = Array.Find(Grid.Edges, x => x.RiverSource == c.Index)?.RiverDirection ?? -1;
-                var next = index == -1 ? null : Grid.Corners[index];
-                if (next == null)
-                {
-                    next = c.GetLowestCorner(Grid, true);
-                    if (next.Elevation > c.Elevation)
-                    {
-                        next = c.GetLowestCorner(Grid, false);
-                    }
-                    if (next.Elevation > c.Elevation && (prev?.LakeDepth ?? 0) == 0)
-                    {
-                        c.LakeDepth = Math.Min(
-                            c.Corners.Min(x => Grid.Corners[x].Elevation),
-                            c.Tiles.Min(x => Grid.Tiles[x].Elevation)) - c.Elevation;
-                    }
-                }
-
-                if ((prev?.LakeDepth ?? 0) == 0 || c.LakeDepth + c.Elevation >= next.Elevation)
-                {
-                    var edgeIndex = c.Edges[c.IndexOfCorner(next.Index)];
-                    var edge = Grid.Edges[edgeIndex];
-                    edge.RiverSource = c.Index;
-
-                    cornerFlows.TryGetValue(c.Index, out var flow);
-                    flow += c.Edges
-                        .Where(e => Grid.Edges[e].RiverDirection == c.Index)
-                        .Sum(e => Grid.Edges[e].RiverFlow);
-                    Grid.Edges[edgeIndex].RiverFlow = flow;
-
-                    if (!flow.IsZero())
-                    {
-                        var rc = next;
-                        var visited = new List<int>();
-                        var nextRiverEdge = -1;
-                        do
-                        {
-                            if (nextRiverEdge != -1)
-                            {
-                                visited.Add(nextRiverEdge);
-                            }
-                            var nextRiverEdges = rc.Edges.Where(e => Grid.Edges[e].RiverSource == rc.Index).ToList();
-                            if (nextRiverEdges.Count > 0)
-                            {
-                                nextRiverEdge = nextRiverEdges[0];
-                                Grid.Edges[nextRiverEdge].RiverFlow += flow;
-                                rc = Grid.Corners[Grid.Edges[nextRiverEdge].RiverDirection];
-                            }
-                            else
-                            {
-                                nextRiverEdge = -1;
-                            }
-                        } while (nextRiverEdge != -1 && !visited.Contains(nextRiverEdge));
-                    }
-
-                    if (next.Elevation > 0
-                        && next.LakeDepth == 0
-                        && !endpoints.Contains(next)
-                        && !next.Edges.Any(e => Grid.Edges[e].RiverSource == next.Index))
-                    {
-                        endpoints.Add(next);
-                    }
-                }
-
-                prev = c;
-            }
         }
     }
 }

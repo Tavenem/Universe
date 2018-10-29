@@ -15,7 +15,7 @@ namespace WorldFoundry.Test
         private static Serializer Serializer;
         private static Settings SerializerSettings;
         private const int GridSize = 6;
-        private const int NumSeasons = 4;
+        private const int NumSeasons = 12;
 
         [ClassInitialize]
         public static void Init(TestContext _)
@@ -65,7 +65,11 @@ namespace WorldFoundry.Test
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
-            planet.GetSeasons(NumSeasons).ToList();
+
+            var grid = planet.GetGrid(GridSize);
+            Assert.IsNotNull(grid);
+
+            planet.SetClimate(grid, NumSeasons);
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
@@ -80,7 +84,11 @@ namespace WorldFoundry.Test
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
-            planet.GetSeasons(NumSeasons).ToList();
+
+            var grid = planet.GetGrid(GridSize);
+            Assert.IsNotNull(grid);
+
+            planet.SetClimate(grid, NumSeasons);
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);

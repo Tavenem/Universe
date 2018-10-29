@@ -94,11 +94,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public byte? GridSize { get; set; }
 
         /// <summary>
-        /// The target tile radius.
-        /// </summary>
-        public double? GridTileRadius { get; set; }
-
-        /// <summary>
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
         public bool? HasMagnetosphere { get; set; }
@@ -151,7 +146,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
         /// <param name="gridSize">The target grid size (level of detail).</param>
-        /// <param name="gridTileRadius">The target tile radius.</param>
         /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
         /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
         /// <param name="radius">The target radius, in meters.</param>
@@ -167,7 +161,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? axialTilt = null,
             double? eccentricity = null,
             byte? gridSize = null,
-            double? gridTileRadius = null,
             bool? hasMagnetosphere = null,
             int? maxGridSize = null,
             int? radius = null,
@@ -183,7 +176,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             GridSize = gridSize;
-            GridTileRadius = gridTileRadius;
             HasMagnetosphere = hasMagnetosphere;
             MaxGridSize = maxGridSize;
             Radius = radius;
@@ -203,7 +195,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
         /// <param name="gridSize">The target grid size (level of detail).</param>
-        /// <param name="gridTileRadius">The target tile radius.</param>
         /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
         /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
         /// <param name="radius">The target radius, in meters.</param>
@@ -219,7 +210,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
             byte? gridSize = null,
-            double? gridTileRadius = null,
             int? maxGridSize = null,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
@@ -244,7 +234,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 axialTilt,
                 eccentricity,
                 gridSize,
-                gridTileRadius,
                 hasMagnetosphere,
                 maxGridSize,
                 radius,

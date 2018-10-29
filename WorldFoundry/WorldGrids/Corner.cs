@@ -25,16 +25,6 @@ namespace WorldFoundry.WorldGrids
         public float Elevation { get; internal set; }
 
         /// <summary>
-        /// The index of this <see cref="Corner"/>.
-        /// </summary>
-        public int Index { get; }
-
-        /// <summary>
-        /// The depth of the lake on this <see cref="Corner"/> (if any).
-        /// </summary>
-        public float LakeDepth { get; set; }
-
-        /// <summary>
         /// The latitude of this <see cref="Corner"/>, as an angle in radians from the equator.
         /// </summary>
         public float Latitude { get; internal set; }
@@ -57,15 +47,8 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
-        public Corner() { }
-
-        /// <summary>
-        /// Creates a new instance of <see cref="Corner"/>.
-        /// </summary>
-        /// <param name="index">The <see cref="Index"/> of the <see cref="Corner"/>.</param>
-        internal Corner(int index)
+        public Corner()
         {
-            Index = index;
             Corners = new int[3];
             Edges = new int[3];
             Tiles = new int[3];
@@ -75,20 +58,6 @@ namespace WorldFoundry.WorldGrids
                 Edges[i] = -1;
                 Tiles[i] = -1;
             }
-        }
-
-        internal Corner GetLowestCorner(WorldGrid grid, bool riverSources = false)
-        {
-            var corners = Corners.Select(i => grid.Corners[i]);
-            if (riverSources)
-            {
-                var riverSourceCorners = Corners.Select(i => grid.Corners[i]).Where(c => c.Edges.Any(e => grid.Edges[e].RiverSource == c.Index));
-                if (riverSourceCorners.Any())
-                {
-                    return riverSourceCorners.OrderBy(c => c.Elevation).First();
-                }
-            }
-            return corners.OrderBy(c => c.Elevation).First();
         }
 
         internal int IndexOfCorner(int cornerIndex) => Array.IndexOf(Corners, cornerIndex);

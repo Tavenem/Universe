@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
+using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.Test
 {
@@ -11,33 +12,36 @@ namespace WorldFoundry.Test
     public class TerrestrialPlanet_Tests
     {
         private const int GridSize = 6;
-        private const double GridTileRadius = 160000;
-        private const int MaxGridSize = 7;
-        private const int NumSeasons = 4;
+        private const int NumSeasons = 12;
 
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
-            //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: GridTileRadius, maxGridSize: MaxGridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Tiles: {planet.Grid.Tiles.Length.ToString()}");
+            var grid = planet.GetGrid();
+            Assert.IsNotNull(grid);
+
+            Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
             Console.WriteLine($"Radius: {(planet.Radius / 1000).ToString("N0")} km");
-            Console.WriteLine($"Surface area: {(planet.Grid.Tiles.Sum(x => x.Area) / 1e6).ToString("N0")} km²");
-            Console.WriteLine($"Tile area: {((planet.Grid.Tiles.Length > 12 ? planet.Grid.Tiles[12].Area : planet.Grid.Tiles[11].Area) / 1e6).ToString("N0")} km²");
+            Console.WriteLine($"Surface area: {(grid.Tiles.Sum(x => x.Area) / 1e6).ToString("N0")} km²");
+            Console.WriteLine($"Tile area: {((grid.Tiles.Length > 12 ? grid.Tiles[12].Area : grid.Tiles[11].Area) / 1e6).ToString("N0")} km²");
+            Console.WriteLine($"Equatorial tiles: {grid.Tiles.Count(x => x.Corners.Any(c => grid.Corners[c].Latitude <= 0) && x.Corners.Any(c => grid.Corners[c].Latitude >= 0)).ToString()}");
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Generate_NoOutput()
         {
-            //var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: gridSize);
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridTileRadius: GridTileRadius, maxGridSize: MaxGridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
+
+            var grid = planet.GetGrid();
+            Assert.IsNotNull(grid);
         }
 
         [TestMethod]
@@ -48,23 +52,24 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Tiles: {planet.Grid.Tiles.Length.ToString()}");
-            Console.WriteLine($"Tile Area: {Math.Round((planet.Grid.Tiles.Length > 12 ? planet.Grid.Tiles[12].Area : planet.Grid.Tiles[11].Area) / 1e6).ToString("N0")}km²");
+            var grid = planet.GetGrid();
+            Assert.IsNotNull(grid);
+
+            Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
+            Console.WriteLine($"Tile Area: {Math.Round((grid.Tiles.Length > 12 ? grid.Tiles[12].Area : grid.Tiles[11].Area) / 1e6).ToString("N0")}km²");
             Console.WriteLine();
 
-            var seasons = planet.GetSeasons(NumSeasons)?.ToList();
-            Assert.IsNotNull(seasons);
-            Assert.AreEqual(NumSeasons, seasons.Count);
+            planet.SetClimate(grid, NumSeasons);
 
             var sb = new StringBuilder();
 
-            AddTempString(sb, planet);
+            AddTempString(sb, planet, grid);
             sb.AppendLine();
-            AddSimpleTerrainString(sb, planet);
+            AddSimpleTerrainString(sb, planet, grid);
             sb.AppendLine();
-            AddSimpleClimateString(sb, planet);
+            AddSimpleClimateString(sb, grid);
             sb.AppendLine();
-            AddPrecipitationString(sb, planet);
+            AddPrecipitationString(sb, grid);
 
             Console.WriteLine(sb.ToString());
         }
@@ -77,70 +82,71 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var seasons = planet.GetSeasons(NumSeasons)?.ToList();
-            Assert.IsNotNull(seasons);
-            Assert.AreEqual(NumSeasons, seasons.Count);
+            var grid = planet.GetGrid();
+            Assert.IsNotNull(grid);
+
+            planet.SetClimate(grid, NumSeasons);
         }
 
-        private static void AddSimpleClimateString(StringBuilder sb, TerrestrialPlanet planet)
+        private static void AddSimpleClimateString(StringBuilder sb, WorldGrid grid)
         {
-            if (planet.Grid.Tiles[0].BiomeType == BiomeType.None)
+            if (grid.Tiles[0].BiomeType == BiomeType.None)
             {
                 return;
             }
 
-            var landTiles = planet.Grid.Tiles.Count(t => t.IsLand);
+            var landTiles = grid.Tiles.Count(t => t.Elevation > 0);
             sb.AppendLine("Climates:");
-            var desert = planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / landTiles;
+            var desert = grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert || (t.ClimateType == ClimateType.Polar && t.EcologyType == EcologyType.Desert)) * 100.0 / landTiles;
             sb.AppendFormat("  Desert (all):            {0}% ({1})", Math.Round(desert, 2), Math.Round(desert - 30, 2));
             sb.AppendLine();
-            var nonPolarDesert = planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert) * 100.0 / landTiles;
+            var nonPolarDesert = grid.Tiles.Count(t => t.BiomeType == BiomeType.HotDesert || t.BiomeType == BiomeType.ColdDesert) * 100.0 / landTiles;
             sb.AppendFormat("  Desert (non-polar):      {0}% ({1})", Math.Round(nonPolarDesert, 2), Math.Round(nonPolarDesert - 14, 2));
             sb.AppendLine();
-            var polar = planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.Polar) * 100.0 / planet.Grid.Tiles.Length;
+            var polar = grid.Tiles.Count(t => t.ClimateType == ClimateType.Polar) * 100.0 / grid.Tiles.Length;
             sb.AppendFormat("  Polar:                   {0}% ({1})", Math.Round(polar, 2), Math.Round(polar - 20, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Tundra:                  {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.Tundra) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Tundra:                  {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.Tundra) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Boreal:                  {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.Boreal) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Boreal:                  {0}%", Math.Round(grid.Tiles.Count(t => t.Elevation > 0 && t.ClimateType == ClimateType.Boreal) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Lichen Woodland:       {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.LichenWoodland) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Lichen Woodland:       {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.LichenWoodland) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Coniferous Forest:     {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.ConiferousForest) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Coniferous Forest:     {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.ConiferousForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.CoolTemperate) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(grid.Tiles.Count(t => t.Elevation > 0 && t.ClimateType == ClimateType.CoolTemperate) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Cold Desert:           {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.ColdDesert) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Cold Desert:           {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.ColdDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Steppe:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.Steppe) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Steppe:                {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.Steppe) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Mixed Forest:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.MixedForest) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Mixed Forest:          {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.MixedForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.ClimateType == ClimateType.WarmTemperate) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(grid.Tiles.Count(t => t.Elevation > 0 && t.ClimateType == ClimateType.WarmTemperate) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Desert:                {0}%", Math.Round(grid.Tiles.Count(t => t.ClimateType == ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Shrubland:             {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.Shrubland) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Shrubland:             {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.Shrubland) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Deciduous Forest:      {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.DeciduousForest) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Deciduous Forest:      {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.DeciduousForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("  Tropical:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && (t.ClimateType == ClimateType.Subtropical || t.ClimateType == ClimateType.Tropical || t.ClimateType == ClimateType.Supertropical)) * 100.0 / landTiles, 2));
+            sb.AppendFormat("  Tropical:                {0}%", Math.Round(grid.Tiles.Count(t => t.Elevation > 0 && (t.ClimateType == ClimateType.Subtropical || t.ClimateType == ClimateType.Tropical || t.ClimateType == ClimateType.Supertropical)) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Desert:                {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.ClimateType != ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Desert:                {0}%", Math.Round(grid.Tiles.Count(t => t.ClimateType != ClimateType.WarmTemperate && t.BiomeType == BiomeType.HotDesert) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Savanna:               {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.Savanna) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Savanna:               {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.Savanna) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            sb.AppendFormat("    Monsoon Forest:        {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.MonsoonForest) * 100.0 / landTiles, 2));
+            sb.AppendFormat("    Monsoon Forest:        {0}%", Math.Round(grid.Tiles.Count(t => t.BiomeType == BiomeType.MonsoonForest) * 100.0 / landTiles, 2));
             sb.AppendLine();
-            var rainforest = planet.Grid.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0 / landTiles;
+            var rainforest = grid.Tiles.Count(t => t.BiomeType == BiomeType.RainForest) * 100.0 / landTiles;
             sb.AppendFormat("    Rain Forest:           {0}% ({1})", Math.Round(rainforest, 2), Math.Round(rainforest - 6, 2));
             sb.AppendLine();
         }
 
-        private static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet)
+        private static void AddPrecipitationString(StringBuilder sb, WorldGrid grid)
         {
             sb.AppendLine("Precipitation (annual average, land):");
-            var list = planet.Grid.Tiles.Where(x => x.IsLand)
+            var list = grid.Tiles.Where(x => x.Elevation > 0)
                 .Select(x => x.Precipitation)
                 .ToList();
             if (list.Count > 0)
@@ -152,8 +158,8 @@ namespace WorldFoundry.Test
                 var avg90 = list.Take((int)Math.Floor(list.Count * 0.9)).Average();
                 sb.AppendFormat("  Avg (<=P90):             {0}mm ({1})", Math.Round(avg90), Math.Round(avg90 - 990, 2));
                 sb.AppendLine();
-                var temperates = planet.Grid.Tiles
-                    .Where(t => t.IsLand && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate));
+                var temperates = grid.Tiles
+                    .Where(t => t.Elevation > 0 && (t.ClimateType == ClimateType.CoolTemperate || t.ClimateType == ClimateType.WarmTemperate));
                 if (temperates.Any())
                 {
                     var avgT = temperates.Select(t => t.Precipitation).Average();
@@ -194,83 +200,85 @@ namespace WorldFoundry.Test
             }
         }
 
-        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet)
+        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet, WorldGrid grid)
         {
             sb.AppendLine("Temp:");
-            var avg = planet.Grid.Tiles.Average(x => x.Temperature.Average);
+            var avg = grid.Tiles.Average(x => x.Temperature.Average);
             sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - planet.PlanetParams.SurfaceTemperature.Value, 2));
             sb.AppendLine();
 
-            var water = planet.Grid.Tiles.Any(x => x.IsWater);
-            var min = water ? planet.Grid.Tiles
-                .Where(x => x.IsWater)
+            var water = grid.Tiles.Any(x => x.Elevation <= 0);
+            var min = water ? grid.Tiles
+                .Where(x => x.Elevation <= 0)
                 .Min(x => x.Temperature.Min)
                 : 0;
             sb.AppendFormat("  Min Sea-Level:           {0} K", Math.Round(min));
             sb.AppendLine();
 
-            var avgSeaLevel = water ? planet.Grid.Tiles
-                .Where(x => x.IsWater)
+            var avgSeaLevel = water ? grid.Tiles
+                .Where(x => x.Elevation <= 0)
                 .Average(x => x.Temperature.Average)
                 : 0;
             sb.AppendFormat("  Avg Sea-Level:           {0} K", Math.Round(avgSeaLevel));
             sb.AppendLine();
 
-            sb.AppendFormat("  Max:                     {0} K", Math.Round(planet.Grid.Tiles.Max(x => x.Temperature.Max)));
+            sb.AppendFormat("  Max:                     {0} K", Math.Round(grid.Tiles.Max(x => x.Temperature.Max)));
             sb.AppendLine();
 
-            var maxAvg = planet.Grid.Tiles.Max(x => x.Temperature.Average);
+            var maxAvg = grid.Tiles.Max(x => x.Temperature.Average);
             sb.AppendFormat("  Max Avg:          {0} K", Math.Round(maxAvg));
             sb.AppendLine();
 
-            var (minMaxTemp, minMaxIndex) = water ? planet.Grid.Tiles
-                .Where(x => x.IsWater)
-                .Select(x => (temp: x.Temperature.Max, x.Index))
-                .OrderBy(x => x.temp)
+            var minMaxTemp = water ? grid.Tiles
+                .Where(x => x.Elevation <= 0)
+                .Select(x => x.Temperature.Max)
+                .OrderBy(x => x)
                 .First()
-                : (0, 0);
-            sb.AppendFormat("  Min Max (water):  {0} K [{1}]", Math.Round(minMaxTemp), minMaxIndex);
+                : 0;
+            sb.AppendFormat("  Min Max (water):  {0} K", Math.Round(minMaxTemp));
             sb.AppendLine();
         }
 
-        private static void AddSimpleTerrainString(StringBuilder sb, TerrestrialPlanet planet)
+        private static void AddSimpleTerrainString(StringBuilder sb, TerrestrialPlanet planet, WorldGrid grid)
         {
-            sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.Terrain.SeaLevel));
+            sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
             sb.AppendLine();
-            sb.AppendFormat("Avg Land Elevation:        {0}m", Math.Round(planet.Grid.Tiles.Where(t => t.Elevation > 0).Average(t => t.Elevation)));
+            sb.AppendFormat("Avg Land Elevation:        {0}m", Math.Round(grid.Tiles.Where(t => t.Elevation > 0).Average(t => t.Elevation)));
             sb.AppendLine();
-            sb.AppendFormat("Max Elevation:             {0}m / {1}m", Math.Round(planet.Grid.Tiles.Max(t => t.Elevation)), Math.Round(planet.Terrain.MaxElevation));
+            sb.AppendFormat("Max Elevation:             {0}m / {1}m", Math.Round(grid.Tiles.Max(t => t.Elevation)), Math.Round(planet.MaxElevation));
             sb.AppendLine();
         }
 
 #pragma warning disable RCS1213 // Remove unused member declaration.
-        private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet)
+        private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet, WorldGrid grid)
         {
-            sb.AppendFormat("% Land:                    {0}%", Math.Round(planet.Grid.Tiles.Count(t => !t.IsWater) * 100.0 / planet.Grid.Tiles.Length), 2);
+            var land = grid.Tiles.Count(t => t.Elevation > 0 && t.Corners.All(c => grid.Corners[c].Elevation > 0)) * 100.0 / grid.Tiles.Length;
+            var water = grid.Tiles.Count(t => t.Elevation <= 0 && t.Corners.All(c => grid.Corners[c].Elevation <= 0)) * 100.0 / grid.Tiles.Length;
+            sb.AppendFormat("% Land:                    {0}%", Math.Round(land, 2));
             sb.AppendLine();
-            sb.AppendFormat("% Coast:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => t.IsLand && t.IsWater) * 100.0 / planet.Grid.Tiles.Length), 2);
+            sb.AppendFormat("% Coast:                   {0}%", Math.Round(100 - (land + water), 2));
             sb.AppendLine();
-            sb.AppendFormat("% Water:                   {0}%", Math.Round(planet.Grid.Tiles.Count(t => !t.IsLand) * 100.0 / planet.Grid.Tiles.Length), 2);
+            sb.AppendFormat("% Water:                   {0}%", Math.Round(water, 2));
             sb.AppendLine();
-            sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.Terrain.SeaLevel));
+            sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
             sb.AppendLine();
-            sb.AppendFormat("Max Elevation:             {0}m", Math.Round(planet.Terrain.MaxElevation));
+            sb.AppendFormat("Max Elevation:             {0}m", Math.Round(planet.MaxElevation));
             sb.AppendLine();
-            var min = planet.Grid.Tiles.Min(t => t.Elevation + planet.Terrain.SeaLevel);
+            var min = grid.Tiles.Min(t => t.Elevation + planet.SeaLevel);
             sb.AppendFormat("Abs. Min:                  {0}m", Math.Round(min));
             sb.AppendLine();
-            var max = planet.Grid.Tiles.Max(t => t.Elevation + planet.Terrain.SeaLevel);
+            var max = grid.Tiles.Max(t => t.Elevation + planet.SeaLevel);
             sb.AppendFormat("Abs. Max:                  {0}m", Math.Round(max));
             sb.AppendLine();
-            sb.AppendFormat("Range:                     {0}%", Math.Round((max - min) * 50.0 / planet.Terrain.MaxElevation, 2));
+            sb.AppendFormat("Range:                     {0}%", Math.Round((max - min) * 50.0 / planet.MaxElevation, 2));
             sb.AppendLine();
             sb.AppendFormat("Balance:                   {0}", Math.Round(Math.Min(max, -min) / Math.Max(max, -min), 2));
             sb.AppendLine();
-            sb.AppendFormat("Noise:                     {0}%", Math.Round(planet.Grid.Tiles.Count(t =>
-                t.Corners.Select(c => planet.Grid.Corners[c]).Any(c => Math.Abs(c.Elevation - t.Elevation) > planet.Terrain.MaxElevation / 10)) * 100.0 / planet.Grid.Tiles.Length, 2));
+            sb.AppendFormat("Noise:                     {0}%", Math.Round(grid.Tiles.Count(t =>
+                t.Corners.Select(c => grid.Corners[c]).Any(c => Math.Abs(c.Elevation - t.Elevation) > planet.MaxElevation / 10)) * 100.0 / grid.Tiles.Length, 2));
             sb.AppendLine();
             sb.AppendLine("Land Elevation:");
-            var list = planet.Grid.Tiles.Where(t => t.Elevation > 0).OrderBy(t => t.Elevation).ToList();
+            var list = grid.Tiles.Where(t => t.Elevation > 0).OrderBy(t => t.Elevation).ToList();
             sb.AppendFormat("  Min:                     {0}m", Math.Round(list.Min(t => t.Elevation)));
             sb.AppendLine();
             sb.AppendFormat("  Avg:                     {0}m", Math.Round(list.Average(t => t.Elevation)));
@@ -295,7 +303,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
             sb.AppendFormat("  P90:                     {0}m", Math.Round(list.Skip((int)Math.Floor(list.Count * 0.9)).First().Elevation));
             sb.AppendLine();
-            sb.AppendFormat("  Max:                     {0}m", Math.Round(planet.Grid.Tiles.Max(t => t.Elevation)));
+            sb.AppendFormat("  Max:                     {0}m", Math.Round(grid.Tiles.Max(t => t.Elevation)));
             sb.AppendLine();
         }
 #pragma warning restore RCS1213 // Remove unused member declaration.

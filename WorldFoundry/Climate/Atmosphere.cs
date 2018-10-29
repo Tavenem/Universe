@@ -71,12 +71,10 @@ namespace WorldFoundry.Climate
         public double MaxSnowfall
             => _maxSnowfall ?? (_maxSnowfall = MaxPrecipitation * SnowToRainRatio).Value;
 
-        private double? _averagePrecipitation;
         /// <summary>
         /// The average annual precipitation expected to be produced by this atmosphere.
         /// </summary>
-        internal double AveragePrecipitation
-            => _averagePrecipitation ?? (_averagePrecipitation = PrecipitationFactor * 990).Value;
+        internal double AveragePrecipitation { get; private set; }
 
         private bool? _containsWaterVapor;
         internal bool ContainsWaterVapor
@@ -102,12 +100,10 @@ namespace WorldFoundry.Climate
         internal double WaterRatio
             => _waterRatio ?? (_waterRatio = Composition?.GetProportion(Chemical.Water, Phase.Gas) ?? 0).Value;
 
-        private double? _precipitationFactor;
         /// <summary>
         /// The proportion of precipitation produced by this atmosphere relative to that of Earth.
         /// </summary>
-        internal double PrecipitationFactor
-            => _precipitationFactor ?? (_precipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity).Value;
+        internal double PrecipitationFactor { get; private set; }
 
         private double? _wetness;
         /// <summary>
@@ -140,6 +136,7 @@ namespace WorldFoundry.Climate
             planet.GreenhouseEffect = (tIF * _greenhouseFactor.Value) - planet.AverageBlackbodySurfaceTemperature;
             var temp = tIF + planet.GreenhouseEffect;
             SetAtmosphericHeight(planet, temp);
+            SetPrecipitation(planet);
             Shape = GetShape(planet);
 
             _averageSeaLevelDensity = GetAtmosphericDensity(temp, AtmosphericPressure);
@@ -316,29 +313,29 @@ namespace WorldFoundry.Climate
 
         internal void ResetPressureDependentProperties(Planetoid planet)
         {
-            ResetPrecipitation();
             SetAtmosphericScaleHeight(planet);
             Mass = GetAtmosphericMass(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
             _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            SetPrecipitation(planet);
         }
 
         internal void ResetTemperatureDependentProperties(Planetoid planet)
         {
-            ResetPrecipitation();
             SetAtmosphericScaleHeight(planet);
             SetAtmosphericHeight(planet);
             Shape = GetShape(planet);
             _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            SetPrecipitation(planet);
         }
 
-        internal void ResetWater()
+        internal void ResetWater(Planetoid planet)
         {
-            ResetPrecipitation();
             _containsWaterVapor = null;
             _waterRatio = null;
             _wetness = null;
+            SetPrecipitation(planet);
         }
 
         internal void SetAtmosphericPressure(double value) => _atmosphericPressure = value;
@@ -415,13 +412,13 @@ namespace WorldFoundry.Climate
         /// made.</param>
         private IShape GetShape(Planetoid planet) => new HollowSphere(planet.Radius, AtmosphericHeight);
 
-        private void ResetPrecipitation()
+        private void SetPrecipitation(Planetoid planet)
         {
-            _averagePrecipitation = null;
-            _greenhouseFactor = null;
+            PrecipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity;
+            // An average "year" is a standard astronomical year of 31557600 seconds.
+            AveragePrecipitation = PrecipitationFactor * 990 * (planet.Orbit == null ? 1 : planet.Orbit.Period / 31557600);
             _maxPrecipitation = null;
             _maxSnowfall = null;
-            _precipitationFactor = null;
         }
     }
 }

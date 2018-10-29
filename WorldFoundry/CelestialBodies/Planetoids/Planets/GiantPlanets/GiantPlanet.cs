@@ -32,8 +32,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         private const bool _hasFlatSurface = true;
         /// <summary>
         /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
-        /// (i.e. is non-solid). Prevents generation of a height map during <see
-        /// cref="Planetoid.Terrain"/> generation.
+        /// (i.e. is non-solid). Prevents generation of a height map.
         /// </summary>
         public override bool HasFlatSurface => _hasFlatSurface;
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
 using WorldFoundry.Climate;
+using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -58,21 +59,6 @@ namespace WorldFoundry.WorldGrids
         public HumidityType HumidityType { get; internal set; }
 
         /// <summary>
-        /// The index of this <see cref="Tile"/>.
-        /// </summary>
-        public int Index { get; }
-
-        /// <summary>
-        /// Indicates that this tile is at least partially above sea level.
-        /// </summary>
-        public bool IsLand { get; internal set; }
-
-        /// <summary>
-        /// Indicates that this tile is at least partially below sea level.
-        /// </summary>
-        public bool IsWater { get; internal set; }
-
-        /// <summary>
         /// The latitude of this <see cref="Tile"/>, as an angle in radians from the equator.
         /// </summary>
         public float Latitude { get; internal set; }
@@ -88,12 +74,6 @@ namespace WorldFoundry.WorldGrids
         /// also reported separately).
         /// </summary>
         public float Precipitation { get; internal set; }
-
-        /// <summary>
-        /// The distance between this <see cref="Tile"/>'s center and any of its <see
-        /// cref="Corners"/>.
-        /// </summary>
-        public double Radius { get; internal set; }
 
         /// <summary>
         /// <para>
@@ -132,7 +112,7 @@ namespace WorldFoundry.WorldGrids
         public float SnowFall { get; set; }
 
         /// <summary>
-        /// The average temperature in this <see cref="Tile"/>, in K.
+        /// The range of temperatures in this <see cref="Tile"/>, in K.
         /// </summary>
         public FloatRange Temperature { get; internal set; }
 
@@ -154,10 +134,9 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
         /// </summary>
-        /// <param name="index">The <see cref="Index"/> of the <see cref="Tile"/>.</param>
+        /// <param name="index">The index of the <see cref="Tile"/>.</param>
         internal Tile(int index)
         {
-            Index = index;
             EdgeCount = index < 12 ? 5 : 6;
             Corners = new int[EdgeCount];
             Edges = new int[EdgeCount];
@@ -170,93 +149,8 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        /// <summary>
-        /// Determines if this <see cref="Tile"/> instance is mountainous (see Remarks).
-        /// </summary>
-        /// <param name="grid">The <see cref="WorldGrid"/> of which this <see cref="Tile"/> is a
-        /// part.</param>
-        /// <returns><see langword="true"/> if this <see cref="Tile"/> is mountainous; otherwise
-        /// <see langword="false"/>.</returns>
-        /// <remarks>
-        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
-        /// elevation of this world, or a maximum elevation greater than 5% of the maximum and a
-        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
-        /// slope greater than 0.0875.
-        /// </remarks>
-        public bool GetIsMountainous(WorldGrid grid)
-        {
-            var maxElevation = Math.Max(Elevation, Corners.Select(x => grid.Corners[x]).Max(x => x.Elevation));
-            var maxWorldElevation = Math.Max(grid.Tiles.Max(x => x.Elevation), grid.Corners.Max(x => x.Elevation));
-            if (maxElevation < maxWorldElevation * 0.035)
-            {
-                return false;
-            }
-            if (maxElevation > maxWorldElevation * 0.085)
-            {
-                return true;
-            }
-            var slope = GetSlope(grid);
-            if (maxElevation > maxWorldElevation * 0.05)
-            {
-                return slope > 0.035;
-            }
-            return slope > 0.0875;
-        }
-
-        /// <summary>
-        /// Calculates the slope of this <see cref="Tile"/>, as the ratio of rise over run from the
-        /// lowest point to highest point among its center and corners.
-        /// </summary>
-        /// <param name="grid">The <see cref="WorldGrid"/> of which this <see cref="Tile"/> is a
-        /// part.</param>
-        /// <returns>The slope of this <see cref="Tile"/>.</returns>
-        public double GetSlope(WorldGrid grid)
-        {
-            var minCorner = grid.Corners[Corners[Corners.Select(x => grid.Corners[x].Elevation).IndexOfMin()]];
-            var maxCorner = grid.Corners[Corners[Corners.Select(x => grid.Corners[x].Elevation).IndexOfMax()]];
-            var centerMin = Elevation < minCorner.Elevation;
-            var centerMax = Elevation > maxCorner.Elevation;
-            var diff = 0.0;
-            var dist = 0.0;
-            if (centerMin)
-            {
-                diff = maxCorner.Elevation - Elevation;
-                dist = (Vector - maxCorner.Vector).Length();
-            }
-            else if (centerMax)
-            {
-                diff = Elevation - minCorner.Elevation;
-                dist = (Vector - minCorner.Vector).Length();
-            }
-            else
-            {
-                diff = maxCorner.Elevation - minCorner.Elevation;
-                dist = (maxCorner.Vector - minCorner.Vector).Length();
-            }
-            return diff / dist;
-        }
-
-        internal Corner GetLowestCorner(WorldGrid grid)
-            => Corners.Select(i => grid.Corners[i]).OrderBy(c => c.Elevation).FirstOrDefault();
-
         internal int IndexOfCorner(int cornerIndex) => Array.IndexOf(Corners, cornerIndex);
 
         internal int IndexOfTile(int tileIndex) => Array.IndexOf(Tiles, tileIndex);
-
-        internal void SetClimate(IEnumerable<Season> seasons)
-        {
-            Temperature = new FloatRange(
-                seasons.Min(s => s.TileClimates[Index].Temperature),
-                seasons.Average(s => s.TileClimates[Index].Temperature),
-                seasons.Max(s => s.TileClimates[Index].Temperature));
-            Precipitation = seasons.Sum(s => s.TileClimates[Index].Precipitation);
-            SnowFall = seasons.Sum(s => s.TileClimates[Index].SnowFall);
-
-            ClimateType = ClimateTypes.GetClimateType(Temperature.Average);
-            HumidityType = ClimateTypes.GetHumidityType(Precipitation);
-
-            EcologyType = ClimateTypes.GetEcologyType(ClimateType, HumidityType, Elevation);
-            BiomeType = ClimateTypes.GetBiomeType(ClimateType, HumidityType, Elevation);
-        }
     }
 }

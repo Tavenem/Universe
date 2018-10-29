@@ -12,14 +12,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class LavaPlanet : TerrestrialPlanet
     {
-        internal new static bool _canHaveWater = false;
         /// <summary>
         /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
         /// </summary>
         /// <remarks>
         /// Unable to have water due to extreme temperature.
         /// </remarks>
-        protected override bool CanHaveWater => _canHaveWater;
+        protected override bool CanHaveWater => false;
 
         internal new static int _maxSatellites = 0;
         /// <summary>
