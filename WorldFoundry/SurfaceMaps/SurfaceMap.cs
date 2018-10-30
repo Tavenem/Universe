@@ -996,6 +996,65 @@ namespace WorldFoundry.SurfaceMaps
             return new WeatherMapSet(seaIceRangeMap, snowCoverRangeMap, temperatureRanges, tempRange, maps);
         }
 
+        /// <summary>
+        /// <para>
+        /// Produces a set of equirectangular projections of the specified region describing the
+        /// surface and climate.
+        /// </para>
+        /// <para>
+        /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
+        /// double, double, double?, double?)"/>, 
+        /// <see cref="GetWeatherMapSet(TerrestrialPlanet, int, double, double, double?, double?,
+        /// int, float[,])"/>, and <see cref="GetHydrologyMaps(TerrestrialPlanet, int, double,
+        /// double, double?, double?, float[,], float[,])"/> separately.
+        /// </para>
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        /// <param name="steps">The number of weather map sets which will be generated, at equal
+        /// times throughout the course of one solar year. The first step will be offset so that its
+        /// midpoint occurs at the winter solstice. The greater the number of sets (and thus, the
+        /// shorter the time span represented by each step), the more accurate the results will be,
+        /// at the cost of increased processing time. If zero is passed, the return value will be
+        /// empty.</param>
+        /// <returns>A <see cref="TerrestrialSurfaceMapSet"/> instance.</returns>
+        /// <remarks>
+        /// Bear in mind that the calculations required to produce this map data are expensive, and
+        /// the method may take prohibitively long to complete for large resolutions. Callers should
+        /// strongly consider generating low-resolution maps, then using standard enlargement
+        /// techniques or tools to expand the results to fit the intended view or texture size.
+        /// Unlike photographic images, which can lose clarity with excessive expansion, this type
+        /// of data is likely to be nearly as accurate when interpolating between low-resolution
+        /// data points as when explicitly calculating values for each high-resolution point, since
+        /// this data will nearly always follow relatively smooth local gradients.
+        /// </remarks>
+        public static TerrestrialSurfaceMapSet GetSurfaceMapSet(
+            this TerrestrialPlanet planet,
+            int resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null,
+            int steps = 12)
+        {
+            var elevationMap = GetElevationMap(planet, resolution, centralMeridian, centralParallel, standardParallels, range);
+            var weatherMapSet = GetWeatherMapSet(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap);
+            var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitation);
+            return new TerrestrialSurfaceMapSet(elevationMap, weatherMapSet, hydrologyMaps);
+        }
+
         internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
             double latitude, double longitude,
             int resolution,

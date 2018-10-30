@@ -7,6 +7,18 @@
     public struct HydrologyMaps
     {
         /// <summary>
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values indicate the elevation of
+        /// surface water in the location (i.e. lakes). Values range from 0 to 1, with 1 indicating
+        /// the maximum elevation of the planet. Note that the values are depths above ground level,
+        /// not absolute elevations above sea level. To obtain the absolute elevation of the water
+        /// level at any point, the sum of this map and the elevation map can be taken.
+        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxElevation"/>
+        /// </summary>
+        public float[,] Depth { get; }
+
+        /// <summary>
         /// <para>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
@@ -23,18 +35,6 @@
         /// </para>
         /// </summary>
         public float[,] Flow { get; }
-
-        /// <summary>
-        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
-        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
-        /// second index corresponds to the Y coordinate. The values indicate the elevation of
-        /// surface water in the location (i.e. lakes). Values range from 0 to 1, with 1 indicating
-        /// the maximum elevation of the planet. Note that the values are depths above ground level,
-        /// not absolute elevations above sea level. To obtain the absolute elevation of the water
-        /// level at any point, the sum of this map and the elevation map can be taken.
-        /// <seealso cref="Terrain.MaxElevation"/>
-        /// </summary>
-        public float[,] Depth { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HydrologyMaps"/>.

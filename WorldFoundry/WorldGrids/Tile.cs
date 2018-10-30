@@ -1,10 +1,6 @@
-﻿using ExtensionLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using MathAndScience.Numerics;
 using WorldFoundry.Climate;
-using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.WorldGrids
 {

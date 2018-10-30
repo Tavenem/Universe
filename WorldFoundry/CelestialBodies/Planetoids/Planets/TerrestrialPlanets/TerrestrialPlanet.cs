@@ -699,27 +699,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Configures the given <see cref="WorldGrid"/> for this <see cref="TerrestrialPlanet"/>
         /// with climate data.
         /// </summary>
-        /// <param name="grid">Thw <see cref="WorldGrid"/> to configure.</param>
+        /// <param name="grid">The <see cref="WorldGrid"/> to configure.</param>
         /// <param name="seasons">The number of seasons to use when calculating climate data. The
         /// greater the number of seasons, the more accurate the results, but the longer the
         /// calculation will take.</param>
-        /// <param name="elevationMap">A pre-calculated elevation map for the planet. If left <see
-        /// langword="null"/> one will be generated.</param>
-        /// <param name="weatherMapSet">A pre-calculated set of weather maps for the planet. If left
-        /// <see langword="null"/> a set will be generated.</param>
-        /// <returns>A <see cref="HydrologyMaps"/> instance for this planet.</returns>
-        public HydrologyMaps SetClimate(WorldGrid grid, int seasons, float[,] elevationMap = null, WeatherMapSet? weatherMapSet = null)
+        /// <param name="surfaceMapSet">A pre-calculated surface map set for the planet. If left
+        /// <see langword="null"/> one will be generated.</param>
+        /// <returns>The <see cref="TerrestrialSurfaceMapSet"/> instance; either the one passed in,
+        /// or the newly generated one.</returns>
+        public TerrestrialSurfaceMapSet SetClimate(WorldGrid grid, int seasons, TerrestrialSurfaceMapSet? surfaceMapSet = null)
         {
-            var resolution = elevationMap?.GetLength(1) ?? 90;
+            var resolution = surfaceMapSet?.Elevation.GetLength(1) ?? 90;
             var scale = Math.PI / resolution;
 
-            if (elevationMap == null)
+            if (surfaceMapSet == null)
             {
-                elevationMap = this.GetElevationMap(90);
-            }
-            if (!weatherMapSet.HasValue)
-            {
-                weatherMapSet = this.GetWeatherMapSet(90, steps: seasons, elevationMap: elevationMap);
+                surfaceMapSet = this.GetSurfaceMapSet(90, steps: seasons);
             }
 
             for (var i = 0; i < grid.Tiles.Length; i++)
@@ -727,21 +722,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var t = grid.Tiles[i];
                 var (x, y) = SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(t.Latitude, t.Longitude, resolution, scale);
 
-                t.Temperature = weatherMapSet.Value.TemperatureRanges[x, y];
-                t.SeaIce = weatherMapSet.Value.SeaIceRanges[x, y];
-                t.SnowCover = weatherMapSet.Value.SnowCoverRanges[x, y];
+                t.Temperature = surfaceMapSet.Value.TemperatureRanges[x, y];
+                t.SeaIce = surfaceMapSet.Value.SeaIceRanges[x, y];
+                t.SnowCover = surfaceMapSet.Value.SnowCoverRanges[x, y];
 
-                t.Precipitation = (float)(weatherMapSet.Value.TotalPrecipitation[x, y] * Atmosphere.MaxPrecipitation);
-                t.SnowFall = (float)(weatherMapSet.Value.WeatherMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
+                t.Precipitation = (float)(surfaceMapSet.Value.TotalPrecipitation[x, y] * Atmosphere.MaxPrecipitation);
+                t.SnowFall = (float)(surfaceMapSet.Value.WeatherMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
 
-                t.ClimateType = ClimateTypes.GetClimateType(t.Temperature.Average);
-                t.HumidityType = ClimateTypes.GetHumidityType(t.Precipitation);
+                t.ClimateType = surfaceMapSet.Value.Climate[x, y];
+                t.HumidityType = surfaceMapSet.Value.Humidity[x, y];
 
-                t.EcologyType = ClimateTypes.GetEcologyType(t.ClimateType, t.HumidityType, t.Elevation);
-                t.BiomeType = ClimateTypes.GetBiomeType(t.ClimateType, t.HumidityType, t.Elevation);
+                t.EcologyType = surfaceMapSet.Value.Ecology[x, y];
+                t.BiomeType = surfaceMapSet.Value.Biome[x, y];
             }
 
-            return this.GetHydrologyMaps(resolution, elevationMap: elevationMap, precipitationMap: weatherMapSet.Value.TotalPrecipitation);
+            return surfaceMapSet.Value;
         }
 
         internal double GetHydrosphereAtmosphereRatio() => Math.Min(1, HydrosphereProportion * Mass / Atmosphere.Mass);

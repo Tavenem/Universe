@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using WorldFoundry.Climate;
 
 namespace WorldFoundry.SurfaceMaps
 {
@@ -8,6 +9,22 @@ namespace WorldFoundry.SurfaceMaps
     /// </summary>
     public struct WeatherMapSet
     {
+        /// <summary>
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values represent <see
+        /// cref="ClimateType"/>, based on average annual temperature.
+        /// </summary>
+        public ClimateType[,] Climate { get; }
+
+        /// <summary>
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values represent <see
+        /// cref="HumidityType"/>, based on annual precipitation.
+        /// </summary>
+        public HumidityType[,] Humidity { get; }
+
         /// <summary>
         /// A range giving the minimum, maximum, and average temperature throughout the specified
         /// area over the entire period represented by all <see cref="WeatherMaps"/>, as a value
@@ -49,7 +66,7 @@ namespace WorldFoundry.SurfaceMaps
         /// precipitation indicated on all contained <see cref="WeatherMaps"/>. Values range from 0
         /// to 1, with 1 indicating the maximum annual potential precipitation of the planet's
         /// atmosphere. Will be <see langword="null"/> if no <see cref="WeatherMaps"/> are present.
-        /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
+        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
         public float[,] TotalPrecipitation { get; }
 
@@ -58,7 +75,7 @@ namespace WorldFoundry.SurfaceMaps
         /// area over the entire period represented by all <see cref="WeatherMaps"/>, as a value
         /// between 0 and 1, with 1 indicating the maximum annual potential precipitation of the
         /// planet's atmosphere.
-        /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
+        /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
         public FloatRange TotalPrecipitationRange { get; }
 
@@ -87,8 +104,28 @@ namespace WorldFoundry.SurfaceMaps
             TemperatureRanges = temperatureRanges;
             WeatherMaps = weatherMaps;
 
+            if (TemperatureRanges == null)
+            {
+                Climate = null;
+            }
+            else
+            {
+                var xLength = TemperatureRanges.GetLength(0);
+                var yLength = TemperatureRanges.GetLength(1);
+
+                Climate = new ClimateType[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        Climate[x, y] = ClimateTypes.GetClimateType(TemperatureRanges[x, y].Average);
+                    }
+                }
+            }
+
             if (weatherMaps.Length == 0)
             {
+                Humidity = null;
                 TotalPrecipitation = null;
                 TotalPrecipitationRange = FloatRange.Zero;
             }
@@ -96,6 +133,7 @@ namespace WorldFoundry.SurfaceMaps
             {
                 var xLength = weatherMaps[0].Precipitation.GetLength(0);
                 var yLength = weatherMaps[0].Precipitation.GetLength(1);
+
                 TotalPrecipitation = new float[xLength, yLength];
                 for (var x = 0; x < xLength; x++)
                 {
@@ -108,6 +146,15 @@ namespace WorldFoundry.SurfaceMaps
                     weatherMaps.Min(x => x.PrecipitationRange.Min),
                     weatherMaps.Average(x => x.PrecipitationRange.Average),
                     weatherMaps.Max(x => x.PrecipitationRange.Max));
+
+                Humidity = new HumidityType[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        Humidity[x, y] = ClimateTypes.GetHumidityType(TotalPrecipitation[x, y]);
+                    }
+                }
             }
         }
     }
