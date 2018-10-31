@@ -12,15 +12,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/>.
         /// </summary>
-        public GiantStar() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantStar"/> is located.
-        /// </param>
-        public GiantStar(CelestialRegion parent) : base(parent) { }
+        internal GiantStar() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.
@@ -33,15 +25,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The <see cref="Stars.LuminosityClass"/> of this <see cref="GiantStar"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="GiantStar"/>.</param>
-        public GiantStar(
+        internal GiantStar(
             CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, null, luminosityClass, populationII) { }
 
-        /// <summary>
-        /// Randomly determines a <see cref="Star.Luminosity"/> for this <see cref="Star"/>.
-        /// </summary>
         private protected override double GetLuminosity()
         {
             switch (LuminosityClass)
@@ -61,9 +50,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
-        /// </summary>
         private protected override LuminosityClass GetLuminosityClass()
         {
             if (Randomizer.Instance.NextDouble() <= 0.05)

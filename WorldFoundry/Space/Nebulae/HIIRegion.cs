@@ -22,30 +22,15 @@ namespace WorldFoundry.Space
             new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.0002, typeof(Star), SpectralClass.O, LuminosityClass.V),
         };
 
-        private const string _baseTypeName = "HII Region";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "HII Region";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
         /// </summary>
-        public HIIRegion() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="HIIRegion"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="HIIRegion"/> is located.
-        /// </param>
-        public HIIRegion(CelestialRegion parent) : base(parent) { }
+        internal HIIRegion() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/> with the given parameters.
@@ -54,11 +39,8 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="HIIRegion"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="HIIRegion"/>.</param>
-        public HIIRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal HIIRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance

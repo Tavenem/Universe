@@ -10,35 +10,17 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class BlueGiant : GiantStar
     {
-        private const string _baseTypeName = "Blue Giant";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Blue Giant";
 
-        /// <summary>
-        /// If <see langword="false"/> this type of <see cref="CelestialEntity"/> and its children
-        /// cannot support life.
-        /// </summary>
-        /// <remarks>
-        /// <see langword="false"/> for blue giants; although they may have a habitable zone, it is not likely to exist
-        /// in the same place long enough for life to develop before the star evolves into another
-        /// type, or dies.
-        /// </remarks>
-        public override bool IsHospitable => false;
+        // False for blue giants; although they may have a habitable zone, it is not likely to
+        // exist in the same place long enough for life to develop before the star evolves into
+        // another type, or dies.
+        private protected override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/>.
         /// </summary>
-        public BlueGiant() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="BlueGiant"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="BlueGiant"/> is located.
-        /// </param>
-        public BlueGiant(CelestialRegion parent) : base(parent) { }
+        internal BlueGiant() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlueGiant"/> with the given parameters.
@@ -51,16 +33,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The <see cref="Stars.LuminosityClass"/> of this <see cref="BlueGiant"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="BlueGiant"/>.</param>
-        public BlueGiant(
+        internal BlueGiant(
             CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
 
-        /// <summary>
-        /// Generates the mass of this <see cref="Star"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         private protected override double GenerateMass(IShape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero) // Hypergiants
@@ -87,14 +65,8 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
-        /// </summary>
         private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
 
-        /// <summary>
-        /// Determines a temperature for this <see cref="Star"/>, in K.
-        /// </summary>
         private protected override double GenerateTemperature() => Math.Round(10000 + Math.Abs(Randomizer.Instance.Normal(0, 13333)));
     }
 }

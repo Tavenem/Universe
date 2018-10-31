@@ -18,20 +18,13 @@ namespace WorldFoundry.Space
             new ChildDefinition(typeof(GalaxySupercluster), GalaxySupercluster.Space, 5.8e-26),
         };
 
-        private const string _baseTypeName = "Universe";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Universe";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
-        /// Specifies the velocity of the <see cref="Orbits.Orbiter"/>.
+        /// Specifies the velocity of the <see cref="Orbits.CelestialEntity"/>.
         /// </summary>
         /// <remarks>
         /// The universe has no velocity. This will always return <see cref="Vector3.Zero"/>, and
@@ -46,25 +39,28 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Universe"/>.
         /// </summary>
-        public Universe() { }
-
-        private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
-            => _location = new Region(this, null, new Sphere(1.89214e33, position ?? Vector3.Zero));
+        internal Universe() { }
 
         /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
+        /// Generates a new universe.
         /// </summary>
-        /// <remarks>
-        /// <para>
-        /// A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
-        /// the real observable universe.
-        /// </para>
-        /// <para>
-        /// Approximately 4e18 superclusters might be found in the modeled universe, by volume
-        /// (although this would require exhaustive "exploration" to populate so many grid spaces).
-        /// This makes the universe effectively infinite in scope, if not in linear dimensions.
-        /// </para>
-        /// </remarks>
+        /// <returns>A new <see cref="Universe"/> instance</returns>
+        public static Universe New()
+        {
+            var universe = new Universe();
+            universe.Init();
+            return universe;
+        }
+
+        private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
+            => Location = new Region(this, null, new Sphere(1.89214e33, position ?? Vector3.Zero));
+
+        // A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
+        // the real observable universe.
+        //
+        // Approximately 4e18 superclusters might be found in the modeled universe, by volume
+        // (although this would require exhaustive "exploration" to populate so much space).
+        // This makes the universe effectively infinite in scope, if not in linear dimensions.
         private protected override void GenerateSubstance()
             => Substance = new Substance
             {

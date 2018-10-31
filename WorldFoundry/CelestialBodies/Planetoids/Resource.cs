@@ -9,19 +9,25 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Resource
     {
-        private readonly bool _isVein, _isPerturbation;
+#pragma warning disable IDE0044 // Add readonly modifier
+        private bool _isVein, _isPerturbation;
+#pragma warning restore IDE0044 // Add readonly modifier
 
+#pragma warning disable RCS1170 // Use read-only auto-implemented property.
         /// <summary>
         /// The chemical found in the resource.
         /// </summary>
-        public Chemical Chemical { get; }
+        public Chemical Chemical { get; private set; }
+#pragma warning restore RCS1170 // Use read-only auto-implemented property.
 
         /// <summary>
         /// The proportion of the resource over the <see cref="Planetoid"/>'s surface.
         /// </summary>
         public double Proportion { get; set; }
 
-        internal int Seed { get; }
+#pragma warning disable RCS1170 // Use read-only auto-implemented property.
+        internal int Seed { get; private set; }
+#pragma warning restore RCS1170 // Use read-only auto-implemented property.
 
         private FastNoise _noise;
         private FastNoise Noise
@@ -48,6 +54,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return _noise;
             }
         }
+
+        private Resource() { }
 
         /// <summary>
         /// Initialize a new instance of <see cref="Resource"/>.

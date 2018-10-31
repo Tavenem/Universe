@@ -63,7 +63,7 @@ namespace WorldFoundry.Test
 
             var sb = new StringBuilder();
 
-            AddTempString(sb, planet, grid);
+            AddTempString(sb, grid);
             sb.AppendLine();
             AddSimpleTerrainString(sb, planet, grid);
             sb.AppendLine();
@@ -200,11 +200,11 @@ namespace WorldFoundry.Test
             }
         }
 
-        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet, WorldGrid grid)
+        private static void AddTempString(StringBuilder sb, WorldGrid grid)
         {
             sb.AppendLine("Temp:");
             var avg = grid.Tiles.Average(x => x.Temperature.Average);
-            sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - planet.PlanetParams.SurfaceTemperature.Value, 2));
+            sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - TerrestrialPlanetParams.DefaultSurfaceTemperature, 2));
             sb.AppendLine();
 
             var water = grid.Tiles.Any(x => x.Elevation <= 0);

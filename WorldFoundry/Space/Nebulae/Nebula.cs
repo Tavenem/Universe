@@ -10,30 +10,14 @@ namespace WorldFoundry.Space
     /// </summary>
     public class Nebula : CelestialRegion
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 5.5e18;
+        internal const double Space = 5.5e18;
 
-        private const string _baseTypeName = "Nebula";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Nebula";
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/>.
         /// </summary>
-        public Nebula() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Nebula"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Nebula"/> is located.
-        /// </param>
-        public Nebula(CelestialRegion parent) : base(parent) { }
+        internal Nebula() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Nebula"/> with the given parameters.
@@ -42,11 +26,8 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Nebula"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Nebula"/>.</param>
-        public Nebula(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Nebula(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance

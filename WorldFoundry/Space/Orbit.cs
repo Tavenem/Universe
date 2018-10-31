@@ -2,7 +2,7 @@
 using System;
 using MathAndScience.Numerics;
 
-namespace WorldFoundry.Orbits
+namespace WorldFoundry.Space
 {
     /// <summary>
     /// Defines an orbit by the Kepler elements.
@@ -108,11 +108,11 @@ namespace WorldFoundry.Orbits
             }
         }
 
-        private Orbiter _orbitedObject;
+        private CelestialEntity _orbitedObject;
         /// <summary>
         /// The object which is being orbited.
         /// </summary>
-        public Orbiter OrbitedObject
+        public CelestialEntity OrbitedObject
         {
             get => _orbitedObject;
             private set
@@ -122,11 +122,11 @@ namespace WorldFoundry.Orbits
             }
         }
 
-        private Orbiter _orbitingObject;
+        private CelestialEntity _orbitingObject;
         /// <summary>
         /// The object which is orbiting.
         /// </summary>
-        public Orbiter OrbitingObject
+        public CelestialEntity OrbitingObject
         {
             get => _orbitingObject;
             private set
@@ -292,11 +292,11 @@ namespace WorldFoundry.Orbits
         /// <summary>
         /// Initializes a new instance of <see cref="Orbit"/> with the given parameters.
         /// </summary>
-        /// <param name="orbitingObject">The <see cref="Orbiter"/> which will be in orbit around
+        /// <param name="orbitingObject">The <see cref="CelestialEntity"/> which will be in orbit around
         /// <paramref name="orbitedObject"/>.</param>
-        /// <param name="orbitedObject">The <see cref="Orbiter"/> which will be orbited by <paramref
+        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which will be orbited by <paramref
         /// name="orbitingObject"/>.</param>
-        public Orbit(Orbiter orbitingObject, Orbiter orbitedObject)
+        public Orbit(CelestialEntity orbitingObject, CelestialEntity orbitedObject)
         {
             OrbitingObject = orbitingObject ?? throw new ArgumentNullException(nameof(orbitingObject), $"{nameof(orbitingObject)} cannot be null");
             OrbitedObject = orbitedObject ?? throw new ArgumentNullException(nameof(orbitedObject), $"{nameof(orbitedObject)} cannot be null");
@@ -309,11 +309,11 @@ namespace WorldFoundry.Orbits
         /// <param name="orbitedObject">The orbited object.</param>
         /// <param name="period">A period, in seconds.</param>
         /// <returns>THe semi-major axis of the desired orbit, in meters.</returns>
-        public static double GetSemiMajorAxisForPeriod(Orbiter orbitingObject, Orbiter orbitedObject, double period)
+        public static double GetSemiMajorAxisForPeriod(CelestialEntity orbitingObject, CelestialEntity orbitedObject, double period)
             => Math.Pow(ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period / (MathConstants.FourPI * Math.PI), 1.0 / 3.0);
 
         /// <summary>
-        /// Sets the orbit of the given <see cref="Orbiter"/> based on the orbiting object's current
+        /// Sets the orbit of the given <see cref="CelestialEntity"/> based on the orbiting object's current
         /// position and the given <paramref name="eccentricity"/>, and adjusts its velocity as necessary.
         /// </summary>
         /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
@@ -324,8 +324,8 @@ namespace WorldFoundry.Orbits
         /// inclination will be calculated from the current position, and presumed to be the maximum inclination.
         /// </remarks>
         public static void SetOrbit(
-            Orbiter orbitingObject,
-            Orbiter orbitedObject,
+            CelestialEntity orbitingObject,
+            CelestialEntity orbitedObject,
             double eccentricity)
         {
             if (eccentricity < 0)
@@ -412,7 +412,7 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Sets the orbit of the given <see cref="Orbiter"/> according to the given orbital
+        /// Sets the orbit of the given <see cref="CelestialEntity"/> according to the given orbital
         /// parameters, and adjusts its position and velocity as necessary.
         /// </summary>
         /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
@@ -438,8 +438,8 @@ namespace WorldFoundry.Orbits
         /// the object orbited, in radians.
         /// </param>
         public static void SetOrbit(
-            Orbiter orbitingObject,
-            Orbiter orbitedObject,
+            CelestialEntity orbitingObject,
+            CelestialEntity orbitedObject,
             double periapsis,
             double eccentricity,
             double inclination,
@@ -544,7 +544,7 @@ namespace WorldFoundry.Orbits
         /// <param name="semiMajorAxis">The semi-major axis of the orbit.</param>
         /// <param name="eccentricity">The eccentricity of the orbit.</param>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
-        public static double GetHillSphereRadius(Orbiter orbitingObject, Orbiter orbitedObject, double semiMajorAxis, double eccentricity)
+        public static double GetHillSphereRadius(CelestialEntity orbitingObject, CelestialEntity orbitedObject, double semiMajorAxis, double eccentricity)
             => semiMajorAxis * (1 - eccentricity) * Math.Pow(orbitingObject.Mass / (3 * orbitedObject.Mass), 1.0 / 3.0);
 
         /// <summary>
@@ -602,7 +602,7 @@ namespace WorldFoundry.Orbits
 
         /// <summary>
         /// Updates the orbital position and velocity of this <see cref="Orbit"/> after the
-        /// specified number of seconds have passed, assuming no influences on the orbiter's motion
+        /// specified number of seconds have passed, assuming no influences on the CelestialEntity's motion
         /// have occurred, aside from its orbit.
         /// </summary>
         /// <param name="elapsedSeconds">
@@ -628,7 +628,7 @@ namespace WorldFoundry.Orbits
         }
 
         /// <summary>
-        /// Updates an orbit from the current position and velocity of its <see cref="Orbiter"/>
+        /// Updates an orbit from the current position and velocity of its <see cref="CelestialEntity"/>
         /// objects.
         /// </summary>
         public void UpdateOrbit()
@@ -637,7 +637,7 @@ namespace WorldFoundry.Orbits
             SetParametersFromPositionAndVelocity();
         }
 
-        internal static Orbit GetCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
+        internal static Orbit GetCircularOrbit(CelestialEntity orbitingObject, CelestialEntity orbitedObject)
         {
             var orbit = new Orbit(orbitingObject, orbitedObject)
             {
@@ -689,7 +689,7 @@ namespace WorldFoundry.Orbits
             return orbit;
         }
 
-        internal static Vector3 GetDeltaVForCircularOrbit(Orbiter orbitingObject, Orbiter orbitedObject)
+        internal static Vector3 GetDeltaVForCircularOrbit(CelestialEntity orbitingObject, CelestialEntity orbitedObject)
         {
             var orbit = new Orbit(orbitingObject, orbitedObject);
 

@@ -12,11 +12,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySupercluster : CelestialRegion
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 9.4607e25;
+        internal const double Space = 9.4607e25;
 
         private const double ChildDensity = 1.0e-73;
 
@@ -26,30 +22,15 @@ namespace WorldFoundry.Space
             new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, ChildDensity * 2 / 3),
         };
 
-        private const string _baseTypeName = "Galaxy Supercluster";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Galaxy Supercluster";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/>.
         /// </summary>
-        public GalaxySupercluster() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
-        /// </param>
-        public GalaxySupercluster(CelestialRegion parent) : base(parent) { }
+        internal GalaxySupercluster() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
@@ -58,14 +39,8 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxySupercluster"/>.</param>
-        public GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <remarks>
-        /// May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
-        /// </remarks>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance
@@ -73,6 +48,7 @@ namespace WorldFoundry.Space
                 Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
                 Mass = Randomizer.Instance.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
             };
+            // May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
             var majorAxis = Randomizer.Instance.NextDouble(9.4607e23, 9.4607e25);
             var minorAxis1 = majorAxis * Randomizer.Instance.NextDouble(0.02, 0.15);
             double minorAxis2;

@@ -199,17 +199,18 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
         /// made.</param>
-        /// <param name="density">The density of the atmosphere at the object's location.</param>
+        /// <param name="temperature">The surface temperature at the object's location.</param>
+        /// <param name="altitude">The altitude of the object.</param>
         /// <param name="speed">The speed of the object, in m/s.</param>
         /// <returns>The atmospheric drag on the object at the specified height, in N.</returns>
         /// <remarks>
-        /// 0.47 is an arbitrary drag coefficient (that of a sphere in a fluid with a Reynolds number
-        /// of 10⁴), which may not reflect the actual conditions at all, but the inaccuracy is
-        /// accepted since the level of detailed information needed to calculate this value
+        /// 0.47 is an arbitrary drag coefficient (that of a sphere in a fluid with a Reynolds
+        /// number of 10⁴), which may not reflect the actual conditions at all, but the inaccuracy
+        /// is accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public double GetAtmosphericDrag(Planetoid planet, double density, double speed) =>
-            0.235 * density * speed * speed * planet.Radius;
+        public double GetAtmosphericDrag(Planetoid planet, double temperature, double altitude, double speed) =>
+            0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * planet.Radius;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.

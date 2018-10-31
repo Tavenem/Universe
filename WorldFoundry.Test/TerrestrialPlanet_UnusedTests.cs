@@ -46,15 +46,12 @@ namespace WorldFoundry.Test
 
             var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
             Assert.IsNotNull(planet);
-            Assert.IsNotNull(planet.PlanetParams);
 
             var stringData = SaveAsString(planet);
             Assert.IsNotNull(stringData);
 
             planet = LoadFromString(stringData);
             Assert.IsNotNull(planet);
-            Assert.IsNotNull(planet.PlanetParams);
-            Assert.AreEqual(GridSize, planet.PlanetParams.GridSize);
         }
 
         [TestMethod]

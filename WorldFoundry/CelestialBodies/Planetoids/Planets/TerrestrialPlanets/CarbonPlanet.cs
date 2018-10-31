@@ -15,53 +15,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class CarbonPlanet : TerrestrialPlanet
     {
-        private const double CoreProportion = 0.4;
+        private protected override bool CanHaveOxygen => false;
 
-        /// <summary>
-        /// Used to allow or prevent oxygen in the composition and atmosphere of a terrestrial planet.
-        /// </summary>
-        /// <remarks>
-        /// Unable to have oxygen due to its high reactivity with carbon compounds.
-        /// </remarks>
-        protected override bool CanHaveOxygen => false;
+        private protected override bool CanHaveWater => false;
 
-        /// <summary>
-        /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
-        /// </summary>
-        /// <remarks>
-        /// Unable to have water due to its high reactivity with carbon compounds.
-        /// </remarks>
-        protected override bool CanHaveWater => false;
-
-        private const string _planemoClassPrefix = "Carbon";
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        public override string PlanemoClassPrefix => _planemoClassPrefix;
+        private protected override string PlanemoClassPrefix => "Carbon";
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/>.
         /// </summary>
-        public CarbonPlanet() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
-        /// </param>
-        public CarbonPlanet(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
-        /// </param>
-        /// <param name="maxMass">
-        /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
-        /// </param>
-        public CarbonPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
+        internal CarbonPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
@@ -70,7 +33,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
-        public CarbonPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal CarbonPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
@@ -82,15 +45,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        public CarbonPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal CarbonPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
-        /// </summary>
-        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
-        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
-        /// <param name="maxMass">The maximum mass of the satellite.</param>
-        /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
@@ -108,19 +64,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // be the actual Roche limit for the body which gets generated).
                 if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(Parent, maxMass);
+                    satellite = new LavaPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.45) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(Parent, maxMass);
+                    satellite = new TerrestrialPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.77)
                 {
-                    satellite = new CarbonPlanet(Parent, maxMass);
+                    satellite = new CarbonPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(Parent, maxMass);
+                    satellite = new OceanPlanet(Parent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -130,15 +86,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(Parent, maxMass);
+                    satellite = new LavaDwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(Parent, maxMass);
+                    satellite = new DwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(Parent, maxMass);
+                    satellite = new RockyDwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -147,21 +103,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(Parent, maxMass);
+                    satellite = new CTypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(Parent, maxMass);
+                    satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(Parent, maxMass);
+                    satellite = new MTypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
             }
 
             if (satellite != null)
             {
-                Orbits.Orbit.SetOrbit(
+                Orbit.SetOrbit(
                     satellite,
                     this,
                     periapsis,
@@ -187,13 +143,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 1);
         }
 
-        /// <summary>
-        /// Randomly determines the proportionate amount of the composition devoted to the core of a <see cref="Planemo"/>.
-        /// </summary>
-        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
-        /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        /// <remarks>The base class returns a flat ratio; subclasses are expected to override as needed.</remarks>
-        private protected override double GetCoreProportion(double mass) => CoreProportion;
+        private protected override double GetCoreProportion(double mass) => 0.4;
 
         private protected override IEnumerable<(IComposition, double)> GetCrust()
         {

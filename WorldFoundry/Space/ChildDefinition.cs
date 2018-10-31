@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
 using System.Reflection;
-using WorldFoundry.Orbits;
 using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
@@ -94,9 +93,9 @@ namespace WorldFoundry.Space
         /// <returns>A new child instance of the given <paramref name="parent"/> whose <see
         /// cref="CelestialEntity.Location"/> is set to the given <paramref name="position"/>; or
         /// <see langword="null"/> if no child could be generated.</returns>
-        public Orbiter GenerateChild(CelestialRegion parent, Vector3? position = null)
+        public CelestialEntity GenerateChild(CelestialRegion parent, Vector3? position = null)
         {
-            if (!typeof(Orbiter).IsAssignableFrom(Type))
+            if (!typeof(CelestialEntity).IsAssignableFrom(Type))
             {
                 return null;
             }
@@ -113,7 +112,9 @@ namespace WorldFoundry.Space
             }
             var parameters = new List<object> { parent, position ?? Vector3.Zero };
             parameters.AddRange(ConstructionParameters);
-            return Type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray()) as Orbiter;
+            var child = Type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray()) as CelestialEntity;
+            child.Init();
+            return child;
         }
     }
 }

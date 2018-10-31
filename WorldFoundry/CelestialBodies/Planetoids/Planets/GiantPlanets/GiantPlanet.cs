@@ -17,91 +17,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
     /// </summary>
     public class GiantPlanet : Planemo
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 2.5e8;
+        internal const int MaxDensity = 1650;
+        internal const double Space = 2.5e8;
 
-        private const string _baseTypeName = "Gas Giant";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected const int MinDensity = 1100;
+        private protected const int SubMinDensity = 600;
 
-        private const bool _hasFlatSurface = true;
-        /// <summary>
-        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
-        /// (i.e. is non-solid). Prevents generation of a height map.
-        /// </summary>
-        public override bool HasFlatSurface => _hasFlatSurface;
+        private protected override string BaseTypeName => "Gas Giant";
 
-        internal static int _subMinDensity = 600;
-        private protected int SubMinDensity => _subMinDensity;
+        private protected override bool HasFlatSurface => true;
 
-        internal static int _minDensity = 1100;
-        private protected int MinDensity => _minDensity;
+        // At around this limit the planet will have sufficient mass to sustain fusion, and become a brown dwarf.
+        private protected override double? MaxMassForType => 2.5e28;
 
-        internal static int _maxDensity = 1650;
-        private protected int MaxDensity => _maxDensity;
+        // Set to 75 for GiantPlanet. For reference, Jupiter has 67 moons, and Saturn
+        // has 62 (non-ring) moons.
+        private protected override int MaxSatellites => 75;
 
-        private const double _maxMassForType = 2.5e28;
-        /// <summary>
-        /// The maximum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates no maximum.
-        /// </summary>
-        /// <remarks>At around this limit the planet will have sufficient mass to sustain fusion, and become a brown dwarf.</remarks>
-        internal override double? MaxMassForType => _maxMassForType;
+        // Below this limit the planet will not have sufficient mass to retain hydrogen, and will be a terrestrial planet.
+        private protected override double? MinMassForType => 6.0e25;
 
-        internal new static int _maxSatellites = 75;
-        /// <summary>
-        /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
-        /// actual number is determined by the orbital characteristics of the satellites it actually has.
-        /// </summary>
-        /// <remarks>
-        /// Set to 75 for <see cref="GiantPlanet"/>. For reference, Jupiter has 67 moons, and Saturn
-        /// has 62 (non-ring) moons.
-        /// </remarks>
-        public override int MaxSatellites => _maxSatellites;
-
-        private const double _minMassForType = 6.0e25;
-        /// <summary>
-        /// The minimum mass allowed for this type of <see cref="Planetoid"/> during random
-        /// generation, in kg. Null indicates a minimum of 0.
-        /// </summary>
-        /// <remarks>Below this limit the planet will not have sufficient mass to retain hydrogen, and will be a terrestrial planet.</remarks>
-        internal override double? MinMassForType => _minMassForType;
-
-        internal new static double _ringChance = 90;
-        /// <summary>
-        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
-        /// </summary>
-        /// <remarks>Giants are almost guaranteed to have rings.</remarks>
-        protected override double RingChance => _ringChance;
+        private protected override double RingChance => 90;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/>.
         /// </summary>
-        public GiantPlanet() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
-        /// </param>
-        public GiantPlanet(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
-        /// </param>
-        /// <param name="maxMass">
-        /// The maximum mass allowed for this <see cref="GiantPlanet"/> during random generation, in kg.
-        /// </param>
-        public GiantPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
+        internal GiantPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
@@ -110,7 +51,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GiantPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GiantPlanet"/>.</param>
-        public GiantPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GiantPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GiantPlanet"/> with the given parameters.
@@ -122,20 +63,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="GiantPlanet"/> during random generation, in kg.
         /// </param>
-        public GiantPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal GiantPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
-        /// </summary>
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.275, 0.35);
 
-        /// <summary>
-        /// Generates an atmosphere for this <see cref="Planetoid"/>.
-        /// </summary>
-        /// <remarks>
-        /// Giants have no solid surface, instead the "surface" is arbitrarily defined as the level
-        /// where the pressure is 1 MPa.
-        /// </remarks>
         private protected override void GenerateAtmosphere()
         {
             var trace = Math.Round(Randomizer.Instance.NextDouble(0.025), 4);
@@ -154,12 +85,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             var waterVapor = Math.Round(Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5)), 5);
             traceTotal += waterVapor;
 
-            var surfaceTemp = GetSurfaceTemperature();
-
             double water = 0, ice = 0;
-            if (surfaceTemp < Chemical.Water.AntoineMinimumTemperature
-                || (surfaceTemp < Chemical.Water.AntoineMaximumTemperature
-                && Chemical.Water.GetVaporPressure(surfaceTemp) <= 1000))
+            if (AverageBlackbodySurfaceTemperature < Chemical.Water.AntoineMinimumTemperature
+                || (AverageBlackbodySurfaceTemperature < Chemical.Water.AntoineMaximumTemperature
+                && Chemical.Water.GetVaporPressure(AverageBlackbodySurfaceTemperature) <= 1000))
             {
                 water = Randomizer.Instance.NextDouble();
                 ice = Randomizer.Instance.NextDouble();
@@ -167,9 +96,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             }
 
             double ch4Liquid = 0, ch4Ice = 0;
-            if (surfaceTemp < Chemical.Methane.AntoineMinimumTemperature
-                || (surfaceTemp < Chemical.Methane.AntoineMaximumTemperature
-                && Chemical.Methane.GetVaporPressure(surfaceTemp) <= 1000))
+            if (AverageBlackbodySurfaceTemperature < Chemical.Methane.AntoineMinimumTemperature
+                || (AverageBlackbodySurfaceTemperature < Chemical.Methane.AntoineMaximumTemperature
+                && Chemical.Methane.GetVaporPressure(AverageBlackbodySurfaceTemperature) <= 1000))
             {
                 ch4Liquid = Randomizer.Instance.NextDouble();
                 ch4Ice = Randomizer.Instance.NextDouble();
@@ -177,9 +106,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             }
 
             double nh3Liquid = 0, nh3Ice = 0;
-            if (surfaceTemp < Chemical.Ammonia.AntoineMinimumTemperature
-                || (surfaceTemp < Chemical.Ammonia.AntoineMaximumTemperature
-                && Chemical.Ammonia.GetVaporPressure(surfaceTemp) <= 1000))
+            if (AverageBlackbodySurfaceTemperature < Chemical.Ammonia.AntoineMinimumTemperature
+                || (AverageBlackbodySurfaceTemperature < Chemical.Ammonia.AntoineMaximumTemperature
+                && Chemical.Ammonia.GetVaporPressure(AverageBlackbodySurfaceTemperature) <= 1000))
             {
                 nh3Liquid = Randomizer.Instance.NextDouble();
                 nh3Ice = Randomizer.Instance.NextDouble();
@@ -249,13 +178,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             Atmosphere = new Atmosphere(this, atmosphere, 1000);
         }
 
-        /// <summary>
-        /// Generates a new satellite for this <see cref="Planetoid"/> with the specified parameters.
-        /// </summary>
-        /// <param name="periapsis">The periapsis of the satellite's orbit.</param>
-        /// <param name="eccentricity">The eccentricity of the satellite's orbit.</param>
-        /// <param name="maxMass">The maximum mass of the satellite.</param>
-        /// <returns>A satellite <see cref="Planetoid"/> with an appropriate orbit.</returns>
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             Planetoid satellite = null;
@@ -275,19 +197,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 // which gets generated).
                 if (periapsis < GetRocheLimit(TerrestrialPlanet._maxDensity) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(Parent, maxMass);
+                    satellite = new LavaPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.65) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(Parent, maxMass);
+                    satellite = new TerrestrialPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75)
                 {
-                    satellite = new IronPlanet(Parent, maxMass);
+                    satellite = new IronPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(Parent, maxMass);
+                    satellite = new OceanPlanet(Parent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -298,15 +220,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(Parent, maxMass);
+                    satellite = new LavaDwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(Parent, maxMass);
+                    satellite = new DwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(Parent, maxMass);
+                    satellite = new RockyDwarfPlanet(Parent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -316,21 +238,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 chance = Randomizer.Instance.NextDouble();
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(Parent, maxMass);
+                    satellite = new CTypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(Parent, maxMass);
+                    satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(Parent, maxMass);
+                    satellite = new MTypeAsteroid(Parent, Vector3.Zero, maxMass);
                 }
             }
 
             if (satellite != null)
             {
-                Orbits.Orbit.SetOrbit(
+                Orbit.SetOrbit(
                     satellite,
                     this,
                     periapsis,
@@ -361,23 +283,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 
         private protected override double GetCrustProportion(IShape shape) => 0;
 
-        /// <summary>
-        /// Generates an appropriate density for this <see cref="Planetoid"/>.
-        /// </summary>
-        /// <remarks>
-        /// Relatively low chance of a "puffy" giant (Saturn-like, low-density).
-        /// </remarks>
+        // Relatively low chance of a "puffy" giant (Saturn-like, low-density).
         private protected override double? GetDensity()
-        {
-            if (Randomizer.Instance.NextDouble() <= 0.2)
-            {
-                return Math.Round(Randomizer.Instance.NextDouble(SubMinDensity, MinDensity));
-            }
-            else
-            {
-                return Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
-            }
-        }
+            => Randomizer.Instance.NextDouble() <= 0.2
+                ? Math.Round(Randomizer.Instance.NextDouble(SubMinDensity, MinDensity))
+                : Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
 
         private protected double GetInnerCoreProportion(double mass)
             => Math.Min(Randomizer.Instance.NextDouble(0.02, 0.2), (MinMassForType ?? 0) / mass);

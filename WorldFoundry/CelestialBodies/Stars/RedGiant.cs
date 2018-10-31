@@ -10,24 +10,12 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class RedGiant : GiantStar
     {
-        private const string _baseTypeName = "Red Giant";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Red Giant";
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/>.
         /// </summary>
-        public RedGiant() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="RedGiant"/> is located.
-        /// </param>
-        public RedGiant(CelestialRegion parent) : base(parent) { }
+        internal RedGiant() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
@@ -40,16 +28,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The <see cref="Stars.LuminosityClass"/> of this <see cref="RedGiant"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="RedGiant"/>.</param>
-        public RedGiant(
+        internal RedGiant(
             CelestialRegion parent,
             Vector3 position,
             LuminosityClass? luminosityClass = null,
             bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
 
-        /// <summary>
-        /// Generates the mass of this <see cref="Star"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
         private protected override double GenerateMass(IShape shape)
         {
             if (LuminosityClass == LuminosityClass.Zero
@@ -64,14 +48,8 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
-        /// </summary>
         private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
 
-        /// <summary>
-        /// Determines a temperature for this <see cref="Star"/>, in K.
-        /// </summary>
         private protected override double GenerateTemperature() => Math.Round(Randomizer.Instance.Normal(3800, 466));
     }
 }

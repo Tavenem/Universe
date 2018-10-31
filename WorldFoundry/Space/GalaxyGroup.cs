@@ -14,41 +14,22 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxyGroup : CelestialRegion
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 3.0e23;
+        internal const double Space = 3.0e23;
 
         private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, 1.5e-70),
         };
 
-        private const string _baseTypeName = "Galaxy Group";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Galaxy Group";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/>.
         /// </summary>
-        public GalaxyGroup() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GalaxyGroup"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyGroup"/> is located.
-        /// </param>
-        public GalaxyGroup(CelestialRegion parent) : base(parent) { }
+        internal GalaxyGroup() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyGroup"/> with the given parameters.
@@ -57,7 +38,7 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyGroup"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxyGroup"/>.</param>
-        public GalaxyGroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GalaxyGroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         internal override void PrepopulateRegion()
         {
@@ -89,9 +70,6 @@ namespace WorldFoundry.Space
             }
         }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance

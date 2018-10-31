@@ -9,7 +9,6 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Orbits;
 using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
@@ -90,36 +89,21 @@ namespace WorldFoundry.Space.Galaxies
             new ChildDefinition(typeof(HIIRegion), Nebula.Space, ChildDensity * 2e-10),
         };
 
-        private const string _baseTypeName = "Galaxy";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
-
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_childDefinitions);
-
         private BlackHole _galacticCore;
         /// <summary>
         /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
         /// </summary>
         public BlackHole GalacticCore => _galacticCore ?? (_galacticCore = GetGalacticCore());
 
+        private protected override string BaseTypeName => "Galaxy";
+
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
+
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/>.
         /// </summary>
-        public Galaxy() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Galaxy"/> is located.
-        /// </param>
-        public Galaxy(CelestialRegion parent) : base(parent) { }
+        internal Galaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
@@ -128,9 +112,9 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Galaxy"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Galaxy"/>.</param>
-        public Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        internal override Orbiter GenerateChild(ChildDefinition definition)
+        internal override CelestialEntity GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
 
@@ -165,9 +149,6 @@ namespace WorldFoundry.Space.Galaxies
         /// <param name="shape">The shape of the <see cref="Galaxy"/>.</param>
         private protected double GenerateMass(IShape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
@@ -182,6 +163,6 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        private protected virtual BlackHole GetGalacticCore() => new SupermassiveBlackHole(this);
+        private protected virtual BlackHole GetGalacticCore() => new SupermassiveBlackHole(this, Vector3.Zero);
     }
 }

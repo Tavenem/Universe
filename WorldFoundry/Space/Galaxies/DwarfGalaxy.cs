@@ -11,30 +11,14 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class DwarfGalaxy : Galaxy
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 2.5e18;
+        internal const double Space = 2.5e18;
 
-        private const string _baseTypeName = "Dwarf Galaxy";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Dwarf Galaxy";
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfGalaxy"/>.
         /// </summary>
-        public DwarfGalaxy() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="DwarfGalaxy"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfGalaxy"/> is located.
-        /// </param>
-        public DwarfGalaxy(CelestialRegion parent) : base(parent) { }
+        internal DwarfGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfGalaxy"/> with the given parameters.
@@ -43,7 +27,7 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfGalaxy"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="DwarfGalaxy"/>.</param>
-        public DwarfGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal DwarfGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
@@ -51,11 +35,8 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of dwarf galaxies are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override BlackHole GetGalacticCore() => new BlackHole(this);
+        private protected override BlackHole GetGalacticCore() => new BlackHole(this, Vector3.Zero);
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };

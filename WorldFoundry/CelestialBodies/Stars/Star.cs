@@ -16,18 +16,6 @@ namespace WorldFoundry.CelestialBodies.Stars
     {
         private const string RedDwarfTypeName = "Red Dwarf";
 
-        private const string _baseTypeName = "Star";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
-
-        private string _designatorPrefix;
-        /// <summary>
-        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
-        /// </summary>
-        protected override string DesignatorPrefix => _designatorPrefix ?? (_designatorPrefix = GetDesignatorPrefix());
-
         private double? _luminosity;
         /// <summary>
         /// The luminosity of this <see cref="Star"/>, in Watts.
@@ -68,18 +56,15 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public override string TypeName => SpectralClass == SpectralClass.M ? RedDwarfTypeName : BaseTypeName;
 
+        private protected override string BaseTypeName => "Star";
+
+        private string _designatorPrefix;
+        private protected override string DesignatorPrefix => _designatorPrefix ?? (_designatorPrefix = GetDesignatorPrefix());
+
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/>.
         /// </summary>
-        public Star() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Star"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Star"/> is located.
-        /// </param>
-        public Star(CelestialRegion parent) : base(parent) { }
+        internal Star() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/> with the given parameters.
@@ -93,7 +78,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The <see cref="Stars.LuminosityClass"/> of this <see cref="Star"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="Star"/>.</param>
-        public Star(
+        internal Star(
             CelestialRegion parent,
             Vector3 position,
             SpectralClass? spectralClass = null,
@@ -185,41 +170,20 @@ namespace WorldFoundry.CelestialBodies.Stars
         internal void SetTempForTargetPlanetTemp(double temperature, double distance, double albedo = 0)
             => Substance.Temperature = temperature / (Math.Sqrt(Radius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
 
-        /// <summary>
-        /// Generates the mass of this <see cref="Star"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
-        /// <remarks>
-        /// Mass scales with radius for main-sequence stars, with the scale changing at around 1
-        /// solar mass/radius.
-        /// </remarks>
+        // Mass scales with radius for main-sequence stars, with the scale changing at around 1
+        // solar mass/radius.
         private protected virtual double GenerateMass(IShape shape)
-        {
-            if (shape.ContainingRadius < 6.955e8)
-            {
-                return Math.Pow(shape.ContainingRadius / 6.955e8, 1.25) * 1.99e30;
-            }
-            else
-            {
-                return Math.Pow(shape.ContainingRadius / 6.955e8, 1.75) * 1.99e30;
-            }
-        }
+            => Math.Pow(shape.ContainingRadius / 6.955e8, shape.ContainingRadius < 6.955e8 ? 1.25 : 1.75) * 1.99e30;
 
-        /// <summary>
-        /// Generates the shape of this <see cref="Star"/>.
-        /// </summary>
         private protected virtual IShape GenerateShape()
         {
             // A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
             var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
-            var radius = Math.Round(Math.Sqrt(Luminosity / d));
+            var radius = d.IsZero() ? 0 : Math.Round(Math.Sqrt(Luminosity / d));
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
             return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
         }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance
@@ -235,9 +199,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             Substance.Mass = GenerateMass(Shape);
         }
 
-        /// <summary>
-        /// Determines a temperature for this <see cref="Star"/>, in K.
-        /// </summary>
         private protected virtual double GenerateTemperature()
         {
             switch (SpectralClass)
@@ -301,14 +262,9 @@ namespace WorldFoundry.CelestialBodies.Stars
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// Luminosity scales with temperature for main-sequence stars.
-        /// </remarks>
         private protected virtual double GetLuminosity()
         {
+            // Luminosity scales with temperature for main-sequence stars.
             var luminosity = Math.Pow((Temperature ?? 0) / 5778.0, 5.6) * 3.846e26;
 
             // If a special luminosity class had been assigned, take it into account.
@@ -328,26 +284,11 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// The base class handles main-sequence stars (class V).
-        /// </remarks>
         private protected virtual LuminosityClass GetLuminosityClass() => LuminosityClass.V;
 
-        /// <summary>
-        /// Determines <see cref="Luminosity"/> based on this <see cref="Star"/>'s <see cref="CelestialEntity.Radius"/>.
-        /// </summary>
         private protected double GetLuminosityFromRadius()
             => MathConstants.FourPI * RadiusSquared * ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
 
-        /// <summary>
-        /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// The base class handles main-sequence stars.
-        /// </remarks>
         private protected virtual SpectralClass GetSpectralClass()
         {
             var chance = Randomizer.Instance.NextDouble();
@@ -381,15 +322,9 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Determines <see cref="SpectralClass"/> from temperature.
-        /// </summary>
-        /// <param name="temperature">The temperature of the <see cref="Star"/>.</param>
-        /// <remarks>
-        /// Only applies to the standard classes (excludes W).
-        /// </remarks>
         private protected SpectralClass GetSpectralClassFromTemperature(double temperature)
         {
+            // Only applies to the standard classes (excludes W).
             if (temperature < 500)
             {
                 return SpectralClass.Y;
@@ -432,11 +367,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have giant planets, based
-        /// on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have giant planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveGiantPlanets()
         {
             // O-type stars and brown dwarfs do not have giant planets
@@ -487,11 +417,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have ice giant planets,
-        /// based on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have ice giant planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveIceGiants()
         {
             // O-type stars and brown dwarfs do not have ice giants
@@ -542,11 +467,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have terrestrial planets,
-        /// based on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have terrestrial planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveTerrestrialPlanets()
         {
             // O-type stars do not have planets

@@ -18,11 +18,7 @@ namespace WorldFoundry.Space.Galaxies
     /// </remarks>
     public class GlobularCluster : Galaxy
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 2.1e7;
+        internal const double Space = 2.1e7;
 
         private const double ChildDensity = 1.3e-17;
         private const double RedDensity = ChildDensity * 0.36;
@@ -81,30 +77,15 @@ namespace WorldFoundry.Space.Galaxies
             new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 1.25e-5, typeof(Star), SpectralClass.O, LuminosityClass.V),
         };
 
-        private const string _baseTypeName = "Globular Cluster";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Globular Cluster";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GlobularCluster"/>.
         /// </summary>
-        public GlobularCluster() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GlobularCluster"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GlobularCluster"/> is located.
-        /// </param>
-        public GlobularCluster(CelestialRegion parent) : base(parent) { }
+        internal GlobularCluster() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GlobularCluster"/> with the given parameters.
@@ -113,7 +94,7 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GlobularCluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GlobularCluster"/>.</param>
-        public GlobularCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GlobularCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
@@ -121,11 +102,8 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of globular clusters are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override BlackHole GetGalacticCore() => new BlackHole(this);
+        private protected override BlackHole GetGalacticCore() => new BlackHole(this, Vector3.Zero);
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };

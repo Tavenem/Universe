@@ -3,7 +3,6 @@ using System;
 using System.Linq;
 using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies
@@ -11,7 +10,7 @@ namespace WorldFoundry.CelestialBodies
     /// <summary>
     /// Represents any contiguous physical object in space, such as a star or planet.
     /// </summary>
-    public class CelestialBody : Orbiter
+    public class CelestialBody : CelestialEntity
     {
         private double? _albedo;
         /// <summary>
@@ -40,7 +39,7 @@ namespace WorldFoundry.CelestialBodies
 
         private Orbit _orbit;
         /// <summary>
-        /// The orbit occupied by this <see cref="Orbiter"/> (may be null).
+        /// The orbit occupied by this <see cref="CelestialEntity"/> (may be null).
         /// </summary>
         public override Orbit Orbit
         {
@@ -69,7 +68,7 @@ namespace WorldFoundry.CelestialBodies
         /// The total temperature of this body.
         /// </summary>
         public double BlackbodySurfaceTemperature
-            => _blackbodySurfaceTemperature ?? (_blackbodySurfaceTemperature = GetSurfaceTemperature()).Value;
+            => _blackbodySurfaceTemperature ?? (_blackbodySurfaceTemperature = GetSurfaceTemperatureAtPosition(Position)).Value;
 
         private double? _surfaceTemperatureAtApoapsis;
         /// <summary>
@@ -88,15 +87,7 @@ namespace WorldFoundry.CelestialBodies
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/>.
         /// </summary>
-        public CelestialBody() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialBody"/> is located.
-        /// </param>
-        public CelestialBody(CelestialRegion parent) : base(parent) { }
+        internal CelestialBody() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialBody"/> with the given parameters.
@@ -105,7 +96,7 @@ namespace WorldFoundry.CelestialBodies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
-        public CelestialBody(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal CelestialBody(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Calculates the escape velocity from this body, in m/s.
@@ -113,58 +104,6 @@ namespace WorldFoundry.CelestialBodies
         /// <returns>The escape velocity from this body, in m/s.</returns>
         public double GetEscapeVelocity() => Math.Sqrt(ScienceConstants.TwoG * Mass / Radius);
 
-        /// <summary>
-        /// Calculates the temperature of the <see cref="CelestialBody"/>, in K.
-        /// </summary>
-        /// <returns>The temperature of the <see cref="CelestialBody"/>, in K.</returns>
-        public double GetSurfaceTemperature() => GetSurfaceTemperatureAtPosition(Position);
-
-        /// <summary>
-        /// Estimates the total average temperature of the <see cref="CelestialBody"/> as if this
-        /// object was at the specified true anomaly in its orbit, including ambient heat of its
-        /// parent and radiated heat from all sibling objects, in K. If the body is not in orbit,
-        /// returns the temperature at its current position.
-        /// </summary>
-        /// <param name="trueAnomaly">
-        /// A true anomaly at which its temperature will be calculated.
-        /// </param>
-        /// <returns>
-        /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
-        /// in K.
-        /// </returns>
-        /// <remarks>
-        /// The estimation is performed by linear interpolation between the temperature at periapsis
-        /// and apoapsis, which is not necessarily accurate for highly elliptical orbits, or bodies
-        /// with multiple significant nearby heat sources, but it should be fairly accurate for
-        /// bodies in fairly circular orbits around heat sources which are all close to the center
-        /// of the orbit, and much faster for successive calls than calculating the temperature at
-        /// specific positions precisely.
-        /// </remarks>
-        internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly)
-            => MathUtility.Lerp(SurfaceTemperatureAtPeriapsis, SurfaceTemperatureAtApoapsis, trueAnomaly);
-
-        /// <summary>
-        /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
-        /// object was at the specified position, including ambient heat of its parent and radiated
-        /// heat from all sibling objects, in K.
-        /// </summary>
-        /// <param name="position">
-        /// A hypothetical position for this <see cref="CelestialBody"/> at which its temperature
-        /// will be calculated.
-        /// </param>
-        /// <returns>
-        /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
-        /// in K.
-        /// </returns>
-        internal double GetSurfaceTemperatureAtPosition(Vector3 position)
-            => (Temperature ?? 0) + GetInsolationHeat(position);
-
-        /// <summary>
-        /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
-        /// </summary>
-        /// <remarks>
-        /// Sets 0 in the base class; subclasses which are not black-bodies are expected to override.
-        /// </remarks>
         private protected virtual void GenerateAlbedo() => Albedo = 0;
 
         /// <summary>
@@ -173,26 +112,8 @@ namespace WorldFoundry.CelestialBodies
         /// </summary>
         private double GetAverageBlackbodySurfaceTemperature()
             => Orbit == null
-                ? GetSurfaceTemperature()
+                ? GetSurfaceTemperatureAtPosition(Position)
                 : ((SurfaceTemperatureAtPeriapsis * (1 + Orbit.Eccentricity)) + (SurfaceTemperatureAtApoapsis * (1 - Orbit.Eccentricity))) / 2.0;
-
-        /// <summary>
-        /// Calculates the insolation received by this <see cref="CelestialBody"/> at the given
-        /// position, in W/m².
-        /// </summary>
-        /// <param name="position">
-        /// A hypothetical position for this <see cref="CelestialBody"/> at which the insolation
-        /// will be calculated.
-        /// </param>
-        /// <returns>
-        /// The insolation received by this <see cref="CelestialBody"/> at the given position, in
-        /// W/m².
-        /// </returns>
-        private double GetInsolation(Vector3 position)
-            => Math.Pow(1 - Albedo, 0.25) * Parent
-                .GetAllChildren<Star>()
-                .Where(x => x != this)
-                .Sum(x => (x.Temperature ?? 0) * Math.Sqrt(x.Radius / (2 * Location.GetDistanceFromPositionTo(position, x.Location))));
 
         /// <summary>
         /// Calculates the heat added to this <see cref="CelestialBody"/> by insolation at the given
@@ -206,7 +127,11 @@ namespace WorldFoundry.CelestialBodies
         /// The heat added to this <see cref="CelestialBody"/> by insolation at the given position,
         /// in K.
         /// </returns>
-        private protected virtual double GetInsolationHeat(Vector3 position) => GetInsolation(position);
+        private double GetInsolationHeat(Vector3 position)
+            => Math.Pow(1 - Albedo, 0.25) * Parent
+                .GetAllChildren<Star>()
+                .Where(x => x != this)
+                .Sum(x => (x.Temperature ?? 0) * Math.Sqrt(x.Radius / (2 * Location.GetDistanceFromPositionTo(position, x.Location))));
 
         /// <summary>
         /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
@@ -239,6 +164,46 @@ namespace WorldFoundry.CelestialBodies
                 : Orbit.OrbitedObject.Position + (Vector3.UnitX * Orbit.Periapsis);
             return GetSurfaceTemperatureAtPosition(position);
         }
+
+        /// <summary>
+        /// Calculates the total average temperature of the <see cref="CelestialBody"/> as if this
+        /// object was at the specified position, including ambient heat of its parent and radiated
+        /// heat from all sibling objects, in K.
+        /// </summary>
+        /// <param name="position">
+        /// A hypothetical position for this <see cref="CelestialBody"/> at which its temperature
+        /// will be calculated.
+        /// </param>
+        /// <returns>
+        /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
+        /// in K.
+        /// </returns>
+        private protected double GetSurfaceTemperatureAtPosition(Vector3 position)
+            => (Temperature ?? 0) + GetInsolationHeat(position);
+
+        /// <summary>
+        /// Estimates the total average temperature of the <see cref="CelestialBody"/> as if this
+        /// object was at the specified true anomaly in its orbit, including ambient heat of its
+        /// parent and radiated heat from all sibling objects, in K. If the body is not in orbit,
+        /// returns the temperature at its current position.
+        /// </summary>
+        /// <param name="trueAnomaly">
+        /// A true anomaly at which its temperature will be calculated.
+        /// </param>
+        /// <returns>
+        /// The total average temperature of the <see cref="CelestialBody"/> at the given position,
+        /// in K.
+        /// </returns>
+        /// <remarks>
+        /// The estimation is performed by linear interpolation between the temperature at periapsis
+        /// and apoapsis, which is not necessarily accurate for highly elliptical orbits, or bodies
+        /// with multiple significant nearby heat sources, but it should be fairly accurate for
+        /// bodies in fairly circular orbits around heat sources which are all close to the center
+        /// of the orbit, and much faster for successive calls than calculating the temperature at
+        /// specific positions precisely.
+        /// </remarks>
+        private protected double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly)
+            => MathUtility.Lerp(SurfaceTemperatureAtPeriapsis, SurfaceTemperatureAtApoapsis, trueAnomaly);
 
         private protected virtual void ResetCachedTemperatures()
         {

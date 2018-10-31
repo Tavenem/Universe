@@ -4,7 +4,6 @@ using MathAndScience.Shapes;
 using Substances;
 using System;
 using WorldFoundry.Climate;
-using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
@@ -14,35 +13,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     /// </summary>
     public class Comet : Planetoid
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 25000;
+        internal const double Space = 25000;
 
-        private const string _baseTypeName = "Comet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Comet";
 
-        /// <summary>
-        /// The approximate rigidity of this <see cref="Planetoid"/>.
-        /// </summary>
-        public override double Rigidity => 4.0e9;
+        private protected override double Rigidity => 4.0e9;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/>.
         /// </summary>
-        public Comet() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Comet"/> is located.
-        /// </param>
-        public Comet(CelestialRegion parent) : base(parent) { }
+        internal Comet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
@@ -51,16 +31,37 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Comet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Comet"/>.</param>
-        public Comet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Comet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Determines an albedo for this <see cref="CelestialBody"/> (a value between 0 and 1).
-        /// </summary>
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.025, 0.055);
 
         /// <summary>
-        /// Generates an atmosphere for this <see cref="Planetoid"/>.
+        /// Determines an orbit for this <see cref="CelestialEntity"/>.
         /// </summary>
+        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
+        public override void GenerateOrbit(CelestialEntity orbitedObject)
+        {
+            if (orbitedObject == null)
+            {
+                return;
+            }
+
+            // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
+            // and have eccentricities which may either leave them there, or send them into the inner solar system.
+            var eccentricity = Randomizer.Instance.NextDouble();
+            var periapsis = (1 - eccentricity) / (1 + eccentricity) * Location.GetDistanceTo(orbitedObject);
+
+            Orbit.SetOrbit(
+                this,
+                orbitedObject,
+                periapsis,
+                eccentricity,
+                Randomizer.Instance.NextDouble(Math.PI),
+                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
+                Math.PI);
+        }
+
         private protected override void GenerateAtmosphere()
         {
             var dust = 1.0;
@@ -103,33 +104,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     (Chemical.HydrogenSulfide, Phase.Gas, h2s),
                     (Chemical.SulphurDioxide, Phase.Gas, so2)),
                 1e-8);
-        }
-
-        /// <summary>
-        /// Determines an orbit for this <see cref="Orbiter"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="Orbiter"/> which is to be orbited.</param>
-        public override void GenerateOrbit(Orbiter orbitedObject)
-        {
-            if (orbitedObject == null)
-            {
-                return;
-            }
-
-            // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
-            // and have eccentricities which may either leave them there, or send them into the inner solar system.
-            var eccentricity = Randomizer.Instance.NextDouble();
-            var periapsis = (1 - eccentricity) / (1 + eccentricity) * Location.GetDistanceTo(orbitedObject);
-
-            Orbit.SetOrbit(
-                this,
-                orbitedObject,
-                periapsis,
-                eccentricity,
-                Randomizer.Instance.NextDouble(Math.PI),
-                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
-                Math.PI);
         }
 
         private protected override IComposition GetComposition(double mass, IShape shape)

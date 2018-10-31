@@ -10,24 +10,12 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class SpiralGalaxy : Galaxy
     {
-        private const string _baseTypeName = "Spiral Galaxy";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Spiral Galaxy";
 
         /// <summary>
         /// Initializes a new instance of <see cref="SpiralGalaxy"/>.
         /// </summary>
-        public SpiralGalaxy() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="SpiralGalaxy"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="SpiralGalaxy"/> is located.
-        /// </param>
-        public SpiralGalaxy(CelestialRegion parent) : base(parent) { }
+        internal SpiralGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SpiralGalaxy"/> with the given parameters.
@@ -36,11 +24,8 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="SpiralGalaxy"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="SpiralGalaxy"/>.</param>
-        public SpiralGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal SpiralGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };

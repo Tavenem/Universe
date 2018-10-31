@@ -14,51 +14,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class OceanPlanet : TerrestrialPlanet
     {
-        private const bool _hasFlatSurface = true;
-        /// <summary>
-        /// Indicates that this <see cref="Planetoid"/>'s surface does not have elevation variations
-        /// (i.e. is non-solid). Prevents generation of a height map.
-        /// </summary>
-        public override bool HasFlatSurface => _hasFlatSurface;
+        private protected override bool HasFlatSurface => true;
 
-        /// <summary>
-        /// A factor which multiplies the chance of this <see cref="Planetoid"/> having a strong magnetosphere.
-        /// </summary>
-        /// <remarks>
-        /// The cores of ocean planets are liable to cool more rapidly than other planets of similar
-        /// size, reducing the chances of producing the required dynamo effect.
-        /// </remarks>
-        public override double MagnetosphereChanceFactor => 0.5;
+        private protected override double MagnetosphereChanceFactor => 0.5;
 
-        private const string _planemoClassPrefix = "Ocean";
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        public override string PlanemoClassPrefix => _planemoClassPrefix;
+        private protected override string PlanemoClassPrefix => "Ocean";
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/>.
         /// </summary>
-        public OceanPlanet() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
-        /// </param>
-        public OceanPlanet(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
-        /// </param>
-        /// <param name="maxMass">
-        /// The maximum mass allowed for this <see cref="OceanPlanet"/> during random generation, in kg.
-        /// </param>
-        public OceanPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
+        internal OceanPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
@@ -67,7 +32,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="OceanPlanet"/>.</param>
-        public OceanPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal OceanPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
@@ -79,7 +44,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="OceanPlanet"/> during random generation, in kg.
         /// </param>
-        public OceanPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal OceanPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.

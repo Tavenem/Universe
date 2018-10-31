@@ -5,7 +5,6 @@ using MathAndScience.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using WorldFoundry.Orbits;
 using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
@@ -13,46 +12,30 @@ namespace WorldFoundry.Space
     /// <summary>
     /// A discrete region of space bound together by gravity, but not a single body; such as a galaxy or star system.
     /// </summary>
-    public class CelestialRegion : Orbiter
+    public class CelestialRegion : CelestialEntity
     {
         private protected bool _isPrepopulated;
-
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public virtual IEnumerable<ChildDefinition> ChildDefinitions => Enumerable.Empty<ChildDefinition>();
-
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public virtual IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => null;
 
         /// <summary>
         /// The <see cref="CelestialRegion"/> children contained within this instance.
         /// </summary>
         public IEnumerable<CelestialEntity> Children => Location.Children.SelectNonNull(x => x.CelestialEntity);
 
+        private protected virtual IEnumerable<ChildDefinition> ChildDefinitions => Enumerable.Empty<ChildDefinition>();
+
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialRegion"/>.
         /// </summary>
-        public CelestialRegion() { }
+        internal CelestialRegion() { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="CelestialRegion"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialRegion"/> is located.
-        /// </param>
-        public CelestialRegion(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="CelestialRegion"/> with the given parameters.
+        /// Initializes a new instance of <see cref="CelestialRegion"/>.
         /// </summary>
         /// <param name="parent">
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialRegion"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialRegion"/>.</param>
-        public CelestialRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal CelestialRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Enumerates all the <see cref="CelestialEntity"/> descendant children instances in this
@@ -200,11 +183,11 @@ namespace WorldFoundry.Space
 
         internal virtual void PrepopulateRegion() => _isPrepopulated = true;
 
-        internal virtual Orbiter GenerateChild(ChildDefinition definition)
+        internal virtual CelestialEntity GenerateChild(ChildDefinition definition)
             => definition.GenerateChild(this);
 
         private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
-            => _location = new Region(this, parent?.Location, new SinglePoint(position ?? Vector3.Zero));
+            => Location = new Region(this, parent?.Location, new SinglePoint(position ?? Vector3.Zero));
 
         private void PopulateLocation(Location location)
         {

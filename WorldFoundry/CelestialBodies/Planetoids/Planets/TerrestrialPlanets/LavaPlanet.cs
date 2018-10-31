@@ -12,54 +12,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// </summary>
     public class LavaPlanet : TerrestrialPlanet
     {
-        /// <summary>
-        /// Used to allow or prevent water in the composition and atmosphere of a terrestrial planet.
-        /// </summary>
-        /// <remarks>
-        /// Unable to have water due to extreme temperature.
-        /// </remarks>
-        protected override bool CanHaveWater => false;
+        private protected override bool CanHaveWater => false;
 
-        internal new static int _maxSatellites = 0;
-        /// <summary>
-        /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
-        /// actual number is determined by the orbital characteristics of the satellites it actually has.
-        /// </summary>
-        /// <remarks>
-        /// Lava planets have no satellites; whatever forces have caused their surface trauma should
-        /// also inhibit stable satellite orbits.
-        /// </remarks>
-        public override int MaxSatellites => _maxSatellites;
+        private protected override int MaxSatellites => 0;
 
-        private const string _planemoClassPrefix = "Lava";
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        public override string PlanemoClassPrefix => _planemoClassPrefix;
+        private protected override string PlanemoClassPrefix => "Lava";
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/>.
         /// </summary>
-        public LavaPlanet() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
-        /// </param>
-        public LavaPlanet(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
-        /// </param>
-        /// <param name="maxMass">
-        /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
-        /// </param>
-        public LavaPlanet(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
+        internal LavaPlanet() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
@@ -68,7 +30,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
-        public LavaPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal LavaPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
@@ -80,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
         /// </param>
-        public LavaPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal LavaPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         private protected override IEnumerable<(IComposition, double)> GetCrust()
         {

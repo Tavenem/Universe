@@ -60,30 +60,15 @@ namespace WorldFoundry.Space.Galaxies
             new ChildDefinition(typeof(PlanetaryNebula), PlanetaryNebula.Space, ChildDensity * 3e-8),
         };
 
-        private const string _baseTypeName = "Elliptical Galaxy";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Elliptical Galaxy";
 
-        /// <summary>
-        /// The types of children found in this region.
-        /// </summary>
-        public override IEnumerable<ChildDefinition> ChildDefinitions
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="EllipticalGalaxy"/>.
         /// </summary>
-        public EllipticalGalaxy() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="EllipticalGalaxy"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="EllipticalGalaxy"/> is located.
-        /// </param>
-        public EllipticalGalaxy(CelestialRegion parent) : base(parent) { }
+        internal EllipticalGalaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="EllipticalGalaxy"/> with the given parameters.
@@ -92,11 +77,8 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="EllipticalGalaxy"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="EllipticalGalaxy"/>.</param>
-        public EllipticalGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal EllipticalGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
         {
             Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };

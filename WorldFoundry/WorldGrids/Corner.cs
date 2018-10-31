@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using MathAndScience.Numerics;
 
 namespace WorldFoundry.WorldGrids

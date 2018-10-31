@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using MathAndScience.Numerics;
 using System.Text;
-using WorldFoundry.Orbits;
 using WorldFoundry.Space;
 using Substances;
 
@@ -15,45 +14,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
     /// </summary>
     public class Planemo : Planetoid
     {
-        private const double CoreProportion = 0.15;
         private const double IcyRingDensity = 300.0;
         private const double RockyRingDensity = 1380.0;
 
-        private const string _baseTypeName = "Planet";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
-
-        internal new static int _maxSatellites = 5;
-        /// <summary>
-        /// The upper limit on the number of satellites this <see cref="Planetoid"/> might have. The
-        /// actual number is determined by the orbital characteristics of the satellites it actually has.
-        /// </summary>
-        /// <remarks>
-        /// Set to 5 for <see cref="Planemo"/>. For reference, Pluto has 5 moons, the most of any
-        /// planemo in the Solar System apart from the giants. No others are known to have more than 2.
-        /// </remarks>
-        public override int MaxSatellites => _maxSatellites;
-
-        /// <summary>
-        /// A prefix to the <see cref="CelestialEntity.TypeName"/> for this class of <see cref="Planemo"/>.
-        /// </summary>
-        /// <remarks>
-        /// Null in the base class; subclasses may hide when appropriate.
-        /// </remarks>
-        public virtual string PlanemoClassPrefix => null;
-
-        internal static double _ringChance = 0;
-        /// <summary>
-        /// The chance that this <see cref="Planemo"/> will have rings, as a rate between 0.0 and 1.0.
-        /// </summary>
-        /// <remarks>Zero on the base class; subclasses may hide when appropriate.</remarks>
-        protected virtual double RingChance => _ringChance;
-
         private List<PlanetaryRing> _rings;
         /// <summary>
-        /// The collection of <see cref="PlanetaryRing"/>s around this <see cref="Planemo"/>.
+        /// The collection of rings around this <see cref="Planemo"/>.
         /// </summary>
         public List<PlanetaryRing> Rings
         {
@@ -61,7 +27,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             {
                 if (_rings == null)
                 {
-                    _rings = new List<PlanetaryRing>();
                     GenerateRings();
                 }
                 return _rings;
@@ -98,29 +63,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             }
         }
 
+        private protected override string BaseTypeName => "Planet";
+
+        // Set to 5 for Planemo. For reference, Pluto has 5 moons, the most of any
+        // planemo in the Solar System apart from the giants. No others are known to have more than 2.
+        private protected override int MaxSatellites => 5;
+
+        private protected virtual string PlanemoClassPrefix => null;
+
+        private protected virtual double RingChance => 0;
+
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/>.
         /// </summary>
-        public Planemo() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
-        /// </param>
-        public Planemo(CelestialRegion parent) : base(parent) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
-        /// </param>
-        /// <param name="maxMass">
-        /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
-        /// </param>
-        public Planemo(CelestialRegion parent, double maxMass) : base(parent, maxMass) { }
+        internal Planemo() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
@@ -129,7 +85,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        public Planemo(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Planemo(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
@@ -141,16 +97,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        public Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
-        /// Determines an orbit for this <see cref="Orbiter"/>.
+        /// Determines an orbit for this <see cref="CelestialEntity"/>.
         /// </summary>
-        /// <param name="orbitedObject">The <see cref="Orbiter"/> which is to be orbited.</param>
+        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
         /// <remarks>
         /// In the base class, always generates a circular orbit; subclasses are expected to override.
         /// </remarks>
-        public override void GenerateOrbit(Orbiter orbitedObject)
+        public override void GenerateOrbit(CelestialEntity orbitedObject)
         {
             if (orbitedObject == null)
             {
@@ -168,14 +124,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
         }
 
-        /// <summary>
-        /// Generates the ring system around this <see cref="Planemo"/>, if any.
-        /// </summary>
         private protected void GenerateRings()
         {
+            _rings = new List<PlanetaryRing>();
+
             var innerLimit = Atmosphere == null ? 0 : Atmosphere.AtmosphericHeight;
 
-            var outerLimit_Icy = GetRingDistance_Icy();
+            var outerLimit_Icy = GetRingDistance(IcyRingDensity);
             if (Orbit != null)
             {
                 outerLimit_Icy = Math.Min(outerLimit_Icy, Orbit.GetHillSphereRadius() / 3.0);
@@ -185,7 +140,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 return;
             }
 
-            var outerLimit_Rocky = GetRingDistance_Rocky();
+            var outerLimit_Rocky = GetRingDistance(RockyRingDensity);
             if (Orbit != null)
             {
                 outerLimit_Rocky = Math.Min(outerLimit_Rocky, Orbit.GetHillSphereRadius() / 3.0);
@@ -255,15 +210,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             yield return (new Material(Chemical.Rock, Phase.Solid), 1);
         }
 
-        /// <summary>
-        /// Randomly determines the proportionate amount of the composition devoted to the core of a
-        /// <see cref="Planemo"/>.
-        /// </summary>
-        /// <param name="mass">The mass of the <see cref="Planemo"/>.</param>
-        /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        /// <remarks>The base class returns a flat ratio; subclasses are expected to override as
-        /// needed.</remarks>
-        private protected virtual double GetCoreProportion(double mass) => CoreProportion;
+        private protected virtual double GetCoreProportion(double mass) => 0.15;
 
         private protected virtual IEnumerable<(IComposition, double)> GetCrust()
         {
@@ -326,14 +273,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             yield return (crust, 1);
         }
 
-        /// <summary>
-        /// Randomly determines the proportionate amount of the composition devoted to the crust of
-        /// a <see cref="Planemo"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Planemo"/></param>
-        /// <returns>A proportion, from 0.0 to 1.0.</returns>
-        /// <remarks>Smaller <see cref="Planemo"/> objects have thicker crusts due to faster
-        /// proto-planetary cooling.</remarks>
+        // Smaller planemos have thicker crusts due to faster proto-planetary cooling.
         private protected virtual double GetCrustProportion(IShape shape) => 400000.0 / Math.Pow(shape.ContainingRadius, 1.6);
 
         private protected IComposition GetIronNickelCore()
@@ -374,12 +314,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             return (mass, GetShape(mass));
         }
 
-        /// <summary>
-        /// Determines the maximum radius allowed for this <see cref="Planemo"/>, given its <see
-        /// cref="Planetoid.Density"/> and maximum mass.
-        /// </summary>
-        /// <returns>The maximum radius allowed for this <see cref="Planemo"/>.</returns>
-        internal double GetMaxRadius() => GetRadiusForMass(MaxMassForType ?? double.PositiveInfinity);
+        private protected double GetMaxRadius() => MaxMassForType.HasValue ? GetRadiusForMass(MaxMassForType.Value) : double.PositiveInfinity;
 
         private double GetRadiusForMass(double mass) => Math.Pow(mass / Density / MathConstants.FourThirdsPI, 1.0 / 3.0);
 
@@ -391,18 +326,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <returns>The approximate outer distance at which rings of the given density may be
         /// found, in meters.</returns>
         private double GetRingDistance(double density) => 1.26 * Radius * Math.Pow(Density / density, 1.0 / 3.0);
-
-        /// <summary>
-        /// Calculates the approximate outer distance at which ice rings may be found, in meters.
-        /// </summary>
-        /// <returns>The approximate outer distance at which ice rings may be found, in meters.</returns>
-        private protected double GetRingDistance_Icy() => GetRingDistance(IcyRingDensity);
-
-        /// <summary>
-        /// Calculates the approximate outer distance at which rocky rings may be found, in meters.
-        /// </summary>
-        /// <returns>The approximate outer distance at which rocky rings may be found, in meters.</returns>
-        private protected double GetRingDistance_Rocky() => GetRingDistance(RockyRingDensity);
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {

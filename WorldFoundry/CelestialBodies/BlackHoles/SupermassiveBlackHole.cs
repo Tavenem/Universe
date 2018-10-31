@@ -8,24 +8,12 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
     /// </summary>
     public class SupermassiveBlackHole : BlackHole
     {
-        private const string _baseTypeName = "Supermassive Black Hole";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private protected override string BaseTypeName => "Supermassive Black Hole";
 
         /// <summary>
         /// Initializes a new instance of <see cref="SupermassiveBlackHole"/>.
         /// </summary>
-        public SupermassiveBlackHole() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="SupermassiveBlackHole"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="SupermassiveBlackHole"/> is located.
-        /// </param>
-        public SupermassiveBlackHole(CelestialRegion parent) : base(parent) { }
+        internal SupermassiveBlackHole() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SupermassiveBlackHole"/> with the given parameters.
@@ -34,14 +22,8 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="SupermassiveBlackHole"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="SupermassiveBlackHole"/>.</param>
-        public SupermassiveBlackHole(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal SupermassiveBlackHole(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the mass of this <see cref="BlackHole"/>.
-        /// </summary>
-        /// <remarks>
-        /// ~10e5–10e10 solar masses
-        /// </remarks>
-        private protected override double GenerateMass() => Randomizer.Instance.NextDouble(2.0e35, 2.0e40);
+        private protected override double GenerateMass() => Randomizer.Instance.NextDouble(2.0e35, 2.0e40); // ~10e5–10e10 solar masses
     }
 }

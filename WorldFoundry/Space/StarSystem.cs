@@ -11,7 +11,6 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Orbits;
 using WorldFoundry.Space.AsteroidFields;
 using WorldFoundry.Substances;
 
@@ -22,17 +21,7 @@ namespace WorldFoundry.Space
     /// </summary>
     public class StarSystem : CelestialRegion
     {
-        /// <summary>
-        /// The radius of the maximum space required by this type of <see cref="CelestialEntity"/>,
-        /// in meters.
-        /// </summary>
-        public const double Space = 3.5e16;
-
-        private const string _baseTypeName = "Star System";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        internal const double Space = 3.5e16;
 
         private string _name;
         /// <summary>
@@ -44,11 +33,11 @@ namespace WorldFoundry.Space
         /// </remarks>
         public override string Name
         {
-            get => string.IsNullOrEmpty(_name)
-                ? Stars?.Where(x => !string.IsNullOrEmpty(x.Name)).FirstOrDefault()?.Name
-                : _name;
+            get => _name ?? Stars?.Where(x => !string.IsNullOrEmpty(x.Name)).FirstOrDefault()?.Name;
             set => _name = value;
         }
+
+        private protected override string BaseTypeName => "Star System";
 
         /// <summary>
         /// The <see cref="Star"/>s in this <see cref="StarSystem"/>.
@@ -83,7 +72,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/>.
         /// </summary>
-        public StarSystem() { }
+        internal StarSystem() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
@@ -105,7 +94,7 @@ namespace WorldFoundry.Space
         /// Set to true if the <see cref="Star"/> to include in this <see cref="StarSystem"/> is to
         /// be a Population II <see cref="Star"/>.
         /// </param>
-        public StarSystem(
+        internal StarSystem(
             CelestialRegion parent,
             Vector3 position,
             Type starType,
@@ -121,7 +110,7 @@ namespace WorldFoundry.Space
         /// </param>
         /// <param name="position">The initial position of this <see cref="StarSystem"/>.</param>
         /// <param name="starType">The type of <see cref="Star"/> to include in this <see cref="StarSystem"/>.</param>
-        public StarSystem(
+        internal StarSystem(
             CelestialRegion parent,
             Vector3 position,
             Type starType) : base(parent, position) => GenerateStars(starType, null, null, false);
@@ -138,7 +127,7 @@ namespace WorldFoundry.Space
         /// Set to true if the <see cref="Star"/> to include in this <see cref="StarSystem"/> is to
         /// be a Population II <see cref="Star"/>.
         /// </param>
-        public StarSystem(
+        internal StarSystem(
             CelestialRegion parent,
             Vector3 position,
             Type starType,
@@ -160,7 +149,7 @@ namespace WorldFoundry.Space
         /// The <see cref="LuminosityClass"/> of the <see cref="Star"/> to include in this <see
         /// cref="StarSystem"/> (if null, will be pseudo-randomly determined).
         /// </param>
-        public StarSystem(
+        internal StarSystem(
             CelestialRegion parent,
             Vector3 position,
             Type starType,
@@ -210,10 +199,10 @@ namespace WorldFoundry.Space
             double semiMajorAxis,
             double periapsis,
             double apoapsis)> companions,
-            Star orbiter,
+            Star CelestialEntity,
             double value)
         {
-            var match = companions.FirstOrNull(x => x.star == orbiter);
+            var match = companions.FirstOrNull(x => x.star == CelestialEntity);
             if (match != null)
             {
                 value += match.Value.apoapsis;
@@ -707,9 +696,6 @@ namespace WorldFoundry.Space
             return 0;
         }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
         private protected override void GenerateSubstance()
             => Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
 
@@ -793,7 +779,7 @@ namespace WorldFoundry.Space
 
             // The maximum mass and density are used to calculate an outer Roche limit (may not be
             // the actual Roche limit for the body which gets generated).
-            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet._maxDensity));
+            var minGiantPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(GiantPlanet.MaxDensity));
             var minTerrestialPeriapsis = Math.Max(minPeriapsis ?? 0, star.GetRocheLimit(TerrestrialPlanet._maxDensity));
 
             // If the calculated minimum and maximum orbits indicates that no stable orbits are
@@ -976,13 +962,13 @@ namespace WorldFoundry.Space
                 maxApoapsis = star.Orbit.GetHillSphereRadius() * 1 / 3;
             }
 
-            foreach (var orbiter in Stars.Where(s => s.Orbit != null && s.Orbit.OrbitedObject == star))
+            foreach (var CelestialEntity in Stars.Where(s => s.Orbit != null && s.Orbit.OrbitedObject == star))
             {
                 // If a star is orbiting within ~100 AU, it is considered too close for planets to
                 // orbit in between, and orbits are only considered around them as a pair.
-                if (orbiter.Orbit.Periapsis <= 1.5e13)
+                if (CelestialEntity.Orbit.Periapsis <= 1.5e13)
                 {
-                    minPeriapsis = orbiter.Orbit.GetHillSphereRadius() * 20;
+                    minPeriapsis = CelestialEntity.Orbit.GetHillSphereRadius() * 20;
                     // Clear the maxApoapsis if it's within this outer orbit.
                     if (maxApoapsis.HasValue && maxApoapsis < minPeriapsis)
                     {
@@ -991,7 +977,7 @@ namespace WorldFoundry.Space
                 }
                 else
                 {
-                    var candidateMaxApoapsis = (orbiter.Orbit.Periapsis - orbiter.Orbit.GetHillSphereRadius()) * 1 / 3;
+                    var candidateMaxApoapsis = (CelestialEntity.Orbit.Periapsis - CelestialEntity.Orbit.GetHillSphereRadius()) * 1 / 3;
                     if (maxApoapsis.HasValue && maxApoapsis.Value < candidateMaxApoapsis)
                     {
                         candidateMaxApoapsis = maxApoapsis.Value;
@@ -1022,12 +1008,12 @@ namespace WorldFoundry.Space
             {
                 if (numGiants > 0)
                 {
-                    planet = new GiantPlanet(this);
+                    planet = new GiantPlanet(this, Vector3.Zero);
                     numGiants--;
                 }
                 else
                 {
-                    planet = new IceGiant(this);
+                    planet = new IceGiant(this, Vector3.Zero);
                     numIceGiants--;
                 }
             }
@@ -1037,12 +1023,12 @@ namespace WorldFoundry.Space
                 var chance = Randomizer.Instance.NextDouble();
                 if (numGiants > 0 && (numTerrestrials + numIceGiants == 0 || chance <= 0.333333))
                 {
-                    planet = new GiantPlanet(this);
+                    planet = new GiantPlanet(this, Vector3.Zero);
                     numGiants--;
                 }
                 else if (numIceGiants > 0 && (numTerrestrials == 0 || chance <= (numGiants > 0 ? 0.666666 : 0.5)))
                 {
-                    planet = new IceGiant(this);
+                    planet = new IceGiant(this, Vector3.Zero);
                     numIceGiants--;
                 }
                 // If a terrestrial planet is to be generated, the exact type will be determined later.
