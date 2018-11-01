@@ -9,7 +9,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// <summary>
     /// A set of parameters which constrains the random generation of a <see cref="TerrestrialPlanet"/>.
     /// </summary>
-    public class TerrestrialPlanetParams
+    public struct TerrestrialPlanetParams
     {
         /// <summary>
         /// The default atmospheric pressure, used if none is specified, in kPa.
@@ -71,72 +71,72 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// The target atmospheric pressure, in kPa.
         /// </summary>
-        public double? AtmosphericPressure { get; set; }
+        public double? AtmosphericPressure { get; }
 
         /// <summary>
         /// All atmospheric requirements.
         /// </summary>
-        public IList<Requirement> AtmosphericRequirements { get; set; }
+        public IList<Requirement> AtmosphericRequirements { get; }
 
         /// <summary>
         /// The target axial tilt, in radians.
         /// </summary>
-        public double? AxialTilt { get; set; }
+        public double? AxialTilt { get; }
 
         /// <summary>
         /// The target orbital eccentricity.
         /// </summary>
-        public double? Eccentricity { get; set; }
+        public double? Eccentricity { get; }
 
         /// <summary>
         /// The target grid size (level of detail).
         /// </summary>
-        public byte? GridSize { get; set; }
+        public byte? GridSize { get; }
 
         /// <summary>
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
-        public bool? HasMagnetosphere { get; set; }
+        public bool? HasMagnetosphere { get; }
 
         /// <summary>
         /// The maximum generated grid size (level of detail).
         /// </summary>
-        public int? MaxGridSize { get; set; }
+        public int? MaxGridSize { get; }
 
         /// <summary>
         /// The target radius, in meters.
         /// </summary>
-        public int? Radius { get; set; }
+        public int? Radius { get; }
 
         /// <summary>
         /// The target revolution period, in seconds.
         /// </summary>
-        public double? RevolutionPeriod { get; set; }
+        public double? RevolutionPeriod { get; }
 
         /// <summary>
         /// The target rotational period, in seconds.
         /// </summary>
-        public double? RotationalPeriod { get; set; }
+        public double? RotationalPeriod { get; }
 
         /// <summary>
         /// The target surface gravity, in m/s².
         /// </summary>
-        public double? SurfaceGravity { get; set; }
+        public double? SurfaceGravity { get; }
 
         /// <summary>
         /// The target surface temperature, in K.
         /// </summary>
-        public double? SurfaceTemperature { get; set; }
+        public double? SurfaceTemperature { get; }
 
         /// <summary>
         /// The target ratio of water to land on the surface.
         /// </summary>
-        public double? WaterRatio { get; set; }
+        public double? WaterRatio { get; }
 
         /// <summary>
         /// The target mass fraction of water in the atmosphere.
         /// </summary>
-        public double? WaterVaporRatio { get; set; }
+        public double? WaterVaporRatio { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanetParams"/> with the given values.

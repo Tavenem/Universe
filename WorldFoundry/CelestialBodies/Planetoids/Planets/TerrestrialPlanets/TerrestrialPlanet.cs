@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         private static readonly double LowTemp = Chemical.Water.MeltingPoint - 16;
 
         private HabitabilityRequirements? _habitabilityRequirements;
-        private TerrestrialPlanetParams _planetParams;
+        private TerrestrialPlanetParams? _planetParams;
 
         /// <summary>
         /// Indicates whether or not this planet has a native population of living organisms.
@@ -167,7 +167,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         internal TerrestrialPlanet(
             CelestialRegion parent,
             Vector3 position,
-            TerrestrialPlanetParams planetParams = null,
+            TerrestrialPlanetParams? planetParams = null,
             HabitabilityRequirements? requirements = null) : base(parent, position)
         {
             _habitabilityRequirements = requirements;
@@ -175,19 +175,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// A shortcut constructor: given a star, generates a terrestrial planet with default
-        /// parameters and human habiltability requirements, and puts the planet in orbit around the star.
+        /// Given a star, generates a terrestrial planet with the given parameters, and puts the
+        /// planet in orbit around the star.
         /// </summary>
         /// <param name="star">
-        /// A star which the new planet will orbit, at a distance suitable for human habitability.
+        /// A star which the new planet will orbit, at a distance suitable for habitability.
         /// </param>
         /// <param name="planetParams">
         /// A set of <see cref="TerrestrialPlanetParams"/>. If omitted, the defaults will be used.
         /// </param>
-        /// <returns>A human-habitable planet with default parameters.</returns>
-        public static TerrestrialPlanet DefaultHumanPlanetForStar(Star star, TerrestrialPlanetParams planetParams = null)
+        /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
+        /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
+        /// used.</param>
+        /// <returns>A planet with the given parameters.</returns>
+        public static TerrestrialPlanet GetPlanetForStar(
+            Star star,
+            TerrestrialPlanetParams? planetParams = null,
+            HabitabilityRequirements? habitabilityRequirements = null)
         {
             TerrestrialPlanet planet = null;
+            var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
             var sanityCheck = 0;
             do
             {
@@ -195,11 +202,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     star?.Parent,
                     Vector3.Zero,
                     planetParams ?? TerrestrialPlanetParams.FromDefaults(),
-                    TerrestrialPlanets.HabitabilityRequirements.HumanHabitabilityRequirements);
+                    requirements);
                 planet.GenerateOrbit(star);
 
                 sanityCheck++;
-                if (planet.IsHabitable(TerrestrialPlanets.HabitabilityRequirements.HumanHabitabilityRequirements, out var reason))
+                if (planet.IsHabitable(requirements, out var reason))
                 {
                     break;
                 }
@@ -212,13 +219,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         }
 
         /// <summary>
-        /// A shortcut constructor: generates a terrestrial planet with default parameters and human
-        /// habiltability requirements orbiting a Sol-like star in a new system in the given galaxy.
+        /// Given a galaxy, generates a terrestrial planet with the given parameters, orbiting a
+        /// Sol-like star in a new system in the given galaxy.
         /// </summary>
         /// <param name="galaxy">A galaxy in which to situate the new planet.</param>
-        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
-        /// <returns>A human-habitable planet with default parameters.</returns>
-        public static TerrestrialPlanet DefaultHumanPlanetForGalaxy(Galaxy galaxy, TerrestrialPlanetParams planetParams = null)
+        /// <param name="planetParams">
+        /// A set of <see cref="TerrestrialPlanetParams"/>. If omitted, the defaults will be used.
+        /// </param>
+        /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
+        /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
+        /// used.</param>
+        /// <returns>A planet with the given parameters.</returns>
+        public static TerrestrialPlanet GetPlanetForGalaxy(
+            Galaxy galaxy,
+            TerrestrialPlanetParams? planetParams = null,
+            HabitabilityRequirements? habitabilityRequirements = null)
         {
             StarSystem system = null;
             do
@@ -226,34 +241,49 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 system = galaxy?.GenerateChild(new ChildDefinition(typeof(StarSystem), StarSystem.Space, 1, typeof(Star), SpectralClass.G, LuminosityClass.V)) as StarSystem;
             } while (system.Stars.Count > 1); // Prevent binary systems, which will interfere with the temperature-balancing logic.
             var star = system?.Stars.FirstOrDefault();
-            return DefaultHumanPlanetForStar(star, planetParams);
+            return GetPlanetForStar(star, planetParams, habitabilityRequirements);
         }
 
         /// <summary>
-        /// A shortcut constructor: generates a terrestrial planet with default parameters and human
-        /// habiltability requirements orbiting a Sol-like star in a new spiral galaxy in the given universe.
+        /// Given a universe, generates a terrestrial planet with the given parameters, orbiting a
+        /// Sol-like star in a new spiral galaxy in the given universe.
         /// </summary>
         /// <param name="universe">A universe in which to situate the new planet.</param>
-        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
-        /// <returns>A human-habitable planet with default parameters.</returns>
-        public static TerrestrialPlanet DefaultHumanPlanetForUniverse(Universe universe, TerrestrialPlanetParams planetParams = null)
+        /// <param name="planetParams">
+        /// A set of <see cref="TerrestrialPlanetParams"/>. If omitted, the defaults will be used.
+        /// </param>
+        /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
+        /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
+        /// used.</param>
+        /// <returns>A planet with the given parameters.</returns>
+        public static TerrestrialPlanet GetPlanetForUniverse(
+            Universe universe,
+            TerrestrialPlanetParams? planetParams = null,
+            HabitabilityRequirements? habitabilityRequirements = null)
         {
             var gsc = universe?.GenerateChild(new ChildDefinition(typeof(GalaxySupercluster), GalaxySupercluster.Space, 1)) as GalaxySupercluster;
             var gc = gsc?.GenerateChild(new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, 1)) as GalaxyCluster;
             var gg = gc?.GenerateChild(new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, 1)) as GalaxyGroup;
             gg?.PrepopulateRegion();
             var gsg = gg?.Children.FirstOrDefault(x => x is GalaxySubgroup) as GalaxySubgroup;
-            return DefaultHumanPlanetForGalaxy(gsg?.MainGalaxy, planetParams);
+            return GetPlanetForGalaxy(gsg?.MainGalaxy, planetParams, habitabilityRequirements);
         }
 
         /// <summary>
-        /// A shortcut constructor: generates a terrestrial planet with default parameters and human
-        /// habiltability requirements orbiting a Sol-like star in a spiral galaxy in a new universe.
+        /// Generates a terrestrial planet with the given parameters, orbiting a Sol-like star in a
+        /// spiral galaxy in a new universe.
         /// </summary>
-        /// <param name="planetParams">Any parameters which specify the conditions of the planet to be generated.</param>
-        /// <returns>A human-habitable planet with default parameters.</returns>
-        public static TerrestrialPlanet DefaultHumanPlanetNewUniverse(TerrestrialPlanetParams planetParams = null)
-            => DefaultHumanPlanetForUniverse(Universe.New(), planetParams);
+        /// <param name="planetParams">
+        /// A set of <see cref="TerrestrialPlanetParams"/>. If omitted, the defaults will be used.
+        /// </param>
+        /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
+        /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
+        /// used.</param>
+        /// <returns>A planet with the given parameters.</returns>
+        public static TerrestrialPlanet GetPlanetForNewUniverse(
+            TerrestrialPlanetParams? planetParams = null,
+            HabitabilityRequirements? habitabilityRequirements = null)
+            => GetPlanetForUniverse(Universe.New(), planetParams, habitabilityRequirements);
 
         private static IComposition ReduceCO2(IComposition composition)
         {
@@ -300,7 +330,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (_planetParams?.Eccentricity.HasValue == true)
             {
-                Eccentricity = _planetParams.Eccentricity.Value;
+                Eccentricity = _planetParams.Value.Eccentricity.Value;
             }
 
             var ta = Randomizer.Instance.NextDouble(MathConstants.TwoPI);
@@ -308,7 +338,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (_planetParams?.RevolutionPeriod.HasValue == true)
             {
-                semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, _planetParams.RevolutionPeriod.Value);
+                semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, _planetParams.Value.RevolutionPeriod.Value);
                 GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta);
             }
 
@@ -320,7 +350,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var targetTemp = 250.0;
                 if (_planetParams?.SurfaceTemperature.HasValue == true)
                 {
-                    targetTemp = _planetParams.SurfaceTemperature.Value;
+                    targetTemp = _planetParams.Value.SurfaceTemperature.Value;
                 }
                 else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
                 {
@@ -404,81 +434,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <returns>A <see cref="WorldGrid"/> instance depicting the topology of this
         /// planet.</returns>
         public override WorldGrid GetGrid() => GetGrid(_planetParams?.GridSize ?? WorldGrid.DefaultGridSize);
-
-        /// <summary>
-        /// Determines the average precipitation at the given <paramref name="position"/> under the
-        /// given conditions, over the given duration, in mm.
-        /// </summary>
-        /// <param name="position">The position on the planet's surface at which to determine
-        /// precipitation.</param>
-        /// <param name="seasonalLatitude">The "seasonal" latitude of the position relative to the
-        /// solar equator, rather than the rotational equator.</param>
-        /// <param name="temperature">The current surface temperature at the position.</param>
-        /// <param name="proportionOfYear">The proportion of the year over which to determine
-        /// precipitation.</param>
-        /// <param name="snow">
-        /// <para>
-        /// When the method returns, will be set to the amount of snow which falls. Note that this
-        /// amount <i>replaces</i> any precipitation that would have fallen as rain; the return
-        /// value is to be considered a water-equivalent total value which is equal to the snow.
-        /// </para>
-        /// </param>
-        /// <returns>The average precipitation at the given <paramref name="position"/> and time of
-        /// year, given the specified conditions, in mm.</returns>
-        public double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
-        {
-            snow = 0;
-
-            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
-
-            var v = position * 100;
-
-            // Noise map with smooth, broad areas. Random range ~-0.8-1.
-            var r1 = 0.1 + (Noise2.GetNoise(v.X, v.Y, v.Z) * 0.9);
-
-            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
-            var r2 = Math.Abs((Noise1.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
-
-            // Combined map is noise with broad similarity over regions, and minor local
-            // diversity, with range of ~-1-1.
-            var r = r1 * r2;
-
-            // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
-            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
-            // the polar deserts.
-            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
-            if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
-            {
-                hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
-                HadleyValues.Add(roundedAbsLatitude, hadleyValue);
-            }
-
-            // Relative humidity is the Hadley cell value added to the random value, and cut off
-            // below 0. Range 0-~2.5.
-            var relativeHumidity = Math.Max(0, r + hadleyValue);
-
-            // In a band -16-+8K around freezing, the value is scaled down; below that range it is
-            // cut off completely; above it is unchanged.
-            relativeHumidity *= ((temperature - LowTemp) / 24).Clamp(0, 1);
-
-            if (relativeHumidity <= 0)
-            {
-                return 0;
-            }
-
-            // Scale by distance from target.
-            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.3) - 0.5)) + Math.Max(0, Math.Exp(relativeHumidity - 1.5) - 0.4);
-            factor *= factor;
-
-            var precipitation = avgPrecipitation * relativeHumidity * factor;
-
-            if (temperature <= Chemical.Water.MeltingPoint)
-            {
-                snow = precipitation * Atmosphere.SnowToRainRatio;
-            }
-
-            return precipitation;
-        }
 
         /// <summary>
         /// Determines the average precipitation at the given <paramref name="position"/> under the
@@ -650,7 +605,60 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return surfaceMapSet.Value;
         }
 
-        internal double GetHydrosphereAtmosphereRatio() => Math.Min(1, HydrosphereProportion * Mass / Atmosphere.Mass);
+        internal double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
+        {
+            snow = 0;
+
+            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
+
+            var v = position * 100;
+
+            // Noise map with smooth, broad areas. Random range ~-0.8-1.
+            var r1 = 0.1 + (Noise2.GetNoise(v.X, v.Y, v.Z) * 0.9);
+
+            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
+            var r2 = Math.Abs((Noise1.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
+
+            // Combined map is noise with broad similarity over regions, and minor local
+            // diversity, with range of ~-1-1.
+            var r = r1 * r2;
+
+            // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
+            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
+            // the polar deserts.
+            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
+            if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
+            {
+                hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
+                HadleyValues.Add(roundedAbsLatitude, hadleyValue);
+            }
+
+            // Relative humidity is the Hadley cell value added to the random value, and cut off
+            // below 0. Range 0-~2.5.
+            var relativeHumidity = Math.Max(0, r + hadleyValue);
+
+            // In a band -16-+8K around freezing, the value is scaled down; below that range it is
+            // cut off completely; above it is unchanged.
+            relativeHumidity *= ((temperature - LowTemp) / 24).Clamp(0, 1);
+
+            if (relativeHumidity <= 0)
+            {
+                return 0;
+            }
+
+            // Scale by distance from target.
+            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.3) - 0.5)) + Math.Max(0, Math.Exp(relativeHumidity - 1.5) - 0.4);
+            factor *= factor;
+
+            var precipitation = avgPrecipitation * relativeHumidity * factor;
+
+            if (temperature <= Chemical.Water.MeltingPoint)
+            {
+                snow = precipitation * Atmosphere.SnowToRainRatio;
+            }
+
+            return precipitation;
+        }
 
         internal bool GetSeaIce(double proportionOfYear, FloatRange seaIceRange)
             => !seaIceRange.IsZero
@@ -658,32 +666,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 ? proportionOfYear >= seaIceRange.Min || proportionOfYear <= seaIceRange.Max
                 : proportionOfYear >= seaIceRange.Min && proportionOfYear <= seaIceRange.Max);
 
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent sea ice in a location
-        /// with the given conditions.
-        /// </summary>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent sea ice in a location with the given conditions. The minimum
-        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
-        /// the proportion of the year when it stops.</returns>
         internal FloatRange GetSeaIceRange(double latitude, double elevation)
             => GetSeaIceRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation);
 
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent sea ice in a location
-        /// with the given conditions.
-        /// </summary>
-        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent sea ice in a location with the given conditions. The minimum
-        /// specifies the proportion of the year at which sea ice begins, and the maximum specifies
-        /// the proportion of the year when it stops.</returns>
         internal FloatRange GetSeaIceRange(FloatRange temperatureRange, double latitude, double elevation)
         {
             if (elevation > 0 || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
@@ -735,34 +720,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 ? proportionOfYear >= snowCoverRange.Min || proportionOfYear <= snowCoverRange.Max
                 : proportionOfYear >= snowCoverRange.Min && proportionOfYear <= snowCoverRange.Max);
 
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="position">The normalized position vector of the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
         internal FloatRange GetSnowCoverRange(Vector3 position, double latitude, double elevation)
             => GetSnowCoverRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation, GetPrecipitation(position, 1, out var _));
 
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <param name="humidityType">The <see cref="HumidityType"/> of the location.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
         internal FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, double annualPrecipitation)
             => GetSnowCoverRange(temperatureRange, latitude, elevation, ClimateTypes.GetHumidityType(annualPrecipitation));
 
@@ -979,7 +939,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // approximation of 25% average humidity overall is used.
             if (chemical == Chemical.Water && _planetParams?.WaterVaporRatio.HasValue == true)
             {
-                vaporProportion = _planetParams.WaterVaporRatio.Value;
+                vaporProportion = _planetParams.Value.WaterVaporRatio.Value;
             }
             else
             {
@@ -1249,7 +1209,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             else
             {
                 _axialPrecession = Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4);
-                var axialTilt = _planetParams.AxialTilt.Value;
+                var axialTilt = _planetParams.Value.AxialTilt.Value;
                 if (Orbit != null)
                 {
                     axialTilt += Orbit.Inclination;
@@ -1388,7 +1348,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double pressure;
             if (_planetParams?.AtmosphericPressure.HasValue == true)
             {
-                pressure = Math.Max(0, _planetParams.AtmosphericPressure.Value);
+                pressure = Math.Max(0, _planetParams.Value.AtmosphericPressure.Value);
             }
             else if (_habitabilityRequirements?.MinimumPressure.HasValue == true
                 || _habitabilityRequirements?.MaximumPressure.HasValue == true)
@@ -1988,9 +1948,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 1);
         }
 
-        /// <summary>
-        /// Generates an appropriate density for this <see cref="Planetoid"/>.
-        /// </summary>
         private protected override double? GetDensity()
         {
             if (_planetParams?.Radius.HasValue == true && _planetParams?.SurfaceGravity.HasValue == true)
@@ -2039,10 +1996,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * MathConstants.FourPI * ScienceConstants.sigma * areaRatio);
         }
 
-        /// <summary>
-        /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
-        /// </summary>
         private protected override bool GetHasMagnetosphere() => _planetParams?.HasMagnetosphere ?? base.GetHasMagnetosphere();
+
+        private double GetHydrosphereAtmosphereRatio() => Math.Min(1, HydrosphereProportion * Mass / Atmosphere.Mass);
 
         private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
         {
@@ -2087,7 +2043,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? gravity = null;
             if (_planetParams?.SurfaceGravity.HasValue == true)
             {
-                gravity = _planetParams.SurfaceGravity.Value;
+                gravity = _planetParams.Value.SurfaceGravity.Value;
             }
             else if (_habitabilityRequirements?.MinimumGravity.HasValue == true
                 || _habitabilityRequirements?.MaximumGravity.HasValue == true)
@@ -2109,7 +2065,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (_planetParams?.Radius.HasValue == true)
             {
-                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, _planetParams.Radius.Value));
+                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, _planetParams.Value.Radius.Value));
                 return (GetMass(gravity, shape), shape);
             }
             else if (_planetParams?.SurfaceGravity.HasValue == true
@@ -2126,44 +2082,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        /// <summary>
-        /// Calculates the mass required to produce the given surface gravity, if a shape is already
-        /// defined.
-        /// </summary>
-        /// <param name="shape">The defined shape.</param>
-        /// <param name="gravity">The desired surface gravity, in m/s².</param>
-        /// <returns>The mass required to produce the given surface gravity, in kg.</returns>
         private double GetMassForSurfaceGravity(IShape shape, double gravity)
             => gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
 
-        /// <summary>
-        /// Determines a rotational period for this <see cref="Planetoid"/>.
-        /// </summary>
         private protected override double GetRotationalPeriod()
             => _planetParams?.RotationalPeriod.HasValue == true
-                ? Math.Max(0, _planetParams.RotationalPeriod.Value)
+                ? Math.Max(0, _planetParams.Value.RotationalPeriod.Value)
                 : base.GetRotationalPeriod();
 
-        /// <summary>
-        /// Calculates the radius required to produce the given surface gravity, if mass is already defined.
-        /// </summary>
-        /// <param name="gravity">The desired surface gravity, in m/s².</param>
-        /// <returns>The radius required to produce the given surface gravity, in meters.</returns>
         private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt(Mass * ScienceConstants.G / gravity);
 
-        /// <summary>
-        /// Gets the proportion of the year during which there is persistent snow cover in a
-        /// location with the given conditions.
-        /// </summary>
-        /// <param name="temperatureRange">The range of temperatures found in the location.</param>
-        /// <param name="latitude">The latitude of the location, in radians.</param>
-        /// <param name="elevation">The elevation of the location above sea level, in
-        /// meters.</param>
-        /// <param name="humidityType">The <see cref="HumidityType"/> of the location.</param>
-        /// <returns>A <see cref="FloatRange"/> which specifies the proportion of the year during
-        /// which there is persistent snow cover in a location with the given conditions. The
-        /// minimum specifies the proportion of the year at which snow begins to cover the ground,
-        /// and the maximum specifies the proportion of the year when it stops.</returns>
         private FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, HumidityType humidityType)
         {
             if (elevation <= 0

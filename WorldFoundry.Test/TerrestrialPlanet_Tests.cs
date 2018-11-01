@@ -19,7 +19,7 @@ namespace WorldFoundry.Test
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
+            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var grid = planet.GetGrid();
@@ -37,7 +37,7 @@ namespace WorldFoundry.Test
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
+            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var grid = planet.GetGrid();
@@ -49,7 +49,7 @@ namespace WorldFoundry.Test
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
+            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var grid = planet.GetGrid();
@@ -79,7 +79,7 @@ namespace WorldFoundry.Test
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
 
-            var planet = TerrestrialPlanet.DefaultHumanPlanetNewUniverse(planetParams);
+            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
             var grid = planet.GetGrid();

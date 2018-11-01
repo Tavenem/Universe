@@ -10,7 +10,7 @@ using MathAndScience.Shapes;
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
-    /// A terrestrial planet with an unusually high concentration or carbon, rather than silicates,
+    /// A terrestrial planet with an unusually high concentration of carbon, rather than silicates,
     /// including such features as naturally-occurring steel, and diamond volcanoes.
     /// </summary>
     public class CarbonPlanet : TerrestrialPlanet
