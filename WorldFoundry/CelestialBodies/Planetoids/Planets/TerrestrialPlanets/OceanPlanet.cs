@@ -50,7 +50,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.
         /// </summary>
         /// <remarks>
-        /// Ocean planets have a thick hydrosphere layer generated as part of the <see cref="CelestialEntity.Substance"/>.
+        /// Ocean planets have a thick hydrosphere layer generated as part of the <see cref="CelestialBody.Substance"/>.
         /// </remarks>
         private protected override void GenerateHydrosphere() => GenerateSubstance();
 

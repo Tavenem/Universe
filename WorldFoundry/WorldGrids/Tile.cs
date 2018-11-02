@@ -5,7 +5,7 @@ using WorldFoundry.Climate;
 namespace WorldFoundry.WorldGrids
 {
     /// <summary>
-    /// Represents a tile on a <see cref="WorldGrids.WorldGrid"/>.
+    /// Represents a tile on a <see cref="WorldGrid"/>.
     /// </summary>
     public class Tile
     {

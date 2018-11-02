@@ -79,15 +79,11 @@ namespace WorldFoundry.Space.Galaxies
         /// <param name="position">The initial position of this <see cref="EllipticalGalaxy"/>.</param>
         internal EllipticalGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        private protected override void GenerateSubstance()
+        private protected override IShape GetShape()
         {
-            Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
-
             var radius = Randomizer.Instance.NextDouble(1.5e18, 1.5e21); // ~160–160000 ly
             var axis = radius * Randomizer.Instance.Normal(0.5, 1);
-            Shape = new Ellipsoid(radius, axis);
-
-            Substance.Mass = GenerateMass(Shape);
+            return new Ellipsoid(radius, axis, Position);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using MathAndScience.Numerics;
+using System;
 using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Space;
 
 namespace WorldFoundry.Place
 {
@@ -20,10 +20,7 @@ namespace WorldFoundry.Place
             set
             {
                 _elevation = value;
-                if (Planet != null)
-                {
-                    Position = Vector3.Normalize(Position) * (Planet.SeaLevel + Elevation);
-                }
+                Position = Vector3.Normalize(Position) * (Planet.SeaLevel + Elevation);
             }
         }
 
@@ -37,10 +34,7 @@ namespace WorldFoundry.Place
             set
             {
                 _latitude = value;
-                if (Planet != null)
-                {
-                    Position = Planet.LatitudeAndLongitudeToVector(value, Longitude);
-                }
+                Position = Planet.LatitudeAndLongitudeToVector(value, Longitude);
             }
         }
 
@@ -54,22 +48,18 @@ namespace WorldFoundry.Place
             set
             {
                 _longitude = value;
-                if (Planet != null)
-                {
-                    Position = Planet.LatitudeAndLongitudeToVector(Latitude, value);
-                }
+                Position = Planet.LatitudeAndLongitudeToVector(Latitude, value);
             }
         }
 
         /// <summary>
-        /// This <see cref="PlanetLocation"/>'s <see cref="Location.CelestialEntity"/>, as a <see
-        /// cref="Planetoid"/>.
+        /// The <see cref="Planetoid"/> on whose surface this <see cref="Location"/> is found.
         /// </summary>
-        public Planetoid Planet => CelestialEntity as Planetoid;
+        public Planetoid Planet { get; }
 
         private Vector3 _position;
         /// <summary>
-        /// The exact position within or on the <see cref="Place.Entity"/> represented by this <see cref="Location"/>.
+        /// The exact position within or on the <see cref="Planet"/> represented by this <see cref="Location"/>.
         /// </summary>
         public override Vector3 Position
         {
@@ -77,12 +67,9 @@ namespace WorldFoundry.Place
             set
             {
                 _position = value;
-                if (Planet != null)
-                {
-                    _latitude = Planet.VectorToLatitude(value);
-                    _longitude = Planet.VectorToLongitude(value);
-                    _elevation = value.Length() - Planet.SeaLevel;
-                }
+                _latitude = Planet.VectorToLatitude(value);
+                _longitude = Planet.VectorToLongitude(value);
+                _elevation = value.Length() - Planet.SeaLevel;
             }
         }
 
@@ -94,30 +81,27 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetLocation"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// entity.</param>
-        public PlanetLocation(CelestialEntity celestialEntity, Vector3 position) : base(celestialEntity, position) { }
+        /// <param name="planet">The <see cref="Planetoid"/> on whose surface this location is
+        /// found.</param>
+        /// <param name="position">The position of the location relative to the center of its
+        /// <paramref name="containingRegion"/>.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="planet"/> cannot be <see
+        /// langword="null"/>.</exception>
+        public PlanetLocation(Planetoid planet, Vector3 position)
+            : base(position) => Planet = planet ?? throw new ArgumentNullException(nameof(planet));
 
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetLocation"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="parent">The parent location in which this one is found.</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// entity.</param>
-        public PlanetLocation(CelestialEntity celestialEntity, Location parent, Vector3 position) : base(celestialEntity, parent, position) { }
-
-        /// <summary>
-        /// Gets a deep clone of this <see cref="Place"/>.
-        /// </summary>
-        public override Location GetDeepClone() => GetDeepCopy();
-
-        /// <summary>
-        /// Gets a deep clone of this <see cref="PlanetLocation"/>.
-        /// </summary>
-        public PlanetLocation GetDeepCopy() => new PlanetLocation(CelestialEntity, Parent, Position);
+        /// <param name="planet">The <see cref="Planetoid"/> on whose surface this location is
+        /// found.</param>
+        /// <param name="containingRegion">The <see cref="Region"/> which contains this
+        /// location.</param>
+        /// <param name="position">The position of the location relative to the center of its
+        /// <paramref name="containingRegion"/>.</param>
+        /// <exception cref="ArgumentNullException"><paramref name="planet"/> cannot be <see
+        /// langword="null"/>.</exception>
+        public PlanetLocation(Planetoid planet, Region containingRegion, Vector3 position)
+            : base(containingRegion, position) => Planet = planet ?? throw new ArgumentNullException(nameof(planet));
     }
 }

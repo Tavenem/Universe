@@ -15,7 +15,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         internal const double Space = 400000;
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName
             => Orbit?.OrbitedObject is Planemo ? $"{BaseTypeName} Moon" : BaseTypeName;
@@ -53,21 +53,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// </param>
         internal Asteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines an orbit for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
-        public override void GenerateOrbit(CelestialEntity orbitedObject)
+        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
                 return;
             }
 
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                Location.GetDistanceTo(orbitedObject),
+                GetDistanceTo(orbitedObject),
                 Math.Round(Randomizer.Instance.NextDouble(0.4), 2),
                 Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
@@ -81,17 +77,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             return (mass, GetShape(mass));
         }
 
-        private protected override double GetMinSatellitePeriapsis() => Radius + 20;
+        private protected override double GetMinSatellitePeriapsis() => Shape.ContainingRadius + 20;
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {
             var axis = Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = Math.Round(Randomizer.Instance.NextDouble(0.5, 1), 2);
-            return new Ellipsoid(axis, axis * irregularity, axis / irregularity);
+            return new Ellipsoid(axis, axis * irregularity, axis / irregularity, Position);
         }
 
-        private protected void SetAsteroidSatelliteOrbit(CelestialEntity satellite, double periapsis, double eccentricity)
-            => Orbit.SetOrbit(
+        private protected void SetAsteroidSatelliteOrbit(ICelestialLocation satellite, double periapsis, double eccentricity)
+            => WorldFoundry.Space.Orbit.SetOrbit(
                 satellite,
                 this,
                 periapsis,

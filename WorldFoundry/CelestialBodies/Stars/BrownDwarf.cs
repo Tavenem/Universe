@@ -10,12 +10,12 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class BrownDwarf : Star
     {
-        private protected override string BaseTypeName => "Brown Dwarf";
-
         // False for brown dwarfs; their habitable zones, if any, are moving targets due to rapid
         // cooling, and intersect soon with severe tidal forces, making it unlikely that life could
         // develop before a planet becomes uninhabitable.
-        private protected override bool IsHospitable => false;
+        internal override bool IsHospitable => false;
+
+        private protected override string BaseTypeName => "Brown Dwarf";
 
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/>.
@@ -40,7 +40,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             var radius = Math.Round(Randomizer.Instance.Normal(69911000, 3495550));
             var flattening = Math.Max(Randomizer.Instance.NextDouble(0.1), 0);
-            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
         }
 
         private protected override SpectralClass GetSpectralClass()

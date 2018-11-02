@@ -11,14 +11,14 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class WhiteDwarf : Star
     {
-        private protected override string BaseTypeName => "White Dwarf";
-
         // False for white dwarfs; their habitable zones, if any, are moving targets due to rapid
         // cooling, and intersect soon with severe tidal forces, and additionally severe UV
         // radiation is expected in early stages at the close distances where a habitable zone could
         // be expected, making it unlikely that life could develop before a planet becomes
         // uninhabitable.
-        private protected override bool IsHospitable => false;
+        internal override bool IsHospitable => false;
+
+        private protected override string BaseTypeName => "White Dwarf";
 
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/>.
@@ -52,7 +52,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             var radius = Math.Round(Math.Pow(1.8986e27 / Mass, 1.0 / 3.0) * 69911000);
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
         }
 
         private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);

@@ -56,7 +56,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <remarks>
         /// Represented as a separate <see cref="IComposition"/> rather than as a top layer of <see
-        /// cref="CelestialEntity.Substance"/> for ease of reference.
+        /// cref="CelestialBody.Substance"/> for ease of reference.
         /// </remarks>
         public IComposition Hydrosphere
         {
@@ -199,7 +199,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             do
             {
                 planet = new TerrestrialPlanet(
-                    star?.Parent,
+                    star?.ContainingCelestialRegion,
                     Vector3.Zero,
                     planetParams ?? TerrestrialPlanetParams.FromDefaults(),
                     requirements);
@@ -212,7 +212,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
                 else if (sanityCheck < 100)
                 {
-                    planet.Location = null;
+                    planet.SetNewContainingRegion(null);
                 }
             } while (sanityCheck <= 100);
             return planet;
@@ -265,7 +265,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var gc = gsc?.GenerateChild(new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, 1)) as GalaxyCluster;
             var gg = gc?.GenerateChild(new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, 1)) as GalaxyGroup;
             gg?.PrepopulateRegion();
-            var gsg = gg?.Children.FirstOrDefault(x => x is GalaxySubgroup) as GalaxySubgroup;
+            var gsg = gg?.CelestialChildren.FirstOrDefault(x => x is GalaxySubgroup) as GalaxySubgroup;
             return GetPlanetForGalaxy(gsg?.MainGalaxy, planetParams, habitabilityRequirements);
         }
 
@@ -315,115 +315,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             n2 -= ne;
 
             return result.AddComponent(Chemical.Nitrogen, Phase.Gas, n2);
-        }
-
-        /// <summary>
-        /// Determines an orbit for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
-        public override void GenerateOrbit(CelestialEntity orbitedObject)
-        {
-            if (orbitedObject == null)
-            {
-                return;
-            }
-
-            if (_planetParams?.Eccentricity.HasValue == true)
-            {
-                Eccentricity = _planetParams.Value.Eccentricity.Value;
-            }
-
-            var ta = Randomizer.Instance.NextDouble(MathConstants.TwoPI);
-            double? semiMajorAxis = null;
-
-            if (_planetParams?.RevolutionPeriod.HasValue == true)
-            {
-                semiMajorAxis = Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, _planetParams.Value.RevolutionPeriod.Value);
-                GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta);
-            }
-
-            if (orbitedObject is Star star
-                && (_planetParams?.SurfaceTemperature.HasValue == true
-                || _habitabilityRequirements?.MinimumTemperature.HasValue == true
-                || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
-            {
-                var targetTemp = 250.0;
-                if (_planetParams?.SurfaceTemperature.HasValue == true)
-                {
-                    targetTemp = _planetParams.Value.SurfaceTemperature.Value;
-                }
-                else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-                {
-                    targetTemp = _habitabilityRequirements.Value.MinimumTemperature.Value;
-                }
-                else
-                {
-                    targetTemp = Math.Min(GetTempForThinAtmosphere(), _habitabilityRequirements?.MaximumTemperature ?? double.MaxValue) / 2;
-                }
-
-                // Convert the target average surface temperature to an estimated target equatorial
-                // surface temperature, for which orbit/luminosity requirements can be calculated.
-                var targetEquatorialEffectiveTemp = targetTemp * 1.005;
-                // Use the typical average elevation to determine average surface
-                // temperature, since the average temperature at sea level is not the same
-                // as the average overall surface temperature.
-                var avgElevation = MaxElevation * 0.07;
-                var targetEffectiveTemp = targetEquatorialEffectiveTemp + (avgElevation * LapseRateDry);
-                var currentTargetTemp = targetEffectiveTemp;
-
-                // Due to atmospheric effects, the target is likely to be missed considerably on the
-                // first attempt, since the calculations for orbit/luminosity will not be able to
-                // account for greenhouse warming. By determining the degree of over/undershoot, the
-                // target can be adjusted. This is repeated until the real target is approached to
-                // within an acceptable tolerance, but not to excess.
-                var count = 0;
-                var prevDelta = 0.0;
-                var delta = 0.0;
-                do
-                {
-                    prevDelta = delta;
-                    AdjustOrbitForTemperature(star, semiMajorAxis, ta, currentTargetTemp);
-
-                    if (_planetParams?.SurfaceTemperature.HasValue == true)
-                    {
-                        delta = targetEffectiveTemp - GetTemperatureAtElevation(AverageSurfaceTemperature, avgElevation);
-                    }
-                    else
-                    {
-                        var coolestEquatorialTemp = GetMinEquatorTemperature();
-                        if (coolestEquatorialTemp < _habitabilityRequirements?.MinimumTemperature)
-                        {
-                            delta = _habitabilityRequirements.Value.MaximumTemperature.HasValue
-                                ? _habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
-                                : _habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
-                        }
-                        else
-                        {
-                            var warmestPolarTemp = GetMaxPolarTemperature();
-                            if (warmestPolarTemp > _habitabilityRequirements?.MaximumTemperature)
-                            {
-                                delta = _habitabilityRequirements.Value.MaximumTemperature.Value - warmestPolarTemp;
-                            }
-                        }
-                    }
-                    // If the corrections are resulting in a runaway drift in the wrong direction,
-                    // reset by deleting the atmosphere and targeting the original temp; do not
-                    // reset the count, to prevent this from repeating indefinitely.
-                    if (prevDelta != 0
-                        && (delta >= 0) == (prevDelta >= 0)
-                        && Math.Abs(delta) > Math.Abs(prevDelta))
-                    {
-                        Atmosphere = null;
-                        ResetCachedTemperatures();
-                        currentTargetTemp = targetEffectiveTemp;
-                    }
-                    else
-                    {
-                        currentTargetTemp += delta;
-                    }
-                    count++;
-                } while (count < 10 && Math.Abs(delta) > 0.5);
-            }
         }
 
         /// <summary>
@@ -493,7 +384,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// imply that the planet could sustain a large-scale population in the long-term, only that
         /// a member of the species can survive on the surface without artificial aid.
         /// </summary>
-        /// <param name="habitabilityRequirements">The collection of <see cref="TerrestrialPlanets.HabitabilityRequirements"/>.</param>
+        /// <param name="habitabilityRequirements">The collection of <see cref="HabitabilityRequirements"/>.</param>
         /// <param name="reason">
         /// Set to an <see cref="UninhabitabilityReason"/> indicating the reason(s) the planet is uninhabitable.
         /// </param>
@@ -603,6 +494,111 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             return surfaceMapSet.Value;
+        }
+
+        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
+        {
+            if (orbitedObject == null)
+            {
+                return;
+            }
+
+            if (_planetParams?.Eccentricity.HasValue == true)
+            {
+                Eccentricity = _planetParams.Value.Eccentricity.Value;
+            }
+
+            var ta = Randomizer.Instance.NextDouble(MathConstants.TwoPI);
+            double? semiMajorAxis = null;
+
+            if (_planetParams?.RevolutionPeriod.HasValue == true)
+            {
+                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, _planetParams.Value.RevolutionPeriod.Value);
+                GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta);
+            }
+
+            if (orbitedObject is Star star
+                && (_planetParams?.SurfaceTemperature.HasValue == true
+                || _habitabilityRequirements?.MinimumTemperature.HasValue == true
+                || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
+            {
+                var targetTemp = 250.0;
+                if (_planetParams?.SurfaceTemperature.HasValue == true)
+                {
+                    targetTemp = _planetParams.Value.SurfaceTemperature.Value;
+                }
+                else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
+                {
+                    targetTemp = _habitabilityRequirements.Value.MinimumTemperature.Value;
+                }
+                else
+                {
+                    targetTemp = Math.Min(GetTempForThinAtmosphere(), _habitabilityRequirements?.MaximumTemperature ?? double.MaxValue) / 2;
+                }
+
+                // Convert the target average surface temperature to an estimated target equatorial
+                // surface temperature, for which orbit/luminosity requirements can be calculated.
+                var targetEquatorialEffectiveTemp = targetTemp * 1.005;
+                // Use the typical average elevation to determine average surface
+                // temperature, since the average temperature at sea level is not the same
+                // as the average overall surface temperature.
+                var avgElevation = MaxElevation * 0.07;
+                var targetEffectiveTemp = targetEquatorialEffectiveTemp + (avgElevation * LapseRateDry);
+                var currentTargetTemp = targetEffectiveTemp;
+
+                // Due to atmospheric effects, the target is likely to be missed considerably on the
+                // first attempt, since the calculations for orbit/luminosity will not be able to
+                // account for greenhouse warming. By determining the degree of over/undershoot, the
+                // target can be adjusted. This is repeated until the real target is approached to
+                // within an acceptable tolerance, but not to excess.
+                var count = 0;
+                var prevDelta = 0.0;
+                var delta = 0.0;
+                do
+                {
+                    prevDelta = delta;
+                    AdjustOrbitForTemperature(star, semiMajorAxis, ta, currentTargetTemp);
+
+                    if (_planetParams?.SurfaceTemperature.HasValue == true)
+                    {
+                        delta = targetEffectiveTemp - GetTemperatureAtElevation(AverageSurfaceTemperature, avgElevation);
+                    }
+                    else
+                    {
+                        var coolestEquatorialTemp = GetMinEquatorTemperature();
+                        if (coolestEquatorialTemp < _habitabilityRequirements?.MinimumTemperature)
+                        {
+                            delta = _habitabilityRequirements.Value.MaximumTemperature.HasValue
+                                ? _habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
+                                : _habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
+                        }
+                        else
+                        {
+                            var warmestPolarTemp = GetMaxPolarTemperature();
+                            if (warmestPolarTemp > _habitabilityRequirements?.MaximumTemperature)
+                            {
+                                delta = _habitabilityRequirements.Value.MaximumTemperature.Value - warmestPolarTemp;
+                            }
+                        }
+                    }
+                    // If the corrections are resulting in a runaway drift in the wrong direction,
+                    // reset by deleting the atmosphere and targeting the original temp; do not
+                    // reset the count, to prevent this from repeating indefinitely.
+                    if (prevDelta != 0
+                        && (delta >= 0) == (prevDelta >= 0)
+                        && Math.Abs(delta) > Math.Abs(prevDelta))
+                    {
+                        Atmosphere = null;
+                        ResetCachedTemperatures();
+                        currentTargetTemp = targetEffectiveTemp;
+                    }
+                    else
+                    {
+                        currentTargetTemp += delta;
+                    }
+                    count++;
+                } while (count < 10 && Math.Abs(delta) > 0.5);
+            }
         }
 
         internal double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
@@ -1210,9 +1206,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 _axialPrecession = Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4);
                 var axialTilt = _planetParams.Value.AxialTilt.Value;
-                if (Orbit != null)
+                if (Orbit.HasValue)
                 {
-                    axialTilt += Orbit.Inclination;
+                    axialTilt += Orbit.Value.Inclination;
                 }
                 while (axialTilt < 0)
                 {
@@ -1654,8 +1650,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             else if (ratio >= 1 && (HasFlatSurface || MaxElevation.IsZero()))
             {
                 SeaLevel = MaxElevation * ratio;
-                mass = new HollowSphere(Radius, Radius + SeaLevel).Volume
-                    - (new HollowSphere(Radius, Radius + MaxElevation).Volume / 2);
+                mass = new HollowSphere(Shape.ContainingRadius, Shape.ContainingRadius + SeaLevel).Volume
+                    - (new HollowSphere(Shape.ContainingRadius, Shape.ContainingRadius + MaxElevation).Volume / 2);
             }
             else
             {
@@ -1768,9 +1764,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return false;
         }
 
-        private void GenerateOrbit(CelestialEntity orbitedObject, double semiMajorAxis, double trueAnomaly)
+        private void GenerateOrbit(ICelestialLocation orbitedObject, double semiMajorAxis, double trueAnomaly)
         {
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                   this,
                   orbitedObject,
                   (1 - Eccentricity) * semiMajorAxis,
@@ -1825,15 +1821,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // be the actual Roche limit for the body which gets generated).
                 if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.77) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new TerrestrialPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new OceanPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
@@ -1843,15 +1839,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new DwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new RockyDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
@@ -1860,21 +1856,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new CTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new STypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
             if (satellite != null)
             {
-                Orbit.SetOrbit(
+                WorldFoundry.Space.Orbit.SetOrbit(
                     satellite,
                     this,
                     periapsis,
@@ -2013,7 +2009,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var minMass = MinMass;
             var maxMass = TMath.IsZero(MaxMass) ? null : (double?)MaxMass;
 
-            if (Parent is StarSystem && Position != Vector3.Zero && (Orbit == null || Orbit.OrbitedObject is Star))
+            if (ContainingCelestialRegion is StarSystem && Position != Vector3.Zero && (!Orbit.HasValue || Orbit.Value.OrbitedObject is Star))
             {
                 // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass at which
                 // the planet would be able to do so at this orbital distance. We set the maximum at two
@@ -2148,7 +2144,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// If the planet is not massive enough or too hot to hold onto carbon dioxide gas, it is
         /// presumed that it will have a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
         /// </remarks>
-        private double GetTempForThinAtmosphere() => ScienceConstants.TwoG * Mass * 7.0594833834763e-5 / Radius;
+        private double GetTempForThinAtmosphere() => ScienceConstants.TwoG * Mass * 7.0594833834763e-5 / Shape.ContainingRadius;
 
         /// <summary>
         /// Determines if this <see cref="TerrestrialPlanet"/> is "habitable," defined as possessing

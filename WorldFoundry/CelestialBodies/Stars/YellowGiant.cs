@@ -10,12 +10,12 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class YellowGiant : GiantStar
     {
-        private protected override string BaseTypeName => "Yellow Giant";
-
         // False for yellow giants; although they may have a habitable zone, it is not likely to
         // exist in the same place long enough for life to develop before the star evolves into
         // another type, or dies.
-        private protected override bool IsHospitable => false;
+        internal override bool IsHospitable => false;
+
+        private protected override string BaseTypeName => "Yellow Giant";
 
         /// <summary>
         /// Initializes a new instance of <see cref="YellowGiant"/>.
@@ -30,7 +30,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="position">The initial position of this <see cref="YellowGiant"/>.</param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of this <see cref="YellowGiant"/>.
+        /// The <see cref="LuminosityClass"/> of this <see cref="YellowGiant"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="YellowGiant"/>.</param>
         internal YellowGiant(

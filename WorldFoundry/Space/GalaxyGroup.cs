@@ -48,16 +48,11 @@ namespace WorldFoundry.Space
             }
             base.PrepopulateRegion();
 
-            if (!(Location is Region region))
-            {
-                return;
-            }
-
             var amount = Randomizer.Instance.Next(1, 6);
             Vector3 position;
             for (var i = 0; i < amount; i++)
             {
-                if (region.TryGetOpenSpace(GalaxySubgroup.Space, out var location))
+                if (TryGetOpenSpace(GalaxySubgroup.Space, out var location))
                 {
                     position = location;
                 }
@@ -70,14 +65,9 @@ namespace WorldFoundry.Space
             }
         }
 
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
-                Mass = 2.0e44, // general average; 1.0e14 solar masses
-            };
-            Shape = new Sphere(Randomizer.Instance.NextDouble(1.5e23, 3.0e23)); // ~500–1000 kpc
-        }
+        // General average; 1.0e14 solar masses
+        private protected override double GetMass() => 2.0e44;
+
+        private protected override IShape GetShape() => new Sphere(Randomizer.Instance.NextDouble(1.5e23, 3.0e23), Position); // ~500–1000 kpc
     }
 }

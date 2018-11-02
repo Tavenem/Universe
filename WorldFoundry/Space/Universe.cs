@@ -1,10 +1,7 @@
-﻿using MathAndScience.Shapes;
-using Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
-using WorldFoundry.Place;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
@@ -52,8 +49,7 @@ namespace WorldFoundry.Space
             return universe;
         }
 
-        private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
-            => Location = new Region(this, null, new Sphere(1.89214e33, position ?? Vector3.Zero));
+        private protected override double GetMass() => double.PositiveInfinity;
 
         // A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
         // the real observable universe.
@@ -61,12 +57,8 @@ namespace WorldFoundry.Space
         // Approximately 4e18 superclusters might be found in the modeled universe, by volume
         // (although this would require exhaustive "exploration" to populate so much space).
         // This makes the universe effectively infinite in scope, if not in linear dimensions.
-        private protected override void GenerateSubstance()
-            => Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
-                Mass = double.PositiveInfinity,
-                Temperature = 2.73,
-            };
+        private protected override IShape GetShape() => new Sphere(1.89214e33);
+
+        private protected override double GetTemperature() => 2.73;
     }
 }

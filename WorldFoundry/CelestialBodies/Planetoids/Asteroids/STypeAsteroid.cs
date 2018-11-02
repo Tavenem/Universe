@@ -47,7 +47,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
-            var satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
+            var satellite = new STypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
             return satellite;
         }

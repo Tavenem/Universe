@@ -42,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
 
             // Black holes are strange objects with zero volume and infinite density. The shape given is
             // presumed to refer to the shape of the event horizon.
-            Shape = new Sphere(Math.Round(1.48e-27 * Substance.Mass));
+            Shape = new Sphere(Math.Round(1.48e-27 * Substance.Mass), Position);
         }
     }
 }

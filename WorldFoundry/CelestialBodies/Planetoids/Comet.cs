@@ -35,11 +35,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.025, 0.055);
 
-        /// <summary>
-        /// Determines an orbit for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
-        public override void GenerateOrbit(CelestialEntity orbitedObject)
+        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
@@ -49,9 +45,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
             // and have eccentricities which may either leave them there, or send them into the inner solar system.
             var eccentricity = Randomizer.Instance.NextDouble();
-            var periapsis = (1 - eccentricity) / (1 + eccentricity) * Location.GetDistanceTo(orbitedObject);
+            var periapsis = (1 - eccentricity) / (1 + eccentricity) * GetDistanceTo(orbitedObject);
 
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 this,
                 orbitedObject,
                 periapsis,

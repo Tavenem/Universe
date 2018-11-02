@@ -1,11 +1,11 @@
 ﻿using ExtensionLib;
 using MathAndScience;
+using MathAndScience.Numerics;
 using MathAndScience.Shapes;
 using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
@@ -25,7 +25,7 @@ namespace WorldFoundry.Space
 
         private string _name;
         /// <summary>
-        /// An optional name for this <see cref="CelestialEntity"/>.
+        /// An optional name for this <see cref="ICelestialLocation"/>.
         /// </summary>
         /// <remarks>
         /// A <see cref="StarSystem"/> without a name of its own takes its name from its first named
@@ -45,7 +45,7 @@ namespace WorldFoundry.Space
         public IList<Star> Stars { get; set; }
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName
         {
@@ -68,6 +68,8 @@ namespace WorldFoundry.Space
                 return sb.ToString();
             }
         }
+
+        internal override bool IsHospitable => Stars.All(x => x.IsHospitable);
 
         /// <summary>
         /// Initializes a new instance of <see cref="StarSystem"/>.
@@ -155,12 +157,6 @@ namespace WorldFoundry.Space
             Type starType,
             SpectralClass? spectralClass = null,
             LuminosityClass? luminosityClass = null) : this(parent, position, starType, spectralClass, luminosityClass, false) { }
-
-        /// <summary>
-        /// Returns a string that represents the celestial object.
-        /// </summary>
-        /// <returns>A string that represents the celestial object.</returns>
-        public override string ToString() => $"{TypeName} {Title}";
 
         internal override void PrepopulateRegion()
         {
@@ -367,7 +363,7 @@ namespace WorldFoundry.Space
             {
                 AddCompanionStar(companions, orbited,
                     (Randomizer.Instance.Lognormal(0, 1) * 1.5768e9)
-                    + (Orbit.GetHillSphereRadius(
+                    + (WorldFoundry.Space.Orbit.GetHillSphereRadius(
                         companion.star,
                         companion.orbited,
                         companion.semiMajorAxis,
@@ -529,9 +525,9 @@ namespace WorldFoundry.Space
                     // standard deviation of 9.5. An average planetary mass is used for the
                     // calculation since the planet hasn't been generated yet, which should produce
                     // reasonable values.
-                    var spacing = innerPlanet.Orbit.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
+                    var spacing = innerPlanet.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
                         * Math.Max(1, Randomizer.Instance.Normal(21.7, 9.5));
-                    periapsis = innerPlanet.Orbit.Periapsis - spacing;
+                    periapsis = innerPlanet.Orbit.Value.Periapsis - spacing;
                     if (periapsis < (planet is GiantPlanet ? minGiantPeriapsis : minTerrestrialPeriapsis))
                     {
                         periapsis = medianOrbit; // Force reassignment below.
@@ -543,12 +539,12 @@ namespace WorldFoundry.Space
                     // orbital spacing is by an average of 21.7 mutual Hill radii, with a standard
                     // deviation of 9.5. An average planetary mass is used for the calculation since
                     // the planet hasn't been generated yet, which should produce reasonable values.
-                    var outerPeriod = outerPlanet.Orbit.Period;
+                    var outerPeriod = outerPlanet.Orbit.Value.Period;
                     if (!(planet is GiantPlanet) || outerPeriod <= 1.728e7)
                     {
-                        var spacing = outerPlanet.Orbit.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
+                        var spacing = outerPlanet.GetMutualHillSphereRadius(planet is GiantPlanet ? 1.25e28 : 3.0e25)
                             * Math.Max(1, Randomizer.Instance.Normal(21.7, 9.5));
-                        periapsis = outerPlanet.Orbit.Apoapsis + spacing;
+                        periapsis = outerPlanet.Orbit.Value.Apoapsis + spacing;
                         if (periapsis > maxApoapsis)
                         {
                             return null;
@@ -562,8 +558,8 @@ namespace WorldFoundry.Space
 
                         // Assuming no eccentricity and an average mass, calculate a periapsis from
                         // the selected period, but set their mutual Hill sphere radius as a minimum separation.
-                        periapsis = Math.Max(outerPlanet.Orbit.Apoapsis
-                            + outerPlanet.Orbit.GetMutualHillSphereRadius(
+                        periapsis = Math.Max(outerPlanet.Orbit.Value.Apoapsis
+                            + outerPlanet.GetMutualHillSphereRadius(
                                 planet is GiantPlanet ? 1.25e28 : 3.0e25),
                                 Math.Pow(Math.Pow(newPeriod / MathConstants.TwoPI, 2)
                                 * ScienceConstants.G
@@ -584,7 +580,7 @@ namespace WorldFoundry.Space
         /// <param name="periapsis">The periapsis of the belt.</param>
         private void GenerateAsteroidBelt(Star star, GiantPlanet planet, double periapsis)
         {
-            var separation = periapsis - (planet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
+            var separation = periapsis - (planet.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
             new AsteroidField(this, star.Position, star, separation * 0.8, separation * 0.1);
         }
 
@@ -597,8 +593,8 @@ namespace WorldFoundry.Space
         /// <param name="maxApoapsis">The maximum apoapsis.</param>
         private void GenerateDebrisDisc(Star star, Planemo outerPlanet, double? maxApoapsis)
         {
-            var outerApoapsis = outerPlanet.Orbit.Apoapsis;
-            var innerRadius = outerApoapsis + (outerPlanet.Orbit.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
+            var outerApoapsis = outerPlanet.Orbit.Value.Apoapsis;
+            var innerRadius = outerApoapsis + (outerPlanet.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
             var width = (Stars.Count > 1 || Randomizer.Instance.NextDouble() <= 0.5)
                 ? Randomizer.Instance.NextDouble(3.0e12, 4.5e12)
                 : Randomizer.Instance.Lognormal(0, 1) * 7.5e12;
@@ -696,9 +692,6 @@ namespace WorldFoundry.Space
             return 0;
         }
 
-        private protected override void GenerateSubstance()
-            => Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
-
         private void GeneratePlanet(
             Star star,
             double minTerrestrialPeriapsis, double minGiantPeriapsis, double? maxApoapsis,
@@ -758,14 +751,14 @@ namespace WorldFoundry.Space
                 outerPlanet = planet;
             }
 
-            medianOrbit = innerPlanet.Orbit.Periapsis
-                + ((outerPlanet.Orbit.Apoapsis - innerPlanet.Orbit.Periapsis) / 2);
+            medianOrbit = innerPlanet.Orbit.Value.Periapsis
+                + ((outerPlanet.Orbit.Value.Apoapsis - innerPlanet.Orbit.Value.Periapsis) / 2);
         }
 
         private void GeneratePlanetsForStar(Star star)
         {
-            var pregenPlanets = Children
-                .Where(c => c is Planemo p && (p.Orbit == null || p.Orbit.OrbitedObject == star))
+            var pregenPlanets = CelestialChildren
+                .Where(c => c is Planemo p && (p.Orbit == null || p.Orbit.Value.OrbitedObject == star))
                 .Cast<Planemo>().ToList();
 
             var (numGiants, numIceGiants, numTerrestrial) = star.GetNumPlanets();
@@ -849,13 +842,13 @@ namespace WorldFoundry.Space
 
             // The mass of the stellar bodies is presumed to be at least 99% of the total, so it is used
             // as a close-enough approximation, plus a bit of extra.
-            Substance.Mass = ((Stars?.Sum(s => s.Mass) ?? 0) + (companions?.Sum(s => s.star.Mass) ?? 0)) * 1.001;
+            _mass = ((Stars?.Sum(s => s.Mass) ?? 0) + (companions?.Sum(s => s.star.Mass) ?? 0)) * 1.001;
 
-            Shape = new Sphere(radius);
+            _shape = new Sphere(radius, Position);
 
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
-                Orbit.SetOrbit(
+                WorldFoundry.Space.Orbit.SetOrbit(
                     star,
                     orbited,
                     periapsis,
@@ -911,34 +904,34 @@ namespace WorldFoundry.Space
         /// <param name="periapsis">The periapsis of the orbit.</param>
         private void GenerateTrojans(Star star, GiantPlanet planet, double periapsis)
         {
-            var doubleHillRadius = planet.Orbit.GetHillSphereRadius() * 2;
+            var doubleHillRadius = planet.GetHillSphereRadius() * 2;
             var asteroids = new AsteroidField(this, -Vector3.UnitZ * periapsis, star, doubleHillRadius);
-            var trueAnomaly = planet.Orbit.TrueAnomaly + 1.04719755; // +60°
+            var trueAnomaly = planet.Orbit.Value.TrueAnomaly + 1.04719755; // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
                 trueAnomaly -= MathConstants.TwoPI;
             }
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 asteroids,
                 star,
                 periapsis,
-                planet.Orbit.Eccentricity,
+                planet.Orbit.Value.Eccentricity,
                 Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 trueAnomaly);
 
             asteroids = new AsteroidField(this, Vector3.UnitZ * periapsis, star, doubleHillRadius);
-            trueAnomaly = planet.Orbit.TrueAnomaly - 1.04719755; // -60°
+            trueAnomaly = planet.Orbit.Value.TrueAnomaly - 1.04719755; // -60°
             while (trueAnomaly < 0)
             {
                 trueAnomaly += MathConstants.TwoPI;
             }
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 asteroids,
                 star,
                 periapsis,
-                planet.Orbit.Eccentricity,
+                planet.Orbit.Value.Eccentricity,
                 Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
@@ -959,16 +952,16 @@ namespace WorldFoundry.Space
             double? minPeriapsis = null;
             if (star.Orbit != null)
             {
-                maxApoapsis = star.Orbit.GetHillSphereRadius() * 1 / 3;
+                maxApoapsis = star.GetHillSphereRadius() * 1 / 3;
             }
 
-            foreach (var CelestialEntity in Stars.Where(s => s.Orbit != null && s.Orbit.OrbitedObject == star))
+            foreach (var entity in Stars.Where(s => s.Orbit?.OrbitedObject == star))
             {
                 // If a star is orbiting within ~100 AU, it is considered too close for planets to
                 // orbit in between, and orbits are only considered around them as a pair.
-                if (CelestialEntity.Orbit.Periapsis <= 1.5e13)
+                if (entity.Orbit.Value.Periapsis <= 1.5e13)
                 {
-                    minPeriapsis = CelestialEntity.Orbit.GetHillSphereRadius() * 20;
+                    minPeriapsis = entity.GetHillSphereRadius() * 20;
                     // Clear the maxApoapsis if it's within this outer orbit.
                     if (maxApoapsis.HasValue && maxApoapsis < minPeriapsis)
                     {
@@ -977,7 +970,7 @@ namespace WorldFoundry.Space
                 }
                 else
                 {
-                    var candidateMaxApoapsis = (CelestialEntity.Orbit.Periapsis - CelestialEntity.Orbit.GetHillSphereRadius()) * 1 / 3;
+                    var candidateMaxApoapsis = (entity.Orbit.Value.Periapsis - entity.GetHillSphereRadius()) * 1 / 3;
                     if (maxApoapsis.HasValue && maxApoapsis.Value < candidateMaxApoapsis)
                     {
                         candidateMaxApoapsis = maxApoapsis.Value;

@@ -104,15 +104,11 @@ namespace WorldFoundry.Space.Galaxies
         /// </remarks>
         private protected override BlackHole GetGalacticCore() => new BlackHole(this, Vector3.Zero);
 
-        private protected override void GenerateSubstance()
+        private protected override IShape GetShape()
         {
-            Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
-
             var radius = Randomizer.Instance.NextDouble(8.0e6, 2.1e7);
             var axis = radius * Randomizer.Instance.Normal(0.02, 1);
-            Shape = new Ellipsoid(radius, axis);
-
-            Substance.Mass = GenerateMass(Shape);
+            return new Ellipsoid(radius, axis, Position);
         }
     }
 }

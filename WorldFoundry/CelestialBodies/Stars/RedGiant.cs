@@ -25,7 +25,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="position">The initial position of this <see cref="RedGiant"/>.</param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of this <see cref="RedGiant"/>.
+        /// The <see cref="LuminosityClass"/> of this <see cref="RedGiant"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="RedGiant"/>.</param>
         internal RedGiant(

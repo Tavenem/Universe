@@ -49,11 +49,11 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxySubgroup"/>.</param>
         internal GalaxySubgroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        internal override CelestialEntity GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
 
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 child,
                 MainGalaxy,
                 Randomizer.Instance.NextDouble(0.1));
@@ -72,16 +72,6 @@ namespace WorldFoundry.Space
             GetMainGalaxy();
         }
 
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
-                Mass = MainGalaxy.Mass * 1.25, // the main galaxy is expected to comprise the bulk of the mass
-            };
-            Shape = new Sphere(MainGalaxy.Radius * 10);
-        }
-
         /// <summary>
         /// Randomly determines the main <see cref="Galaxy"/> of this <see cref="GalaxySubgroup"/>,
         /// which all other objects orbit.
@@ -91,5 +81,10 @@ namespace WorldFoundry.Space
             => Randomizer.Instance.NextDouble() <= 0.7
                 ? new SpiralGalaxy(this, Vector3.Zero)
                 : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero);
+
+        // The main galaxy is expected to comprise the bulk of the mass
+        private protected override double GetMass() => MainGalaxy.Mass * 1.25;
+
+        private protected override IShape GetShape() => new Sphere(MainGalaxy.Radius * 10, Position);
     }
 }

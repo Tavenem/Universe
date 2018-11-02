@@ -59,21 +59,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// </param>
         internal DwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines an orbit for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
-        public override void GenerateOrbit(CelestialEntity orbitedObject)
+        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
                 return;
             }
 
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                Location.GetDistanceTo(orbitedObject),
+                GetDistanceTo(orbitedObject),
                 Eccentricity,
                 Math.Round(Randomizer.Instance.NextDouble(0.9), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
@@ -159,7 +155,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             // If the mass limit allows, there is an even chance that the satellite is a smaller dwarf planet.
             if (maxMass > MinMass && Randomizer.Instance.NextBoolean())
             {
-                satellite = new DwarfPlanet(Parent, Vector3.Zero, maxMass);
+                satellite = new DwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
             }
             else
             {
@@ -167,19 +163,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 var chance = Randomizer.Instance.NextDouble();
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new CTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new STypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
-            Orbit.SetOrbit(
+            WorldFoundry.Space.Orbit.SetOrbit(
                 satellite,
                 this,
                 periapsis,

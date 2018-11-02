@@ -1,35 +1,27 @@
-﻿using ExtensionLib;
+﻿using MathAndScience.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
-using WorldFoundry.Space;
 
 namespace WorldFoundry.Place
 {
     /// <summary>
     /// A location in a universe.
     /// </summary>
-    public class Location
+    public class Location : ILocation, IEquatable<ILocation>
     {
         /// <summary>
-        /// The <see cref="Space.CelestialEntity"/> which represents this location (if any).
+        /// The containing region in which this location is found.
         /// </summary>
-        public CelestialEntity CelestialEntity { get; set; }
-
-        private readonly Lazy<List<Location>> _children = new Lazy<List<Location>>();
-        /// <summary>
-        /// The child locations contained within this one.
-        /// </summary>
-        public IEnumerable<Location> Children => _children.Value;
+        public Region ContainingRegion { get; private set; }
 
         /// <summary>
-        /// The parent location in which this one is found.
+        /// A unique identifier for this entity.
         /// </summary>
-        public Location Parent { get; private protected set; }
+        public string Id { get; private set; }
 
         /// <summary>
-        /// The position of this location relative to the center of its <see cref="Parent"/>.
+        /// The position of this location relative to the center of its <see cref="ContainingRegion"/>.
         /// </summary>
         public virtual Vector3 Position { get; set; }
 
@@ -41,134 +33,73 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// entity.</param>
-        public Location(CelestialEntity celestialEntity, Vector3 position)
-        {
-            CelestialEntity = celestialEntity;
-            Position = position;
-        }
+        /// <param name="position">The position of the location relative to the center of its
+        /// <paramref name="containingRegion"/>.</param>
+        public Location(Vector3 position) => Position = position;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="parent">The parent location in which this one is found.</param>
-        /// <param name="position">The position of the location relative to the center of its parent
-        /// <paramref name="parent"/>.</param>
-        public Location(CelestialEntity celestialEntity, Location parent, Vector3 position)
+        /// <param name="containingRegion">The <see cref="Region"/> which contains this
+        /// location.</param>
+        /// <param name="position">The position of the location relative to the center of its
+        /// <paramref name="containingRegion"/>.</param>
+        public Location(Region containingRegion, Vector3 position)
         {
-            CelestialEntity = celestialEntity;
             Position = position;
-            Parent = parent;
-            Parent?.AddChild(this);
+            containingRegion?.AddChild(this);
         }
 
         /// <summary>
-        /// Determines whether the specified <see cref="Location"/> is contained within the current
-        /// instance.
+        /// Determines whether the specified object is equal to the current object.
         /// </summary>
-        /// <param name="other">The instance to compare with this one.</param>
-        /// <returns>
-        /// <see langword="true"/> if the specified <see cref="Location"/> is contained within this
-        /// instance; otherwise, <see langword="false"/>.
-        /// </returns>
-        public virtual bool Contains(Location other) => GetCommonParent(other) == this;
+        /// <param name="obj">The object to compare with the current object.</param>
+        /// <returns><see langword="true"/> if the specified object is equal to the current object;
+        /// otherwise, <see langword="false"/>.</returns>
+        public override bool Equals(object obj) => obj is ILocation other && Equals(other);
 
         /// <summary>
-        /// Determines whether the specified <paramref name="position"/> is contained within the
-        /// current instance.
+        /// Determines whether the specified <see cref="Location"/> instance is equal to this
+        /// one.
         /// </summary>
-        /// <param name="position">a <see cref="Vector3"/> to check for inclusion in this <see
-        /// cref="Location"/>.</param>
-        /// <returns>
-        /// <see langword="true"/> if the specified <paramref name="position"/> is contained within
-        /// this instance; otherwise, <see langword="false"/>.
-        /// </returns>
-        public virtual bool Contains(Vector3 position) => Position == position;
+        /// <param name="other">The <see cref="Location"/> instance to compare with this
+        /// one.</param>
+        /// <returns><see langword="true"/> if the specified <see cref="Location"/> instance
+        /// is equal to this once; otherwise, <see langword="false"/>.</returns>
+        public bool Equals(ILocation other)
+            => !string.IsNullOrEmpty(Id) && string.Equals(Id, other?.Id, StringComparison.Ordinal);
 
         /// <summary>
-        /// Gets a flattened enumeration of all descendants of this instance.
-        /// </summary>
-        /// <returns>A flattened <see cref="IEnumerable{T}"/> of all descendant child <see
-        /// cref="Location"/> instances of this one.</returns>
-        public IEnumerable<Location> GetAllChildren()
-        {
-            foreach (var child in Children)
-            {
-                yield return child;
-
-                foreach (var sub in child.GetAllChildren())
-                {
-                    yield return sub;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Finds a common <see cref="Location"/> which contains both this and the given location.
+        /// Finds a common <see cref="Region"/> which contains both this and the given location.
         /// </summary>
         /// <param name="other">The other <see cref="Location"/>.</param>
         /// <returns>
-        /// A common <see cref="Location"/> which contains both this and the given locations (may be
+        /// A common <see cref="Region"/> which contains both this and the given location (may be
         /// either of them); or <see langword="null"/> if this instance and the given location do
         /// not have a common parent.
         /// </returns>
-        public Location GetCommonParent(Location other)
+        public virtual Region GetCommonContainingRegion(ILocation other)
         {
-            if (other == null)
+            if (!(other is Location loc))
             {
                 return null;
             }
             // Handle common cases before performing the expensive calculation.
-            if (other == this)
+            if (ContainingRegion == loc)
             {
-                return this;
+                return ContainingRegion;
             }
-            if (Parent == other)
+            if (loc.ContainingRegion == this)
             {
-                return other;
+                return loc.ContainingRegion;
             }
-            if (other.Parent == this)
+            if (ContainingRegion == loc.ContainingRegion)
             {
-                return this;
+                return ContainingRegion;
             }
-            if (Parent == other.Parent)
-            {
-                return Parent;
-            }
-            var secondPath = other.GetPathToLocation().ToList();
+            var secondPath = loc.GetPathToLocation().ToList();
             return GetPathToLocation().TakeWhile((o, i) => secondPath.Count > i && o == secondPath[i]).LastOrDefault();
         }
-
-        /// <summary>
-        /// Determines the nearest containing <see cref="Region"/> in this instance's parent
-        /// hierarchy which contains this instance.
-        /// </summary>
-        /// <returns>
-        /// The nearest containing <see cref="Region"/> in this instance's parent hierarchy which
-        /// contains this instance; or <see langword="null"/> if this instance is not contained in
-        /// any parent <see cref="Region"/>.
-        /// </returns>
-        public Region GetContainingParent()
-            => Parent?.GetContainingParent(Parent.GetLocalizedPosition(this));
-
-        /// <summary>
-        /// Determines the nearest containing <see cref="Region"/> in this instance's parent
-        /// hierarchy which contains the specified <paramref name="position"/>.
-        /// </summary>
-        /// <param name="position">The position whose containing <see cref="Region"/> is to be
-        /// determined.</param>
-        /// <returns>
-        /// The nearest containing <see cref="Region"/> in this instance's parent hierarchy which
-        /// contains the specified <paramref name="position"/>; or <see langword="null"/> if the
-        /// position is not contained in any parent <see cref="Region"/>.
-        /// </returns>
-        public virtual Region GetContainingParent(Vector3 position)
-            => Parent?.GetContainingParent(Parent.GetLocalizedPosition(this, position));
 
         /// <summary>
         /// Gets the distance from the given <paramref name="position"/> relative to the center of
@@ -179,7 +110,7 @@ namespace WorldFoundry.Place
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between the given <paramref name="position"/> and the given <see
         /// cref="Location"/>, in meters; or zero, if they do not share a common parent.</returns>
-        public double GetDistanceFromPositionTo(Vector3 position, Location other)
+        public double GetDistanceFromPositionTo(Vector3 position, ILocation other)
             => Vector3.Distance(position, GetLocalizedPosition(other));
 
         /// <summary>
@@ -189,22 +120,13 @@ namespace WorldFoundry.Place
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between this instance and the given <see cref="Location"/>, in
         /// meters; or zero, if they do not share a common parent.</returns>
-        public double GetDistanceTo(Location other) => GetLocalizedPosition(other).Length();
+        public double GetDistanceTo(ILocation other) => GetLocalizedPosition(other).Length();
 
         /// <summary>
-        /// Gets the distance from this instance to the location of the given <paramref
-        /// name="celestialEntity"/>.
+        /// Returns the hash code for this instance.
         /// </summary>
-        /// <param name="celestialEntity">A <see cref="Space.CelestialEntity"/>.</param>
-        /// <returns>The distance between this instance and the given <paramref
-        /// name="celestialEntity"/>, in meters; or zero, if they do not share a common
-        /// parent.</returns>
-        public double GetDistanceTo(CelestialEntity celestialEntity) => GetDistanceTo(celestialEntity.Location);
-
-        /// <summary>
-        /// Gets a deep clone of this <see cref="Place"/>.
-        /// </summary>
-        public virtual Location GetDeepClone() => new Location(CelestialEntity, Parent, Position);
+        /// <returns>The hash code for this instance.</returns>
+        public override int GetHashCode() => Id.GetHashCode();
 
         /// <summary>
         /// Translates the given <paramref name="position"/> relative to the center of the given
@@ -220,7 +142,7 @@ namespace WorldFoundry.Place
         /// the center of this instance; or <see cref="Vector3.Zero"/> if <paramref name="other"/>
         /// is <see langword="null"/> or does not share a common parent with this instance.
         /// </returns>
-        public Vector3 GetLocalizedPosition(Location other, Vector3 position)
+        public Vector3 GetLocalizedPosition(ILocation other, Vector3 position)
         {
             if (other == null)
             {
@@ -231,7 +153,7 @@ namespace WorldFoundry.Place
                 return position;
             }
 
-            var parent = GetCommonParent(other);
+            var parent = GetCommonContainingRegion(other);
             if (parent == null)
             {
                 return Vector3.Zero;
@@ -241,7 +163,7 @@ namespace WorldFoundry.Place
             while (current != parent)
             {
                 position += current.Position;
-                current = current.Parent;
+                current = current.ContainingRegion;
             }
 
             if (current == this)
@@ -254,7 +176,7 @@ namespace WorldFoundry.Place
             while (target != current)
             {
                 targetPosition += target.Position;
-                target = target.Parent;
+                target = target.ContainingRegion;
             }
 
             return position - targetPosition;
@@ -271,81 +193,31 @@ namespace WorldFoundry.Place
         /// name="other"/>
         /// is <see langword="null"/> or does not share a common parent with this instance.
         /// </returns>
-        public Vector3 GetLocalizedPosition(Location other) => GetLocalizedPosition(other, Vector3.Zero);
-
-        /// <summary>
-        /// Determines the smallest child <see cref="Region"/> at any level of this instance's
-        /// descendant hierarchy which contains the specified <paramref name="position"/>.
-        /// </summary>
-        /// <param name="position">The position whose smallest containing <see cref="Region"/> is to
-        /// be determined.</param>
-        /// <returns>
-        /// The smallest child <see cref="Region"/> at any level of this instance's descendant
-        /// hierarchy which contains the specified <paramref name="position"/>, or this instance, if
-        /// no child contains the position.
-        /// </returns>
-        public Region GetContainingChild(Vector3 position)
-            => GetAllChildren().OfType<Region>()
-            .Where(x => x.Shape.IsPointWithin(x.GetLocalizedPosition(this, position)))
-            .ItemWithMin(x => x.Shape.ContainingRadius)
-            ?? (this is Region region && Contains(position) ? region : null);
-
-        /// <summary>
-        /// Determines the smallest child <see cref="Region"/> at any level of this instance's
-        /// descendant hierarchy which fully contains the specified <see cref="Location"/> within
-        /// its containing radius.
-        /// </summary>
-        /// <param name="other">The <see cref="Location"/> whose smallest containing <see
-        /// cref="Region"/> is to be determined.</param>
-        /// <returns>
-        /// The smallest child <see cref="Region"/> at any level of this instance's descendant
-        /// hierarchy which fully contains the specified <see cref="Location"/> within its
-        /// containing radius, or this instance, if no child contains the position.
-        /// </returns>
-        public Region GetContainingChild(Location other)
-            => GetAllChildren().OfType<Region>()
-            .Where(x => Vector3.Distance(x.Position, x.GetLocalizedPosition(other)) <= x.Shape.ContainingRadius - (other is Region r ? r.Shape.ContainingRadius : 0))
-            .ItemWithMin(x => x.Shape.ContainingRadius)
-            ?? (this is Region region && Contains(other) ? region : null);
+        public Vector3 GetLocalizedPosition(ILocation other) => GetLocalizedPosition(other, Vector3.Zero);
 
         /// <summary>
         /// Performs the behind-the-scenes work necessary to transfer a <see cref="Location"/>
-        /// to a new <see cref="Parent"/> in the hierarchy.
+        /// to a new <see cref="ContainingRegion"/>.
         /// </summary>
-        /// <param name="location">The <see cref="Location"/> which will be the new parent of this
-        /// instance; or <see langword="null"/> to clear <see cref="Parent"/>.</param>
+        /// <param name="region">The <see cref="Region"/> which will be the new containing region of
+        /// this instance; or <see langword="null"/> to clear <see
+        /// cref="ContainingRegion"/>.</param>
         /// <remarks>
-        /// If the new parent is part of the same hierarchy as this instance, its current absolute
-        /// position will be preserved, and translated into the correct local relative <see
+        /// If the new containing region is part of the same hierarchy as this instance, its current
+        /// absolute position will be preserved, and translated into the correct local relative <see
         /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
         /// </remarks>
-        public void SetNewParent(Location location)
+        public void SetNewContainingRegion(Region region)
         {
-            Position = location?.GetLocalizedPosition(this) ?? Vector3.Zero;
-            if (Parent?._children.IsValueCreated == true)
-            {
-                Parent._children.Value.Remove(this);
-            }
-            Parent = location;
-            Parent.AddChild(this);
+            Position = region?.GetLocalizedPosition(this) ?? Vector3.Zero;
+            ContainingRegion?.RemoveChild(this);
+            ContainingRegion = region;
+            region.AddChild(this);
         }
 
-        internal void AddChild(Location location)
-        {
-            if (location is Region region)
-            {
-                foreach (var child in Children.Where(x => region.Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < region.Shape.ContainingRadius)))
-                {
-                    child.SetNewParent(region);
-                }
-            }
-            _children.Value.Add(location);
-        }
+        internal virtual void Init() => Id = IdProvider.DefaultIDProvider.GetNewID();
 
-        private Stack<Location> GetPathToLocation(Stack<Location> path = null)
-        {
-            (path ?? (path = new Stack<Location>())).Push(this);
-            return Parent?.GetPathToLocation(path) ?? path;
-        }
+        private protected virtual Stack<Region> GetPathToLocation(Stack<Region> path = null)
+            => ContainingRegion?.GetPathToLocation(path) ?? path;
     }
 }

@@ -210,7 +210,7 @@ namespace WorldFoundry.Climate
         /// accurately is not desired in this library.
         /// </remarks>
         public double GetAtmosphericDrag(Planetoid planet, double temperature, double altitude, double speed) =>
-            0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * planet.Radius;
+            0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * planet.Shape.ContainingRadius;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -411,13 +411,13 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
         /// made.</param>
-        private IShape GetShape(Planetoid planet) => new HollowSphere(planet.Radius, AtmosphericHeight);
+        private IShape GetShape(Planetoid planet) => new HollowSphere(planet.Shape.ContainingRadius, AtmosphericHeight);
 
         private void SetPrecipitation(Planetoid planet)
         {
             PrecipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity;
             // An average "year" is a standard astronomical year of 31557600 seconds.
-            AveragePrecipitation = PrecipitationFactor * 990 * (planet.Orbit == null ? 1 : planet.Orbit.Period / 31557600);
+            AveragePrecipitation = PrecipitationFactor * 990 * (planet.Orbit.HasValue ? planet.Orbit.Value.Period / 31557600 : 1);
             _maxPrecipitation = null;
             _maxSnowfall = null;
         }

@@ -1,5 +1,4 @@
 ﻿using MathAndScience.Shapes;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
@@ -12,11 +11,11 @@ namespace WorldFoundry.Place
     /// </summary>
     public class Territory : Region
     {
-        private readonly Lazy<List<Region>> _regions = new Lazy<List<Region>>();
+        private List<Region> _regions;
         /// <summary>
         /// The <see cref="Region"/> instances which make up this <see cref="Territory"/>.
         /// </summary>
-        public IEnumerable<Region> Regions => _regions.Value;
+        public IEnumerable<Region> Regions => _regions ?? Enumerable.Empty<Region>();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Territory"/>.
@@ -42,7 +41,7 @@ namespace WorldFoundry.Place
         /// <returns>This instance.</returns>
         public Territory AddRegions(IEnumerable<Region> regions)
         {
-            _regions.Value.AddRange(regions);
+            (_regions ?? (_regions = new List<Region>())).AddRange(regions);
             CalculateShape();
             return this;
         }
@@ -55,31 +54,21 @@ namespace WorldFoundry.Place
         public Territory AddRegions(params Region[] regions)
             => AddRegions(regions.AsEnumerable());
 
-        /// <summary>
-        /// Gets a deep clone of this <see cref="Place"/>.
-        /// </summary>
-        public override Location GetDeepClone() => GetDeepCopy();
-
-        /// <summary>
-        /// Gets a deep clone of this <see cref="Territory"/>.
-        /// </summary>
-        public new Territory GetDeepCopy() => new Territory().AddRegions(Regions.Select(x => x.GetDeepCopy()));
-
         private void CalculateShape()
         {
-            if (!_regions.IsValueCreated || _regions.Value.Count == 0)
+            if ((_regions?.Count ?? 0) == 0)
             {
                 return;
             }
 
-            var parent = _regions.Value[0].Parent;
+            var parent = _regions[0].ContainingRegion;
 
             var regions = new List<(Vector3 position, double radius)>();
-            if (Regions.Any(x => x.Parent != _regions.Value[0].Parent))
+            if (Regions.Any(x => x.ContainingRegion != _regions[0].ContainingRegion))
             {
                 parent = Regions.Aggregate(
                     parent,
-                    (p, x) => p?.GetCommonParent(x.Parent));
+                    (p, x) => p?.GetCommonContainingRegion(x.ContainingRegion));
                 if (parent == null)
                 {
                     return;
@@ -99,7 +88,7 @@ namespace WorldFoundry.Place
             }
             center /= regions.Count;
 
-            Parent = parent;
+            SetNewContainingRegion(parent);
             Shape = new Sphere(regions.Max(x => Vector3.Distance(x.position, center) + x.radius), center);
         }
     }

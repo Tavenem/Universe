@@ -43,18 +43,11 @@ namespace WorldFoundry.Space
             new StarSystem(this, Vector3.Zero, typeof(WhiteDwarf));
         }
 
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
-                Mass = Math.Round(Randomizer.Instance.NextDouble(1.99e29, 1.99e30)), // ~0.1–1 solar mass.
-                Temperature = 10000,
-            };
-            // Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
-            // and not considered critical to model precisely, especially given their extremely
-            // attenuated nature. Instead, a ~1 ly sphere is used.
-            Shape = new Sphere(Space);
-        }
+        private protected override double GetMass() => Math.Round(Randomizer.Instance.NextDouble(1.99e29, 1.99e30)); // ~0.1–1 solar mass.
+
+        // Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
+        // and not considered critical to model precisely, especially given their extremely
+        // attenuated nature. Instead, a ~1 ly sphere is used.
+        private protected override IShape GetShape() => new Sphere(Space, Position);
     }
 }

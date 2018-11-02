@@ -114,11 +114,11 @@ namespace WorldFoundry.Space.Galaxies
         /// <param name="position">The initial position of this <see cref="Galaxy"/>.</param>
         internal Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        internal override CelestialEntity GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
 
-            Orbit.SetOrbit(
+            Space.Orbit.SetOrbit(
                 child,
                 GalacticCore,
                 Randomizer.Instance.NextDouble(0.1));
@@ -143,26 +143,20 @@ namespace WorldFoundry.Space.Galaxies
         private protected virtual double GenerateDarkMatterMultiplier() => Randomizer.Instance.NextDouble(5, 15);
 
         /// <summary>
-        /// Produces a rough approximation of the mass of all children, plus the galactic core, plus
-        /// an additional high proportion of dark matter.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Galaxy"/>.</param>
-        private protected double GenerateMass(IShape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
-
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
-
-            var radius = Randomizer.Instance.NextDouble(1.55e19, 1.55e21); // ~1600–160000 ly
-            var axis = radius * Randomizer.Instance.Normal(0.02, 0.001);
-            Shape = new Ellipsoid(radius, axis);
-
-            Substance.Mass = GenerateMass(Shape);
-        }
-
-        /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
         private protected virtual BlackHole GetGalacticCore() => new SupermassiveBlackHole(this, Vector3.Zero);
+
+        // Produces a rough approximation of the mass of all children, plus the galactic core, plus
+        // an additional high proportion of dark matter.
+        private protected override double GetMass()
+            => Math.Round(((Shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
+
+        private protected override IShape GetShape()
+        {
+            var radius = Randomizer.Instance.NextDouble(1.55e19, 1.55e21); // ~1600–160000 ly
+            var axis = radius * Randomizer.Instance.Normal(0.02, 0.001);
+            return new Ellipsoid(radius, axis, Position);
+        }
     }
 }

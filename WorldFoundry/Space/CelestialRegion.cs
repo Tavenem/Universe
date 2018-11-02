@@ -1,10 +1,10 @@
-﻿using ExtensionLib;
-using MathAndScience;
+﻿using MathAndScience;
 using MathAndScience.Numerics;
 using MathAndScience.Shapes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
@@ -12,16 +12,109 @@ namespace WorldFoundry.Space
     /// <summary>
     /// A discrete region of space bound together by gravity, but not a single body; such as a galaxy or star system.
     /// </summary>
-    public class CelestialRegion : CelestialEntity
+    public class CelestialRegion : Region, ICelestialLocation
     {
         private protected bool _isPrepopulated;
 
         /// <summary>
         /// The <see cref="CelestialRegion"/> children contained within this instance.
         /// </summary>
-        public IEnumerable<CelestialEntity> Children => Location.Children.SelectNonNull(x => x.CelestialEntity);
+        public IEnumerable<ICelestialLocation> CelestialChildren => Children.OfType<ICelestialLocation>();
+
+        /// <summary>
+        /// The <see cref="CelestialRegion"/> which directly contains this <see cref="ICelestialLocation"/>.
+        /// </summary>
+        public CelestialRegion ContainingCelestialRegion => ContainingRegion as CelestialRegion;
+
+        /// <summary>
+        /// A string that uniquely identifies this <see cref="ICelestialLocation"/> for display
+        /// purposes.
+        /// </summary>
+        public string Designation
+            => string.IsNullOrEmpty(DesignatorPrefix) ? Id : $"{DesignatorPrefix} {Id}";
+
+        private protected double? _mass;
+        /// <summary>
+        /// The total mass of this <see cref="ICelestialLocation"/>, in kg.
+        /// </summary>
+        public double Mass => _mass ?? (_mass = GetMass()).Value;
+
+        /// <summary>
+        /// An optional name for this <see cref="ICelestialLocation"/>.
+        /// </summary>
+        /// <remarks>
+        /// Not every <see cref="ICelestialLocation"/> must have a name. They may be uniquely identified
+        /// by their <see cref="Designation"/>, instead.
+        /// </remarks>
+        public virtual string Name { get; set; }
+
+        /// <summary>
+        /// The orbit occupied by this <see cref="ICelestialLocation"/> (may be null).
+        /// </summary>
+        public Orbit? Orbit { get; set; }
+
+        private Vector3 _position;
+        /// <summary>
+        /// Specifies the location of this <see cref="ICelestialLocation"/>'s center in the local space
+        /// of its containing <see cref="ContainingCelestialRegion"/>.
+        /// </summary>
+        public override Vector3 Position
+        {
+            get => _position;
+            set
+            {
+                _position = value;
+                if (_shape != null)
+                {
+                    _shape = _shape.GetCloneAtPosition(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets a radius which fully contains this <see cref="ICelestialLocation"/>, in meters.
+        /// </summary>
+        public double Radius => Shape.ContainingRadius;
+
+        private protected IShape _shape;
+        /// <summary>
+        /// The shape of this <see cref="ICelestialLocation"/>.
+        /// </summary>
+        public override IShape Shape
+        {
+            get => _shape ?? (_shape = GetShape());
+            set => _shape = value.GetCloneAtPosition(Position);
+        }
+
+        private double? _temperature;
+        /// <summary>
+        /// The average temperature of this <see cref="ICelestialLocation"/>, in K.
+        /// </summary>
+        /// <remarks>No less than <see cref="ContainingCelestialRegion"/>'s ambient temperature.</remarks>
+        public double? Temperature => Math.Max(_temperature ?? (_temperature = GetTemperature()).Value, ContainingCelestialRegion?.Temperature ?? 0);
+
+        /// <summary>
+        /// The <see cref="ICelestialLocation"/>'s <see cref="Name"/>, if it has one; otherwise its <see cref="Designation"/>.
+        /// </summary>
+        public string Title => Name ?? Designation;
+
+        /// <summary>
+        /// The name for this type of <see cref="ICelestialLocation"/>.
+        /// </summary>
+        public virtual string TypeName => BaseTypeName;
+
+        /// <summary>
+        /// Specifies the velocity of the <see cref="ICelestialLocation"/>.
+        /// </summary>
+        public virtual Vector3 Velocity { get; set; }
+
+        internal virtual bool IsHospitable => true;
+
+        private protected virtual string BaseTypeName => "Celestial Region";
 
         private protected virtual IEnumerable<ChildDefinition> ChildDefinitions => Enumerable.Empty<ChildDefinition>();
+
+        private protected virtual string DesignatorPrefix => string.Empty;
 
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialRegion"/>.
@@ -31,40 +124,41 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialRegion"/>.
         /// </summary>
-        /// <param name="parent">
+        /// <param name="containingRegion">
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialRegion"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialRegion"/>.</param>
-        internal CelestialRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal CelestialRegion(CelestialRegion containingRegion, Vector3 position)
+            : base(containingRegion, new SinglePoint(position)) => _position = position;
 
         /// <summary>
-        /// Enumerates all the <see cref="CelestialEntity"/> descendant children instances in this
+        /// Enumerates all the <see cref="ICelestialLocation"/> descendant children instances in this
         /// region.
         /// </summary>
-        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="CelestialEntity"/>
+        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="ICelestialLocation"/>
         /// child instances within this region.</returns>
-        public IEnumerable<CelestialEntity> GetAllChildren()
-            => Location.GetAllChildren().SelectNonNull(x => x.CelestialEntity);
+        public IEnumerable<ICelestialLocation> GetAllCelestialChildren()
+            => GetAllChildren().OfType<ICelestialLocation>();
 
         /// <summary>
-        /// Enumerates all the <see cref="CelestialEntity"/> descendant children instances of the
+        /// Enumerates all the <see cref="ICelestialLocation"/> descendant children instances of the
         /// given type in this region.
         /// </summary>
-        /// <typeparam name="T">The type of <see cref="CelestialEntity"/> to retrieve.</typeparam>
-        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="CelestialEntity"/>
+        /// <typeparam name="T">The type of <see cref="ICelestialLocation"/> to retrieve.</typeparam>
+        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="ICelestialLocation"/>
         /// child instances of the given type within this region.</returns>
-        public IEnumerable<T> GetAllChildren<T>() where T : CelestialEntity
-            => Location.GetAllChildren().SelectNonNull(x => x.CelestialEntity).OfType<T>();
+        public IEnumerable<T> GetAllChildren<T>() where T : ICelestialLocation
+            => GetAllChildren().OfType<T>();
 
         /// <summary>
-        /// Enumerates all the <see cref="CelestialEntity"/> descendant children instances of the
+        /// Enumerates all the <see cref="ICelestialLocation"/> descendant children instances of the
         /// given <paramref name="type"/> in this region.
         /// </summary>
-        /// <param name="type">The type of <see cref="CelestialEntity"/> to retrieve.</param>
-        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="CelestialEntity"/>
+        /// <param name="type">The type of <see cref="ICelestialLocation"/> to retrieve.</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> of all descendant <see cref="ICelestialLocation"/>
         /// child instances of the given <paramref name="type"/> within this region.</returns>
-        public IEnumerable<CelestialEntity> GetAllChildren(Type type)
-            => Location.GetAllChildren().SelectNonNull(x => x.CelestialEntity).Where(x => type.IsAssignableFrom(x.GetType()));
+        public IEnumerable<ICelestialLocation> GetAllChildren(Type type)
+            => GetAllCelestialChildren().Where(x => type.IsAssignableFrom(x.GetType()));
 
         /// <summary>
         /// Calculates the total number of children in this region. The totals are approximate,
@@ -75,6 +169,46 @@ namespace WorldFoundry.Space
         /// an integral value, due to the potentially vast numbers involved).</returns>
         public IEnumerable<(ChildDefinition type, double total)> GetChildTotals()
             => ChildDefinitions.Select(x => (x, Shape.Volume * x.Density));
+
+        /// <summary>
+        /// Calculates the force of gravity on this <see cref="ICelestialLocation"/> from another as a
+        /// vector, in N.
+        /// </summary>
+        /// <param name="other">An <see cref="ICelestialLocation"/> from which the force gravity will
+        /// be calculated.</param>
+        /// <returns>
+        /// The force of gravity from this <see cref="ICelestialLocation"/> to the other, in N, as a
+        /// vector.
+        /// </returns>
+        /// <exception cref="ArgumentNullException">
+        /// <paramref name="other"/> may not be null.
+        /// </exception>
+        /// <exception cref="Exception">
+        /// An exception will be thrown if the two <see cref="ICelestialLocation"/> instances do not
+        /// share a <see cref="CelestialRegion"/> parent at some point.
+        /// </exception>
+        /// <remarks>
+        /// Newton's law is used. General relativity would be more accurate in certain
+        /// circumstances, but is considered unnecessarily intensive work for the simple simulations
+        /// expected to make use of this library. If you are an astronomer performing scientifically
+        /// rigorous calculations or simulations, this is not the library for you ;)
+        /// </remarks>
+        public Vector3 GetGravityFromObject(ICelestialLocation other)
+        {
+            if (other == null)
+            {
+                throw new ArgumentNullException(nameof(other));
+            }
+
+            var distance = GetDistanceTo(other);
+
+            var scale = -ScienceConstants.G * (Mass * other.Mass / (distance * distance));
+
+            // Get the normalized vector
+            var normalized = (other.Position - Position) / distance;
+
+            return normalized * scale;
+        }
 
         /// <summary>
         /// Calculates the radius of a spherical region which contains at most the given amount of
@@ -104,6 +238,42 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
+        /// Calculates the total force of gravity on this <see cref="ICelestialLocation"/>, in N, as a
+        /// vector. Note that results may be highly inaccurate if the parent region has not been
+        /// populated thoroughly enough in the vicinity of this entity (with the scale of "vicinity"
+        /// depending strongly on the mass of the region's potential children).
+        /// </summary>
+        /// <returns>
+        /// The total force of gravity on this <see cref="ICelestialLocation"/> from all
+        /// currently-generated children, in N, as a vector.
+        /// </returns>
+        /// <remarks>
+        /// Newton's law is used. Children of sibling objects are not counted individually; instead
+        /// the entire sibling is treated as a single entity, with total mass including all its
+        /// children. Objects outside the parent are ignored entirely, assuming they are either too
+        /// far to be of significance, or operate in a larger frame of reference (e.g. the Earth
+        /// moves within the gravity of the Milky Way, but when determining its movement within the
+        /// solar system, the effects of the greater galaxy are not relevant).
+        /// </remarks>
+        public Vector3 GetTotalLocalGravity()
+        {
+            var totalGravity = Vector3.Zero;
+
+            // No gravity for a parent-less object
+            if (ContainingCelestialRegion == null)
+            {
+                return totalGravity;
+            }
+
+            foreach (var sibling in ContainingCelestialRegion.GetAllChildren<ICelestialLocation>())
+            {
+                totalGravity += GetGravityFromObject(sibling);
+            }
+
+            return totalGravity;
+        }
+
+        /// <summary>
         /// Generates an appropriate population of child entities in the given <paramref
         /// name="region"/>.
         /// </summary>
@@ -129,7 +299,34 @@ namespace WorldFoundry.Space
         /// size).
         /// </para>
         /// </remarks>
-        public virtual void PopulateRegion(Region region) => PopulateLocation(region);
+        public virtual void PopulateRegion(Region region)
+        {
+            if (region.GetCommonContainingRegion(this) != this)
+            {
+                return;
+            }
+            if (!_isPrepopulated)
+            {
+                PrepopulateRegion();
+            }
+            foreach (var childLocation in region.Children.OfType<Region>())
+            {
+                PopulateRegion(childLocation);
+            }
+            foreach (var child in ChildDefinitions)
+            {
+                var number = Math.Min(region.Shape.Volume * child.Density, int.MaxValue - CelestialChildren.Count() - 1);
+                if (number < 1 && Randomizer.Instance.NextDouble() <= number)
+                {
+                    number = 1;
+                }
+                number -= GetAllChildren(child.Type).Count(x => region.Contains(x));
+                for (var i = 0; i < number; i++)
+                {
+                    GenerateChild(child);
+                }
+            }
+        }
 
         /// <summary>
         /// Generates an appropriate population of child entities in this <see
@@ -160,7 +357,7 @@ namespace WorldFoundry.Space
             }
             foreach (var child in ChildDefinitions)
             {
-                var number = Math.Min(Shape.Volume * child.Density, int.MaxValue - Children.Count() - 1);
+                var number = Math.Min(Shape.Volume * child.Density, int.MaxValue - CelestialChildren.Count() - 1);
                 if (number < 1 && Randomizer.Instance.NextDouble() <= number)
                 {
                     number = 1;
@@ -174,52 +371,70 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Removes the given child <see cref="CelestialEntity"/> from this instance. Does nothing
+        /// Removes the given child <see cref="ICelestialLocation"/> from this instance. Does nothing
         /// if the given instance is <see langword="null"/> or is not a child of this one.
         /// </summary>
-        /// <param name="child">A <see cref="CelestialEntity"/> to remove as a child of this
+        /// <param name="child">A <see cref="ICelestialLocation"/> to remove as a child of this
         /// one.</param>
-        public void RemoveChild(CelestialEntity child) => child?.Location.SetNewParent(null);
+        public void RemoveChild(ICelestialLocation child) => child?.SetNewContainingRegion(null);
+
+        /// <summary>
+        /// Returns a string that represents the celestial object.
+        /// </summary>
+        /// <returns>A string that represents the celestial object.</returns>
+        public override string ToString()
+        {
+            var sb = new StringBuilder(base.ToString());
+            if (Orbit?.OrbitedObject != null)
+            {
+                sb.Append(", orbiting ")
+                    .Append(Orbit.Value.OrbitedObject.TypeName)
+                    .Append(" ")
+                    .Append(Orbit.Value.OrbitedObject.Title);
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Updates the orbital position and velocity of this object's <see cref="Orbit"/> after the
+        /// specified number of seconds have passed, assuming no influences on the body's motion
+        /// have occurred aside from its orbit. Has no effect if the body is not in orbit.
+        /// </summary>
+        /// <param name="elapsedSeconds">
+        /// The number of seconds which have elapsed since the orbit was last updated.
+        /// </param>
+        public void UpdateOrbit(double elapsedSeconds)
+        {
+            if (!Orbit.HasValue)
+            {
+                return;
+            }
+
+            var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(elapsedSeconds);
+
+            if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
+            {
+                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+            }
+            else
+            {
+                Position = Orbit.Value.OrbitedObject.Position + position;
+            }
+
+            Velocity = velocity;
+
+            Orbit = new Orbit(this, Orbit.Value.OrbitedObject);
+        }
 
         internal virtual void PrepopulateRegion() => _isPrepopulated = true;
 
-        internal virtual CelestialEntity GenerateChild(ChildDefinition definition)
+        internal virtual ICelestialLocation GenerateChild(ChildDefinition definition)
             => definition.GenerateChild(this);
 
-        private protected override void GenerateLocation(CelestialRegion parent = null, Vector3? position = null)
-            => Location = new Region(this, parent?.Location, new SinglePoint(position ?? Vector3.Zero));
+        private protected virtual double GetMass() => 0;
 
-        private void PopulateLocation(Location location)
-        {
-            if (!(Location is Region r) || location.GetCommonParent(Location) != Location)
-            {
-                return;
-            }
-            if (!_isPrepopulated)
-            {
-                PrepopulateRegion();
-            }
-            foreach (var childLocation in location.Children)
-            {
-                PopulateLocation(childLocation);
-            }
-            if (!(location is Region region))
-            {
-                return;
-            }
-            foreach (var child in ChildDefinitions)
-            {
-                var number = Math.Min(region.Shape.Volume * child.Density, int.MaxValue - Children.Count() - 1);
-                if (number < 1 && Randomizer.Instance.NextDouble() <= number)
-                {
-                    number = 1;
-                }
-                number -= GetAllChildren(child.Type).Count(x => region.Contains(x.Location));
-                for (var i = 0; i < number; i++)
-                {
-                    GenerateChild(child);
-                }
-            }
-        }
+        private protected virtual IShape GetShape() => new SinglePoint(Position);
+
+        private protected virtual double GetTemperature() => 0;
     }
 }

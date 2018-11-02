@@ -34,7 +34,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName
         {
@@ -50,7 +50,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 {
                     sb.Append("Moon");
                 }
-                else if (Parent is StarSystem)
+                else if (ContainingCelestialRegion is StarSystem)
                 {
                     sb.Append(BaseTypeName);
                 }
@@ -99,24 +99,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// </param>
         internal Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        /// <summary>
-        /// Determines an orbit for this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialEntity"/> which is to be orbited.</param>
-        /// <remarks>
-        /// In the base class, always generates a circular orbit; subclasses are expected to override.
-        /// </remarks>
-        public override void GenerateOrbit(CelestialEntity orbitedObject)
+        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
                 return;
             }
 
-            Orbit.SetOrbit(
+            Space.Orbit.SetOrbit(
                 this,
                 orbitedObject,
-                Location.GetDistanceTo(orbitedObject),
+                GetDistanceTo(orbitedObject),
                 Eccentricity,
                 Math.Round(Randomizer.Instance.NextDouble(0.9), 4),
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
@@ -133,7 +126,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Icy = GetRingDistance(IcyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Icy = Math.Min(outerLimit_Icy, Orbit.GetHillSphereRadius() / 3.0);
+                outerLimit_Icy = Math.Min(outerLimit_Icy, GetHillSphereRadius() / 3.0);
             }
             if (innerLimit >= outerLimit_Icy)
             {
@@ -143,7 +136,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Rocky = GetRingDistance(RockyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Rocky = Math.Min(outerLimit_Rocky, Orbit.GetHillSphereRadius() / 3.0);
+                outerLimit_Rocky = Math.Min(outerLimit_Rocky, GetHillSphereRadius() / 3.0);
             }
 
             var _ringChance = RingChance;
@@ -296,7 +289,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private protected override double GetMass(IShape shape = null)
         {
             var maxMass = MaxMass;
-            if (Parent != null)
+            if (ContainingCelestialRegion != null)
             {
                 maxMass = Math.Min(maxMass, GetSternLevisonLambdaMass() / 100);
                 if (maxMass < MinMass)
@@ -325,7 +318,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="density">The density of the rings, in kg/m³.</param>
         /// <returns>The approximate outer distance at which rings of the given density may be
         /// found, in meters.</returns>
-        private double GetRingDistance(double density) => 1.26 * Radius * Math.Pow(Density / density, 1.0 / 3.0);
+        private double GetRingDistance(double density) => 1.26 * Shape.ContainingRadius * Math.Pow(Density / density, 1.0 / 3.0);
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {
@@ -333,7 +326,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
             var radius = knownRadius ?? Math.Max(MinimumRadius, GetRadiusForMass(mass.Value));
             var flattening = Randomizer.Instance.NextDouble(0.1);
-            return new Ellipsoid(radius, radius * (1 - flattening), 1);
+            return new Ellipsoid(radius, radius * (1 - flattening), 1, Position);
         }
 
         /// <summary>
@@ -345,24 +338,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// doesn't already have a defined orbit.
         /// </remarks>
         /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit
-        /// or <see cref="CelestialEntity.Parent"/>.</exception>
+        /// or <see cref="ICelestialLocation.ContainingCelestialRegion"/>.</exception>
         private protected double GetSternLevisonLambdaMass()
         {
             var semiMajorAxis = 0.0;
-            if (Orbit != null)
+            if (Orbit.HasValue)
             {
-                semiMajorAxis = Orbit.SemiMajorAxis;
+                semiMajorAxis = Orbit.Value.SemiMajorAxis;
             }
-            else if (Parent == null)
+            else if (ContainingCelestialRegion == null)
             {
-                throw new Exception($"{nameof(GetSternLevisonLambdaMass)} cannot be called on a {nameof(Planemo)} without either an {nameof(Orbit)} or a {nameof(Parent)}");
+                throw new Exception($"{nameof(GetSternLevisonLambdaMass)} cannot be called on a {nameof(Planemo)} without either an {nameof(Orbit)} or a {nameof(ContainingCelestialRegion)}");
             }
             else
             {
                 // Even if this planetoid is not yet in a defined orbit, some orbital
                 // characteristics must be determined early, in order to distinguish a dwarf planet
                 // from a planet, which depends partially on orbital distance.
-                semiMajorAxis = Location.GetDistanceTo(Parent) * (1 + Eccentricity) / (1 - Eccentricity);
+                semiMajorAxis = GetDistanceTo(ContainingCelestialRegion) * (1 + Eccentricity) / (1 - Eccentricity);
             }
 
             return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);

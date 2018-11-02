@@ -26,15 +26,11 @@ namespace WorldFoundry.Space.Galaxies
         /// <param name="position">The initial position of this <see cref="SpiralGalaxy"/>.</param>
         internal SpiralGalaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        private protected override void GenerateSubstance()
+        private protected override IShape GetShape()
         {
-            Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
-
             var radius = Randomizer.Instance.NextDouble(2.4e20, 2.5e21); // 25000–75000 ly
             var axis = radius * Randomizer.Instance.Normal(0.02, 0.001);
-            Shape = new Ellipsoid(radius, axis);
-
-            Substance.Mass = GenerateMass(Shape);
+            return new Ellipsoid(radius, axis, Position);
         }
     }
 }

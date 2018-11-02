@@ -64,19 +64,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // be the actual Roche limit for the body which gets generated).
                 if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.45) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new TerrestrialPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.77)
                 {
-                    satellite = new CarbonPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new CarbonPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new OceanPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
@@ -86,15 +86,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new DwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(Parent, Vector3.Zero, maxMass);
+                    satellite = new RockyDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
@@ -103,21 +103,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new CTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new STypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(Parent, Vector3.Zero, maxMass);
+                    satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
             }
 
             if (satellite != null)
             {
-                Orbit.SetOrbit(
+                WorldFoundry.Space.Orbit.SetOrbit(
                     satellite,
                     this,
                     periapsis,

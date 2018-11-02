@@ -12,13 +12,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     /// </summary>
     public class NeutronStar : Star
     {
+        // False for neutron stars, due to their excessive ionizing radiation, which makes the
+        // development of life nearby highly unlikely.
+        internal override bool IsHospitable => false;
+
         private protected override string BaseTypeName => "Neutron Star";
 
         private protected override string DesignatorPrefix => "X";
-
-        // False for neutron stars, due to their excessive ionizing radiation, which makes the
-        // development of life nearby highly unlikely.
-        private protected override bool IsHospitable => false;
 
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/>.
@@ -50,7 +50,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
             var radius = Math.Round(Randomizer.Instance.NextDouble(1000, 2000));
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            Shape = new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
         }
 
         private protected override SpectralClass GetSpectralClass() => SpectralClass.Other;

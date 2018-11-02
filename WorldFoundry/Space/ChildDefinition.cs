@@ -83,25 +83,28 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Generates a new child from this definition for the given <paramref name="parent"/> <see
-        /// cref="CelestialRegion"/>, at the given <paramref name="position"/>.
+        /// Generates a new child from this definition for the given <paramref
+        /// name="containingRegion"/> <see cref="CelestialRegion"/>, at the given <paramref
+        /// name="position"/>.
         /// </summary>
-        /// <param name="parent">The parent <see cref="CelestialRegion"/> for the new child.</param>
+        /// <param name="containingRegion">The parent <see cref="CelestialRegion"/> for the new
+        /// child.</param>
         /// <param name="position">The position for the new child. If left <see langword="null"/>
-        /// and <paramref name="parent"/> is a <see cref="CelestialRegion"/>, a random position will
-        /// be determined; if no free space can be found, no child will be generated.</param>
-        /// <returns>A new child instance of the given <paramref name="parent"/> whose <see
-        /// cref="CelestialEntity.Location"/> is set to the given <paramref name="position"/>; or
-        /// <see langword="null"/> if no child could be generated.</returns>
-        public CelestialEntity GenerateChild(CelestialRegion parent, Vector3? position = null)
+        /// and <paramref name="containingRegion"/> is a <see cref="CelestialRegion"/>, a random
+        /// position will be determined; if no free space can be found, no child will be
+        /// generated.</param>
+        /// <returns>A new child instance of the given <paramref name="containingRegion"/> at the
+        /// given <paramref name="position"/>; or <see langword="null"/> if no child could be
+        /// generated.</returns>
+        public ICelestialLocation GenerateChild(CelestialRegion containingRegion, Vector3? position = null)
         {
-            if (!typeof(CelestialEntity).IsAssignableFrom(Type))
+            if (!typeof(ICelestialLocation).IsAssignableFrom(Type))
             {
                 return null;
             }
-            if (position == null && parent?.Location is Region region)
+            if (position == null && containingRegion != null)
             {
-                if (region.TryGetOpenSpace(Space, out var location))
+                if (containingRegion.TryGetOpenSpace(Space, out var location))
                 {
                     position = location;
                 }
@@ -110,10 +113,13 @@ namespace WorldFoundry.Space
                     return null;
                 }
             }
-            var parameters = new List<object> { parent, position ?? Vector3.Zero };
+            var parameters = new List<object> { containingRegion, position ?? Vector3.Zero };
             parameters.AddRange(ConstructionParameters);
-            var child = Type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray()) as CelestialEntity;
-            child.Init();
+            var child = Type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray()) as ICelestialLocation;
+            if (child is Location loc)
+            {
+                loc.Init();
+            }
             return child;
         }
     }

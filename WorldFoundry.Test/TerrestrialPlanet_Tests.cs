@@ -26,7 +26,7 @@ namespace WorldFoundry.Test
             Assert.IsNotNull(grid);
 
             Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
-            Console.WriteLine($"Radius: {(planet.Radius / 1000).ToString("N0")} km");
+            Console.WriteLine($"Radius: {(planet.Shape.ContainingRadius / 1000).ToString("N0")} km");
             Console.WriteLine($"Surface area: {(grid.Tiles.Sum(x => x.Area) / 1e6).ToString("N0")} km²");
             Console.WriteLine($"Tile area: {((grid.Tiles.Length > 12 ? grid.Tiles[12].Area : grid.Tiles[11].Area) / 1e6).ToString("N0")} km²");
             Console.WriteLine($"Equatorial tiles: {grid.Tiles.Count(x => x.Corners.Any(c => grid.Corners[c].Latitude <= 0) && x.Corners.Any(c => grid.Corners[c].Latitude >= 0)).ToString()}");

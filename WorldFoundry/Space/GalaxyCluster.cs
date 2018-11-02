@@ -38,14 +38,9 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxyCluster"/>.</param>
         internal GalaxyCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
-                Mass = Randomizer.Instance.NextDouble(2.0e45, 2.0e46), // general average; 1.0e15–1.0e16 solar masses
-            };
-            Shape = new Sphere(Randomizer.Instance.NextDouble(3.0e23, 1.5e24)); // ~1–5 Mpc
-        }
+        // General average; 1.0e15–1.0e16 solar masses
+        private protected override double GetMass() => Randomizer.Instance.NextDouble(2.0e45, 2.0e46);
+
+        private protected override IShape GetShape() => new Sphere(Randomizer.Instance.NextDouble(3.0e23, 1.5e24), Position); // ~1–5 Mpc
     }
 }

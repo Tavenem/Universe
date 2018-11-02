@@ -27,6 +27,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private WorldGrid _grid;
         private float _normalizedSeaLevel;
+        private protected int _seed1;
+        private protected int _seed2;
+        private protected int _seed3;
+        private protected int _seed4;
+        private protected int _seed5;
 
         private double? _angleOfRotation;
         /// <summary>
@@ -148,8 +153,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public double AxialTilt
         {
-            get => Orbit == null ? AngleOfRotation : AngleOfRotation - Orbit.Inclination;
-            set => AngleOfRotation = Orbit == null ? value : value + Orbit.Inclination;
+            get => Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
+            set => AngleOfRotation = Orbit.HasValue ? value + Orbit.Value.Inclination : value;
         }
 
         private Vector3? _axis;
@@ -287,11 +292,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The collection of natural satellites around this <see cref="Planetoid"/>.
         /// </summary>
         /// <remarks>
-        /// Unlike <see cref="CelestialRegion.Children"/>, natural satellites are actually siblings
+        /// Unlike <see cref="CelestialRegion.CelestialChildren"/>, natural satellites are actually siblings
         /// in the local <see cref="CelestialRegion"/> hierarchy, which merely share an orbital relationship.
         /// </remarks>
         public IEnumerable<Planetoid> Satellites
-            => Parent?.Children.OfType<Planetoid>().Where(x => _satelliteIDs?.Contains(x.ID) == true) ?? Enumerable.Empty<Planetoid>();
+            => ContainingCelestialRegion?.CelestialChildren.OfType<Planetoid>().Where(x => _satelliteIDs?.Contains(x.Id) == true) ?? Enumerable.Empty<Planetoid>();
 
         private double? _seaLevel;
         /// <summary>
@@ -534,7 +539,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// shape of the <see cref="Planetoid"/>.
         /// </remarks>
         public double GetDistance(Vector3 position1, Vector3 position2)
-            => Radius * Math.Atan2(position1.Dot(position2), position1.Cross(position2).Length());
+            => Shape.ContainingRadius * Math.Atan2(position1.Dot(position2), position1.Cross(position2).Length());
 
         /// <summary>
         /// Calculates the distance along the surface at sea level between two points.
@@ -834,7 +839,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
 
             var minPeriapsis = MinSatellitePeriapsis;
-            var maxApoapsis = Orbit == null ? Radius * 100 : Orbit.GetHillSphereRadius() / 3.0;
+            var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3.0 : Shape.ContainingRadius * 100;
 
             while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < MaxSatellites && (!max.HasValue || (_satelliteIDs?.Count ?? 0) < max.Value))
             {
@@ -847,7 +852,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
 
                 // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
-                var maxMass = Math.Max(0, Mass / ((semiMajorAxis / Radius) - 1));
+                var maxMass = Math.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
 
                 var satellite = GenerateSatellite(periapsis, eccentricity, maxMass);
                 if (satellite == null)
@@ -855,9 +860,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     break;
                 }
 
-                (_satelliteIDs ?? (_satelliteIDs = new List<string>())).Add(satellite.ID);
+                (_satelliteIDs ?? (_satelliteIDs = new List<string>())).Add(satellite.Id);
 
-                minPeriapsis = satellite.Orbit.Apoapsis + satellite.Orbit.GetSphereOfInfluenceRadius();
+                minPeriapsis = satellite.Orbit.Value.Apoapsis + satellite.GetSphereOfInfluenceRadius();
             }
         }
 
@@ -936,6 +941,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 return surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
             }
+        }
+
+        internal override void Init()
+        {
+            base.Init();
+            _seed1 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed2 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed3 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed4 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
+            _seed5 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
         }
 
         private protected int AddResource(Chemical chemical, double proportion, bool isVein, bool isPerturbation = false, int? seed = null)
@@ -1080,9 +1095,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual double GetInternalTemperature() => 0;
 
         private bool GetIsTidallyLockedAfter(double years)
-            => Orbit == null
-            ? false
-            : Math.Pow(years / 6.0e11 * Mass * Math.Pow(Orbit.OrbitedObject.Mass, 2) / (Radius * Rigidity), 1.0 / 6.0) >= Orbit.SemiMajorAxis;
+            => Orbit.HasValue && Math.Pow(years / 6.0e11 * Mass * Math.Pow(Orbit.Value.OrbitedObject.Mass, 2) / (Shape.ContainingRadius * Rigidity), 1.0 / 6.0) >= Orbit.Value.SemiMajorAxis;
 
         /// <summary>
         /// Calculates the adiabatic lapse rate for this <see cref="Planetoid"/>, after determining
@@ -1165,7 +1178,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double GetPolarAirMass(double atmosphericScaleHeight)
         {
-            var r = Radius / atmosphericScaleHeight;
+            var r = Shape.ContainingRadius / atmosphericScaleHeight;
             var rCosLat = r * CosPolarLatitude;
             return Math.Sqrt((rCosLat * rCosLat) + (2 * r) + 1) - rCosLat;
         }
@@ -1173,7 +1186,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual double GetRotationalPeriod()
         {
             // Check for tidal locking.
-            if (Orbit != null)
+            if (Orbit.HasValue)
             {
                 // Invent an orbit age. Precision isn't important here, and some inaccuracy and
                 // inconsistency between satellites is desirable. The age of the Solar system is used
@@ -1181,7 +1194,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 var years = Randomizer.Instance.Lognormal(0, 1) * 4.6e9;
                 if (GetIsTidallyLockedAfter(years))
                 {
-                    return Orbit.Period;
+                    return Orbit.Value.Period;
                 }
             }
 
@@ -1214,7 +1227,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual IShape GetShape(double? mass = null, double? knownRadius = null)
             // Gaussian distribution with most values between 1km and 19km.
-            => new Ellipsoid(Math.Max(0, Randomizer.Instance.Normal(10000, 4500)), Randomizer.Instance.NextDouble(0.5, 1));
+            => new Ellipsoid(Math.Max(0, Randomizer.Instance.Normal(10000, 4500)), Randomizer.Instance.NextDouble(0.5, 1), Position);
 
         private double GetSlope(Vector3 position, double latitude, double longitude, float elevation)
         {
@@ -1254,7 +1267,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         private double GetSolarEquator()
-            => -AxialTilt * (Orbit == null ? 1 : Math.Cos(Orbit.TrueAnomaly)) * (2.0 / 3.0);
+            => -AxialTilt * (Orbit.HasValue ? Math.Cos(Orbit.Value.TrueAnomaly) : 1) * (2.0 / 3.0);
 
         private protected override void ResetCachedTemperatures()
         {

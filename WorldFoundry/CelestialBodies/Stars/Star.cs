@@ -52,7 +52,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         }
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName => SpectralClass == SpectralClass.M ? RedDwarfTypeName : BaseTypeName;
 
@@ -168,7 +168,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <param name="distance">The desired distance, in meters.</param>
         /// <param name="albedo">The albedo of the target body.</param>
         internal void SetTempForTargetPlanetTemp(double temperature, double distance, double albedo = 0)
-            => Substance.Temperature = temperature / (Math.Sqrt(Radius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
+            => Substance.Temperature = temperature / (Math.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
 
         // Mass scales with radius for main-sequence stars, with the scale changing at around 1
         // solar mass/radius.
@@ -181,7 +181,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
             var radius = d.IsZero() ? 0 : Math.Round(Math.Sqrt(Luminosity / d));
             var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
+            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
         }
 
         private protected override void GenerateSubstance()

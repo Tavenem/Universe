@@ -1,6 +1,9 @@
-﻿using MathAndScience.Shapes;
-using System.Linq;
+﻿using ExtensionLib;
 using MathAndScience.Numerics;
+using MathAndScience.Shapes;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Linq;
 using WorldFoundry.CelestialBodies;
 using WorldFoundry.Space;
 
@@ -9,8 +12,14 @@ namespace WorldFoundry.Place
     /// <summary>
     /// A <see cref="Location"/> which defines a shape as well as a position.
     /// </summary>
-    public class Region : Location
+    public class Region : Location, ISupportInitialize
     {
+        private List<ILocation> _children;
+        /// <summary>
+        /// The child locations contained within this one.
+        /// </summary>
+        public IEnumerable<ILocation> Children => _children ?? Enumerable.Empty<ILocation>();
+
         /// <summary>
         /// The position of this location relative to the center of its <see cref="Parent"/>.
         /// </summary>
@@ -33,39 +42,24 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Initializes a new instance of <see cref="Region"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
         /// <param name="shape">The shape of the region.</param>
-        public Region(CelestialEntity celestialEntity, IShape shape)
-        {
-            CelestialEntity = celestialEntity;
-            Shape = shape;
-        }
+        public Region(IShape shape) => Shape = shape;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Region"/>.
         /// </summary>
-        /// <param name="celestialEntity">The <see cref="Space.CelestialEntity"/> which represents
-        /// this location (may be <see langword="null"/>).</param>
-        /// <param name="parent">The parent location in which this one is found.</param>
+        /// <param name="containingRegion">The region in which this one is found.</param>
         /// <param name="shape">The shape of the region.</param>
-        public Region(CelestialEntity celestialEntity, Location parent, IShape shape)
+        public Region(Region containingRegion, IShape shape)
         {
-            CelestialEntity = celestialEntity;
-            Parent = parent;
             Shape = shape;
-            Parent?.AddChild(this);
+            containingRegion?.AddChild(this);
         }
 
         /// <summary>
-        /// Gets a deep clone of this <see cref="Place"/>.
+        /// Signals the object that initialization is starting.
         /// </summary>
-        public override Location GetDeepClone() => GetDeepCopy();
-
-        /// <summary>
-        /// Gets a deep clone of this <see cref="Region"/>.
-        /// </summary>
-        public Region GetDeepCopy() => new Region(CelestialEntity, Parent, Shape);
+        public void BeginInit() { }
 
         /// <summary>
         /// Determines whether the specified <see cref="Location"/> is contained within the current
@@ -76,9 +70,9 @@ namespace WorldFoundry.Place
         /// <see langword="true"/> if the specified <see cref="Location"/> is contained within this
         /// instance; otherwise, <see langword="false"/>.
         /// </returns>
-        public override bool Contains(Location other)
+        public bool Contains(ILocation other)
         {
-            if (!base.Contains(other))
+            if (GetCommonContainingRegion(other) != this)
             {
                 return false;
             }
@@ -99,28 +93,95 @@ namespace WorldFoundry.Place
         /// <see langword="true"/> if the specified <paramref name="position"/> is contained within
         /// this instance; otherwise, <see langword="false"/>.
         /// </returns>
-        public override bool Contains(Vector3 position) => Shape.IsPointWithin(position);
+        public bool Contains(Vector3 position) => Shape.IsPointWithin(position);
 
         /// <summary>
-        /// Determines the nearest containing <see cref="Region"/> in this instance's parent
-        /// hierarchy which contains the specified <paramref name="position"/> (possibly this object
-        /// itself, if the position is not out of bounds).
+        /// Signals the object that initialization is complete.
         /// </summary>
-        /// <param name="position">The position whose containing <see cref="Region"/> is to be
-        /// determined.</param>
-        /// <returns>
-        /// The nearest containing <see cref="Region"/> in this instance's parent hierarchy which
-        /// contains the specified <paramref name="position"/>; or <see langword="null"/> if the
-        /// position is not contained in any parent <see cref="Region"/>.
-        /// </returns>
-        public override Region GetContainingParent(Vector3 position)
+        public void EndInit()
         {
-            if (position.Length() <= Shape.ContainingRadius)
+            if (_children != null)
             {
-                return this;
+                foreach (var child in _children)
+                {
+                    child.SetNewContainingRegion(this);
+                }
             }
-            return base.GetContainingParent(position);
         }
+
+        /// <summary>
+        /// Gets a flattened enumeration of all descendants of this instance.
+        /// </summary>
+        /// <returns>A flattened <see cref="IEnumerable{T}"/> of all descendant child <see
+        /// cref="Location"/> instances of this one.</returns>
+        public IEnumerable<ILocation> GetAllChildren()
+        {
+            foreach (var child in Children)
+            {
+                if (child != null)
+                {
+                    yield return child;
+                }
+
+                if (child is Region region)
+                {
+                    foreach (var sub in region.GetAllChildren())
+                    {
+                        if (sub != null)
+                        {
+                            yield return sub;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Finds a common <see cref="Region"/> which contains both this and the given location.
+        /// </summary>
+        /// <param name="other">The other <see cref="Location"/>.</param>
+        /// <returns>
+        /// A common <see cref="Region"/> which contains both this and the given location (may be
+        /// either of them); or <see langword="null"/> if this instance and the given location do
+        /// not have a common parent.
+        /// </returns>
+        public override Region GetCommonContainingRegion(ILocation other)
+            => other == this ? this : base.GetCommonContainingRegion(other);
+
+        /// <summary>
+        /// Determines the smallest child <see cref="Region"/> at any level of this instance's
+        /// descendant hierarchy which contains the specified <paramref name="position"/>.
+        /// </summary>
+        /// <param name="position">The position whose smallest containing <see cref="Region"/> is to
+        /// be determined.</param>
+        /// <returns>
+        /// The smallest child <see cref="Region"/> at any level of this instance's descendant
+        /// hierarchy which contains the specified <paramref name="position"/>, or this instance, if
+        /// no child contains the position.
+        /// </returns>
+        public Region GetContainingChild(Vector3 position)
+            => GetAllChildren().OfType<Region>()
+            .Where(x => x.Shape.IsPointWithin(x.GetLocalizedPosition(this, position)))
+            .ItemWithMin(x => x.Shape.ContainingRadius)
+            ?? (this is Region region && Contains(position) ? region : null);
+
+        /// <summary>
+        /// Determines the smallest child <see cref="Region"/> at any level of this instance's
+        /// descendant hierarchy which fully contains the specified <see cref="Location"/> within
+        /// its containing radius.
+        /// </summary>
+        /// <param name="other">The <see cref="Location"/> whose smallest containing <see
+        /// cref="Region"/> is to be determined.</param>
+        /// <returns>
+        /// The smallest child <see cref="Region"/> at any level of this instance's descendant
+        /// hierarchy which fully contains the specified <see cref="Location"/> within its
+        /// containing radius, or this instance, if no child contains the position.
+        /// </returns>
+        public Region GetContainingChild(ILocation other)
+            => GetAllChildren().OfType<Region>()
+            .Where(x => Vector3.Distance(x.Position, x.GetLocalizedPosition(other)) <= x.Shape.ContainingRadius - (other is Region r ? r.Shape.ContainingRadius : 0))
+            .ItemWithMin(x => x.Shape.ContainingRadius)
+            ?? (this is Region region && Contains(other) ? region : null);
 
         /// <summary>
         /// Attempts to find a random open space within this region with the given radius.
@@ -141,7 +202,7 @@ namespace WorldFoundry.Place
                 var shape = new Sphere(radius, pos.Value);
                 if (GetAllChildren().Any(x =>
                     (x is Region r && r.Shape.Intersects(shape))
-                    || (x.CelestialEntity is CelestialBody body && body.Shape.GetCloneAtPosition(GetLocalizedPosition(x)).Intersects(shape))))
+                    || (x is CelestialBody body && body.Shape.GetCloneAtPosition(GetLocalizedPosition(x)).Intersects(shape))))
                 {
                     pos = null;
                 }
@@ -149,6 +210,27 @@ namespace WorldFoundry.Place
             } while (!pos.HasValue && insanityCheck < 10000);
             position = pos ?? Vector3.Zero;
             return pos.HasValue;
+        }
+
+        internal void AddChild(ILocation location)
+        {
+            if (location is Region region)
+            {
+                foreach (var child in Children.Where(x => region.Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < region.Shape.ContainingRadius)))
+                {
+                    child.SetNewContainingRegion(region);
+                }
+            }
+            (_children ?? (_children = new List<ILocation>())).Add(location);
+            location.SetNewContainingRegion(this);
+        }
+
+        internal void RemoveChild(ILocation location) => _children?.Remove(location);
+
+        private protected override Stack<Region> GetPathToLocation(Stack<Region> path = null)
+        {
+            (path ?? (path = new Stack<Region>())).Push(this);
+            return ContainingRegion?.GetPathToLocation(path) ?? path;
         }
     }
 }

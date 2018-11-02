@@ -7,6 +7,7 @@ using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Substances;
+using WorldFoundry.CelestialBodies;
 
 namespace WorldFoundry.Space.AsteroidFields
 {
@@ -57,31 +58,26 @@ namespace WorldFoundry.Space.AsteroidFields
         public OortCloud(CelestialRegion parent, Star star, double starSystemRadius) : base(parent, Vector3.Zero)
         {
             Star = star;
-            GenerateSubstance(starSystemRadius);
+            _shape = GetShape(starSystemRadius);
         }
 
-        internal override CelestialEntity GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
 
-            if (Star != null)
+            if (Star != null && child is CelestialBody body)
             {
-                child.GenerateOrbit(Star);
+                body.GenerateOrbit(Star);
             }
 
             return child;
         }
 
-        private protected override void GenerateSubstance() => GenerateSubstance(null);
+        private protected override double GetMass() => 3.0e25;
 
-        private void GenerateSubstance(double? starSystemRadius)
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy(),
-                Mass = 3.0e25,
-            };
-            Shape = new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0));
-        }
+        private protected override IShape GetShape() => GetShape(null);
+
+        private protected IShape GetShape(double? starSystemRadius)
+            => new HollowSphere(3.0e15 + (starSystemRadius ?? 0), 7.5e15 + (starSystemRadius ?? 0), Position);
     }
 }

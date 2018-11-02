@@ -41,13 +41,11 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxySupercluster"/>.</param>
         internal GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        private protected override void GenerateSubstance()
+        // General average; 1.0e16–1.0e17 solar masses
+        private protected override double GetMass() => Randomizer.Instance.NextDouble(2.0e46, 2.0e47);
+
+        private protected override IShape GetShape()
         {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
-                Mass = Randomizer.Instance.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
-            };
             // May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
             var majorAxis = Randomizer.Instance.NextDouble(9.4607e23, 9.4607e25);
             var minorAxis1 = majorAxis * Randomizer.Instance.NextDouble(0.02, 0.15);
@@ -63,27 +61,27 @@ namespace WorldFoundry.Space
             var chance = Randomizer.Instance.Next(6);
             if (chance == 0)
             {
-                Shape = new Ellipsoid(majorAxis, minorAxis1, minorAxis2);
+                return new Ellipsoid(majorAxis, minorAxis1, minorAxis2, Position);
             }
             else if (chance == 1)
             {
-                Shape = new Ellipsoid(majorAxis, minorAxis2, minorAxis1);
+                return new Ellipsoid(majorAxis, minorAxis2, minorAxis1, Position);
             }
             else if (chance == 2)
             {
-                Shape = new Ellipsoid(minorAxis1, majorAxis, minorAxis2);
+                return new Ellipsoid(minorAxis1, majorAxis, minorAxis2, Position);
             }
             else if (chance == 3)
             {
-                Shape = new Ellipsoid(minorAxis2, majorAxis, minorAxis1);
+                return new Ellipsoid(minorAxis2, majorAxis, minorAxis1, Position);
             }
             else if (chance == 4)
             {
-                Shape = new Ellipsoid(minorAxis1, minorAxis2, majorAxis);
+                return new Ellipsoid(minorAxis1, minorAxis2, majorAxis, Position);
             }
             else
             {
-                Shape = new Ellipsoid(minorAxis2, minorAxis1, majorAxis);
+                return new Ellipsoid(minorAxis2, minorAxis1, majorAxis, Position);
             }
         }
     }

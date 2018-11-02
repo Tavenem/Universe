@@ -22,7 +22,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="position">The initial position of this <see cref="GiantStar"/>.</param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of this <see cref="GiantStar"/>.
+        /// The <see cref="LuminosityClass"/> of this <see cref="GiantStar"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="GiantStar"/>.</param>
         internal GiantStar(

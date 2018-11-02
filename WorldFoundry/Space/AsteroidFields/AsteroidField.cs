@@ -8,6 +8,7 @@ using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Substances;
+using WorldFoundry.CelestialBodies;
 
 namespace WorldFoundry.Space.AsteroidFields
 {
@@ -43,7 +44,7 @@ namespace WorldFoundry.Space.AsteroidFields
         public Star Star { get; protected set; }
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName => Star == null ? BaseTypeName : AsteroidBeltTypeName;
 
@@ -85,23 +86,27 @@ namespace WorldFoundry.Space.AsteroidFields
         public AsteroidField(CelestialRegion parent, Vector3 position, Star star, double majorRadius, double? minorRadius = null) : base(parent, position)
         {
             Star = star;
-            GenerateSubstance(majorRadius, minorRadius);
+            _shape = GetShape(majorRadius, minorRadius);
         }
 
-        internal override CelestialEntity GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
-
-            if (Orbit != null)
+            if (!(child is CelestialBody body))
             {
-                child.GenerateOrbit(Orbit.OrbitedObject);
+                return child;
+            }
+
+            if (Orbit.HasValue)
+            {
+                body.GenerateOrbit(Orbit.Value.OrbitedObject);
             }
             else if (Star != null)
             {
-                child.GenerateOrbit(Star);
+                body.GenerateOrbit(Star);
             }
 
-            if (child is Planetoid p)
+            if (body is Planetoid p)
             {
                 p.GenerateSatellites();
             }
@@ -109,23 +114,21 @@ namespace WorldFoundry.Space.AsteroidFields
             return child;
         }
 
-        private protected override void GenerateSubstance() => GenerateSubstance(null, null);
+        private protected override double GetMass() => Shape.Volume * 7.0e-8;
 
-        private void GenerateSubstance(double? majorRadius, double? minorRadius)
+        private protected override IShape GetShape() => GetShape(null, null);
+
+        private protected IShape GetShape(double? majorRadius, double? minorRadius)
         {
-            Substance = new Substance { Composition = CosmicSubstances.InterplanetaryMedium.GetDeepCopy() };
-
-            if (Parent == null || !(Parent is StarSystem) || Position != Vector3.Zero)
+            if (ContainingCelestialRegion == null || !(ContainingCelestialRegion is StarSystem) || Position != Vector3.Zero)
             {
                 var axis = majorRadius ?? Randomizer.Instance.NextDouble(1.5e11, 3.15e12);
-                Shape = new Ellipsoid(axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis);
+                return new Ellipsoid(axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Randomizer.Instance.NextDouble(0.5, 1.5) * axis, Position);
             }
             else
             {
-                Shape = new Torus(majorRadius ?? 0, minorRadius ?? 0);
+                return new Torus(majorRadius ?? 0, minorRadius ?? 0, Position);
             }
-
-            Substance.Mass = Shape.Volume * 7.0e-8;
         }
     }
 }
