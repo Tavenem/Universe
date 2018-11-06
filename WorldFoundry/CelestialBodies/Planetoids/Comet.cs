@@ -89,7 +89,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var so2 = Math.Round(Randomizer.Instance.NextDouble(0.001), 4);
             dust -= so2;
 
-            Atmosphere = new Atmosphere(this,
+            _atmosphere = new Atmosphere(this,
                 new Composite(
                     (Chemical.Water, Phase.Gas, water),
                     (Chemical.Dust, Phase.Solid, dust),

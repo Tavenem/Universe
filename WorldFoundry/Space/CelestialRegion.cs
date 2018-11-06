@@ -83,7 +83,7 @@ namespace WorldFoundry.Space
         public override IShape Shape
         {
             get => _shape ?? (_shape = GetShape());
-            set => _shape = value.GetCloneAtPosition(Position);
+            set => _shape = value?.GetCloneAtPosition(Position);
         }
 
         private double? _temperature;
@@ -129,7 +129,7 @@ namespace WorldFoundry.Space
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialRegion"/>.</param>
         internal CelestialRegion(CelestialRegion containingRegion, Vector3 position)
-            : base(containingRegion, new SinglePoint(position)) => _position = position;
+            : base(containingRegion, null) => _position = position;
 
         /// <summary>
         /// Enumerates all the <see cref="ICelestialLocation"/> descendant children instances in this
@@ -384,7 +384,9 @@ namespace WorldFoundry.Space
         /// <returns>A string that represents the celestial object.</returns>
         public override string ToString()
         {
-            var sb = new StringBuilder(base.ToString());
+            var sb = new StringBuilder(TypeName)
+                .Append(" ")
+                .Append(Title);
             if (Orbit?.OrbitedObject != null)
             {
                 sb.Append(", orbiting ")

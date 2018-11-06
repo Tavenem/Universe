@@ -1,5 +1,4 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
@@ -7,7 +6,6 @@ using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 using WorldFoundry.CelestialBodies;
 
 namespace WorldFoundry.Space.AsteroidFields
@@ -38,10 +36,11 @@ namespace WorldFoundry.Space.AsteroidFields
             new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, ChildDensity * 1e-10),
         };
 
+        private protected string _star;
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
         /// </summary>
-        public Star Star { get; protected set; }
+        public Star Star => ContainingCelestialRegion.CelestialChildren.OfType<Star>().FirstOrDefault(x => x.Id == _star);
 
         /// <summary>
         /// The name for this type of <see cref="ICelestialLocation"/>.
@@ -85,7 +84,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </param>
         public AsteroidField(CelestialRegion parent, Vector3 position, Star star, double majorRadius, double? minorRadius = null) : base(parent, position)
         {
-            Star = star;
+            _star = star.Id;
             _shape = GetShape(majorRadius, minorRadius);
         }
 

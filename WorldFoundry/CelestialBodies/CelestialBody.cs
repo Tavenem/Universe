@@ -145,7 +145,7 @@ namespace WorldFoundry.CelestialBodies
                     GenerateSubstance();
                     if (_substance == null)
                     {
-                        _substance = new Substance { Composition = Material.Empty() };
+                        _substance = new Substance { Composition = Material.Empty, Shape = new SinglePoint(Position) };
                     }
                 }
                 return _substance;
@@ -322,7 +322,9 @@ namespace WorldFoundry.CelestialBodies
         /// <returns>A string that represents the celestial object.</returns>
         public override string ToString()
         {
-            var sb = new StringBuilder(base.ToString());
+            var sb = new StringBuilder(TypeName)
+                .Append(" ")
+                .Append(Title);
             if (Orbit?.OrbitedObject != null)
             {
                 sb.Append(", orbiting ")

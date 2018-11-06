@@ -115,7 +115,12 @@ namespace WorldFoundry.Space
             }
             var parameters = new List<object> { containingRegion, position ?? Vector3.Zero };
             parameters.AddRange(ConstructionParameters);
-            var child = Type.InvokeMember(null, BindingFlags.CreateInstance, null, null, parameters.ToArray()) as ICelestialLocation;
+            var child = Type.InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                parameters.ToArray()) as ICelestialLocation;
             if (child is Location loc)
             {
                 loc.Init();

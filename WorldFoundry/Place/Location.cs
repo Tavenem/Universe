@@ -13,17 +13,22 @@ namespace WorldFoundry.Place
         /// <summary>
         /// The containing region in which this location is found.
         /// </summary>
-        public Region ContainingRegion { get; private set; }
+        public Region ContainingRegion { get; private protected set; }
 
         /// <summary>
         /// A unique identifier for this entity.
         /// </summary>
         public string Id { get; private set; }
 
+        private Vector3 _position;
         /// <summary>
         /// The position of this location relative to the center of its <see cref="ContainingRegion"/>.
         /// </summary>
-        public virtual Vector3 Position { get; set; }
+        public virtual Vector3 Position
+        {
+            get => _position;
+            set => _position = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
@@ -47,6 +52,7 @@ namespace WorldFoundry.Place
         public Location(Region containingRegion, Vector3 position)
         {
             Position = position;
+            ContainingRegion = containingRegion;
             containingRegion?.AddChild(this);
         }
 
@@ -207,15 +213,15 @@ namespace WorldFoundry.Place
         /// absolute position will be preserved, and translated into the correct local relative <see
         /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
         /// </remarks>
-        public void SetNewContainingRegion(Region region)
+        public virtual void SetNewContainingRegion(Region region)
         {
             Position = region?.GetLocalizedPosition(this) ?? Vector3.Zero;
             ContainingRegion?.RemoveChild(this);
             ContainingRegion = region;
-            region.AddChild(this);
+            region?.AddChild(this);
         }
 
-        internal virtual void Init() => Id = IdProvider.DefaultIDProvider.GetNewID();
+        internal virtual void Init() => Id = ItemIdProvider.DefaultIDProvider.GetNewID();
 
         private protected virtual Stack<Region> GetPathToLocation(Stack<Region> path = null)
             => ContainingRegion?.GetPathToLocation(path) ?? path;

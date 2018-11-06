@@ -17,12 +17,12 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Generate()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
 
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid();
+            var grid = planet.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
@@ -35,24 +35,24 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Generate_NoOutput()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
 
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid();
+            var grid = planet.GetGrid(GridSize);
             Assert.IsNotNull(grid);
         }
 
         [TestMethod]
         public void TerrestrialPlanet_Generate_WithSeasons()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
 
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid();
+            var grid = planet.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
@@ -77,12 +77,12 @@ namespace WorldFoundry.Test
         [TestMethod]
         public void TerrestrialPlanet_Generate_WithSeasons_NoOutput()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults(gridSize: GridSize);
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
 
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid();
+            var grid = planet.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             planet.SetClimate(grid, NumSeasons);

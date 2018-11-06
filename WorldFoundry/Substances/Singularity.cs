@@ -1,6 +1,6 @@
 ﻿using Substances;
 
-namespace WorldFoundry.Substances
+namespace WorldFoundry.CosmicSubstances
 {
     /// <summary>
     /// A <see cref="Substance"/> with infinite surface gravity.

@@ -1,8 +1,6 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.BlackHoles;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -35,7 +33,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of dwarf galaxies are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override BlackHole GetGalacticCore() => new BlackHole(this, Vector3.Zero);
+        private protected override string GetGalacticCore() => new BlackHole(this, Vector3.Zero).Id;
 
         private protected override IShape GetShape()
         {

@@ -8,8 +8,8 @@ namespace WorldFoundry.SurfaceMaps
     /// </summary>
     public struct TerrestrialSurfaceMapSet
     {
-        private HydrologyMaps _hydrologyMaps;
-        private WeatherMapSet _weatherMapSet;
+        private readonly HydrologyMaps _hydrologyMaps;
+        private readonly WeatherMapSet _weatherMapSet;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -145,12 +145,12 @@ namespace WorldFoundry.SurfaceMaps
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialSurfaceMapSet"/>.
         /// </summary>
-        /// <param name="elevationMap">An elevation map.</param>
+        /// <param name="elevation">An elevation map.</param>
         /// <param name="weatherMapSet">A <see cref="WeatherMapSet"/> instance.</param>
         /// <param name="hydrologyMaps">A <see cref="HydrologyMaps"/> instance.</param>
-        public TerrestrialSurfaceMapSet(float[,] elevationMap, WeatherMapSet weatherMapSet, HydrologyMaps hydrologyMaps)
+        public TerrestrialSurfaceMapSet(float[,] elevation, WeatherMapSet weatherMapSet, HydrologyMaps hydrologyMaps)
         {
-            Elevation = elevationMap;
+            Elevation = elevation;
             _weatherMapSet = weatherMapSet;
             _hydrologyMaps = hydrologyMaps;
 
@@ -170,8 +170,8 @@ namespace WorldFoundry.SurfaceMaps
                 {
                     for (var y = 0; y < yLength; y++)
                     {
-                        Biome[x, y] = ClimateTypes.GetBiomeType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevationMap[x, y]);
-                        Ecology[x, y] = ClimateTypes.GetEcologyType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevationMap[x, y]);
+                        Biome[x, y] = ClimateTypes.GetBiomeType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevation[x, y]);
+                        Ecology[x, y] = ClimateTypes.GetEcologyType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevation[x, y]);
                     }
                 }
             }

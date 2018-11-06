@@ -1,5 +1,4 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +8,6 @@ using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -89,11 +87,21 @@ namespace WorldFoundry.Space.Galaxies
             new ChildDefinition(typeof(HIIRegion), Nebula.Space, ChildDensity * 2e-10),
         };
 
-        private BlackHole _galacticCore;
+        private string _galacticCore;
         /// <summary>
         /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
         /// </summary>
-        public BlackHole GalacticCore => _galacticCore ?? (_galacticCore = GetGalacticCore());
+        public BlackHole GalacticCore
+        {
+            get
+            {
+                if (_galacticCore == null)
+                {
+                    _galacticCore = GetGalacticCore();
+                }
+                return CelestialChildren.OfType<BlackHole>().FirstOrDefault(x => x.Id == _galacticCore);
+            }
+        }
 
         private protected override string BaseTypeName => "Galaxy";
 
@@ -145,7 +153,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        private protected virtual BlackHole GetGalacticCore() => new SupermassiveBlackHole(this, Vector3.Zero);
+        private protected virtual string GetGalacticCore() => new SupermassiveBlackHole(this, Vector3.Zero).Id;
 
         // Produces a rough approximation of the mass of all children, plus the galactic core, plus
         // an additional high proportion of dark matter.

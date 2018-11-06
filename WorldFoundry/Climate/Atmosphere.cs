@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Troschuetz.Random;
 using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Substances;
+using WorldFoundry.CosmicSubstances;
 
 namespace WorldFoundry.Climate
 {
@@ -42,7 +42,13 @@ namespace WorldFoundry.Climate
         internal double _averageSeaLevelDensity;
 
         /// <summary>
-        /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
+        /// The proportion of precipitation produced by this atmosphere relative to that of Earth.
+        /// </summary>
+        private double _precipitationFactor;
+
+        /// <summary>
+        /// Specifies the average height of this <see cref="Atmosphere"/>, in meters. Read-only;
+        /// derived from the properties of the planet and atmosphere.
         /// </summary>
         public double AtmosphericHeight { get; private set; }
 
@@ -50,10 +56,11 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
         /// </summary>
-        public double AtmosphericPressure => Composition.IsEmpty() ? 0 : _atmosphericPressure;
+        public double AtmosphericPressure => Composition.IsEmpty ? 0 : _atmosphericPressure;
 
         /// <summary>
         /// Specifies the average scale height of this <see cref="Atmosphere"/>, in meters.
+        /// Read-only; derived from the properties of the planet and atmosphere.
         /// </summary>
         public double AtmosphericScaleHeight { get; private set; }
 
@@ -100,11 +107,6 @@ namespace WorldFoundry.Climate
         internal double WaterRatio
             => _waterRatio ?? (_waterRatio = Composition?.GetProportion(Chemical.Water, Phase.Gas) ?? 0).Value;
 
-        /// <summary>
-        /// The proportion of precipitation produced by this atmosphere relative to that of Earth.
-        /// </summary>
-        internal double PrecipitationFactor { get; private set; }
-
         private double? _wetness;
         /// <summary>
         /// The total mass of water in this atmosphere relative to that of Earth.
@@ -115,7 +117,7 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Initializes a new instance of <see cref="Atmosphere"/>.
         /// </summary>
-        public Atmosphere() { }
+        private Atmosphere() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Atmosphere"/>.
@@ -133,7 +135,7 @@ namespace WorldFoundry.Climate
 
             planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(Mass, AtmosphericScaleHeight);
             var tIF = planet.AverageBlackbodySurfaceTemperature * planet.InsolationFactor_Equatorial;
-            planet.GreenhouseEffect = (tIF * _greenhouseFactor.Value) - planet.AverageBlackbodySurfaceTemperature;
+            planet._greenhouseEffect = (tIF * _greenhouseFactor.Value) - planet.AverageBlackbodySurfaceTemperature;
             var temp = tIF + planet.GreenhouseEffect;
             SetAtmosphericHeight(planet, temp);
             SetPrecipitation(planet);
@@ -244,6 +246,18 @@ namespace WorldFoundry.Climate
         }
 
         /// <summary>
+        /// Sets the atmospheric pressure of this atmosphere to the given <paramref name="value"/>.
+        /// </summary>
+        /// <param name="planet">The <see cref="Planetoid"/> which this atmosphere surrounds;
+        /// required in order to correctly reset the properties dependent on pressure.</param>
+        /// <param name="value">The new pressure, in kPa.</param>
+        public void SetAtmosphericPressure(Planetoid planet, double value)
+        {
+            _atmosphericPressure = value;
+            ResetPressureDependentProperties(planet);
+        }
+
+        /// <summary>
         /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
         /// </summary>
         /// <param name="requirements">An enumeration of <see cref="Requirement"/>s.</param>
@@ -254,6 +268,14 @@ namespace WorldFoundry.Climate
             return surfaceLayer
                 .GetFailedRequirements(requirements)
                 .All(x => x == FailureType.None);
+        }
+
+        internal void AddToTroposphere(Chemical chemical, Phase phase, double proportion)
+        {
+            DifferentiateTroposphere();
+            var layers = ((LayeredComposite)Composition).Layers.ToList();
+            layers[0] = (layers[0].substance.AddComponent(chemical, phase, proportion), layers[0].proportion);
+            Composition = new LayeredComposite(layers);
         }
 
         /// <summary>
@@ -287,26 +309,12 @@ namespace WorldFoundry.Climate
         /// <returns>The non-dimensionalized pressure.</returns>
         internal double Exner(double pressure) => Math.Pow(pressure / AtmosphericPressure, ScienceConstants.RSpecificOverCpDryAir);
 
-        /// <summary>
-        /// Gets the troposphere of this <see cref="Atmosphere"/>.
-        /// </summary>
-        /// <returns>The troposphere of this <see cref="Atmosphere"/>.</returns>
-        /// <remarks>
-        /// If the <see cref="Atmosphere"/> doesn't yet have differentiated layers, they are first
-        /// separated before returning the lowest layer as the troposphere.
-        /// </remarks>
-        internal IComposition GetTroposphere()
+        internal void DifferentiateTroposphere()
         {
-            if (Composition is LayeredComposite lc)
-            {
-                return lc.Layers[0].substance;
-            }
-            else
+            if (!(Composition is LayeredComposite lc))
             {
                 // Separate troposphere from upper atmosphere if undifferentiated.
                 Composition = Composition.Split(0.8, 0.2);
-
-                return (Composition as LayeredComposite)?.Layers[0].substance;
             }
         }
 
@@ -415,9 +423,9 @@ namespace WorldFoundry.Climate
 
         private void SetPrecipitation(Planetoid planet)
         {
-            PrecipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity;
+            _precipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity;
             // An average "year" is a standard astronomical year of 31557600 seconds.
-            AveragePrecipitation = PrecipitationFactor * 990 * (planet.Orbit.HasValue ? planet.Orbit.Value.Period / 31557600 : 1);
+            AveragePrecipitation = _precipitationFactor * 990 * (planet.Orbit.HasValue ? planet.Orbit.Value.Period / 31557600 : 1);
             _maxPrecipitation = null;
             _maxSnowfall = null;
         }

@@ -3,7 +3,7 @@
     /// <summary>
     /// Provides a means of generating unique IDs.
     /// </summary>
-    public interface IIdProvider
+    public interface IItemIdProvider
     {
         /// <summary>
         /// Generates a new, unique ID.

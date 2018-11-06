@@ -41,12 +41,10 @@
         /// </summary>
         /// <param name="flow">A flow map.</param>
         /// <param name="depth">A depth map.</param>
-        public HydrologyMaps(
-            float[,] flow,
-            float[,] depth)
+        public HydrologyMaps(float[,] depth, float[,] flow)
         {
-            Flow = flow;
             Depth = depth;
+            Flow = flow;
         }
     }
 }

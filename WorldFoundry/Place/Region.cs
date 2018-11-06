@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using WorldFoundry.CelestialBodies;
-using WorldFoundry.Space;
 
 namespace WorldFoundry.Place
 {
@@ -29,10 +28,15 @@ namespace WorldFoundry.Place
             set => Shape = Shape.GetCloneAtPosition(value);
         }
 
+        private IShape _shape;
         /// <summary>
         /// The shape of this region.
         /// </summary>
-        public virtual IShape Shape { get; set; }
+        public virtual IShape Shape
+        {
+            get => _shape;
+            set => _shape = value;
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Region"/>.
@@ -53,6 +57,7 @@ namespace WorldFoundry.Place
         public Region(Region containingRegion, IShape shape)
         {
             Shape = shape;
+            ContainingRegion = containingRegion;
             containingRegion?.AddChild(this);
         }
 
@@ -184,6 +189,27 @@ namespace WorldFoundry.Place
             ?? (this is Region region && Contains(other) ? region : null);
 
         /// <summary>
+        /// Performs the behind-the-scenes work necessary to transfer a <see cref="Location"/>
+        /// to a new <see cref="ContainingRegion"/>.
+        /// </summary>
+        /// <param name="region">The <see cref="Region"/> which will be the new containing region of
+        /// this instance; or <see langword="null"/> to clear <see
+        /// cref="ContainingRegion"/>.</param>
+        /// <remarks>
+        /// If the new containing region is part of the same hierarchy as this instance, its current
+        /// absolute position will be preserved, and translated into the correct local relative <see
+        /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
+        /// </remarks>
+        public override void SetNewContainingRegion(Region region)
+        {
+            base.SetNewContainingRegion(region);
+            foreach (var child in region.Children.Where(x => x != this && Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < Shape.ContainingRadius)))
+            {
+                child.SetNewContainingRegion(this);
+            }
+        }
+
+        /// <summary>
         /// Attempts to find a random open space within this region with the given radius.
         /// </summary>
         /// <param name="radius">The radius of the space to find.</param>
@@ -212,18 +238,7 @@ namespace WorldFoundry.Place
             return pos.HasValue;
         }
 
-        internal void AddChild(ILocation location)
-        {
-            if (location is Region region)
-            {
-                foreach (var child in Children.Where(x => region.Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < region.Shape.ContainingRadius)))
-                {
-                    child.SetNewContainingRegion(region);
-                }
-            }
-            (_children ?? (_children = new List<ILocation>())).Add(location);
-            location.SetNewContainingRegion(this);
-        }
+        internal void AddChild(ILocation location) => (_children ?? (_children = new List<ILocation>())).Add(location);
 
         internal void RemoveChild(ILocation location) => _children?.Remove(location);
 

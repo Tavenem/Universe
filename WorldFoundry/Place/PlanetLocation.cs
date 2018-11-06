@@ -55,7 +55,7 @@ namespace WorldFoundry.Place
         /// <summary>
         /// The <see cref="Planetoid"/> on whose surface this <see cref="Location"/> is found.
         /// </summary>
-        public Planetoid Planet { get; }
+        public Planetoid Planet { get; private set; }
 
         private Vector3 _position;
         /// <summary>

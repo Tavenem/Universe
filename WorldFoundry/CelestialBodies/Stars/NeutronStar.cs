@@ -3,7 +3,6 @@ using Substances;
 using System;
 using MathAndScience.Numerics;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -43,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             Substance = new Substance
             {
-                Composition = new Material(CosmicSubstances.NeutronDegenerateMatter, Phase.Plasma),
+                Composition = new Material(CosmicSubstances.CosmicSubstances.NeutronDegenerateMatter, Phase.Plasma),
                 Mass = Randomizer.Instance.Normal(4.4178e30, 5.174e29), // between 1.44 and 3 times solar mass
                 Temperature = Math.Round(Randomizer.Instance.Normal(600000, 133333)),
             };

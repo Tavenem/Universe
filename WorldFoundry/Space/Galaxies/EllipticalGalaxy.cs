@@ -1,5 +1,4 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
@@ -7,7 +6,6 @@ using WorldFoundry.CelestialBodies.BlackHoles;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
 {

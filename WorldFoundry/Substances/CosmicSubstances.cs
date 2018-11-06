@@ -1,6 +1,6 @@
 ﻿using Substances;
 
-namespace WorldFoundry.Substances
+namespace WorldFoundry.CosmicSubstances
 {
     /// <summary>
     /// A collection of <see cref="Substance"/>s specific to <see cref="WorldFoundry"/>.

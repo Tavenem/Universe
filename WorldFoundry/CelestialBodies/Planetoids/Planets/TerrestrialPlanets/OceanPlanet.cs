@@ -68,7 +68,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var mantleProportion = 1 - crustProportion;
 
             // Hydrosphere makes up the bulk of the planet, and is generated here based on composition.
-            HydrosphereProportion = mantleProportion;
+            _hydrosphereProportion = mantleProportion;
             // Surface water is mostly salt water.
             var saltWater = Math.Round(Randomizer.Instance.Normal(0.945, 0.015), 3);
             _hydrosphere = new Composite(

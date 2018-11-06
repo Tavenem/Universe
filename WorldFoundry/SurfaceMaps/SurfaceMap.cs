@@ -425,16 +425,16 @@ namespace WorldFoundry.SurfaceMaps
             // their runoff move through a subsurface water table until reaching a point where flow
             // begins. This avoids the single-point fills with no outflows that would otherwise fill
             // every localized low point.
-            var fillMap = new float[doubleResolution, resolution];
+            var depthMap = new float[doubleResolution, resolution];
             for (var x = 0; x < doubleResolution; x++)
             {
                 for (var y = 0; y < resolution; y++)
                 {
                     if (!flowMap[x, y].IsZero()
-                        && fillMap[x, y] < potentialFill[x, y]
-                        && !fillMap[x, y].IsEqualTo(potentialFill[x, y]))
+                        && depthMap[x, y] < potentialFill[x, y]
+                        && !depthMap[x, y].IsEqualTo(potentialFill[x, y]))
                     {
-                        fillMap[x, y] = potentialFill[x, y];
+                        depthMap[x, y] = potentialFill[x, y];
                         SetNeighborFills(x, y, potentialFill[x, y] + elevationMap[x, y]);
                     }
                 }
@@ -459,16 +459,16 @@ namespace WorldFoundry.SurfaceMaps
                             : yN == resolution
                                 ? 0
                                 : yN;
-                        if (fillMap[x, y] < fill - elevationMap[x, y] && !fillMap[x, y].IsEqualTo(fill - elevationMap[x, y]))
+                        if (depthMap[x, y] < fill - elevationMap[x, y] && !depthMap[x, y].IsEqualTo(fill - elevationMap[x, y]))
                         {
-                            fillMap[x, y] = fill - elevationMap[x, y];
+                            depthMap[x, y] = fill - elevationMap[x, y];
                             SetNeighborFills(x, y, fill);
                         }
                     }
                 }
             }
 
-            return new HydrologyMaps(flowMap, fillMap);
+            return new HydrologyMaps(depthMap, flowMap);
         }
 
         /// <summary>

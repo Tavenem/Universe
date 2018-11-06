@@ -1,11 +1,11 @@
 ﻿using MathAndScience;
+using MathAndScience.Numerics;
 using MathAndScience.Shapes;
+using Substances;
 using System;
 using System.Collections.Generic;
-using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.Space;
-using Substances;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets
 {
@@ -21,17 +21,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// The collection of rings around this <see cref="Planemo"/>.
         /// </summary>
-        public List<PlanetaryRing> Rings
-        {
-            get
-            {
-                if (_rings == null)
-                {
-                    GenerateRings();
-                }
-                return _rings;
-            }
-        }
+        public List<PlanetaryRing> Rings => _rings ?? (_rings = GetRings());
 
         /// <summary>
         /// The name for this type of <see cref="ICelestialLocation"/>.
@@ -117,60 +107,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
         }
 
-        private protected void GenerateRings()
-        {
-            _rings = new List<PlanetaryRing>();
-
-            var innerLimit = Atmosphere == null ? 0 : Atmosphere.AtmosphericHeight;
-
-            var outerLimit_Icy = GetRingDistance(IcyRingDensity);
-            if (Orbit != null)
-            {
-                outerLimit_Icy = Math.Min(outerLimit_Icy, GetHillSphereRadius() / 3.0);
-            }
-            if (innerLimit >= outerLimit_Icy)
-            {
-                return;
-            }
-
-            var outerLimit_Rocky = GetRingDistance(RockyRingDensity);
-            if (Orbit != null)
-            {
-                outerLimit_Rocky = Math.Min(outerLimit_Rocky, GetHillSphereRadius() / 3.0);
-            }
-
-            var _ringChance = RingChance;
-            while (Randomizer.Instance.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
-            {
-                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBoolean())
-                {
-                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Rocky));
-
-                    Rings.Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
-
-                    outerLimit_Rocky = innerRadius;
-                    if (outerLimit_Rocky <= outerLimit_Icy)
-                    {
-                        outerLimit_Icy = innerRadius;
-                    }
-                }
-                else
-                {
-                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Icy));
-
-                    Rings.Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
-
-                    outerLimit_Icy = innerRadius;
-                    if (outerLimit_Icy <= outerLimit_Rocky)
-                    {
-                        outerLimit_Rocky = innerRadius;
-                    }
-                }
-
-                _ringChance *= 0.5;
-            }
-        }
-
         private protected override IComposition GetComposition(double mass, IShape shape)
         {
             var coreProportion = GetCoreProportion(mass);
@@ -181,21 +117,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var mantleLayers = GetMantle(shape, mantleProportion);
             var crustLayers = GetCrust();
 
-            var lc = new LayeredComposite();
+            var layers = new List<(IComposition, double)>();
             foreach (var (layer, proportion) in coreLayers)
             {
-                lc.Layers.Add((layer, proportion * coreProportion));
+                layers.Add((layer, proportion * coreProportion));
             }
             foreach (var (layer, proportion) in mantleLayers)
             {
-                lc.Layers.Add((layer, proportion * mantleProportion));
+                layers.Add((layer, proportion * mantleProportion));
             }
             foreach (var (layer, proportion) in crustLayers)
             {
-                lc.Layers.Add((layer, proportion * crustProportion));
+                layers.Add((layer, proportion * crustProportion));
             }
-
-            return lc;
+            return new LayeredComposite(layers);
         }
 
         private protected virtual IEnumerable<(IComposition, double)> GetCore(double mass)
@@ -238,32 +173,35 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             co2 *= ratio;
             nh3 *= ratio;
 
-            var crust = new Composite((Chemical.Dust, Phase.Solid, dust));
+            var components = new Dictionary<Material, double>()
+            {
+                { new Material(Chemical.Dust, Phase.Solid), dust },
+            };
             if (waterIce > 0)
             {
-                crust.Components[(Chemical.Water, Phase.Solid)] = waterIce;
+                components[new Material(Chemical.Water, Phase.Solid)] = waterIce;
             }
             if (n2 > 0)
             {
-                crust.Components[(Chemical.Nitrogen, Phase.Solid)] = n2;
+                components[new Material(Chemical.Nitrogen, Phase.Solid)] = n2;
             }
             if (ch4 > 0)
             {
-                crust.Components[(Chemical.Methane, Phase.Solid)] = ch4;
+                components[new Material(Chemical.Methane, Phase.Solid)] = ch4;
             }
             if (co > 0)
             {
-                crust.Components[(Chemical.CarbonMonoxide, Phase.Solid)] = co;
+                components[new Material(Chemical.CarbonMonoxide, Phase.Solid)] = co;
             }
             if (co2 > 0)
             {
-                crust.Components[(Chemical.CarbonDioxide, Phase.Solid)] = co2;
+                components[new Material(Chemical.CarbonDioxide, Phase.Solid)] = co2;
             }
             if (nh3 > 0)
             {
-                crust.Components[(Chemical.Ammonia, Phase.Solid)] = nh3;
+                components[new Material(Chemical.Ammonia, Phase.Solid)] = nh3;
             }
-            yield return (crust, 1);
+            yield return (new Composite(components), 1);
         }
 
         // Smaller planemos have thicker crusts due to faster proto-planetary cooling.
@@ -319,6 +257,62 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <returns>The approximate outer distance at which rings of the given density may be
         /// found, in meters.</returns>
         private double GetRingDistance(double density) => 1.26 * Shape.ContainingRadius * Math.Pow(Density / density, 1.0 / 3.0);
+
+        private List<PlanetaryRing> GetRings()
+        {
+            var rings = new List<PlanetaryRing>();
+
+            var innerLimit = Atmosphere.AtmosphericHeight;
+
+            var outerLimit_Icy = GetRingDistance(IcyRingDensity);
+            if (Orbit != null)
+            {
+                outerLimit_Icy = Math.Min(outerLimit_Icy, GetHillSphereRadius() / 3.0);
+            }
+            if (innerLimit >= outerLimit_Icy)
+            {
+                return rings;
+            }
+
+            var outerLimit_Rocky = GetRingDistance(RockyRingDensity);
+            if (Orbit != null)
+            {
+                outerLimit_Rocky = Math.Min(outerLimit_Rocky, GetHillSphereRadius() / 3.0);
+            }
+
+            var _ringChance = RingChance;
+            while (Randomizer.Instance.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
+            {
+                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBoolean())
+                {
+                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Rocky));
+
+                    rings.Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
+
+                    outerLimit_Rocky = innerRadius;
+                    if (outerLimit_Rocky <= outerLimit_Icy)
+                    {
+                        outerLimit_Icy = innerRadius;
+                    }
+                }
+                else
+                {
+                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Icy));
+
+                    rings.Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
+
+                    outerLimit_Icy = innerRadius;
+                    if (outerLimit_Icy <= outerLimit_Rocky)
+                    {
+                        outerLimit_Rocky = innerRadius;
+                    }
+                }
+
+                _ringChance *= 0.5;
+            }
+
+            return rings;
+        }
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {

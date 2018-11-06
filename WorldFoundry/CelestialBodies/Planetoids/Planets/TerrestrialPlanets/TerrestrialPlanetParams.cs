@@ -89,19 +89,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public double? Eccentricity { get; }
 
         /// <summary>
-        /// The target grid size (level of detail).
-        /// </summary>
-        public byte? GridSize { get; }
-
-        /// <summary>
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
         public bool? HasMagnetosphere { get; }
-
-        /// <summary>
-        /// The maximum generated grid size (level of detail).
-        /// </summary>
-        public int? MaxGridSize { get; }
 
         /// <summary>
         /// The target radius, in meters.
@@ -145,9 +135,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
-        /// <param name="gridSize">The target grid size (level of detail).</param>
         /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
-        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
         /// <param name="radius">The target radius, in meters.</param>
         /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
         /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
@@ -160,9 +148,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = null,
             double? eccentricity = null,
-            byte? gridSize = null,
             bool? hasMagnetosphere = null,
-            int? maxGridSize = null,
             int? radius = null,
             double? revolutionPeriod = null,
             double? rotationalPeriod = null,
@@ -175,9 +161,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             AtmosphericRequirements = atmosphericRequirements.ToList();
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
-            GridSize = gridSize;
             HasMagnetosphere = hasMagnetosphere;
-            MaxGridSize = maxGridSize;
             Radius = radius;
             RevolutionPeriod = revolutionPeriod;
             RotationalPeriod = rotationalPeriod;
@@ -194,9 +178,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
-        /// <param name="gridSize">The target grid size (level of detail).</param>
         /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
-        /// <param name="maxGridSize">The maximum generated grid size (level of detail).</param>
         /// <param name="radius">The target radius, in meters.</param>
         /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
         /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
@@ -209,8 +191,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IEnumerable<Requirement> atmosphericRequirements = null,
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
-            byte? gridSize = null,
-            int? maxGridSize = null,
             bool? hasMagnetosphere = true,
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
@@ -224,18 +204,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 atmosphericRequirements = Atmosphere.HumanBreathabilityRequirements;
             }
-            if (gridSize == null)
-            {
-                gridSize = WorldGrid.DefaultGridSize;
-            }
             return new TerrestrialPlanetParams(
                 atmosphericPressure,
                 atmosphericRequirements,
                 axialTilt,
                 eccentricity,
-                gridSize,
                 hasMagnetosphere,
-                maxGridSize,
                 radius,
                 revolutionPeriod,
                 rotationalPeriod,

@@ -1,11 +1,9 @@
-﻿using MathAndScience.Shapes;
-using Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.BlackHoles;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -102,7 +100,7 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of globular clusters are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override BlackHole GetGalacticCore() => new BlackHole(this, Vector3.Zero);
+        private protected override string GetGalacticCore() => new BlackHole(this, Vector3.Zero).Id;
 
         private protected override IShape GetShape()
         {

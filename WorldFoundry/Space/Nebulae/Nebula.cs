@@ -1,7 +1,5 @@
-﻿using MathAndScience.Shapes;
-using Substances;
-using MathAndScience.Numerics;
-using WorldFoundry.Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 
 namespace WorldFoundry.Space
 {

@@ -1,9 +1,7 @@
-﻿using MathAndScience.Shapes;
-using Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {

@@ -9,12 +9,13 @@ namespace WorldFoundry.WorldGrids
     public class Corner
     {
         /// <summary>
-        /// The indexes of the <see cref="Corner"/>s to which this one is connected.
+        /// The indexes of the <see cref="Corner"/> instances to which this one is connected.
         /// </summary>
         public int[] Corners { get; }
 
         /// <summary>
-        /// The indexes of the <see cref="Edge"/>s to which this <see cref="Corner"/> is connected.
+        /// The indexes of the <see cref="Edge"/> instances to which this <see cref="Corner"/> is
+        /// connected.
         /// </summary>
         public int[] Edges { get; }
 
@@ -34,7 +35,8 @@ namespace WorldFoundry.WorldGrids
         public float Longitude { get; internal set; }
 
         /// <summary>
-        /// The indexes of the <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.
+        /// The indexes of the <see cref="Tile"/> instances to which this <see cref="Corner"/> is
+        /// connected.
         /// </summary>
         public int[] Tiles { get; }
 

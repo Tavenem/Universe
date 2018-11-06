@@ -127,7 +127,27 @@ namespace WorldFoundry.Space
                 : (1 - Eccentricity) * SemiMajorAxis;
         }
 
-        private Orbit(
+        /// <summary>
+        /// Initializes a new instance of <see cref="Orbit"/>.
+        /// </summary>
+        /// <param name="orbitedObject">The <see cref="ICelestialLocation"/> which will be
+        /// orbited.</param>
+        /// <param name="alpha">Derived value equal to the standard gravitational parameter divided
+        /// by the semi-major axis.</param>
+        /// <param name="eccentricity">The eccentricity of this orbit.</param>
+        /// <param name="inclination">The angle between the X-Z plane through the center of the
+        /// object orbited, and the plane of the orbit, in radians.</param>
+        /// <param name="periapsis">The periapsis of this orbit.</param>
+        /// <param name="r0">The initial position of the orbiting object relative to the orbited
+        /// one.</param>
+        /// <param name="radius">The radius of the orbit at the current position.</param>
+        /// <param name="semiMajorAxis">The semi-major axis of the orbit.</param>
+        /// <param name="standardGravitationalParameter">A derived value, equal to G * the sum of
+        /// masses of the orbiting objects.</param>
+        /// <param name="trueAnomaly">The current true anomaly of this orbit.</param>
+        /// <param name="v0">The initial velocity of the orbiting object relative to the orbited
+        /// one.</param>
+        public Orbit(
             ICelestialLocation orbitedObject,
             double alpha,
             double eccentricity,

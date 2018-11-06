@@ -130,52 +130,54 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             nh3Ice *= ratio;
             nh4sh *= ratio;
 
-            var atmosphere = new Composite(
-                (Chemical.Hydrogen, Phase.Gas, h),
-                (Chemical.Helium, Phase.Gas, he),
-                (Chemical.Methane, Phase.Gas, ch4));
+            var components = new Dictionary<Material, double>()
+            {
+                { new Material(Chemical.Hydrogen, Phase.Gas), h },
+                { new Material(Chemical.Helium, Phase.Gas), he },
+                { new Material(Chemical.Methane, Phase.Gas), ch4 },
+            };
             if (c2h6 > 0)
             {
-                atmosphere.Components[(Chemical.Ethane, Phase.Gas)] = c2h6;
+                components[new Material(Chemical.Ethane, Phase.Gas)] = c2h6;
             }
             if (nh3 > 0)
             {
-                atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
+                components[new Material(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
             if (waterVapor > 0)
             {
-                atmosphere.Components[(Chemical.Water, Phase.Gas)] = waterVapor;
+                components[new Material(Chemical.Water, Phase.Gas)] = waterVapor;
             }
             if (water > 0)
             {
-                atmosphere.Components[(Chemical.Water, Phase.Liquid)] = water;
+                components[new Material(Chemical.Water, Phase.Liquid)] = water;
             }
             if (ice > 0)
             {
-                atmosphere.Components[(Chemical.Water, Phase.Solid)] = ice;
+                components[new Material(Chemical.Water, Phase.Solid)] = ice;
             }
             if (ch4Liquid > 0)
             {
-                atmosphere.Components[(Chemical.Methane, Phase.Liquid)] = ch4Liquid;
+                components[new Material(Chemical.Methane, Phase.Liquid)] = ch4Liquid;
             }
             if (ch4Ice > 0)
             {
-                atmosphere.Components[(Chemical.Methane, Phase.Solid)] = ch4Ice;
+                components[new Material(Chemical.Methane, Phase.Solid)] = ch4Ice;
             }
             if (nh3Liquid > 0)
             {
-                atmosphere.Components[(Chemical.Ammonia, Phase.Liquid)] = nh3Liquid;
+                components[new Material(Chemical.Ammonia, Phase.Liquid)] = nh3Liquid;
             }
             if (nh3Ice> 0)
             {
-                atmosphere.Components[(Chemical.Ammonia, Phase.Solid)] = nh3Ice;
+                components[new Material(Chemical.Ammonia, Phase.Solid)] = nh3Ice;
             }
             if (nh4sh > 0)
             {
-                atmosphere.Components[(Chemical.AmmoniumHydrosulfide, Phase.Solid)] = nh4sh;
+                components[new Material(Chemical.AmmoniumHydrosulfide, Phase.Solid)] = nh4sh;
             }
 
-            Atmosphere = new Atmosphere(this, atmosphere, 1000);
+            _atmosphere = new Atmosphere(this, new Composite(components), 1000);
         }
 
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
@@ -316,27 +318,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             water = Math.Max(0, water - nh4);
             var c2h6 = Randomizer.Instance.NextDouble(water);
             water = Math.Max(0, water - c2h6);
-            var upperLayer = new Composite(
-                (Chemical.Hydrogen, Phase.Liquid, 0.71),
-                (Chemical.Helium, Phase.Liquid, 0.24),
-                (Chemical.Neon, Phase.Liquid, ne));
+
+            var components = new Dictionary<Material, double>()
+            {
+                { new Material(Chemical.Hydrogen, Phase.Liquid), 0.71 },
+                { new Material(Chemical.Helium, Phase.Liquid), 0.24 },
+                { new Material(Chemical.Neon, Phase.Liquid), ne },
+            };
             if (ch4 > 0)
             {
-                upperLayer.Components[(Chemical.Methane, Phase.Liquid)] = ch4;
+                components[new Material(Chemical.Methane, Phase.Liquid)] = ch4;
             }
             if (nh4 > 0)
             {
-                upperLayer.Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
+                components[new Material(Chemical.Ammonia, Phase.Liquid)] = nh4;
             }
             if (c2h6 > 0)
             {
-                upperLayer.Components[(Chemical.Ethane, Phase.Liquid)] = c2h6;
+                components[new Material(Chemical.Ethane, Phase.Liquid)] = c2h6;
             }
             if (water > 0)
             {
-                upperLayer.Components[(Chemical.Water, Phase.Liquid)] = water;
+                components[new Material(Chemical.Water, Phase.Liquid)] = water;
             }
-            yield return (upperLayer, upperLayerProportion);
+            yield return (new Composite(components), upperLayerProportion);
         }
 
         private protected override double GetMass(IShape shape = null)

@@ -1,9 +1,9 @@
-﻿using MathAndScience.Shapes;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using Substances;
 using System;
-using MathAndScience.Numerics;
+using WorldFoundry.CosmicSubstances;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.BlackHoles
 {
@@ -36,7 +36,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         {
             Substance = new Singularity
             {
-                Composition = new Material(CosmicSubstances.Fuzzball, Phase.Plasma),
+                Composition = new Material(CosmicSubstances.CosmicSubstances.Fuzzball, Phase.Plasma),
                 Mass = GenerateMass(),
             };
 

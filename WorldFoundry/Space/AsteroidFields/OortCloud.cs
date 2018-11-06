@@ -1,12 +1,10 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using System.Collections.Generic;
 using System.Linq;
 using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 using WorldFoundry.CelestialBodies;
 
 namespace WorldFoundry.Space.AsteroidFields
@@ -57,7 +55,7 @@ namespace WorldFoundry.Space.AsteroidFields
         /// </param>
         public OortCloud(CelestialRegion parent, Star star, double starSystemRadius) : base(parent, Vector3.Zero)
         {
-            Star = star;
+            _star = star.Id;
             _shape = GetShape(starSystemRadius);
         }
 

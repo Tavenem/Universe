@@ -1,33 +1,28 @@
 ﻿using Substances;
 using System;
 using MathAndScience.Numerics;
+using MathAndScience;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// A resource which may be found on a <see cref="Planetoid"/>.
     /// </summary>
-    public class Resource
+    public struct Resource : IEquatable<Resource>
     {
-#pragma warning disable IDE0044 // Add readonly modifier
-        private bool _isVein, _isPerturbation;
-#pragma warning restore IDE0044 // Add readonly modifier
+        private readonly bool _isVein, _isPerturbation;
 
-#pragma warning disable RCS1170 // Use read-only auto-implemented property.
         /// <summary>
         /// The chemical found in the resource.
         /// </summary>
-        public Chemical Chemical { get; private set; }
-#pragma warning restore RCS1170 // Use read-only auto-implemented property.
+        public Chemical Chemical { get; }
 
         /// <summary>
         /// The proportion of the resource over the <see cref="Planetoid"/>'s surface.
         /// </summary>
-        public double Proportion { get; set; }
+        public double Proportion { get; }
 
-#pragma warning disable RCS1170 // Use read-only auto-implemented property.
-        internal int Seed { get; private set; }
-#pragma warning restore RCS1170 // Use read-only auto-implemented property.
+        internal int Seed { get; }
 
         private FastNoise _noise;
         private FastNoise Noise
@@ -55,8 +50,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private Resource() { }
-
         /// <summary>
         /// Initialize a new instance of <see cref="Resource"/>.
         /// </summary>
@@ -72,7 +65,31 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             Seed = seed ?? Randomizer.Instance.NextInclusiveMaxValue();
             _isVein = isVein;
             _isPerturbation = isPerturbation;
+            _noise = null;
         }
+
+        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
+        /// <param name="obj">The object to compare with the current instance.</param>
+        /// <returns><see langword="true"/> if <paramref name="obj"/> and this instance are the same
+        /// type and represent the same value; otherwise, <see langword="false"/>.</returns>
+        public override bool Equals(object obj) => obj is Resource other && Equals(other);
+
+        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
+        /// <param name="other">The <see cref="Resource"/> instance to compare with the current
+        /// instance.</param>
+        /// <returns><see langword="true"/> if <paramref name="other"/> and this instance represent
+        /// the same value; otherwise, <see langword="false"/>.</returns>
+        public bool Equals(Resource other)
+            => Chemical == other.Chemical
+            && Proportion == other.Proportion
+            && Seed == other.Seed;
+
+        /// <summary>Returns the hash code for this instance.</summary>
+        /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
+        public override int GetHashCode()
+            => Chemical.GetHashCode()
+            .CombineHash(Proportion.GetHashCode())
+            .CombineHash(Seed);
 
         /// <summary>
         /// Gets the richness of this <see cref="Resource"/> at the given <paramref

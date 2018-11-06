@@ -5,7 +5,6 @@ using System;
 using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -55,6 +54,8 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName => SpectralClass == SpectralClass.M ? RedDwarfTypeName : BaseTypeName;
+
+        internal override bool IsHospitable => true;
 
         private protected override string BaseTypeName => "Star";
 
@@ -189,8 +190,8 @@ namespace WorldFoundry.CelestialBodies.Stars
             Substance = new Substance
             {
                 Composition = IsPopulationII
-                    ? CosmicSubstances.StellarMaterialPopulationII.GetDeepCopy()
-                    : CosmicSubstances.StellarMaterial.GetDeepCopy(),
+                    ? CosmicSubstances.CosmicSubstances.StellarMaterialPopulationII
+                    : CosmicSubstances.CosmicSubstances.StellarMaterial,
                 Temperature = GenerateTemperature(),
             };
 

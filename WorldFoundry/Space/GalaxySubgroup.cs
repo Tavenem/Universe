@@ -1,10 +1,8 @@
-﻿using MathAndScience.Shapes;
-using Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
 using WorldFoundry.Space.Galaxies;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
@@ -23,12 +21,22 @@ namespace WorldFoundry.Space
             new ChildDefinition(typeof(GlobularCluster), GlobularCluster.Space, ChildDensity * 0.74),
         };
 
-        private Galaxy _mainGalaxy;
+        private string _mainGalaxy;
         /// <summary>
         /// The main <see cref="Galaxy"/> around which the other objects in this <see
         /// cref="GalaxySubgroup"/> orbit.
         /// </summary>
-        public Galaxy MainGalaxy => _mainGalaxy ?? (_mainGalaxy = GetMainGalaxy());
+        public Galaxy MainGalaxy
+        {
+            get
+            {
+                if (_mainGalaxy == null)
+                {
+                    _mainGalaxy = GetMainGalaxy();
+                }
+                return CelestialChildren.OfType<Galaxy>().FirstOrDefault(x => x.Id == _mainGalaxy);
+            }
+        }
 
         private protected override string BaseTypeName => "Galaxy Subgroup";
 
@@ -69,7 +77,7 @@ namespace WorldFoundry.Space
             }
             base.PrepopulateRegion();
 
-            GetMainGalaxy();
+            _mainGalaxy = GetMainGalaxy();
         }
 
         /// <summary>
@@ -77,10 +85,10 @@ namespace WorldFoundry.Space
         /// which all other objects orbit.
         /// </summary>
         /// <remarks>70% of large galaxies are spirals.</remarks>
-        private Galaxy GetMainGalaxy()
-            => Randomizer.Instance.NextDouble() <= 0.7
+        private string GetMainGalaxy()
+            => (Randomizer.Instance.NextDouble() <= 0.7
                 ? new SpiralGalaxy(this, Vector3.Zero)
-                : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero);
+                : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero)).Id;
 
         // The main galaxy is expected to comprise the bulk of the mass
         private protected override double GetMass() => MainGalaxy.Mass * 1.25;

@@ -2,7 +2,7 @@
 using System;
 using System.Linq;
 
-namespace WorldFoundry.Substances
+namespace WorldFoundry.CosmicSubstances
 {
     /// <summary>
     /// A set of <see cref="WorldFoundry"/>-specific extensions to <see cref="Substances"/> classes.
@@ -49,8 +49,8 @@ namespace WorldFoundry.Substances
             else if (composition is Composite c)
             {
                 return c.Components
-                    .Where(x => x.Key.chemical.GreenhousePotential > 0)
-                    .Sum(x => x.Key.chemical.GreenhousePotential * x.Value);
+                    .Where(x => x.Key.Chemical.GreenhousePotential > 0)
+                    .Sum(x => x.Key.Chemical.GreenhousePotential * x.Value);
             }
             else if (composition is Material m)
             {
@@ -72,7 +72,7 @@ namespace WorldFoundry.Substances
             {
                 if (lc.Layers.Count > 0)
                 {
-                    return lc.Layers[0].substance.GetSurface();
+                    return lc.Layers.Last().substance.GetSurface();
                 }
                 else
                 {

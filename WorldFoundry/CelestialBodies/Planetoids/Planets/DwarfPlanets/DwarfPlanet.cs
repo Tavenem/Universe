@@ -6,7 +6,8 @@ using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
+using WorldFoundry.CosmicSubstances;
+using System.Collections.Generic;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
@@ -116,36 +117,36 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             if (!anyIces)
             {
-                Atmosphere = new Atmosphere(this, Material.Empty(), 0);
+                _atmosphere = new Atmosphere(this, Material.Empty, 0);
                 return;
             }
 
-            var atmosphere = new Composite();
+            var components = new Dictionary<Material, double>();
             if (water > 0)
             {
-                atmosphere.Components[(Chemical.Water, Phase.Gas)] = water;
+                components[new Material(Chemical.Water, Phase.Gas)] = water;
             }
             if (n2 > 0)
             {
-                atmosphere.Components[(Chemical.Nitrogen, Phase.Gas)] = n2;
+                components[new Material(Chemical.Nitrogen, Phase.Gas)] = n2;
             }
             if (ch4 > 0)
             {
-                atmosphere.Components[(Chemical.Methane, Phase.Gas)] = ch4;
+                components[new Material(Chemical.Methane, Phase.Gas)] = ch4;
             }
             if (co > 0)
             {
-                atmosphere.Components[(Chemical.CarbonMonoxide, Phase.Gas)] = co;
+                components[new Material(Chemical.CarbonMonoxide, Phase.Gas)] = co;
             }
             if (co2 > 0)
             {
-                atmosphere.Components[(Chemical.CarbonDioxide, Phase.Gas)] = co2;
+                components[new Material(Chemical.CarbonDioxide, Phase.Gas)] = co2;
             }
             if (nh3 > 0)
             {
-                atmosphere.Components[(Chemical.Ammonia, Phase.Gas)] = nh3;
+                components[new Material(Chemical.Ammonia, Phase.Gas)] = nh3;
             }
-            Atmosphere = new Atmosphere(this, atmosphere, Math.Round(Randomizer.Instance.NextDouble(2.5)));
+            _atmosphere = new Atmosphere(this, new Composite(components), Math.Round(Randomizer.Instance.NextDouble(2.5)));
         }
 
         private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)

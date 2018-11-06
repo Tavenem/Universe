@@ -2,17 +2,16 @@
 using MathAndScience;
 using MathAndScience.Numerics;
 using MathAndScience.Shapes;
-using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Space.AsteroidFields;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
@@ -39,10 +38,11 @@ namespace WorldFoundry.Space
 
         private protected override string BaseTypeName => "Star System";
 
+        private List<string> _stars;
         /// <summary>
         /// The <see cref="Star"/>s in this <see cref="StarSystem"/>.
         /// </summary>
-        public IList<Star> Stars { get; set; }
+        public IEnumerable<Star> Stars => _stars?.Select(x => CelestialChildren.OfType<Star>().FirstOrDefault(y => y.Id == x)) ?? Enumerable.Empty<Star>();
 
         /// <summary>
         /// The name for this type of <see cref="ICelestialLocation"/>.
@@ -52,15 +52,15 @@ namespace WorldFoundry.Space
             get
             {
                 var sb = new StringBuilder();
-                if (Stars?.Count == 2)
+                if (_stars?.Count == 2)
                 {
                     sb.Append("Binary ");
                 }
-                else if (Stars?.Count == 3)
+                else if (_stars?.Count == 3)
                 {
                     sb.Append("Ternary ");
                 }
-                else if (Stars?.Count >= 3)
+                else if (_stars?.Count >= 3)
                 {
                     sb.Append("Multiple ");
                 }
@@ -166,7 +166,7 @@ namespace WorldFoundry.Space
             }
             base.PrepopulateRegion();
 
-            if ((Stars?.Count ?? 0) == 0)
+            if ((_stars?.Count ?? 0) == 0)
             {
                 return;
             }
@@ -175,7 +175,7 @@ namespace WorldFoundry.Space
 
             // All single and close-binary systems are presumed to have Oort clouds. Systems with
             // higher multiplicity are presumed to disrupt any Oort clouds.
-            if (Stars.Count == 1 || (Stars.Count == 2 && outerApoapsis < 1.5e13))
+            if (_stars.Count == 1 || (_stars.Count == 2 && outerApoapsis < 1.5e13))
             {
                 var primary = Stars.FirstOrDefault(x => x.Orbit == null);
                 new OortCloud(this, primary, outerApoapsis);
@@ -324,11 +324,11 @@ namespace WorldFoundry.Space
             double apoapsis)> AddCompanionStars(int amount)
         {
             var companions = new List<(Star star, Star orbited, double eccentricity, double semiMajorAxis, double periapsis, double apoapsis)>();
-            if (Stars?.Count != 1 || amount <= 0)
+            if (_stars?.Count != 1 || amount <= 0)
             {
                 return companions;
             }
-            var primary = Stars[0];
+            var primary = Stars.First();
             var orbited = primary;
 
             // Most periods are about 50 years, in a log normal distribution. There is a chance of a
@@ -595,7 +595,7 @@ namespace WorldFoundry.Space
         {
             var outerApoapsis = outerPlanet.Orbit.Value.Apoapsis;
             var innerRadius = outerApoapsis + (outerPlanet.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
-            var width = (Stars.Count > 1 || Randomizer.Instance.NextDouble() <= 0.5)
+            var width = (_stars.Count > 1 || Randomizer.Instance.NextDouble() <= 0.5)
                 ? Randomizer.Instance.NextDouble(3.0e12, 4.5e12)
                 : Randomizer.Instance.Lognormal(0, 1) * 7.5e12;
             if (maxApoapsis.HasValue)
@@ -822,8 +822,12 @@ namespace WorldFoundry.Space
         {
             if ((starType != null && starType == typeof(Star)) || starType.IsSubclassOf(typeof(Star)))
             {
-                (Stars ?? (Stars = new List<Star>())).Add((Star)starType.InvokeMember(null, System.Reflection.BindingFlags.CreateInstance, null, null,
-                    new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII }));
+                (_stars ?? (_stars = new List<string>())).Add(((Star)starType.InvokeMember(
+                    null,
+                    BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                    null,
+                    null,
+                    new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII })).Id);
             }
 
             var numCompanions = GenerateNumCompanions();
@@ -858,7 +862,7 @@ namespace WorldFoundry.Space
                     Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
                     Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
 
-                Stars.Add(star);
+                (_stars ?? (_stars = new List<string>())).Add(star.Id);
             }
         }
 

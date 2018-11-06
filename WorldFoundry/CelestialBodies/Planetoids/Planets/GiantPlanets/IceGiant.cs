@@ -67,23 +67,26 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             IComposition upperLayer = null;
             if (ch4 > 0 || nh4 > 0)
             {
-                upperLayer = new Composite((Chemical.Water, Phase.Liquid, water));
-                var composite = upperLayer as Composite;
+                var components = new Dictionary<Material, double>()
+                {
+                    { new Material(Chemical.Water, Phase.Liquid), water },
+                };
+                var composite = (Composite)upperLayer;
                 if (ch4 > 0)
                 {
-                    composite.Components[(Chemical.Methane, Phase.Liquid)] = ch4;
+                    components[new Material(Chemical.Methane, Phase.Liquid)] = ch4;
                 }
                 if (nh4 > 0)
                 {
-                    composite.Components[(Chemical.Ammonia, Phase.Liquid)] = nh4;
+                    components[new Material(Chemical.Ammonia, Phase.Liquid)] = nh4;
                 }
+                upperLayer = new Composite(components);
             }
             else
             {
                 upperLayer = new Material(Chemical.Water, Phase.Liquid);
             }
-            upperLayer.BalanceProportions();
-            yield return (upperLayer, 1 - diamond);
+            yield return (upperLayer.BalanceProportions(), 1 - diamond);
         }
     }
 }

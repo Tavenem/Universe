@@ -6,8 +6,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using WorldFoundry.Climate;
+using WorldFoundry.CosmicSubstances;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
@@ -36,12 +36,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private double? _angleOfRotation;
         /// <summary>
         /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
-        /// Values greater than half Pi indicate clockwise rotation.
+        /// Values greater than half Pi indicate clockwise rotation. Read-only; set via <see
+        /// cref="AxialTilt"/>.
         /// </summary>
         /// <remarks>
-        /// Note that this is not the same as <see cref="AxialTilt"/>: if the <see
-        /// cref="Planetoid"/> is in orbit then <see cref="AxialTilt"/> is relative to the orbital
-        /// plane of the <see cref="Planetoid"/>.
+        /// Note that this is not the same as <see cref="AxialTilt"/> if the <see cref="Planetoid"/>
+        /// is in orbit; in that case <see cref="AxialTilt"/> is relative to the normal of the
+        /// orbital plane of the <see cref="Planetoid"/>, not the Y-axis.
         /// </remarks>
         public double AngleOfRotation
         {
@@ -53,31 +54,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 }
                 return _angleOfRotation ?? 0;
             }
-            internal set
-            {
-                var angle = value;
-                while (angle > Math.PI)
-                {
-                    angle -= Math.PI;
-                }
-                while (angle < 0)
-                {
-                    angle += Math.PI;
-                }
-                _angleOfRotation = angle;
-                SetAxis();
-            }
         }
 
         private double? _angularVelocity;
         /// <summary>
-        /// The angular velocity of this <see cref="Planetoid"/>, in m/s.
+        /// The angular velocity of this <see cref="Planetoid"/>, in m/s. Read-only; set via <see
+        /// cref="RotationalPeriod"/>.
         /// </summary>
         public double AngularVelocity
-        {
-            get => _angularVelocity ?? (_angularVelocity = GetAngularVelocity()).Value;
-            private set => _angularVelocity = value;
-        }
+            => _angularVelocity ?? (_angularVelocity = RotationalPeriod == 0 ? 0 : MathConstants.TwoPI / RotationalPeriod).Value;
 
         private protected Atmosphere _atmosphere;
         /// <summary>
@@ -91,10 +76,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 if (_atmosphere == null)
                 {
                     GenerateAtmosphere();
+                    if (_atmosphere == null)
+                    {
+                        _atmosphere = new Atmosphere(this, Material.Empty, 0);
+                    }
                 }
                 return _atmosphere;
             }
-            protected set => _atmosphere = value;
         }
 
         private double? _averagePolarSurfaceTemperature;
@@ -154,7 +142,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double AxialTilt
         {
             get => Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
-            set => AngleOfRotation = Orbit.HasValue ? value + Orbit.Value.Inclination : value;
+            set => SetAngleOfRotation(Orbit.HasValue ? value + Orbit.Value.Inclination : value);
         }
 
         private Vector3? _axis;
@@ -198,18 +186,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public bool HasMagnetosphere
         {
             get => _hasMagnetosphere ?? (_hasMagnetosphere = GetHasMagnetosphere()).Value;
-            protected set => _hasMagnetosphere = value;
+            set => _hasMagnetosphere = value;
         }
 
-        private double? _greenhouseEffect;
+        internal double? _greenhouseEffect;
         /// <summary>
-        /// The total greenhouse effect on this <see cref="Planetoid"/>, in K.
+        /// The total greenhouse effect on this <see cref="Planetoid"/>, in K. Read-only; determined
+        /// by the properties of the <see cref="Atmosphere"/>.
         /// </summary>
         public double GreenhouseEffect
-        {
-            get => _greenhouseEffect ?? (_greenhouseEffect = GetGreenhouseEffect()).Value;
-            internal set => _greenhouseEffect = value;
-        }
+            => _greenhouseEffect ?? (_greenhouseEffect = GetGreenhouseEffect()).Value;
 
         private double? _maxElevation;
         /// <summary>
@@ -225,14 +211,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </para>
         /// </summary>
         public double MaxElevation
-        {
-            get => _maxElevation ?? (_maxElevation = GetMaxElevation()).Value;
-            set
-            {
-                _maxElevation = value;
-                _seaLevel = _normalizedSeaLevel * value;
-            }
-        }
+            => _maxElevation ?? (_maxElevation = GetMaxElevation()).Value;
 
         private double? _maxSurfaceTemperature;
         /// <summary>
@@ -261,9 +240,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double RotationalPeriod
         {
             get => _rotationalPeriod ?? (_rotationalPeriod = GetRotationalPeriod()).Value;
-            protected set
+            set
             {
                 _rotationalPeriod = value;
+                _angularVelocity = null;
                 _insolationAreaRatio = null;
                 ResetCachedTemperatures();
             }
@@ -496,7 +476,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// accurately is not desired in this library.
         /// </remarks>
         public double GetAtmosphericDrag(double latitude, double longitude, double altitude, double speed) =>
-            Atmosphere?.GetAtmosphericDrag(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(latitude, longitude), altitude), altitude, speed) ?? 0;
+            Atmosphere.GetAtmosphericDrag(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(latitude, longitude), altitude), altitude, speed);
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given <paramref name="latitude"/> and <paramref
@@ -804,11 +784,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         public void SetAtmosphericPressure(double value)
         {
-            if (Atmosphere != null)
-            {
-                Atmosphere.SetAtmosphericPressure(value);
-                ResetPressureDependentProperties();
-            }
+            Atmosphere.SetAtmosphericPressure(value);
+            ResetPressureDependentProperties();
         }
 
         /// <summary>
@@ -928,7 +905,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         internal double GetTemperatureAtElevation(double surfaceTemp, double elevation)
         {
             // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
-            if (Atmosphere == null || elevation >= Atmosphere.AtmosphericHeight)
+            if (elevation >= Atmosphere.AtmosphericHeight)
             {
                 return AverageBlackbodySurfaceTemperature;
             }
@@ -960,7 +937,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 _resources = new Dictionary<string, Resource>();
             }
             var resource = new Resource(chemical, proportion, isVein, isPerturbation, seed);
-            _resources.Add(chemical.Name, resource);
+            if (_resources.ContainsKey(chemical.Name))
+            {
+                _resources[chemical.Name] = resource;
+            }
+            else
+            {
+                _resources.Add(chemical.Name, resource);
+            }
             return resource.Seed;
         }
 
@@ -977,19 +961,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _axialPrecession = Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4);
             if (Randomizer.Instance.NextDouble() <= 0.2) // low chance of an extreme tilt
             {
-                AngleOfRotation = Math.Round(Randomizer.Instance.NextDouble(MathConstants.QuarterPI, Math.PI), 4);
+                _angleOfRotation = Math.Round(Randomizer.Instance.NextDouble(MathConstants.QuarterPI, Math.PI), 4);
             }
             else
             {
-                AngleOfRotation = Math.Round(Randomizer.Instance.NextDouble(MathConstants.QuarterPI), 4);
+                _angleOfRotation = Math.Round(Randomizer.Instance.NextDouble(MathConstants.QuarterPI), 4);
             }
+            SetAxis();
         }
 
         private protected virtual void GenerateAtmosphere() { }
 
         private protected virtual void GenerateResources()
             => AddResources(Substance.Composition.GetSurface()
-                .GetChemicals(Phase.Solid).Where(x => x.chemical is Metal)
+                .GetChemicals(Phase.Solid).Where(x => x.chemical.IsMetal)
                 .Select(x => (x.chemical, x.proportion, true)));
 
         private protected virtual Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass) => null;
@@ -1006,8 +991,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             };
             Shape = shape;
         }
-
-        private double GetAngularVelocity() => RotationalPeriod == 0 ? 0 : MathConstants.TwoPI / RotationalPeriod;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -1027,7 +1010,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// the purposes of this library.
         /// </remarks>
         private double GetAtmosphericPressureFromTempAndElevation(double temperature, double elevation)
-            => Atmosphere?.GetAtmosphericPressure(this, temperature, elevation) ?? 0;
+            => Atmosphere.GetAtmosphericPressure(this, temperature, elevation);
 
         private double GetAverageSurfaceTemperature(bool polar = false)
             => (AverageBlackbodySurfaceTemperature * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial)) + GreenhouseEffect;
@@ -1047,7 +1030,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private double GetEccentricity() => Math.Abs(Randomizer.Instance.Normal(0, 0.05));
 
         private double GetGreenhouseEffect()
-            => Math.Max(0, (AverageBlackbodySurfaceTemperature * InsolationFactor_Equatorial * (Atmosphere?.GreenhouseFactor ?? 1)) - AverageBlackbodySurfaceTemperature);
+            => Math.Max(0, (AverageBlackbodySurfaceTemperature * InsolationFactor_Equatorial * Atmosphere.GreenhouseFactor) - AverageBlackbodySurfaceTemperature);
 
         /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
@@ -1087,7 +1070,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         private double GetInsolationFactor(bool polar = false)
-            => Atmosphere == null ? 0 : GetInsolationFactor(Atmosphere.Mass, Atmosphere.AtmosphericScaleHeight, polar);
+            => GetInsolationFactor(Atmosphere.Mass, Atmosphere.AtmosphericScaleHeight, polar);
 
         private double GetInsolationFactor(double latitude)
             => InsolationFactor_Polar + ((InsolationFactor_Equatorial - InsolationFactor_Polar) * Math.Cos(latitude * 0.8));
@@ -1297,6 +1280,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _insolationFactor_Equatorial = null;
             _insolationFactor_Polar = null;
             _atmosphere?.ResetPressureDependentProperties(this);
+        }
+
+        private protected void SetAngleOfRotation(double angle)
+        {
+            while (angle > Math.PI)
+            {
+                angle -= Math.PI;
+            }
+            while (angle < 0)
+            {
+                angle += Math.PI;
+            }
+            _angleOfRotation = angle;
+            SetAxis();
         }
 
         private void SetAxis()

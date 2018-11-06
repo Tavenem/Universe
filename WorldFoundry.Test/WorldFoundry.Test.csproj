@@ -12,12 +12,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
-    <PackageReference Include="Migrant.NETStandard" Version="0.13.4-prerelease" />
     <PackageReference Include="MSTest.TestAdapter" Version="1.3.2" />
     <PackageReference Include="MSTest.TestFramework" Version="1.3.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\WorldFoundry.Bson\WorldFoundry.Bson.csproj" />
     <ProjectReference Include="..\WorldFoundry\WorldFoundry.csproj" />
   </ItemGroup>
 
