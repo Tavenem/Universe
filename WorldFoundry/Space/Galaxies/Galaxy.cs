@@ -153,7 +153,12 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        private protected virtual string GetGalacticCore() => new SupermassiveBlackHole(this, Vector3.Zero).Id;
+        private protected virtual string GetGalacticCore()
+        {
+            var core = new SupermassiveBlackHole(this, Vector3.Zero);
+            core.Init();
+            return core.Id;
+        }
 
         // Produces a rough approximation of the mass of all children, plus the galactic core, plus
         // an additional high proportion of dark matter.

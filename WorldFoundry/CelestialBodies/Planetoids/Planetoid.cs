@@ -659,7 +659,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var e = baseNoise * irregularity1 * irregularity2;
 
             // The overall value is magnified to compensate for excessive normalization.
-            e *= 6;
+            e *= 2;
 
             return (float)e - _normalizedSeaLevel;
         }
@@ -837,6 +837,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     break;
                 }
 
+                satellite.Init();
                 (_satelliteIDs ?? (_satelliteIDs = new List<string>())).Add(satellite.Id);
 
                 minPeriapsis = satellite.Orbit.Value.Apoapsis + satellite.GetSphereOfInfluenceRadius();
@@ -929,6 +930,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _seed4 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
             _seed5 = Randomizer.Instance.NextInclusiveMaxValue() * (Randomizer.Instance.NextBoolean() ? -1 : 1);
         }
+
+        internal void ResetGreenhouseEffect() => _greenhouseEffect = null;
 
         private protected int AddResource(Chemical chemical, double proportion, bool isVein, bool isPerturbation = false, int? seed = null)
         {

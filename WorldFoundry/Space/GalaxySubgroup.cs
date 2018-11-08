@@ -86,9 +86,13 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <remarks>70% of large galaxies are spirals.</remarks>
         private string GetMainGalaxy()
-            => (Randomizer.Instance.NextDouble() <= 0.7
+        {
+            var galaxy = Randomizer.Instance.NextDouble() <= 0.7
                 ? new SpiralGalaxy(this, Vector3.Zero)
-                : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero)).Id;
+                : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero);
+            galaxy.Init();
+            return galaxy.Id;
+        }
 
         // The main galaxy is expected to comprise the bulk of the mass
         private protected override double GetMass() => MainGalaxy.Mass * 1.25;

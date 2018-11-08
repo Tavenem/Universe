@@ -58,7 +58,8 @@ namespace WorldFoundry.Space
                     break;
                 }
 
-                new GalaxySubgroup(this, position);
+                var group = new GalaxySubgroup(this, position);
+                group.Init();
             }
         }
 

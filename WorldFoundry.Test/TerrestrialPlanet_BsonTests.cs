@@ -56,7 +56,31 @@ namespace WorldFoundry.Test
             //Console.WriteLine(json);
 
             var result = BsonSerializer.Deserialize<TerrestrialSurfaceMapSet>(bson);
-            Assert.AreEqual(maps, result);
+            CollectionAssert.AreEqual(maps.Biome, result.Biome);
+            CollectionAssert.AreEqual(maps.Climate, result.Climate);
+            CollectionAssert.AreEqual(maps.Depth, result.Depth);
+            CollectionAssert.AreEqual(maps.Ecology, result.Ecology);
+            CollectionAssert.AreEqual(maps.Elevation, result.Elevation);
+            CollectionAssert.AreEqual(maps.Flow, result.Flow);
+            CollectionAssert.AreEqual(maps.Humidity, result.Humidity);
+            Assert.AreEqual(maps.OverallTemperatureRange, result.OverallTemperatureRange);
+            CollectionAssert.AreEqual(maps.SeaIceRanges, result.SeaIceRanges);
+            CollectionAssert.AreEqual(maps.SnowCoverRanges, result.SnowCoverRanges);
+            CollectionAssert.AreEqual(maps.TemperatureRanges, result.TemperatureRanges);
+            CollectionAssert.AreEqual(maps.TotalPrecipitation, result.TotalPrecipitation);
+            Assert.AreEqual(maps.TotalPrecipitationRange, result.TotalPrecipitationRange);
+            Assert.AreEqual(maps.WeatherMaps.Length, result.WeatherMaps.Length);
+            for (var i = 0; i < maps.WeatherMaps.Length; i++)
+            {
+                CollectionAssert.AreEqual(maps.WeatherMaps[i].Precipitation, result.WeatherMaps[i].Precipitation);
+                Assert.AreEqual(maps.WeatherMaps[i].PrecipitationRange, result.WeatherMaps[i].PrecipitationRange);
+                CollectionAssert.AreEqual(maps.WeatherMaps[i].SeaIce, result.WeatherMaps[i].SeaIce);
+                CollectionAssert.AreEqual(maps.WeatherMaps[i].SnowCover, result.WeatherMaps[i].SnowCover);
+                CollectionAssert.AreEqual(maps.WeatherMaps[i].Snowfall, result.WeatherMaps[i].Snowfall);
+                Assert.AreEqual(maps.WeatherMaps[i].SnowfallRange, result.WeatherMaps[i].SnowfallRange);
+                CollectionAssert.AreEqual(maps.WeatherMaps[i].Temperature, result.WeatherMaps[i].Temperature);
+                Assert.AreEqual(maps.WeatherMaps[i].TemperatureRange, result.WeatherMaps[i].TemperatureRange);
+            }
         }
     }
 }

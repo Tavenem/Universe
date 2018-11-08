@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 
 namespace WorldFoundry.SurfaceMaps
@@ -90,8 +91,10 @@ namespace WorldFoundry.SurfaceMaps
         /// <param name="seaIceRanges">A sea ice range map.</param>
         /// <param name="snowCoverRanges">A snow cover range map.</param>
         /// <param name="temperatureRanges">A temperature range map.</param>
+        /// <param name="overallTemperatureRange">An overall temperature range map.</param>
         /// <param name="weatherMaps">A set of weather maps.</param>
         public WeatherMapSet(
+            TerrestrialPlanet planet,
             FloatRange[,] seaIceRanges,
             FloatRange[,] snowCoverRanges,
             FloatRange[,] temperatureRanges,
@@ -152,9 +155,77 @@ namespace WorldFoundry.SurfaceMaps
                 {
                     for (var y = 0; y < yLength; y++)
                     {
-                        Humidity[x, y] = ClimateTypes.GetHumidityType(TotalPrecipitation[x, y]);
+                        Humidity[x, y] = ClimateTypes.GetHumidityType(TotalPrecipitation[x, y] * planet.Atmosphere.MaxPrecipitation);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="WeatherMapSet"/>.
+        /// </summary>
+        /// <param name="seaIceRanges">A sea ice range map.</param>
+        /// <param name="snowCoverRanges">A snow cover range map.</param>
+        /// <param name="temperatureRanges">A temperature range map.</param>
+        /// <param name="weatherMaps">A set of weather maps.</param>
+        /// <param name="overallTemperatureRange">An overall temperature range map.</param>
+        /// <param name="humidity">A humidity map.</param>
+        public WeatherMapSet(
+            FloatRange[,] seaIceRanges,
+            FloatRange[,] snowCoverRanges,
+            FloatRange[,] temperatureRanges,
+            FloatRange overallTemperatureRange,
+            WeatherMaps[] weatherMaps,
+            HumidityType[,] humidity)
+        {
+            Humidity = humidity;
+            OverallTemperatureRange = overallTemperatureRange;
+            SeaIceRanges = seaIceRanges;
+            SnowCoverRanges = snowCoverRanges;
+            TemperatureRanges = temperatureRanges;
+            WeatherMaps = weatherMaps;
+
+            if (TemperatureRanges == null)
+            {
+                Climate = null;
+            }
+            else
+            {
+                var xLength = TemperatureRanges.GetLength(0);
+                var yLength = TemperatureRanges.GetLength(1);
+
+                Climate = new ClimateType[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        Climate[x, y] = ClimateTypes.GetClimateType(TemperatureRanges[x, y].Average);
+                    }
+                }
+            }
+
+            if (weatherMaps.Length == 0)
+            {
+                TotalPrecipitation = null;
+                TotalPrecipitationRange = FloatRange.Zero;
+            }
+            else
+            {
+                var xLength = weatherMaps[0].Precipitation.GetLength(0);
+                var yLength = weatherMaps[0].Precipitation.GetLength(1);
+
+                TotalPrecipitation = new float[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        TotalPrecipitation[x, y] = weatherMaps.Sum(c => c.Precipitation[x, y]);
+                    }
+                }
+                TotalPrecipitationRange = new FloatRange(
+                    weatherMaps.Min(x => x.PrecipitationRange.Min),
+                    weatherMaps.Average(x => x.PrecipitationRange.Average),
+                    weatherMaps.Max(x => x.PrecipitationRange.Max));
             }
         }
     }

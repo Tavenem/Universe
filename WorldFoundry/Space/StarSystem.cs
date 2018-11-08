@@ -268,6 +268,7 @@ namespace WorldFoundry.Space
             {
                 star = new Star(this, Vector3.Zero, GetSpectralClassForCompanionStar(orbited));
             }
+            star.Init();
 
             // Eccentricity tends to be low but increase with longer periods.
             var eccentricity = Math.Round(Math.Abs(Randomizer.Instance.Normal(0, 0.0001)) * (period / 3.1536e9), 5);
@@ -581,7 +582,8 @@ namespace WorldFoundry.Space
         private void GenerateAsteroidBelt(Star star, GiantPlanet planet, double periapsis)
         {
             var separation = periapsis - (planet.GetMutualHillSphereRadius(3.0e25) * Randomizer.Instance.Normal(21.7, 9.5));
-            new AsteroidField(this, star.Position, star, separation * 0.8, separation * 0.1);
+            var field = new AsteroidField(this, star.Position, star, separation * 0.8, separation * 0.1);
+            field.Init();
         }
 
         /// <summary>
@@ -606,7 +608,8 @@ namespace WorldFoundry.Space
             width = Math.Min(width, (innerRadius - outerApoapsis) * 0.9);
             if (width > 0)
             {
-                new AsteroidField(this, star.Position, star, innerRadius + (width / 2), width);
+                var field = new AsteroidField(this, star.Position, star, innerRadius + (width / 2), width);
+                field.Init();
             }
         }
 
@@ -822,12 +825,14 @@ namespace WorldFoundry.Space
         {
             if ((starType != null && starType == typeof(Star)) || starType.IsSubclassOf(typeof(Star)))
             {
-                (_stars ?? (_stars = new List<string>())).Add(((Star)starType.InvokeMember(
+                var star = (Star)starType.InvokeMember(
                     null,
                     BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
                     null,
                     null,
-                    new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII })).Id);
+                    new object[] { this, Vector3.Zero, spectralClass, luminosityClass, populationII });
+                star.Init();
+                (_stars ?? (_stars = new List<string>())).Add(star.Id);
             }
 
             var numCompanions = GenerateNumCompanions();
@@ -926,6 +931,7 @@ namespace WorldFoundry.Space
                 trueAnomaly);
 
             asteroids = new AsteroidField(this, Vector3.UnitZ * periapsis, star, doubleHillRadius);
+            asteroids.Init();
             trueAnomaly = planet.Orbit.Value.TrueAnomaly - 1.04719755; // -60°
             while (trueAnomaly < 0)
             {
@@ -1068,6 +1074,7 @@ namespace WorldFoundry.Space
                 totalTerrestrials++;
             }
 
+            planet.Init();
             planet.GenerateOrbit(star);
 
             return planet;

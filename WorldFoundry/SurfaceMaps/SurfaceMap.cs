@@ -1,4 +1,5 @@
-﻿using MathAndScience;
+﻿using ExtensionLib;
+using MathAndScience;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -252,67 +253,21 @@ namespace WorldFoundry.SurfaceMaps
                 precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 0, 1, elevationMap).WeatherMaps[0].Precipitation;
             }
 
+            // Set each point's drainage to be its neighbor with the lowest elevation.
+            // Only consider points above sea level.
             var drainage = new (int x, int y)[doubleResolution, resolution];
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    drainage[x, y] = (-1, -1);
-                }
-            }
-
-            var drains = new HashSet<(int x, int y)>();
-            // Initialize drains with all points that are at or below sea level, and have a neighbor
-            // which is above sea level.
             for (var x = 0; x < doubleResolution; x++)
             {
                 for (var y = 0; y < resolution; y++)
                 {
                     if (elevationMap[x, y] <= 0)
                     {
-                        var neighbors = new (int x, int y)[8];
-                        var i = 0;
-                        for (var x1 = x - 1; x1 <= x + 1; x1++)
-                        {
-                            var xN = x1 == -1
-                                ? doubleResolution - 1
-                                : x1 == doubleResolution
-                                    ? 0
-                                    : x1;
-                            for (var y1 = y - 1; y1 <= y + 1; y1++)
-                            {
-                                if (x1 == x && y1 == y)
-                                {
-                                    continue;
-                                }
-                                var yN = y1 == -1
-                                    ? resolution - 1
-                                    : y1 == resolution
-                                        ? 0
-                                        : y1;
-                                neighbors[i] = (xN, yN);
-                                i++;
-                            }
-                        }
-                        if (neighbors.Select(n => elevationMap[n.x, n.y]).Any(n => n > 0))
-                        {
-                            drains.Add((x, y));
-                            drainage[x, y] = (x, y);
-                        }
+                        drainage[x, y] = (x, y);
+                        continue;
                     }
-                }
-            }
 
-            var potentialFill = new float[doubleResolution, resolution];
-            var newDrains = new HashSet<(int x, int y)>();
-            // For each neighbor of a draining point, set its drainage to the draining point if it
-            // doesn't already have one, or if it's lower than the current one. If the draining
-            // point's fill is higher than the neighbor's, set the neighbor's fill to match the
-            // draining point. Repeat until there are no more points to consider.
-            do
-            {
-                foreach (var (x, y) in drains)
-                {
+                    var dX = -1;
+                    var dY = -1;
                     for (var x1 = x - 1; x1 <= x + 1; x1++)
                     {
                         var xN = x1 == -1
@@ -320,6 +275,77 @@ namespace WorldFoundry.SurfaceMaps
                             : x1 == doubleResolution
                                 ? 0
                                 : x1;
+                        for (var y1 = y - 1; y1 <= y + 1; y1++)
+                        {
+                            var yN = y1 == -1
+                                ? resolution - 1
+                                : y1 == resolution
+                                    ? 0
+                                    : y1;
+                            if (dX == -1 || elevationMap[xN, yN] < elevationMap[dX, dY])
+                            {
+                                dX = xN;
+                                dY = yN;
+                            }
+                        }
+                    }
+                    drainage[x, y] = (dX, dY);
+                }
+            }
+
+            // Find the final drainage point of each point (the last drainage point in the chain,
+            // which has itself as its own drainage point). Keep track of final drainage points
+            // which are above sea level.
+            var finalDrainage = new (int x, int y)[doubleResolution, resolution];
+            var lakes = new Dictionary<(int x, int y), HashSet<(int x, int y)>>();
+            for (var x = 0; x < doubleResolution; x++)
+            {
+                for (var y = 0; y < resolution; y++)
+                {
+                    finalDrainage[x, y] = FindFinalDrainage(x, y);
+                    if (finalDrainage[x, y] != (x, y) && elevationMap[finalDrainage[x, y].x, finalDrainage[x, y].y] > 0)
+                    {
+                        if (!lakes.ContainsKey((finalDrainage[x, y].x, finalDrainage[x, y].y)))
+                        {
+                            lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)] = new HashSet<(int x, int y)>();
+                        }
+                        lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)].Add((x, y));
+                    }
+                }
+            }
+            (int x, int y) FindFinalDrainage(int x, int y)
+            {
+                if (drainage[x, y] == (x, y))
+                {
+                    return (x, y);
+                }
+                else
+                {
+                    return FindFinalDrainage(drainage[x, y].x, drainage[x, y].y);
+                }
+            }
+
+            // Find the depth of every lake: the elevation of the lowest point which drains to
+            // that point, but has a neighbor which does not.
+            var lakeDepths = new Dictionary<(int x, int y), float>();
+            foreach (var ((xL, yL), points) in lakes)
+            {
+                var lowX = -1;
+                var lowY = -1;
+                foreach (var (x, y) in points)
+                {
+                    var found = false;
+                    for (var x1 = x - 1; x1 <= x + 1; x1++)
+                    {
+                        var xN = x1 == -1
+                            ? doubleResolution - 1
+                            : x1 == doubleResolution
+                                ? 0
+                                : x1;
+                        if (found)
+                        {
+                            break;
+                        }
                         for (var y1 = y - 1; y1 <= y + 1; y1++)
                         {
                             if (x1 == x && y1 == y)
@@ -331,21 +357,19 @@ namespace WorldFoundry.SurfaceMaps
                                 : y1 == resolution
                                     ? 0
                                     : y1;
-
-                            if (elevationMap[xN, yN] > 0
-                                && (drainage[xN, yN] == (-1, -1)
-                                || elevationMap[x, y] + potentialFill[x, y] < elevationMap[xN, yN] + potentialFill[xN, yN]))
+                            if (finalDrainage[xN, yN] != finalDrainage[x, y]
+                                && (lowX == -1 || elevationMap[x, y] < elevationMap[lowX, lowY]))
                             {
-                                drainage[xN, yN] = (x, y);
-                                potentialFill[xN, yN] = Math.Max(0, elevationMap[x, y] + potentialFill[x, y] - elevationMap[xN, yN]);
-                                newDrains.Add((xN, yN));
+                                lowX = x;
+                                lowY = y;
+                                found = true;
+                                break;
                             }
                         }
                     }
                 }
-                drains = newDrains;
-                newDrains = new HashSet<(int x, int y)>();
-            } while (drains.Count > 0);
+                lakeDepths.Add((xL, yL), lowX == -1 ? 0 : elevationMap[lowX, lowY] - elevationMap[xL, yL]);
+            }
 
             var areaMap = new double[doubleResolution, resolution];
             for (var x = 0; x < doubleResolution; x++)
@@ -356,115 +380,57 @@ namespace WorldFoundry.SurfaceMaps
                 }
             }
 
-            var flowMap = new float[doubleResolution, resolution];
-            var flowCompleteMap = new bool[doubleResolution, resolution];
-            // For each point set its inflow recursively by capturing the runoff of all points which
-            // drain into it. As the recursion goes, each point whose inflow is set gets marked as
-            // complete, to avoid processing a point multiple times.
+            var flows = new List<(int, int, float)>();
             for (var x = 0; x < doubleResolution; x++)
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    if (!flowCompleteMap[x, y])
+                    if (!precipitationMap[x, y].IsZero())
                     {
-                        flowMap[x, y] = GetInflow(x, y);
+                        if (areaMap[x, y] < 0)
+                        {
+                            areaMap[x, y] = GetAreaOfPointFromRadiusSuared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
+                        }
+                        var runoff = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (planet.Orbit?.Period ?? 31557600));
+                        if (drainage[x, y] != (x, y))
+                        {
+                            flows.Add((drainage[x, y].x, drainage[x, y].y, runoff));
+                        }
                     }
                 }
             }
-            float GetInflow(int destX, int destY)
+            var flowMap = new float[doubleResolution, resolution];
+            while (flows.Count > 0)
             {
-                if (flowCompleteMap[destX, destY])
+                var newFlows = new List<(int, int, float)>();
+                foreach (var (x, y, flow) in flows)
                 {
-                    return flowMap[destX, destY];
-                }
-                var flow = 0f;
-                for (var xN = destX - 1; xN <= destX + 1; xN++)
-                {
-                    var x = xN == -1
-                        ? doubleResolution - 1
-                        : xN == doubleResolution
-                            ? 0
-                            : xN;
-                    for (var yN = destY - 1; yN <= destY + 1; yN++)
+                    flowMap[x, y] += flow;
+                    if (drainage[x, y] != (x, y))
                     {
-                        if (xN == destX && yN == destY)
-                        {
-                            continue;
-                        }
-                        var y = yN == -1
-                            ? resolution - 1
-                            : yN == resolution
-                                ? 0
-                                : yN;
-                        if (drainage[x, y] == (destX, destY))
-                        {
-                            if (!precipitationMap[x, y].IsZero())
-                            {
-                                if (areaMap[x, y] < 0)
-                                {
-                                    areaMap[x, y] = GetAreaOfPointFromRadiusSuared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
-                                }
-                                var runoffPerSecond = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (planet.Orbit?.Period ?? 31557600));
-                                if (!runoffPerSecond.IsZero())
-                                {
-                                    flow += runoffPerSecond;
-                                }
-                            }
-                            flow += GetInflow((int)x, (int)y);
-                        }
+                        newFlows.Add((drainage[x, y].x, drainage[x, y].y, flow));
                     }
                 }
-                flowCompleteMap[destX, destY] = true;
-                return flow;
+                flows = newFlows;
             }
 
-            // For each point, if it has any inflow, set the fill to its potential fill level, and
-            // if the value had to be changed, recursively set all its neighbors' fill level to the
-            // same if their elevation and current fill is less than that level. Points which were
-            // given a potential fill level earlier but have no inflow are presumed to have all
-            // their runoff move through a subsurface water table until reaching a point where flow
-            // begins. This avoids the single-point fills with no outflows that would otherwise fill
-            // every localized low point.
+            // For each lake point which has any inflow, set all points which drain to it to its
+            // depth. Lakes with no inflow are either merely local low points with no actual water
+            // flow, or are single-point depressions whose runoff is presumed to move through a
+            // subsurface water table until reaching a point where more extended flow begins. This
+            // avoids single-point fills with no outflows that would otherwise fill every localized
+            // low point.
             var depthMap = new float[doubleResolution, resolution];
-            for (var x = 0; x < doubleResolution; x++)
+            foreach (var ((xL, yL), points) in lakes)
             {
-                for (var y = 0; y < resolution; y++)
+                if (flowMap[xL, yL].IsZero())
                 {
-                    if (!flowMap[x, y].IsZero()
-                        && depthMap[x, y] < potentialFill[x, y]
-                        && !depthMap[x, y].IsEqualTo(potentialFill[x, y]))
-                    {
-                        depthMap[x, y] = potentialFill[x, y];
-                        SetNeighborFills(x, y, potentialFill[x, y] + elevationMap[x, y]);
-                    }
+                    continue;
                 }
-            }
-            void SetNeighborFills(int sourceX, int sourceY, float fill)
-            {
-                for (var xN = sourceX - 1; xN <= sourceX + 1; xN++)
+                depthMap[xL, yL] = lakeDepths[(xL, yL)];
+                foreach (var (x, y) in points)
                 {
-                    var x = xN == -1
-                        ? doubleResolution - 1
-                        : xN == doubleResolution
-                            ? 0
-                            : xN;
-                    for (var yN = sourceY - 1; yN <= sourceY + 1; yN++)
-                    {
-                        if (xN == sourceX && yN == sourceY)
-                        {
-                            continue;
-                        }
-                        var y = yN == -1
-                            ? resolution - 1
-                            : yN == resolution
-                                ? 0
-                                : yN;
-                        if (depthMap[x, y] < fill - elevationMap[x, y] && !depthMap[x, y].IsEqualTo(fill - elevationMap[x, y]))
-                        {
-                            depthMap[x, y] = fill - elevationMap[x, y];
-                            SetNeighborFills(x, y, fill);
-                        }
-                    }
+                    depthMap[xL, yL] = lakeDepths[(xL, yL)];
                 }
             }
 
@@ -681,6 +647,7 @@ namespace WorldFoundry.SurfaceMaps
                 range);
 
             return new WeatherMapSet(
+                planet,
                 seaIceRangeMap,
                 snowCoverRangeMap,
                 tempRangeMap,
@@ -993,7 +960,7 @@ namespace WorldFoundry.SurfaceMaps
             {
                 maps[i] = new WeatherMaps(precipMaps[i], precipRanges[i], seaIceMaps[i], snowCoverMaps[i], snowfallMaps[i], snowfallRanges[i], tempMaps[i], tempRanges[i]);
             }
-            return new WeatherMapSet(seaIceRangeMap, snowCoverRangeMap, temperatureRanges, tempRange, maps);
+            return new WeatherMapSet(planet, seaIceRangeMap, snowCoverRangeMap, temperatureRanges, tempRange, maps);
         }
 
         /// <summary>

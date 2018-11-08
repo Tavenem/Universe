@@ -318,7 +318,11 @@ namespace WorldFoundry.Climate
             }
         }
 
-        internal void ResetGreenhouseFactor() => _greenhouseFactor = null;
+        internal void ResetGreenhouseFactor(Planetoid planet)
+        {
+            _greenhouseFactor = null;
+            planet.ResetGreenhouseEffect();
+        }
 
         internal void ResetPressureDependentProperties(Planetoid planet)
         {

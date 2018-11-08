@@ -178,21 +178,23 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             HabitabilityRequirements? habitabilityRequirements = null)
         {
             TerrestrialPlanet planet = null;
+            var pParams = planetParams ?? TerrestrialPlanetParams.FromDefaults();
             var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
             var sanityCheck = 0;
             do
             {
                 planet = new TerrestrialPlanet(star?.ContainingCelestialRegion, Vector3.Zero);
-                if (planetParams?.HasMagnetosphere.HasValue == true)
+                planet.Init();
+                if (pParams.HasMagnetosphere.HasValue)
                 {
-                    planet.HasMagnetosphere = planetParams.Value.HasMagnetosphere.Value;
+                    planet.HasMagnetosphere = pParams.HasMagnetosphere.Value;
                 }
-                planet.GenerateSubstance(planetParams, habitabilityRequirements);
+                planet.GenerateSubstance(pParams, habitabilityRequirements);
                 if (planet._hydrosphere == null)
                 {
-                    planet.GenerateHydrosphere(planetParams);
+                    planet.GenerateHydrosphere(pParams);
                 }
-                planet.GenerateOrbit(star, planetParams, habitabilityRequirements);
+                planet.GenerateOrbit(star, pParams, habitabilityRequirements);
 
                 sanityCheck++;
                 if (planet.IsHabitable(requirements, out var reason))
@@ -487,8 +489,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             var v = position * 100;
 
-            // Noise map with smooth, broad areas. Random range ~-0.8-1.
-            var r1 = 0.1 + (Noise2.GetNoise(v.X, v.Y, v.Z) * 0.9);
+            // Noise map with smooth, broad areas. Random range ~-0.4-1.
+            var r1 = 0.3 + (Noise2.GetNoise(v.X, v.Y, v.Z) * 0.7);
 
             // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
             var r2 = Math.Abs((Noise1.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
@@ -511,9 +513,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // below 0. Range 0-~2.5.
             var relativeHumidity = Math.Max(0, r + hadleyValue);
 
-            // In a band -16-+8K around freezing, the value is scaled down; below that range it is
+            // In the range up to -16K below freezing, the value is scaled down; below that range it is
             // cut off completely; above it is unchanged.
-            relativeHumidity *= ((temperature - LowTemp) / 24).Clamp(0, 1);
+            relativeHumidity *= ((temperature - LowTemp) / 16).Clamp(0, 1);
 
             if (relativeHumidity <= 0)
             {
@@ -783,7 +785,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 {
                     Atmosphere.Composition = ReduceCO2(Atmosphere.Composition);
                 }
-                Atmosphere.ResetGreenhouseFactor();
+                Atmosphere.ResetGreenhouseFactor(this);
             }
         }
 
@@ -939,7 +941,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
                 else
                 {
-                    Hydrosphere.SetPhase(chemical, Phase.Solid);
+                    _hydrosphere = Hydrosphere.SetPhase(chemical, Phase.Solid);
                 }
                 if (chemical == Chemical.Water) // Also remove salt water when removing water.
                 {
@@ -949,7 +951,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     }
                     else
                     {
-                        Hydrosphere.SetPhase(Chemical.Water_Salt, Phase.Solid);
+                        _hydrosphere = Hydrosphere.SetPhase(Chemical.Water_Salt, Phase.Solid);
                     }
                 }
 
@@ -975,8 +977,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // surface and return to a single layer.
                 if (Hydrosphere is LayeredComposite layeredComposite)
                 {
-                    layeredComposite.SetPhase(Chemical.Water, Phase.Liquid);
-                    layeredComposite.SetPhase(Chemical.Water_Salt, Phase.Liquid);
+                    _hydrosphere = layeredComposite.SetPhase(Chemical.Water, Phase.Liquid);
+                    _hydrosphere = layeredComposite.SetPhase(Chemical.Water_Salt, Phase.Liquid);
                     _hydrosphere = layeredComposite.Homogenize();
                 }
             }
@@ -1207,7 +1209,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 }
                 if (modified)
                 {
-                    Atmosphere.ResetGreenhouseFactor();
+                    Atmosphere.ResetGreenhouseFactor(this);
                 }
             }
 
@@ -1559,6 +1561,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                         .OrderBy(t => t.Elevation)
                         .Skip((grid.Tiles.Length * ratio).RoundToInt())
                         .Take(2).Average(t => t.Elevation);
+                    foreach (var tile in grid.Tiles)
+                    {
+                        tile.Elevation = (float)(tile.Elevation - SeaLevel);
+                    }
+                    foreach (var corner in grid.Corners)
+                    {
+                        corner.Elevation = (float)(corner.Elevation - SeaLevel);
+                    }
                 }
                 mass = grid.Tiles.Where(t => t.Elevation < 0).Sum(x => x.Area * (SeaLevel - x.Elevation));
             }
@@ -1651,7 +1661,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 Atmosphere.Composition = Atmosphere.Composition.AddComponent(Chemical.Methane, Phase.Gas, ch4 * 0.001);
 
-                Atmosphere.ResetGreenhouseFactor();
+                Atmosphere.ResetGreenhouseFactor(this);
                 return true;
             }
 
@@ -1770,7 +1780,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     }
                     else
                     {
-                        currentTargetTemp += delta;
+                        currentTargetTemp = Math.Max(0, currentTargetTemp + delta);
                     }
                     count++;
                 } while (count < 10 && Math.Abs(delta) > 0.5);
