@@ -15,9 +15,25 @@ namespace WorldFoundry.SurfaceMaps
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent <see
+        /// cref="BiomeType"/>.
+        /// </summary>
+        public BiomeType[,] Biome { get; }
+
+        /// <summary>
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="ClimateType"/>, based on average annual temperature.
         /// </summary>
         public ClimateType[,] Climate { get; }
+
+        /// <summary>
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values represent <see
+        /// cref="EcologyType"/>.
+        /// </summary>
+        public EcologyType[,] Ecology { get; }
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -126,160 +142,55 @@ namespace WorldFoundry.SurfaceMaps
         /// <summary>
         /// Initializes a new instance of <see cref="WeatherMaps"/>.
         /// </summary>
-        /// <param name="planet">The <see cref="TerrestrialPlanet"/> these maps describe.</param>
-        /// <param name="seaIceRanges">A sea ice range map.</param>
-        /// <param name="snowCoverRanges">A snow cover range map.</param>
-        /// <param name="temperatureRanges">A temperature range map.</param>
-        /// <param name="weatherMaps">A set of weather maps.</param>
-        public WeatherMaps(
-            TerrestrialPlanet planet,
-            FloatRange[,] seaIceRanges,
-            FloatRange[,] snowCoverRanges,
-            FloatRange[,] temperatureRanges,
-            PrecipitationMaps[] weatherMaps)
-        {
-            SeaIceRanges = seaIceRanges;
-            SnowCoverRanges = snowCoverRanges;
-            TemperatureRanges = temperatureRanges;
-            PrecipitationMaps = weatherMaps;
-            MaxPrecipitation = planet.Atmosphere.MaxPrecipitation;
-            MaxSnowfall = planet.Atmosphere.MaxPrecipitation * Atmosphere.SnowToRainRatio;
-            MaxTemperature = planet.MaxSurfaceTemperature;
-            Seasons = weatherMaps?.Length ?? 0;
-
-            if (TemperatureRanges == null)
-            {
-                Climate = null;
-                OverallTemperatureRange = FloatRange.Zero;
-            }
-            else
-            {
-                var xLength = TemperatureRanges.GetLength(0);
-                var yLength = TemperatureRanges.GetLength(1);
-
-                Climate = new ClimateType[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        Climate[x, y] = ClimateTypes.GetClimateType(TemperatureRanges[x, y].Average);
-                    }
-                }
-
-                var min = 2f;
-                var max = -2f;
-                var avgSum = 0f;
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        min = Math.Min(min, TemperatureRanges[x, y].Min);
-                        max = Math.Max(max, TemperatureRanges[x, y].Max);
-                        avgSum += TemperatureRanges[x, y].Average;
-                    }
-                }
-                OverallTemperatureRange = new FloatRange(min, avgSum / (xLength * yLength), max);
-            }
-
-            if (weatherMaps.Length == 0)
-            {
-                Humidity = null;
-                TotalPrecipitation = null;
-                TotalPrecipitationRange = FloatRange.Zero;
-                TotalSnowfall = null;
-                TotalSnowfallRange = FloatRange.Zero;
-            }
-            else
-            {
-                var xLength = weatherMaps[0].Precipitation.GetLength(0);
-                var yLength = weatherMaps[0].Precipitation.GetLength(1);
-
-                TotalPrecipitation = new float[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        TotalPrecipitation[x, y] = weatherMaps.Sum(c => c.Precipitation[x, y]);
-                    }
-                }
-                TotalPrecipitationRange = new FloatRange(
-                    (float)(weatherMaps.Min(x => x.PrecipitationRange.Min) * planet.Atmosphere.MaxPrecipitation),
-                    (float)(weatherMaps.Average(x => x.PrecipitationRange.Average) * planet.Atmosphere.MaxPrecipitation),
-                    (float)(weatherMaps.Max(x => x.PrecipitationRange.Max) * planet.Atmosphere.MaxPrecipitation));
-
-                TotalSnowfall = new float[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        TotalSnowfall[x, y] = weatherMaps.Sum(c => c.Snowfall[x, y]);
-                    }
-                }
-                TotalSnowfallRange = new FloatRange(
-                    (float)(weatherMaps.Min(x => x.SnowfallRange.Min) * planet.Atmosphere.MaxSnowfall),
-                    (float)(weatherMaps.Average(x => x.SnowfallRange.Average) * planet.Atmosphere.MaxSnowfall),
-                    (float)(weatherMaps.Max(x => x.SnowfallRange.Max) * planet.Atmosphere.MaxSnowfall));
-
-                Humidity = new HumidityType[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        Humidity[x, y] = ClimateTypes.GetHumidityType(TotalPrecipitation[x, y] * planet.Atmosphere.MaxPrecipitation);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="WeatherMaps"/>.
-        /// </summary>
-        /// <param name="seaIceRanges">A sea ice range map.</param>
-        /// <param name="snowCoverRanges">A snow cover range map.</param>
-        /// <param name="temperatureRanges">A temperature range map.</param>
-        /// <param name="weatherMaps">A set of weather maps.</param>
+        /// <param name="biome">A biome map.</param>
+        /// <param name="climate">A climate map.</param>
+        /// <param name="ecology">An ecology map.</param>
         /// <param name="humidity">A humidity map.</param>
         /// <param name="maxPrecipitation">The maximum annual precipitation expected to be produced
         /// by this atmosphere, in mm.</param>
         /// <param name="maxTemperature">The approximate maximum surface temperature of the
         /// planet, in K.</param>
+        /// <param name="seaIceRanges">A sea ice range map.</param>
+        /// <param name="snowCoverRanges">A snow cover range map.</param>
+        /// <param name="precipitationMaps">A set of weather maps.</param>
+        /// <param name="temperatureRanges">A temperature range map.</param>
+        /// <param name="totalPrecipitation">A total precipitation map.</param>
         public WeatherMaps(
-            FloatRange[,] seaIceRanges,
-            FloatRange[,] snowCoverRanges,
-            FloatRange[,] temperatureRanges,
-            PrecipitationMaps[] weatherMaps,
+            BiomeType[,] biome,
+            ClimateType[,] climate,
+            EcologyType[,] ecology,
             HumidityType[,] humidity,
             double maxPrecipitation,
-            double maxTemperature)
+            double maxTemperature,
+            FloatRange[,] seaIceRanges,
+            FloatRange[,] snowCoverRanges,
+            PrecipitationMaps[] precipitationMaps,
+            FloatRange[,] temperatureRanges,
+            float[,] totalPrecipitation)
         {
+            Biome = biome;
+            Climate = climate;
+            Ecology = ecology;
             Humidity = humidity;
             MaxPrecipitation = maxPrecipitation;
-            MaxSnowfall = maxPrecipitation * Atmosphere.SnowToRainRatio;
             MaxTemperature = maxTemperature;
             SeaIceRanges = seaIceRanges;
             SnowCoverRanges = snowCoverRanges;
+            PrecipitationMaps = precipitationMaps;
             TemperatureRanges = temperatureRanges;
-            PrecipitationMaps = weatherMaps;
-            Seasons = weatherMaps?.Length ?? 0;
+            TotalPrecipitation = totalPrecipitation;
+
+            MaxSnowfall = maxPrecipitation * Atmosphere.SnowToRainRatio;
+            Seasons = precipitationMaps?.Length ?? 0;
 
             if (TemperatureRanges == null)
             {
-                Climate = null;
                 OverallTemperatureRange = FloatRange.Zero;
             }
             else
             {
                 var xLength = TemperatureRanges.GetLength(0);
                 var yLength = TemperatureRanges.GetLength(1);
-
-                Climate = new ClimateType[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        Climate[x, y] = ClimateTypes.GetClimateType(TemperatureRanges[x, y].Average);
-                    }
-                }
 
                 var min = 2f;
                 var max = -2f;
@@ -296,43 +207,34 @@ namespace WorldFoundry.SurfaceMaps
                 OverallTemperatureRange = new FloatRange(min, avgSum / (xLength * yLength), max);
             }
 
-            if (weatherMaps.Length == 0)
+            if (precipitationMaps.Length == 0)
             {
-                TotalPrecipitation = null;
                 TotalPrecipitationRange = FloatRange.Zero;
                 TotalSnowfall = null;
                 TotalSnowfallRange = FloatRange.Zero;
             }
             else
             {
-                var xLength = weatherMaps[0].Precipitation.GetLength(0);
-                var yLength = weatherMaps[0].Precipitation.GetLength(1);
+                var xLength = precipitationMaps[0].Precipitation.GetLength(0);
+                var yLength = precipitationMaps[0].Precipitation.GetLength(1);
 
-                TotalPrecipitation = new float[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        TotalPrecipitation[x, y] = weatherMaps.Sum(c => c.Precipitation[x, y]);
-                    }
-                }
                 TotalPrecipitationRange = new FloatRange(
-                    (float)(weatherMaps.Min(x => x.PrecipitationRange.Min) * maxPrecipitation),
-                    (float)(weatherMaps.Average(x => x.PrecipitationRange.Average) * maxPrecipitation),
-                    (float)(weatherMaps.Max(x => x.PrecipitationRange.Max) * maxPrecipitation));
+                    (float)(precipitationMaps.Min(x => x.PrecipitationRange.Min) * maxPrecipitation),
+                    (float)(precipitationMaps.Average(x => x.PrecipitationRange.Average) * maxPrecipitation),
+                    (float)(precipitationMaps.Max(x => x.PrecipitationRange.Max) * maxPrecipitation));
 
                 TotalSnowfall = new float[xLength, yLength];
                 for (var x = 0; x < xLength; x++)
                 {
                     for (var y = 0; y < yLength; y++)
                     {
-                        TotalSnowfall[x, y] = weatherMaps.Sum(c => c.Snowfall[x, y]);
+                        TotalSnowfall[x, y] = precipitationMaps.Sum(c => c.Snowfall[x, y]);
                     }
                 }
                 TotalSnowfallRange = new FloatRange(
-                    (float)(weatherMaps.Min(x => x.SnowfallRange.Min) * MaxSnowfall),
-                    (float)(weatherMaps.Average(x => x.SnowfallRange.Average) * MaxSnowfall),
-                    (float)(weatherMaps.Max(x => x.SnowfallRange.Max) * MaxSnowfall));
+                    (float)(precipitationMaps.Min(x => x.SnowfallRange.Min) * MaxSnowfall),
+                    (float)(precipitationMaps.Average(x => x.SnowfallRange.Average) * MaxSnowfall),
+                    (float)(precipitationMaps.Max(x => x.SnowfallRange.Max) * MaxSnowfall));
             }
         }
 

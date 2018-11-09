@@ -17,7 +17,7 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="BiomeType"/>.
         /// </summary>
-        public BiomeType[,] Biome { get; }
+        public BiomeType[,] Biome => _weatherMaps.Biome;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -45,7 +45,7 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="EcologyType"/>.
         /// </summary>
-        public EcologyType[,] Ecology { get; }
+        public EcologyType[,] Ecology => _weatherMaps.Ecology;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -180,28 +180,6 @@ namespace WorldFoundry.SurfaceMaps
             Elevation = elevation;
             _weatherMaps = weatherMaps;
             _hydrologyMaps = hydrologyMaps;
-
-            if (_weatherMaps.Climate == null || _weatherMaps.Humidity == null)
-            {
-                Biome = null;
-                Ecology = null;
-            }
-            else
-            {
-                var xLength = _weatherMaps.Climate.GetLength(0);
-                var yLength = _weatherMaps.Climate.GetLength(1);
-
-                Biome = new BiomeType[xLength, yLength];
-                Ecology = new EcologyType[xLength, yLength];
-                for (var x = 0; x < xLength; x++)
-                {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        Biome[x, y] = ClimateTypes.GetBiomeType(_weatherMaps.Climate[x, y], _weatherMaps.Humidity[x, y], elevation[x, y]);
-                        Ecology[x, y] = ClimateTypes.GetEcologyType(_weatherMaps.Climate[x, y], _weatherMaps.Humidity[x, y], elevation[x, y]);
-                    }
-                }
-            }
         }
     }
 }

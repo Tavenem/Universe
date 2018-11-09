@@ -536,72 +536,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             return precipitation;
         }
 
-        internal bool GetSeaIce(double proportionOfYear, FloatRange seaIceRange)
-            => !seaIceRange.IsZero
-            && (seaIceRange.Min > seaIceRange.Max
-                ? proportionOfYear >= seaIceRange.Min || proportionOfYear <= seaIceRange.Max
-                : proportionOfYear >= seaIceRange.Min && proportionOfYear <= seaIceRange.Max);
-
-        internal FloatRange GetSeaIceRange(double latitude, double elevation)
-            => GetSeaIceRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation);
-
-        internal FloatRange GetSeaIceRange(FloatRange temperatureRange, double latitude, double elevation)
-        {
-            if (elevation > 0 || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.Zero;
-            }
-            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
-            if (double.IsNaN(freezeProportion))
-            {
-                return FloatRange.Zero;
-            }
-            // Freezes more than melts; never fully melts.
-            if (freezeProportion >= 0.5)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var meltStart = freezeProportion / 2;
-            var iceMeltFinish = freezeProportion;
-            var snowMeltFinish = freezeProportion * 3 / 4;
-            var freezeStart = 1 - (freezeProportion / 2);
-            if (latitude < 0)
-            {
-                iceMeltFinish += 0.5;
-                if (iceMeltFinish > 1)
-                {
-                    iceMeltFinish--;
-                }
-
-                snowMeltFinish += 0.5;
-                if (snowMeltFinish > 1)
-                {
-                    snowMeltFinish--;
-                }
-
-                freezeStart -= 0.5;
-            }
-            return new FloatRange((float)freezeStart, (float)iceMeltFinish);
-        }
-
-        internal bool GetSnowCover(double proportionOfYear, FloatRange snowCoverRange)
-            => !snowCoverRange.IsZero
-            && (snowCoverRange.Min > snowCoverRange.Max
-                ? proportionOfYear >= snowCoverRange.Min || proportionOfYear <= snowCoverRange.Max
-                : proportionOfYear >= snowCoverRange.Min && proportionOfYear <= snowCoverRange.Max);
-
-        internal FloatRange GetSnowCoverRange(Vector3 position, double latitude, double elevation)
-            => GetSnowCoverRange(GetSurfaceTemperatureRangeAt(latitude, elevation), latitude, elevation, GetPrecipitation(position, 1, out var _));
-
-        internal FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, double annualPrecipitation)
-            => GetSnowCoverRange(temperatureRange, latitude, elevation, ClimateTypes.GetHumidityType(annualPrecipitation));
-
         private void AdjustOrbitForTemperature(TerrestrialPlanetParams? planetParams, Star star, double? semiMajorAxis, double trueAnomaly, double targetTemp)
         {
             // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
@@ -2106,53 +2040,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             => gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
 
         private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt(Mass * ScienceConstants.G / gravity);
-
-        private FloatRange GetSnowCoverRange(FloatRange temperatureRange, double latitude, double elevation, HumidityType humidityType)
-        {
-            if (elevation <= 0
-                || humidityType <= HumidityType.Perarid
-                || temperatureRange.Min > Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.Zero;
-            }
-            if (temperatureRange.Max < Chemical.Water_Salt.MeltingPoint)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var freezeProportion = MathUtility.InverseLerp(temperatureRange.Min, temperatureRange.Max, Chemical.Water_Salt.MeltingPoint);
-            if (double.IsNaN(freezeProportion))
-            {
-                return FloatRange.Zero;
-            }
-            // Freezes more than melts; never fully melts.
-            if (freezeProportion >= 0.5)
-            {
-                return FloatRange.ZeroToOne;
-            }
-
-            var meltStart = freezeProportion / 2;
-            var iceMeltFinish = freezeProportion;
-            var snowMeltFinish = freezeProportion * 3 / 4;
-            var freezeStart = 1 - (freezeProportion / 2);
-            if (latitude < 0)
-            {
-                iceMeltFinish += 0.5;
-                if (iceMeltFinish > 1)
-                {
-                    iceMeltFinish--;
-                }
-
-                snowMeltFinish += 0.5;
-                if (snowMeltFinish > 1)
-                {
-                    snowMeltFinish--;
-                }
-
-                freezeStart -= 0.5;
-            }
-            return new FloatRange((float)freezeStart, (float)snowMeltFinish);
-        }
 
         /// <summary>
         /// Calculates the temperature at which this <see cref="TerrestrialPlanet"/> will retain only
