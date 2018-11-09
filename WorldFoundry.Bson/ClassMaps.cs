@@ -79,8 +79,6 @@ namespace WorldFoundry.Bson
             BsonClassMap.RegisterClassMap<PlanetLocation>(cm =>
             {
                 cm.AutoMap();
-                cm.UnmapMember(x => x.Elevation);
-                cm.MapField("_elevation");
                 cm.UnmapMember(x => x.Latitude);
                 cm.MapField("_latitude");
                 cm.UnmapMember(x => x.Longitude);
@@ -90,8 +88,6 @@ namespace WorldFoundry.Bson
             BsonClassMap.RegisterClassMap<PlanetRegion>(cm =>
             {
                 cm.AutoMap();
-                cm.UnmapMember(x => x.Elevation);
-                cm.MapField("_elevation");
                 cm.UnmapMember(x => x.Latitude);
                 cm.MapField("_latitude");
                 cm.UnmapMember(x => x.Longitude);

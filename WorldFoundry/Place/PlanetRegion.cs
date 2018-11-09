@@ -10,20 +10,11 @@ namespace WorldFoundry.Place
     /// </summary>
     public class PlanetRegion : Region
     {
-        private double _elevation;
         /// <summary>
         /// The elevation of this location above (or below) the surface of the <see cref="Planet"/>,
-        /// in meters. Derived from <see cref="Position"/>.
+        /// in meters.
         /// </summary>
-        public double Elevation
-        {
-            get => _elevation;
-            set
-            {
-                _elevation = value;
-                Position = Vector3.Normalize(Position) * (Planet.SeaLevel + Elevation);
-            }
-        }
+        public double Elevation { get; set; }
 
         private double _latitude;
         /// <summary>
@@ -70,7 +61,6 @@ namespace WorldFoundry.Place
                 _position = value;
                 _latitude = Planet.VectorToLatitude(value);
                 _longitude = Planet.VectorToLongitude(value);
-                _elevation = value.Length() - Planet.SeaLevel;
             }
         }
 

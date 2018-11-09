@@ -6,10 +6,10 @@ namespace WorldFoundry.SurfaceMaps
     /// A collection of surface and weather maps for a <see
     /// cref="CelestialBodies.Planetoids.Planets.TerrestrialPlanets.TerrestrialPlanet"/>.
     /// </summary>
-    public struct TerrestrialSurfaceMapSet
+    public struct TerrestrialSurfaceMaps
     {
         private readonly HydrologyMaps _hydrologyMaps;
-        private readonly WeatherMapSet _weatherMapSet;
+        private readonly WeatherMaps _weatherMaps;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -25,7 +25,7 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="ClimateType"/>, based on average annual temperature.
         /// </summary>
-        public ClimateType[,] Climate => _weatherMapSet.Climate;
+        public ClimateType[,] Climate => _weatherMaps.Climate;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -81,15 +81,41 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="HumidityType"/>, based on annual precipitation.
         /// </summary>
-        public HumidityType[,] Humidity => _weatherMapSet.Humidity;
+        public HumidityType[,] Humidity => _weatherMaps.Humidity;
+
+        /// <summary>
+        /// The maximum annual precipitation expected to be produced by this atmosphere, in mm. Not
+        /// necessarily the actual maximum precipitation within the given region (use <c><see
+        /// cref="TotalPrecipitationRange"/>.Max</c> for that).
+        /// </summary>
+        public double MaxPrecipitation => _weatherMaps.MaxPrecipitation;
+
+        /// <summary>
+        /// The maximum annual snowfall expected to be produced by this atmosphere, in mm. Not
+        /// necessarily the actual maximum snowfall within the given region (use <c><see
+        /// cref="TotalSnowfallRange"/>.Max</c> for that).
+        /// </summary>
+        public double MaxSnowfall => _weatherMaps.MaxSnowfall;
+
+        /// <summary>
+        /// The approximate maximum surface temperature of the planet, in K. Not necessarily the
+        /// actual maximum temperature within the given region (use <c><see
+        /// cref="OverallTemperatureRange"/>.Max</c> for that).
+        /// </summary>
+        public double MaxTemperature => _weatherMaps.MaxTemperature;
 
         /// <summary>
         /// A range giving the minimum, maximum, and average temperature throughout the specified
-        /// area over the entire period represented by all <see cref="WeatherMaps"/>, as a value
+        /// area over the entire period represented by all <see cref="PrecipitationMaps"/>, as a value
         /// between 0 and 1, with 1 indicating the maximum temperature of the planet.
         /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxSurfaceTemperature"/>
         /// </summary>
-        public FloatRange OverallTemperatureRange => _weatherMapSet.OverallTemperatureRange;
+        public FloatRange OverallTemperatureRange => _weatherMaps.OverallTemperatureRange;
+
+        /// <summary>
+        /// A collection of <see cref="PrecipitationMaps"/>.
+        /// </summary>
+        public PrecipitationMaps[] PrecipitationMaps => _weatherMaps.PrecipitationMaps;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -97,7 +123,13 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent the proportion of the
         /// year during which there is persistent sea ice.
         /// </summary>
-        public FloatRange[,] SeaIceRanges => _weatherMapSet.SeaIceRanges;
+        public FloatRange[,] SeaIceRanges => _weatherMaps.SeaIceRanges;
+
+        /// <summary>
+        /// The number of seasons into which the year is divided by this set, for the purposes of
+        /// precipitation and snowfall reporting.
+        /// </summary>
+        public int Seasons => _weatherMaps.Seasons;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -105,7 +137,7 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent the proportion of the
         /// year during which there is persistent snow cover.
         /// </summary>
-        public FloatRange[,] SnowCoverRanges => _weatherMapSet.SnowCoverRanges;
+        public FloatRange[,] SnowCoverRanges => _weatherMaps.SnowCoverRanges;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -115,54 +147,49 @@ namespace WorldFoundry.SurfaceMaps
         /// planet.
         /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
         /// </summary>
-        public FloatRange[,] TemperatureRanges => _weatherMapSet.TemperatureRanges;
+        public FloatRange[,] TemperatureRanges => _weatherMaps.TemperatureRanges;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent the total amount of
-        /// precipitation indicated on all contained <see cref="WeatherMaps"/>. Values range from 0
+        /// precipitation indicated on all contained <see cref="PrecipitationMaps"/>. Values range from 0
         /// to 1, with 1 indicating the maximum annual potential precipitation of the planet's
-        /// atmosphere. Will be <see langword="null"/> if no <see cref="WeatherMaps"/> are present.
+        /// atmosphere. Will be <see langword="null"/> if no <see cref="PrecipitationMaps"/> are present.
         /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
-        public float[,] TotalPrecipitation => _weatherMapSet.TotalPrecipitation;
+        public float[,] TotalPrecipitation => _weatherMaps.TotalPrecipitation;
 
         /// <summary>
         /// A range giving the minimum, maximum, and average precipitation throughout the specified
-        /// area over the entire period represented by all <see cref="WeatherMaps"/>, as a value
+        /// area over the entire period represented by all <see cref="PrecipitationMaps"/>, as a value
         /// between 0 and 1, with 1 indicating the maximum annual potential precipitation of the
         /// planet's atmosphere.
         /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
-        public FloatRange TotalPrecipitationRange => _weatherMapSet.TotalPrecipitationRange;
+        public FloatRange TotalPrecipitationRange => _weatherMaps.TotalPrecipitationRange;
 
         /// <summary>
-        /// A collection of <see cref="WeatherMaps"/>.
-        /// </summary>
-        public WeatherMaps[] WeatherMaps => _weatherMapSet.WeatherMaps;
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="TerrestrialSurfaceMapSet"/>.
+        /// Initializes a new instance of <see cref="TerrestrialSurfaceMaps"/>.
         /// </summary>
         /// <param name="elevation">An elevation map.</param>
-        /// <param name="weatherMapSet">A <see cref="WeatherMapSet"/> instance.</param>
+        /// <param name="weatherMaps">A <see cref="PrecipitationMaps"/> instance.</param>
         /// <param name="hydrologyMaps">A <see cref="HydrologyMaps"/> instance.</param>
-        public TerrestrialSurfaceMapSet(float[,] elevation, WeatherMapSet weatherMapSet, HydrologyMaps hydrologyMaps)
+        public TerrestrialSurfaceMaps(float[,] elevation, WeatherMaps weatherMaps, HydrologyMaps hydrologyMaps)
         {
             Elevation = elevation;
-            _weatherMapSet = weatherMapSet;
+            _weatherMaps = weatherMaps;
             _hydrologyMaps = hydrologyMaps;
 
-            if (_weatherMapSet.Climate == null || _weatherMapSet.Humidity == null)
+            if (_weatherMaps.Climate == null || _weatherMaps.Humidity == null)
             {
                 Biome = null;
                 Ecology = null;
             }
             else
             {
-                var xLength = _weatherMapSet.Climate.GetLength(0);
-                var yLength = _weatherMapSet.Climate.GetLength(1);
+                var xLength = _weatherMaps.Climate.GetLength(0);
+                var yLength = _weatherMaps.Climate.GetLength(1);
 
                 Biome = new BiomeType[xLength, yLength];
                 Ecology = new EcologyType[xLength, yLength];
@@ -170,8 +197,8 @@ namespace WorldFoundry.SurfaceMaps
                 {
                     for (var y = 0; y < yLength; y++)
                     {
-                        Biome[x, y] = ClimateTypes.GetBiomeType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevation[x, y]);
-                        Ecology[x, y] = ClimateTypes.GetEcologyType(_weatherMapSet.Climate[x, y], _weatherMapSet.Humidity[x, y], elevation[x, y]);
+                        Biome[x, y] = ClimateTypes.GetBiomeType(_weatherMaps.Climate[x, y], _weatherMaps.Humidity[x, y], elevation[x, y]);
+                        Ecology[x, y] = ClimateTypes.GetEcologyType(_weatherMaps.Climate[x, y], _weatherMaps.Humidity[x, y], elevation[x, y]);
                     }
                 }
             }

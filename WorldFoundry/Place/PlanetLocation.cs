@@ -9,20 +9,11 @@ namespace WorldFoundry.Place
     /// </summary>
     public class PlanetLocation : Location
     {
-        private double _elevation;
         /// <summary>
         /// The elevation of this location above (or below) the surface of the <see cref="Planet"/>,
-        /// in meters. Derived from <see cref="Position"/>.
+        /// in meters.
         /// </summary>
-        public double Elevation
-        {
-            get => _elevation;
-            set
-            {
-                _elevation = value;
-                Position = Vector3.Normalize(Position) * (Planet.SeaLevel + Elevation);
-            }
-        }
+        public double Elevation { get; set; }
 
         private double _latitude;
         /// <summary>
@@ -59,7 +50,8 @@ namespace WorldFoundry.Place
 
         private Vector3 _position;
         /// <summary>
-        /// The exact position within or on the <see cref="Planet"/> represented by this <see cref="Location"/>.
+        /// The exact position on the surface of the <see cref="Planet"/> represented by this <see
+        /// cref="Location"/>.
         /// </summary>
         public override Vector3 Position
         {
@@ -69,7 +61,6 @@ namespace WorldFoundry.Place
                 _position = value;
                 _latitude = Planet.VectorToLatitude(value);
                 _longitude = Planet.VectorToLongitude(value);
-                _elevation = value.Length() - Planet.SeaLevel;
             }
         }
 

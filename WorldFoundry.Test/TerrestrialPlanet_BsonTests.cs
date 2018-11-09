@@ -45,7 +45,7 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var maps = planet.GetSurfaceMapSet(SurfaceMapResolution, steps: NumSeasons);
+            var maps = planet.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
             var bson = maps.ToBson();
             Console.WriteLine($"Saved size: {bson.Length.ToString("N")} bytes");
@@ -55,7 +55,7 @@ namespace WorldFoundry.Test
             //Console.Write("JSON: ");
             //Console.WriteLine(json);
 
-            var result = BsonSerializer.Deserialize<TerrestrialSurfaceMapSet>(bson);
+            var result = BsonSerializer.Deserialize<TerrestrialSurfaceMaps>(bson);
             CollectionAssert.AreEqual(maps.Biome, result.Biome);
             CollectionAssert.AreEqual(maps.Climate, result.Climate);
             CollectionAssert.AreEqual(maps.Depth, result.Depth);
@@ -69,17 +69,11 @@ namespace WorldFoundry.Test
             CollectionAssert.AreEqual(maps.TemperatureRanges, result.TemperatureRanges);
             CollectionAssert.AreEqual(maps.TotalPrecipitation, result.TotalPrecipitation);
             Assert.AreEqual(maps.TotalPrecipitationRange, result.TotalPrecipitationRange);
-            Assert.AreEqual(maps.WeatherMaps.Length, result.WeatherMaps.Length);
-            for (var i = 0; i < maps.WeatherMaps.Length; i++)
+            Assert.AreEqual(maps.PrecipitationMaps.Length, result.PrecipitationMaps.Length);
+            for (var i = 0; i < maps.PrecipitationMaps.Length; i++)
             {
-                CollectionAssert.AreEqual(maps.WeatherMaps[i].Precipitation, result.WeatherMaps[i].Precipitation);
-                Assert.AreEqual(maps.WeatherMaps[i].PrecipitationRange, result.WeatherMaps[i].PrecipitationRange);
-                CollectionAssert.AreEqual(maps.WeatherMaps[i].SeaIce, result.WeatherMaps[i].SeaIce);
-                CollectionAssert.AreEqual(maps.WeatherMaps[i].SnowCover, result.WeatherMaps[i].SnowCover);
-                CollectionAssert.AreEqual(maps.WeatherMaps[i].Snowfall, result.WeatherMaps[i].Snowfall);
-                Assert.AreEqual(maps.WeatherMaps[i].SnowfallRange, result.WeatherMaps[i].SnowfallRange);
-                CollectionAssert.AreEqual(maps.WeatherMaps[i].Temperature, result.WeatherMaps[i].Temperature);
-                Assert.AreEqual(maps.WeatherMaps[i].TemperatureRange, result.WeatherMaps[i].TemperatureRange);
+                CollectionAssert.AreEqual(maps.PrecipitationMaps[i].Precipitation, result.PrecipitationMaps[i].Precipitation);
+                CollectionAssert.AreEqual(maps.PrecipitationMaps[i].Snowfall, result.PrecipitationMaps[i].Snowfall);
             }
         }
     }

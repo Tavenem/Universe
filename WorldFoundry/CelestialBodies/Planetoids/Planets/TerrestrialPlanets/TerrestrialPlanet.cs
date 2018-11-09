@@ -444,16 +444,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// calculation will take.</param>
         /// <param name="surfaceMapSet">A pre-calculated surface map set for the planet. If left
         /// <see langword="null"/> one will be generated.</param>
-        /// <returns>The <see cref="TerrestrialSurfaceMapSet"/> instance; either the one passed in,
+        /// <returns>The <see cref="TerrestrialSurfaceMaps"/> instance; either the one passed in,
         /// or the newly generated one.</returns>
-        public TerrestrialSurfaceMapSet SetClimate(WorldGrid grid, int seasons, TerrestrialSurfaceMapSet? surfaceMapSet = null)
+        public TerrestrialSurfaceMaps SetClimate(WorldGrid grid, int seasons, TerrestrialSurfaceMaps? surfaceMapSet = null)
         {
             var resolution = surfaceMapSet?.Elevation.GetLength(1) ?? 90;
             var scale = Math.PI / resolution;
 
             if (surfaceMapSet == null)
             {
-                surfaceMapSet = this.GetSurfaceMapSet(90, steps: seasons);
+                surfaceMapSet = this.GetSurfaceMaps(90, steps: seasons);
             }
 
             for (var i = 0; i < grid.Tiles.Length; i++)
@@ -466,7 +466,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 t.SnowCover = surfaceMapSet.Value.SnowCoverRanges[x, y];
 
                 t.Precipitation = (float)(surfaceMapSet.Value.TotalPrecipitation[x, y] * Atmosphere.MaxPrecipitation);
-                t.SnowFall = (float)(surfaceMapSet.Value.WeatherMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
+                t.SnowFall = (float)(surfaceMapSet.Value.PrecipitationMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
 
                 t.ClimateType = surfaceMapSet.Value.Climate[x, y];
                 t.HumidityType = surfaceMapSet.Value.Humidity[x, y];

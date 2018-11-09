@@ -66,14 +66,14 @@ namespace WorldFoundry.Climate
 
         private double? _maxPrecipitation;
         /// <summary>
-        /// The maximum annual precipitation expected to be produced by this atmosphere.
+        /// The maximum annual precipitation expected to be produced by this atmosphere, in mm.
         /// </summary>
         public double MaxPrecipitation
             => _maxPrecipitation ?? (_maxPrecipitation = AveragePrecipitation * (0.05 + Math.Exp(1.25))).Value;
 
         private double? _maxSnowfall;
         /// <summary>
-        /// The maximum annual snowfall expected to be produced by this atmosphere.
+        /// The maximum annual snowfall expected to be produced by this atmosphere, in mm.
         /// </summary>
         public double MaxSnowfall
             => _maxSnowfall ?? (_maxSnowfall = MaxPrecipitation * SnowToRainRatio).Value;

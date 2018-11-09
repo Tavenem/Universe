@@ -32,7 +32,7 @@ namespace WorldFoundry.ConsoleTester
                     var bson = planet.ToBson();
                     Console.Write($" Saved planet size: {(bson.Length / 1000).ToString("N0")} KB.");
 
-                    var maps = planet.GetSurfaceMapSet(SurfaceMapResolution, steps: NumSeasons);
+                    var maps = planet.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
                     bson = maps.ToBson();
                     Console.WriteLine($" Saved maps size: {(bson.Length / 1000000.0).ToString("N1")} MB.");

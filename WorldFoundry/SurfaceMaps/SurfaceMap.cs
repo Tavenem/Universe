@@ -250,7 +250,7 @@ namespace WorldFoundry.SurfaceMaps
             }
             if (precipitationMap == null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
             {
-                precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 0, 1, elevationMap).WeatherMaps[0].Precipitation;
+                precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap).PrecipitationMaps[0].Precipitation;
             }
 
             // Set each point's drainage to be its neighbor with the lowest elevation.
@@ -442,240 +442,6 @@ namespace WorldFoundry.SurfaceMaps
         /// Produces a set of equirectangular projections of the specified region describing the
         /// climate.
         /// </para>
-        /// <para>
-        /// Calling <see cref="GetWeatherMapSet(TerrestrialPlanet, int, double, double, double?,
-        /// double?, int, float[,])"/> is more efficient, and produces more accurate results, than
-        /// calling this method repeatedly. This method should be used only if it will be used just
-        /// once, for a period of less than one year.
-        /// </para>
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
-        /// in radians.</param>
-        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
-        /// radians.</param>
-        /// <param name="standardParallels">The latitude of the standard parallels (north and south
-        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
-        /// equator (the plate carrée projection). It does not matter whether the positive or
-        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
-        /// <paramref name="centralParallel"/> will be used.</param>
-        /// <param name="range">If provided, indicates the latitude range (north and south of
-        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
-        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
-        /// shown.</param>
-        /// <param name="start">The true anomaly of the beginning of the period for which to
-        /// generate maps, offset from the winter solstice. Zero (the default) indicates the winter
-        /// solstice. Values below zero, or greater than or equal to 1, are treated as zero.</param>
-        /// <param name="end">The true anomaly of the end of the period for which to generate maps,
-        /// offset from the winter solstice. One (the default) indicates the winter solstice of the
-        /// following year (i.e. one full year, if <paramref name="start"/> was zero). Values less
-        /// than or equal to zero, or greater than one, are treated as one.</param>
-        /// <param name="elevationMap">The elevation map for this region. If left <see
-        /// langword="null"/> one will be generated. A pre-generated map <i>must</i> share the same
-        /// projection parameters (<paramref name="resolution"/>, <paramref
-        /// name="centralMeridian"/>, etc.). If it does not, a new one will be generated
-        /// anyway.</param>
-        /// <returns>A <see cref="WeatherMapSet"/> instance with one <see cref="WeatherMaps"/>
-        /// instance.</returns>
-        /// <remarks>
-        /// Bear in mind that the calculations required to produce this weather data are expensive,
-        /// and the method may take prohibitively long to complete for large resolutions. Callers
-        /// should strongly consider generating low-resolution maps, then using standard enlargement
-        /// techniques or tools to expand the results to fit the intended view or texture size.
-        /// Unlike photographic images, which can lose clarity with excessive expansion, this type
-        /// of weather data is likely to be nearly as accurate when interpolating between
-        /// low-resolution data points as when explicitly calculating values for each
-        /// high-resolution point, since this data will nearly always follow relatively smooth local
-        /// gradients.
-        /// </remarks>
-        public static WeatherMapSet GetWeatherMaps(
-            this TerrestrialPlanet planet,
-            int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
-            double? standardParallels = null,
-            double? range = null,
-            double start = 0,
-            double end = 1,
-            float[,] elevationMap = null)
-        {
-            if (planet == null)
-            {
-                throw new ArgumentNullException(nameof(planet));
-            }
-            if (resolution > 32767)
-            {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
-            }
-            var doubleResolution = resolution * 2;
-            var total = doubleResolution * resolution;
-
-            var positionMap = GetSurfaceMap(
-                (lat, lon, _, __) => planet.LatitudeAndLongitudeToVector(lat, lon),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
-            {
-                elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
-            }
-
-            var proportionOfYear = Math.Abs(end - start);
-            var proportionOfYearAtMidpoint = start + (proportionOfYear / 2);
-            if (proportionOfYearAtMidpoint >= 1)
-            {
-                proportionOfYearAtMidpoint--;
-            }
-            var trueAnomaly = planet.WinterSolsticeTrueAnomaly + (proportionOfYearAtMidpoint * MathConstants.TwoPI);
-            if (trueAnomaly >= MathConstants.TwoPI)
-            {
-                trueAnomaly -= MathConstants.TwoPI;
-            }
-
-            // Temperature
-            var tempRangeMap = GetSurfaceMap(
-                (lat, lon, _, __) => planet.GetSurfaceTemperatureRangeAt(lat, lon),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-            var tempMap = GetSurfaceMap(
-                (_, __, x, y) => (float)(MathUtility.Lerp(tempRangeMap[x, y].Min, tempRangeMap[x, y].Max, proportionOfYearAtMidpoint) / planet.MaxSurfaceTemperature),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            var min = 2f;
-            var max = -2f;
-            var sum = 0f;
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    min = Math.Min(min, tempMap[x, y]);
-                    max = Math.Max(max, tempMap[x, y]);
-                    sum += tempMap[x, y];
-                }
-            }
-            var tempRange = new FloatRange(min, sum / total, max);
-
-            // Precipitation & snowfall
-            var solarEquator = planet.GetSolarEquator(trueAnomaly);
-            var snowfallMap = new float[doubleResolution, resolution];
-            var precipMap = GetSurfaceMap(
-                (lat, __, x, y) =>
-                {
-                    var precipitation = planet.GetPrecipitation(
-                        positionMap[x, y],
-                        planet.GetSeasonalLatitudeFromEquator(lat, solarEquator),
-                        tempMap[x, y] * planet.MaxSurfaceTemperature,
-                        proportionOfYear,
-                        out var snow);
-                    snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
-                    return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
-                },
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            min = 2f;
-            max = -2f;
-            sum = 0f;
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    min = Math.Min(min, precipMap[x, y]);
-                    max = Math.Max(max, precipMap[x, y]);
-                    sum += precipMap[x, y];
-                }
-            }
-            var precipRange = new FloatRange(min, sum / total, max);
-
-            min = 2f;
-            max = -2f;
-            sum = 0f;
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    min = Math.Min(min, snowfallMap[x, y]);
-                    max = Math.Max(max, snowfallMap[x, y]);
-                    sum += precipMap[x, y];
-                }
-            }
-            var snowfallRange = new FloatRange(min, sum / total, max);
-
-            // Snow Cover
-            var snowCoverRangeMap = GetSurfaceMap(
-                (lat, _, x, y) => planet.GetSnowCoverRange(positionMap[x, y], lat, elevationMap[x, y] * planet.MaxElevation),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-            var snowCoverMap = GetSurfaceMap(
-                (_, __, x, y) => snowfallMap[x, y] > 0 || planet.GetSnowCover(proportionOfYearAtMidpoint, snowCoverRangeMap[x, y]),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            // Sea Ice
-            var seaIceRangeMap = GetSurfaceMap(
-                (lat, _, x, y) => planet.GetSeaIceRange(lat, elevationMap[x, y] * planet.MaxElevation),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-            var seaIceMap = GetSurfaceMap(
-                (_, __, x, y) => planet.GetSeaIce(proportionOfYearAtMidpoint, snowCoverRangeMap[x, y]),
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            return new WeatherMapSet(
-                planet,
-                seaIceRangeMap,
-                snowCoverRangeMap,
-                tempRangeMap,
-                tempRange,
-                new WeatherMaps[]
-                {
-                    new WeatherMaps(
-                        precipMap,
-                        precipRange,
-                        seaIceMap,
-                        snowCoverMap,
-                        snowfallMap,
-                        snowfallRange,
-                        tempMap,
-                        tempRange)
-                });
-        }
-
-        /// <summary>
-        /// <para>
-        /// Produces a set of equirectangular projections of the specified region describing the
-        /// climate.
-        /// </para>
-        /// <para>
-        /// This method is more efficient, and produces more accurate results, than calling
-        /// <see cref="GetWeatherMaps(TerrestrialPlanet, int, double, double, double?, double?,
-        /// double, double, float[,])"/> repeatedly.
-        /// </para>
         /// </summary>
         /// <param name="resolution">The vertical resolution of the projection.</param>
         /// <param name="centralMeridian">The longitude of the central meridian of the projection,
@@ -695,15 +461,15 @@ namespace WorldFoundry.SurfaceMaps
         /// throughout the course of one solar year. The first step will be offset so that its
         /// midpoint occurs at the winter solstice. The greater the number of sets (and thus, the
         /// shorter the time span represented by each step), the more accurate the results will be,
-        /// at the cost of increased processing time. If zero is passed, the return value will be
-        /// empty.</param>
+        /// at the cost of increased processing time. Values less than 1 will be treated as
+        /// 1.</param>
         /// <param name="elevationMap">The elevation map for this region. If left <see
         /// langword="null"/> one will be generated. A pre-generated map <i>must</i> share the same
         /// projection parameters (<paramref name="resolution"/>, <paramref
         /// name="centralMeridian"/>, etc.). If it does not, a new one will be generated
         /// anyway.</param>
-        /// <returns>A <see cref="WeatherMapSet"/> instances with an array of <see
-        /// cref="WeatherMaps"/> instances equal to the number of <paramref name="steps"/>
+        /// <returns>A <see cref="PrecipitationMaps"/> instances with an array of <see
+        /// cref="PrecipitationMaps"/> instances equal to the number of <paramref name="steps"/>
         /// specified, starting with the "season" whose midpoint is at the winter solstice of the
         /// northern hemisphere.</returns>
         /// <remarks>
@@ -717,7 +483,7 @@ namespace WorldFoundry.SurfaceMaps
         /// high-resolution point, since this data will nearly always follow relatively smooth local
         /// gradients.
         /// </remarks>
-        public static WeatherMapSet GetWeatherMapSet(
+        public static WeatherMaps GetWeatherMaps(
             this TerrestrialPlanet planet,
             int resolution,
             double centralMeridian = 0,
@@ -739,24 +505,15 @@ namespace WorldFoundry.SurfaceMaps
             {
                 throw new ArgumentOutOfRangeException(nameof(steps), $"The value of {nameof(steps)} cannot exceed int.MaxValue ({int.MaxValue.ToString()}).");
             }
-            if (steps <= 0)
-            {
-                return new WeatherMapSet();
-            }
+            steps = Math.Max(1, steps);
 
             var doubleResolution = resolution * 2;
-            var halfResolution = resolution / 2;
             var total = doubleResolution * resolution;
 
             if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
-
-            var proportionOfYear = 1.0 / steps;
-            var proportionOfYearAtMidpoint = 0.0;
-            var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var trueAnomalyPerSeason = MathConstants.TwoPI / steps;
 
             var temperatureRanges = GetSurfaceMap(
                 (lat, _, x, y) =>
@@ -808,49 +565,17 @@ namespace WorldFoundry.SurfaceMaps
                 standardParallels,
                 range);
 
-            var minTemp = 2f;
-            var maxTemp = -2f;
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    minTemp = Math.Min(minTemp, temperatureRanges[x, y].Min);
-                    maxTemp = Math.Max(maxTemp, temperatureRanges[x, y].Max);
-                }
-            }
+            var proportionOfYear = 1.0 / steps;
+            var proportionOfYearAtMidpoint = 0.0;
+            var proportionOfSummerAtMidpoint = 0.0;
+            var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
+            var trueAnomalyPerSeason = MathConstants.TwoPI / steps;
 
-            var tempMaps = new float[steps][,];
-            var tempRanges = new FloatRange[steps];
             var precipMaps = new float[steps][,];
-            var precipRanges = new FloatRange[steps];
             var snowfallMaps = new float[steps][,];
-            var snowfallRanges = new FloatRange[steps];
-            var min = 2f;
-            var max = -2f;
-            var sum = 0f;
             for (var i = 0; i < steps; i++)
             {
                 var solarEquator = planet.GetSolarEquator(trueAnomaly);
-
-                // Temperature
-                tempMaps[i] = GetSurfaceMap(
-                    (_, __, x, y) => (float)(MathUtility.Lerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, proportionOfYearAtMidpoint) / planet.MaxSurfaceTemperature),
-                    resolution,
-                    centralMeridian,
-                    centralParallel,
-                    standardParallels,
-                    range);
-
-                for (var x = 0; x < doubleResolution; x++)
-                {
-                    for (var y = 0; y < resolution; y++)
-                    {
-                        min = Math.Min(min, tempMaps[i][x, y]);
-                        max = Math.Max(max, tempMaps[i][x, y]);
-                        sum += tempMaps[i][x, y];
-                    }
-                }
-                tempRanges[i] = new FloatRange(min, sum / total, max);
 
                 // Precipitation & snowfall
                 snowfallMaps[i] = new float[doubleResolution, resolution];
@@ -860,7 +585,7 @@ namespace WorldFoundry.SurfaceMaps
                         var precipitation = planet.GetPrecipitation(
                             planet.LatitudeAndLongitudeToVector(lat, lon),
                             planet.GetSeasonalLatitudeFromEquator(lat, solarEquator),
-                            tempMaps[i][x, y] * planet.MaxSurfaceTemperature,
+                            MathUtility.Lerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
                             proportionOfYear,
                             out var snow);
                         snowfallMaps[i][x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
@@ -872,37 +597,19 @@ namespace WorldFoundry.SurfaceMaps
                     standardParallels,
                     range);
 
-                for (var x = 0; x < doubleResolution; x++)
-                {
-                    for (var y = 0; y < resolution; y++)
-                    {
-                        min = Math.Min(min, precipMaps[i][x, y]);
-                        max = Math.Max(max, precipMaps[i][x, y]);
-                        sum += precipMaps[i][x, y];
-                    }
-                }
-                precipRanges[i] = new FloatRange(min, sum / total, max);
-
-                for (var x = 0; x < doubleResolution; x++)
-                {
-                    for (var y = 0; y < resolution; y++)
-                    {
-                        min = Math.Min(min, snowfallMaps[i][x, y]);
-                        max = Math.Max(max, snowfallMaps[i][x, y]);
-                        sum += snowfallMaps[i][x, y];
-                    }
-                }
-                snowfallRanges[i] = new FloatRange(min, sum / total, max);
-
                 proportionOfYearAtMidpoint += proportionOfYear;
+                proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5 - proportionOfYearAtMidpoint) / 0.5);
                 trueAnomaly += trueAnomalyPerSeason;
                 if (trueAnomaly >= MathConstants.TwoPI)
                 {
                     trueAnomaly -= MathConstants.TwoPI;
                 }
             }
-
-            var tempRange = new FloatRange(minTemp, tempRanges.Average(x => x.Average), maxTemp);
+            var maps = new PrecipitationMaps[steps];
+            for (var i = 0; i < steps; i++)
+            {
+                maps[i] = new PrecipitationMaps(precipMaps[i], snowfallMaps[i]);
+            }
 
             var snowCoverRangeMap = GetSurfaceMap(
                 (lat, _, x, y) => planet.GetSnowCoverRange(
@@ -923,44 +630,7 @@ namespace WorldFoundry.SurfaceMaps
                 standardParallels,
                 range);
 
-            proportionOfYearAtMidpoint = 0.0;
-            trueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var snowCoverMaps = new bool[steps][,];
-            var seaIceMaps = new bool[steps][,];
-            for (var i = 0; i < steps; i++)
-            {
-                // Snow Cover
-                snowCoverMaps[i] = GetSurfaceMap(
-                    (_, __, x, y) => snowfallMaps[i][x, y] > 0 || planet.GetSnowCover(proportionOfYearAtMidpoint, snowCoverRangeMap[x, y]),
-                    resolution,
-                    centralMeridian,
-                    centralParallel,
-                    standardParallels,
-                    range);
-
-                // Sea Ice
-                seaIceMaps[i] = GetSurfaceMap(
-                    (_, __, x, y) => planet.GetSeaIce(proportionOfYearAtMidpoint, snowCoverRangeMap[x, y]),
-                    resolution,
-                    centralMeridian,
-                    centralParallel,
-                    standardParallels,
-                    range);
-
-                proportionOfYearAtMidpoint += proportionOfYear;
-                trueAnomaly += trueAnomalyPerSeason;
-                if (trueAnomaly >= MathConstants.TwoPI)
-                {
-                    trueAnomaly -= MathConstants.TwoPI;
-                }
-            }
-
-            var maps = new WeatherMaps[steps];
-            for (var i = 0; i < steps; i++)
-            {
-                maps[i] = new WeatherMaps(precipMaps[i], precipRanges[i], seaIceMaps[i], snowCoverMaps[i], snowfallMaps[i], snowfallRanges[i], tempMaps[i], tempRanges[i]);
-            }
-            return new WeatherMapSet(planet, seaIceRangeMap, snowCoverRangeMap, temperatureRanges, tempRange, maps);
+            return new WeatherMaps(planet, seaIceRangeMap, snowCoverRangeMap, temperatureRanges, maps);
         }
 
         /// <summary>
@@ -971,7 +641,7 @@ namespace WorldFoundry.SurfaceMaps
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
         /// double, double, double?, double?)"/>, 
-        /// <see cref="GetWeatherMapSet(TerrestrialPlanet, int, double, double, double?, double?,
+        /// <see cref="GetWeatherMaps(TerrestrialPlanet, int, double, double, double?, double?,
         /// int, float[,])"/>, and <see cref="GetHydrologyMaps(TerrestrialPlanet, int, double,
         /// double, double?, double?, float[,], float[,])"/> separately.
         /// </para>
@@ -996,7 +666,7 @@ namespace WorldFoundry.SurfaceMaps
         /// shorter the time span represented by each step), the more accurate the results will be,
         /// at the cost of increased processing time. If zero is passed, the return value will be
         /// empty.</param>
-        /// <returns>A <see cref="TerrestrialSurfaceMapSet"/> instance.</returns>
+        /// <returns>A <see cref="TerrestrialSurfaceMaps"/> instance.</returns>
         /// <remarks>
         /// Bear in mind that the calculations required to produce this map data are expensive, and
         /// the method may take prohibitively long to complete for large resolutions. Callers should
@@ -1007,7 +677,7 @@ namespace WorldFoundry.SurfaceMaps
         /// data points as when explicitly calculating values for each high-resolution point, since
         /// this data will nearly always follow relatively smooth local gradients.
         /// </remarks>
-        public static TerrestrialSurfaceMapSet GetSurfaceMapSet(
+        public static TerrestrialSurfaceMaps GetSurfaceMaps(
             this TerrestrialPlanet planet,
             int resolution,
             double centralMeridian = 0,
@@ -1017,9 +687,9 @@ namespace WorldFoundry.SurfaceMaps
             int steps = 12)
         {
             var elevationMap = GetElevationMap(planet, resolution, centralMeridian, centralParallel, standardParallels, range);
-            var weatherMapSet = GetWeatherMapSet(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap);
+            var weatherMapSet = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap);
             var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitation);
-            return new TerrestrialSurfaceMapSet(elevationMap, weatherMapSet, hydrologyMaps);
+            return new TerrestrialSurfaceMaps(elevationMap, weatherMapSet, hydrologyMaps);
         }
 
         internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
