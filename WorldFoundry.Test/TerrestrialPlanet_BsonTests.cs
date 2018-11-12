@@ -4,7 +4,7 @@ using MongoDB.Bson.Serialization;
 using System;
 using WorldFoundry.Bson;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.SurfaceMaps;
+using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.Test
 {
@@ -55,7 +55,7 @@ namespace WorldFoundry.Test
             //Console.Write("JSON: ");
             //Console.WriteLine(json);
 
-            var result = BsonSerializer.Deserialize<TerrestrialSurfaceMaps>(bson);
+            var result = BsonSerializer.Deserialize<SurfaceMaps>(bson);
             CollectionAssert.AreEqual(maps.Biome, result.Biome);
             CollectionAssert.AreEqual(maps.Climate, result.Climate);
             CollectionAssert.AreEqual(maps.Depth, result.Depth);

@@ -76,22 +76,30 @@ namespace WorldFoundry.Bson
                 cm.MapField("_regions");
             });
 
-            BsonClassMap.RegisterClassMap<PlanetLocation>(cm =>
+            BsonClassMap.RegisterClassMap<SurfaceRegion>(cm =>
             {
                 cm.AutoMap();
-                cm.UnmapMember(x => x.Latitude);
-                cm.MapField("_latitude");
-                cm.UnmapMember(x => x.Longitude);
-                cm.MapField("_longitude");
-            });
-
-            BsonClassMap.RegisterClassMap<PlanetRegion>(cm =>
-            {
-                cm.AutoMap();
-                cm.UnmapMember(x => x.Latitude);
-                cm.MapField("_latitude");
-                cm.UnmapMember(x => x.Longitude);
-                cm.MapField("_longitude");
+                cm.MapField("_depthOverlay");
+                cm.MapField("_depthOverlayHeight");
+                cm.MapField("_depthOverlayWidth");
+                cm.MapField("_elevationOverlay");
+                cm.MapField("_elevationOverlayHeight");
+                cm.MapField("_elevationOverlayWidth");
+                cm.MapField("_flowOverlay");
+                cm.MapField("_flowOverlayHeight");
+                cm.MapField("_flowOverlayWidth");
+                cm.MapField("_precipitationOverlays");
+                cm.MapField("_precipitationOverlayHeight");
+                cm.MapField("_precipitationOverlayWidth");
+                cm.MapField("_snowfallOverlays");
+                cm.MapField("_snowfallOverlayHeight");
+                cm.MapField("_snowfallOverlayWidth");
+                cm.MapField("_temperatureOverlaySummer");
+                cm.MapField("_temperatureOverlayHeightSummer");
+                cm.MapField("_temperatureOverlayWidthSummer");
+                cm.MapField("_temperatureOverlayWinter");
+                cm.MapField("_temperatureOverlayHeightWinter");
+                cm.MapField("_temperatureOverlayWidthWinter");
             });
         }
 

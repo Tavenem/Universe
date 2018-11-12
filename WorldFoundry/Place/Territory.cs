@@ -35,7 +35,7 @@ namespace WorldFoundry.Place
         public Territory(params Region[] regions) => AddRegions(regions);
 
         /// <summary>
-        /// Adds the given <paramref name="region"/> to this instance.
+        /// Adds the given <paramref name="regions"/> to this instance.
         /// </summary>
         /// <param name="regions">The <see cref="Region"/> instances to add.</param>
         /// <returns>This instance.</returns>

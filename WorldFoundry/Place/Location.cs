@@ -39,7 +39,7 @@ namespace WorldFoundry.Place
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
         /// <param name="position">The position of the location relative to the center of its
-        /// <paramref name="containingRegion"/>.</param>
+        /// containing region.</param>
         public Location(Vector3 position) => Position = position;
 
         /// <summary>

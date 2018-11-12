@@ -13,7 +13,7 @@ using WorldFoundry.Climate;
 using WorldFoundry.CosmicSubstances;
 using WorldFoundry.Space;
 using WorldFoundry.Space.Galaxies;
-using WorldFoundry.SurfaceMaps;
+using WorldFoundry.SurfaceMapping;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -24,18 +24,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     public class TerrestrialPlanet : Planemo
     {
         internal const double Space = 1.75e7;
-
-        private const double ThirtySixthPI = Math.PI / 36;
-
-        /// <summary>
-        /// Hadley values are a pure function of latitude, and do not vary with any property of the
-        /// planet, atmosphere, or season. Since the calculation is relatively expensive, retrieved
-        /// values can be stored for the lifetime of the program for future retrieval for the same
-        /// (or very similar) location.
-        /// </summary>
-        private static readonly Dictionary<double, double> HadleyValues = new Dictionary<double, double>();
-
-        private static readonly double LowTemp = Chemical.Water.MeltingPoint - 16;
 
         private protected double _hydrosphereProportion;
 
@@ -117,12 +105,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override double RingChance => 10;
 
-        private FastNoise _noise1;
-        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3));
-
-        private FastNoise _noise2;
-        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex));
-
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/>.
         /// </summary>
@@ -136,14 +118,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// cref="TerrestrialPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
-        /// <param name="planetParams">
-        /// A set of parameters which will control the random generation of this <see
-        /// cref="TerrestrialPlanet"/>'s characteristics.
-        /// </param>
-        /// <param name="requirements">
-        /// A set of requirements which will control the random generation of this <see
-        /// cref="TerrestrialPlanet"/>'s characteristics.
-        /// </param>
         internal TerrestrialPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
@@ -444,9 +418,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// calculation will take.</param>
         /// <param name="surfaceMapSet">A pre-calculated surface map set for the planet. If left
         /// <see langword="null"/> one will be generated.</param>
-        /// <returns>The <see cref="TerrestrialSurfaceMaps"/> instance; either the one passed in,
-        /// or the newly generated one.</returns>
-        public TerrestrialSurfaceMaps SetClimate(WorldGrid grid, int seasons, TerrestrialSurfaceMaps? surfaceMapSet = null)
+        /// <returns>The <see cref="SurfaceMaps"/> instance; either the one passed in, or the newly
+        /// generated one.</returns>
+        public SurfaceMaps SetClimate(WorldGrid grid, int seasons, SurfaceMaps? surfaceMapSet = null)
         {
             var resolution = surfaceMapSet?.Elevation.GetLength(1) ?? 90;
             var scale = Math.PI / resolution;
@@ -480,61 +454,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         internal override void GenerateOrbit(ICelestialLocation orbitedObject)
             => GenerateOrbit(orbitedObject, null, null);
-
-        internal double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
-        {
-            snow = 0;
-
-            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
-
-            var v = position * 100;
-
-            // Noise map with smooth, broad areas. Random range ~-0.4-1.
-            var r1 = 0.3 + (Noise2.GetNoise(v.X, v.Y, v.Z) * 0.7);
-
-            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
-            var r2 = Math.Abs((Noise1.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
-
-            // Combined map is noise with broad similarity over regions, and minor local
-            // diversity, with range of ~-1-1.
-            var r = r1 * r2;
-
-            // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
-            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
-            // the polar deserts.
-            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
-            if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
-            {
-                hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
-                HadleyValues.Add(roundedAbsLatitude, hadleyValue);
-            }
-
-            // Relative humidity is the Hadley cell value added to the random value, and cut off
-            // below 0. Range 0-~2.5.
-            var relativeHumidity = Math.Max(0, r + hadleyValue);
-
-            // In the range up to -16K below freezing, the value is scaled down; below that range it is
-            // cut off completely; above it is unchanged.
-            relativeHumidity *= ((temperature - LowTemp) / 16).Clamp(0, 1);
-
-            if (relativeHumidity <= 0)
-            {
-                return 0;
-            }
-
-            // Scale by distance from target.
-            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.3) - 0.5)) + Math.Max(0, Math.Exp(relativeHumidity - 1.5) - 0.4);
-            factor *= factor;
-
-            var precipitation = avgPrecipitation * relativeHumidity * factor;
-
-            if (temperature <= Chemical.Water.MeltingPoint)
-            {
-                snow = precipitation * Atmosphere.SnowToRainRatio;
-            }
-
-            return precipitation;
-        }
 
         private void AdjustOrbitForTemperature(TerrestrialPlanetParams? planetParams, Star star, double? semiMajorAxis, double trueAnomaly, double targetTemp)
         {
@@ -604,19 +523,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        /// <summary>
-        /// Adjusts the phase of various atmospheric and surface substances depending on the surface
-        /// temperature of the body.
-        /// </summary>
-        /// <param name="counter">The number of times this method has been called.</param>
-        /// <param name="surfaceTemp">The effective surface temperature, in K.</param>
-        /// <param name="hydrosphereAtmosphereRatio">The mass ratio of hydrosphere to atmosphere.</param>
-        /// <param name="adjustedAtmosphericPressure">The effective atmospheric pressure, in kPa.</param>
-        /// <remarks>
-        /// Despite the theoretical possibility of an atmosphere cold enough to precipitate some of
-        /// the noble gases, or hydrogen, they are ignored and presumed to exist always as trace
-        /// atmospheric gases, never surface liquids or ices, or in large enough quantities to form clouds.
-        /// </remarks>
         private void CalculatePhases(TerrestrialPlanetParams? planetParams, int counter, double surfaceTemp, ref double hydrosphereAtmosphereRatio, ref double adjustedAtmosphericPressure)
         {
             CalculatePhases(planetParams, CanHaveOxygen, surfaceTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
@@ -640,19 +546,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        /// <summary>
-        /// Adjusts the phase of various atmospheric and surface substances depending on the surface
-        /// temperature of the body.
-        /// </summary>
-        /// <param name="_canHaveOxygen">Whether oxygen is allowed.</param>
-        /// <param name="surfaceTemp">The effective surface temperature, in K.</param>
-        /// <param name="hydrosphereAtmosphereRatio">The mass ratio of hydrosphere to atmosphere.</param>
-        /// <param name="adjustedAtmosphericPressure">The effective atmospheric pressure, in kPa.</param>
-        /// <remarks>
-        /// Despite the theoretical possibility of an atmosphere cold enough to precipitate some of
-        /// the noble gases, or hydrogen, they are ignored and presumed to exist always as trace
-        /// atmospheric gases, never surface liquids or ices, or in large enough quantities to form clouds.
-        /// </remarks>
         private void CalculatePhases(
             TerrestrialPlanetParams? planetParams,
             bool _canHaveOxygen,
@@ -660,6 +553,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             ref double hydrosphereAtmosphereRatio,
             ref double adjustedAtmosphericPressure)
         {
+            // Despite the theoretical possibility of an atmosphere cold enough to precipitate some
+            // of the noble gases, or hydrogen, they are ignored and presumed to exist always as
+            // trace atmospheric gases, never surface liquids or ices, or in large enough quantities
+            // to form clouds.
+
             CalculateGasPhaseMix(planetParams, _canHaveOxygen, Chemical.Methane, surfaceTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
             CalculateGasPhaseMix(planetParams, _canHaveOxygen, Chemical.CarbonMonoxide, surfaceTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
             CalculateGasPhaseMix(planetParams, _canHaveOxygen, Chemical.CarbonDioxide, surfaceTemp, ref hydrosphereAtmosphereRatio, ref adjustedAtmosphericPressure);
@@ -680,13 +578,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        /// <summary>
-        /// At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
-        /// carbon-silicate cycle.
-        /// </summary>
-        /// <param name="vaporPressure">The vapor pressure of water.</param>
         private void CheckCO2Reduction(double vaporPressure)
         {
+            // At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
+            // carbon-silicate cycle.
+
             var air = Atmosphere.Composition.GetSurface();
             if (air.GetProportion(Chemical.Water, Phase.Gas) * Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
             {
@@ -1529,7 +1425,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// actually does. If so, the atmosphere may be adjusted.
         /// </summary>
         /// <returns>
-        /// True if the atmosphere's greeenhouse potential is adjusted; false if not.
+        /// True if the atmosphere's greenhouse potential is adjusted; false if not.
         /// </returns>
         private bool GenerateLife()
         {

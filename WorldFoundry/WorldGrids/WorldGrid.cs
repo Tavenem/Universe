@@ -301,15 +301,6 @@ namespace WorldFoundry.WorldGrids
             }
         }
 
-        /// <summary>
-        /// Changes the current <see cref="GridSize"/> to the desired <paramref name="size"/>.
-        /// </summary>
-        /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
-        /// <param name="preserveShape">
-        /// If true, the same random seed will be used for elevation generation as any previous use,
-        /// resulting in the same height map (can be used to maintain a similar look when changing
-        /// <see cref="GridSize"/>, rather than an entirely new geography).
-        /// </param>
         internal void SubdivideGrid(Planetoid planet, byte size)
         {
             size = Math.Min(MaxGridSize, size);

@@ -21,7 +21,7 @@ namespace WorldFoundry.Space
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
-        /// Specifies the velocity of the <see cref="Orbits.CelestialEntity"/>.
+        /// Specifies the velocity of the <see cref="ICelestialLocation"/>.
         /// </summary>
         /// <remarks>
         /// The universe has no velocity. This will always return <see cref="Vector3.Zero"/>, and

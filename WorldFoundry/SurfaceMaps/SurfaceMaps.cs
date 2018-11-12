@@ -1,12 +1,12 @@
 ﻿using WorldFoundry.Climate;
 
-namespace WorldFoundry.SurfaceMaps
+namespace WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A collection of surface and weather maps for a <see
     /// cref="CelestialBodies.Planetoids.Planets.TerrestrialPlanets.TerrestrialPlanet"/>.
     /// </summary>
-    public struct TerrestrialSurfaceMaps
+    public struct SurfaceMaps
     {
         private readonly HydrologyMaps _hydrologyMaps;
         private readonly WeatherMaps _weatherMaps;
@@ -145,7 +145,7 @@ namespace WorldFoundry.SurfaceMaps
         /// second index corresponds to the Y coordinate. The values represent the temperature
         /// range. Values range from 0 to 1, with 1 indicating the maximum temperature of the
         /// planet.
-        /// <seealso cref="Planetoid.MaxSurfaceTemperature"/>
+        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxSurfaceTemperature"/>
         /// </summary>
         public FloatRange[,] TemperatureRanges => _weatherMaps.TemperatureRanges;
 
@@ -170,12 +170,33 @@ namespace WorldFoundry.SurfaceMaps
         public FloatRange TotalPrecipitationRange => _weatherMaps.TotalPrecipitationRange;
 
         /// <summary>
-        /// Initializes a new instance of <see cref="TerrestrialSurfaceMaps"/>.
+        /// A two-dimensional array corresponding to points on an equirectangular projected map of a
+        /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
+        /// second index corresponds to the Y coordinate. The values represent the total amount of
+        /// snowfall indicated on all contained <see cref="PrecipitationMaps"/>. Values range from 0
+        /// to 1, with 1 indicating the maximum annual potential snowfall of the planet's
+        /// atmosphere. Will be <see langword="null"/> if no <see cref="PrecipitationMaps"/> are
+        /// present.
+        /// <seealso cref="Atmosphere.MaxSnowfall"/>
+        /// </summary>
+        public float[,] TotalSnowfall => _weatherMaps.TotalSnowfall;
+
+        /// <summary>
+        /// A range giving the minimum, maximum, and average snowfall throughout the specified area
+        /// over the entire period represented by all <see cref="PrecipitationMaps"/>, as a value
+        /// between 0 and 1, with 1 indicating the maximum annual potential snowfall of the planet's
+        /// atmosphere.
+        /// <seealso cref="Atmosphere.MaxSnowfall"/>
+        /// </summary>
+        public FloatRange TotalSnowfallRange => _weatherMaps.TotalSnowfallRange;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="SurfaceMaps"/>.
         /// </summary>
         /// <param name="elevation">An elevation map.</param>
         /// <param name="weatherMaps">A <see cref="PrecipitationMaps"/> instance.</param>
         /// <param name="hydrologyMaps">A <see cref="HydrologyMaps"/> instance.</param>
-        public TerrestrialSurfaceMaps(float[,] elevation, WeatherMaps weatherMaps, HydrologyMaps hydrologyMaps)
+        public SurfaceMaps(float[,] elevation, WeatherMaps weatherMaps, HydrologyMaps hydrologyMaps)
         {
             Elevation = elevation;
             _weatherMaps = weatherMaps;

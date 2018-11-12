@@ -1,4 +1,5 @@
-﻿using MathAndScience;
+﻿using ExtensionLib;
+using MathAndScience;
 using MathAndScience.Numerics;
 using MathAndScience.Shapes;
 using Substances;
@@ -7,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using WorldFoundry.Climate;
 using WorldFoundry.CosmicSubstances;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
 using WorldFoundry.WorldGrids;
 
@@ -19,11 +21,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
     {
         // polar latitude = 1.5277247828211
         private const double CosPolarLatitude = 0.04305822778985774;
+        private const double ThirtySixthPI = Math.PI / 36;
 
         /// <summary>
         /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
         /// </summary>
         private protected const int MinimumRadius = 600000;
+
+        /// <summary>
+        /// Hadley values are a pure function of latitude, and do not vary with any property of the
+        /// planet, atmosphere, or season. Since the calculation is relatively expensive, retrieved
+        /// values can be stored for the lifetime of the program for future retrieval for the same
+        /// (or very similar) location.
+        /// </summary>
+        private static readonly Dictionary<double, double> HadleyValues = new Dictionary<double, double>();
+
+        private static readonly double LowTemp = Chemical.Water.MeltingPoint - 16;
 
         private WorldGrid _grid;
         private float _normalizedSeaLevel;
@@ -293,6 +306,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
+        private List<SurfaceRegion> _surfaceRegions;
+        /// <summary>
+        /// The collection of <see cref="SurfaceRegion"/> instances which describe the surface of
+        /// this <see cref="Planetoid"/>.
+        /// </summary>
+        public IEnumerable<SurfaceRegion> SurfaceRegions
+            => _surfaceRegions ?? Enumerable.Empty<SurfaceRegion>();
+
         private double? _surfaceTemperature;
         /// <summary>
         /// The current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
@@ -429,6 +450,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private FastNoise _noise3;
         private FastNoise Noise3 => _noise3 ?? (_noise3 = new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4));
 
+        private FastNoise _noise4;
+        private FastNoise Noise4 => _noise4 ?? (_noise4 = new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3));
+
+        private FastNoise _noise5;
+        private FastNoise Noise5 => _noise5 ?? (_noise5 = new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex));
+
         private protected virtual double Rigidity => 3.0e10;
 
         private double? _solarEquator;
@@ -459,6 +486,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
         /// </param>
         internal Planetoid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
+
+        /// <summary>
+        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
+        /// instance.
+        /// </summary>
+        /// <param name="value">A <see cref="SurfaceRegion"/> instance.</param>
+        /// <returns>This instance.</returns>
+        public Planetoid AddSurfaceRegion(SurfaceRegion value)
+        {
+            (_surfaceRegions ?? (_surfaceRegions = new List<SurfaceRegion>())).Add(value);
+            return this;
+        }
 
         /// <summary>
         /// Calculates the atmospheric drag on a spherical object within the <see
@@ -505,6 +544,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     elevation),
                 elevation);
         }
+
+        /// <summary>
+        /// Determines the smallest child <see cref="SurfaceRegion"/> at any level of this
+        /// instance's descendant hierarchy which contains the specified <paramref
+        /// name="position"/>.
+        /// </summary>
+        /// <param name="position">The position whose smallest containing <see cref="Region"/> is to
+        /// be determined.</param>
+        /// <returns>
+        /// The smallest <see cref="SurfaceRegion"/> at any level of this instance's descendant
+        /// hierarchy which contains the specified <paramref name="position"/>, or <see
+        /// langword="null"/>, if no region contains the position.
+        /// </returns>
+        public Region GetContainingSurfaceRegion(Vector3 position)
+            => SurfaceRegions.Where(x => x.Shape.IsPointWithin(position))
+            .ItemWithMin(x => x.Shape.ContainingRadius);
+
+        /// <summary>
+        /// Determines the smallest child <see cref="SurfaceRegion"/> at any level of this
+        /// instance's descendant hierarchy which fully contains the specified <see
+        /// cref="SurfaceRegion"/> within its containing radius.
+        /// </summary>
+        /// <param name="other">The <see cref="SurfaceRegion"/> whose smallest containing <see
+        /// cref="Region"/> is to be determined.</param>
+        /// <returns>
+        /// The smallest <see cref="SurfaceRegion"/> at any level of this instance's descendant
+        /// hierarchy which fully contains the specified <see cref="SurfaceRegion"/> within its
+        /// containing radius, or <see langword="null"/>, if no region contains the position.
+        /// </returns>
+        public Region GetContainingSurfaceRegion(SurfaceRegion other)
+            => SurfaceRegions.Where(x => Vector3.Distance(x.Position, other.Position) <= x.Shape.ContainingRadius - other.Shape.ContainingRadius)
+            .ItemWithMin(x => x.Shape.ContainingRadius);
 
         /// <summary>
         /// Calculates the distance along the surface at sea level between the two points indicated
@@ -622,6 +693,80 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Given an initial position, a bearing, and a distance, calculates the final position
+        /// along the great circle arc described by the resulting motion.
+        /// </summary>
+        /// <param name="latitude">An initial latitude.</param>
+        /// <param name="longitude">An initial longitude.</param>
+        /// <param name="distance">A distance, in meters.</param>
+        /// <param name="bearing">A bearing, in radians clockwise from north.</param>
+        /// <returns>The destination latitude and longitude.</returns>
+        /// <remarks>
+        /// <para>
+        /// The results are inaccurate for highly ellipsoidal planets, as no compensation is
+        /// attempted for the non-spherical shape of the planet.
+        /// </para>
+        /// <para>
+        /// Great circle arcs are the shortest distance between two points on a sphere. Traveling
+        /// along a great circle that is not the equator or a meridian requires continually changing
+        /// one's compass heading during travel (unlike a rhumb line, which is not the shortest
+        /// path, but requires no bearing adjustements).
+        /// </para>
+        /// <seealso cref="GetLatLonAtDistanceOnRhumbLine(double, double, double, double)"/>
+        /// </remarks>
+        public (double latitude, double longitude) GetLatLonAtDistanceOnGreatCircleArc(double latitude, double longitude, double distance, double bearing)
+        {
+            var angularDistance = distance / Shape.ContainingRadius;
+            var sinDist = Math.Sin(angularDistance);
+            var cosDist = Math.Cos(angularDistance);
+            var sinLat = Math.Sin(latitude);
+            var cosLat = Math.Cos(latitude);
+            var finalLatitude = Math.Asin((sinLat * cosDist) + (cosLat * sinDist * Math.Cos(bearing)));
+            var finalLongitude = longitude + Math.Atan2(Math.Sin(bearing) * sinDist * cosLat, cosDist - (sinLat * Math.Sin(finalLatitude)));
+            finalLongitude = ((finalLongitude + MathConstants.ThreeHalvesPI) % MathConstants.TwoPI) - MathConstants.HalfPI;
+            return (finalLatitude, finalLongitude);
+        }
+
+        /// <summary>
+        /// Given an initial position, a bearing, and a distance, calculates the final position
+        /// along the rhumb line (loxodrome) described by the resulting motion.
+        /// </summary>
+        /// <param name="latitude">An initial latitude.</param>
+        /// <param name="longitude">An initial longitude.</param>
+        /// <param name="distance">A distance, in meters.</param>
+        /// <param name="bearing">A bearing, in radians clockwise from north.</param>
+        /// <returns>The destination latitude and longitude.</returns>
+        /// <remarks>
+        /// <para>
+        /// The results are inaccurate for highly ellipsoidal planets, as no compensation is
+        /// attempted for the non-spherical shape of the planet.
+        /// </para>
+        /// <para>
+        /// Rhumb lines, or loxodromes, are lines along a sphere with constant bearing. A rhumb
+        /// line other than the equator or a meridian is not the shortest distance between any two
+        /// points on that line (a great circle arc is), but does not require recalculation of
+        /// bearing during travel.
+        /// </para>
+        /// <seealso cref="GetLatLonAtDistanceOnGreatCircleArc(double, double, double, double)"/>
+        /// </remarks>
+        public (double latitude, double longitude) GetLatLonAtDistanceOnRhumbLine(double latitude, double longitude, double distance, double bearing)
+        {
+            var angularDistance = distance / Shape.ContainingRadius;
+            var deltaLatitude = angularDistance + Math.Cos(angularDistance);
+            var finalLatitude = latitude + deltaLatitude;
+            var deltaProjectedLatitude = Math.Log(Math.Tan(MathConstants.QuarterPI + (finalLatitude / 2)) / Math.Tan(MathConstants.QuarterPI + (latitude / 2)));
+            var q = Math.Abs(deltaProjectedLatitude) > 10e-12 ? deltaLatitude / deltaProjectedLatitude : Math.Cos(latitude);
+            var deltaLongitude = angularDistance * Math.Sin(bearing) / q;
+            var finalLongitude = longitude + deltaLongitude;
+            if (Math.Abs(finalLatitude) > MathConstants.HalfPI)
+            {
+                finalLatitude = finalLatitude > 0 ? Math.PI - finalLatitude : -Math.PI - finalLatitude;
+            }
+            finalLongitude = ((finalLongitude + MathConstants.ThreeHalvesPI) % MathConstants.TwoPI) - MathConstants.HalfPI;
+            return (finalLatitude, finalLongitude);
+        }
+
+        /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
         /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
         /// below sea level.
@@ -701,7 +846,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// angle.
         /// </summary>
         /// <param name="latitude">The latitude of the point.</param>
-        /// <param name="latitude">The longitude of the point.</param>
+        /// <param name="longitude">The longitude of the point.</param>
         /// <returns>The slope at the given coordinates.</returns>
         public double GetSlope(double latitude, double longitude)
         {
@@ -776,6 +921,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Removes a <see cref="SurfaceRegion"/> instance from this instance's collection, if
+        /// found. Returns this instance.
+        /// </summary>
+        /// <param name="value">A <see cref="SurfaceRegion"/> instance.</param>
+        /// <returns>This instance.</returns>
+        public Planetoid RemoveSurfaceRegion(SurfaceRegion value)
+        {
+            _surfaceRegions?.Remove(value);
+            return this;
+        }
+
+        /// <summary>
         /// Sets the atmospheric pressure of this <see cref="Planetoid"/>, in kPa.
         /// </summary>
         /// <param name="value">An atmospheric pressure in kPa.</param>
@@ -846,6 +1003,61 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         internal double GetInsolationFactor(double atmosphereMass, double atmosphericScaleHeight, bool polar = false)
             => Math.Pow(1320000 * atmosphereMass * (polar ? Math.Pow(0.7, Math.Pow(GetPolarAirMass(atmosphericScaleHeight), 0.678)) : 0.7) / Mass, 0.25);
+
+        internal double GetPrecipitation(Vector3 position, double seasonalLatitude, double temperature, double proportionOfYear, out double snow)
+        {
+            snow = 0;
+
+            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
+
+            var v = position * 100;
+
+            // Noise map with smooth, broad areas. Random range ~-0.4-1.
+            var r1 = 0.3 + (Noise5.GetNoise(v.X, v.Y, v.Z) * 0.7);
+
+            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
+            var r2 = Math.Abs((Noise4.GetNoise(v.X, v.Y, v.Z) * 0.1) + 0.9);
+
+            // Combined map is noise with broad similarity over regions, and minor local
+            // diversity, with range of ~-1-1.
+            var r = r1 * r2;
+
+            // Hadley cells scale by 1.5 around the equator, ~0.1 ±15º lat, ~0.2 ±40º lat, and ~0
+            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
+            // the polar deserts.
+            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
+            if (!HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
+            {
+                hadleyValue = (Math.Cos(MathConstants.TwoPI * Math.Sqrt(roundedAbsLatitude)) / ((8 * roundedAbsLatitude) + 1)) - (roundedAbsLatitude / Math.PI) + 0.5;
+                HadleyValues.Add(roundedAbsLatitude, hadleyValue);
+            }
+
+            // Relative humidity is the Hadley cell value added to the random value, and cut off
+            // below 0. Range 0-~2.5.
+            var relativeHumidity = Math.Max(0, r + hadleyValue);
+
+            // In the range up to -16K below freezing, the value is scaled down; below that range it is
+            // cut off completely; above it is unchanged.
+            relativeHumidity *= ((temperature - LowTemp) / 16).Clamp(0, 1);
+
+            if (relativeHumidity <= 0)
+            {
+                return 0;
+            }
+
+            // Scale by distance from target.
+            var factor = 1 + (relativeHumidity * ((relativeHumidity * 0.3) - 0.5)) + Math.Max(0, Math.Exp(relativeHumidity - 1.5) - 0.4);
+            factor *= factor;
+
+            var precipitation = avgPrecipitation * relativeHumidity * factor;
+
+            if (temperature <= Chemical.Water.MeltingPoint)
+            {
+                snow = precipitation * Atmosphere.SnowToRainRatio;
+            }
+
+            return precipitation;
+        }
 
         internal double GetSeasonalLatitudeFromEquator(double latitude, double solarEquator)
         {

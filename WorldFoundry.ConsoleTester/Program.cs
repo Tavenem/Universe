@@ -3,7 +3,7 @@ using System;
 using System.Threading.Tasks;
 using WorldFoundry.Bson;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.SurfaceMaps;
+using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.ConsoleTester
 {

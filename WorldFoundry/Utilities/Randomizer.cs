@@ -25,9 +25,9 @@ namespace WorldFoundry
         /// generated.</param>
         /// <returns>A randomly oriented vector whose length is between 0 and <paramref
         /// name="maxLength"/>.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxValue"/> must be
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxLength"/> must be
         /// greater than or equal to 0.0.</exception>
-        /// <exception cref="ArgumentException"><paramref name="maxValue"/> cannot be <see
+        /// <exception cref="ArgumentException"><paramref name="maxLength"/> cannot be <see
         /// cref="double.PositiveInfinity"/>.</exception>
         /// <remarks>
         /// A random rotation is generated with <see cref="GetRandomQuaternion"/>, then the vector
@@ -48,10 +48,10 @@ namespace WorldFoundry
         /// generated.</param>
         /// <returns>A randomly oriented vector whose length is between <paramref name="minLength"/>
         /// and <paramref name="maxLength"/>.</returns>
-        /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxValue"/> must be
-        /// greater than <paramref name="minValue"/>.</exception>
-        /// <exception cref="ArgumentException">The difference between <paramref name="maxValue"/>
-        /// and <paramref name="minValue"/> cannot be <see
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxLength"/> must be
+        /// greater than <paramref name="minLength"/>.</exception>
+        /// <exception cref="ArgumentException">The difference between <paramref name="maxLength"/>
+        /// and <paramref name="minLength"/> cannot be <see
         /// cref="double.PositiveInfinity"/>.</exception>
         /// <remarks>
         /// A random rotation is generated with <see cref="GetRandomQuaternion"/>, then the vector

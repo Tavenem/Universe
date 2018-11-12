@@ -164,7 +164,6 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Calculates the temperature this <see cref="Star"/> would have to be in order to cause
         /// the given effective temperature at the given distance.
         /// </summary>
-        /// <param name="star">The star.</param>
         /// <param name="temperature">The desired temperature, in K.</param>
         /// <param name="distance">The desired distance, in meters.</param>
         /// <param name="albedo">The albedo of the target body.</param>

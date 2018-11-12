@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.SurfaceMaps
+namespace WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A set of two-dimensional arrays corresponding to points on an equirectangular projected map

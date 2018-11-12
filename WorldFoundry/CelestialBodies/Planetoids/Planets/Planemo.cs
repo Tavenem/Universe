@@ -328,8 +328,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// will be 1, given its orbital characteristics.
         /// </summary>
         /// <remarks>
-        /// Also sets <see cref="Eccentricity"/> as a side effect, if the <see cref="Planemo"/>
-        /// doesn't already have a defined orbit.
+        /// Also sets <see cref="Planetoid.Eccentricity"/> as a side effect, if the <see
+        /// cref="Planemo"/> doesn't already have a defined orbit.
         /// </remarks>
         /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit
         /// or <see cref="ICelestialLocation.ContainingCelestialRegion"/>.</exception>

@@ -20,7 +20,7 @@ namespace WorldFoundry.Place
         public IEnumerable<ILocation> Children => _children ?? Enumerable.Empty<ILocation>();
 
         /// <summary>
-        /// The position of this location relative to the center of its <see cref="Parent"/>.
+        /// The position of this location relative to the center of its containing region.
         /// </summary>
         public override Vector3 Position
         {
@@ -190,11 +190,10 @@ namespace WorldFoundry.Place
 
         /// <summary>
         /// Performs the behind-the-scenes work necessary to transfer a <see cref="Location"/>
-        /// to a new <see cref="ContainingRegion"/>.
+        /// to a new containing region.
         /// </summary>
         /// <param name="region">The <see cref="Region"/> which will be the new containing region of
-        /// this instance; or <see langword="null"/> to clear <see
-        /// cref="ContainingRegion"/>.</param>
+        /// this instance; or <see langword="null"/> to remove it from the hierarchy.</param>
         /// <remarks>
         /// If the new containing region is part of the same hierarchy as this instance, its current
         /// absolute position will be preserved, and translated into the correct local relative <see

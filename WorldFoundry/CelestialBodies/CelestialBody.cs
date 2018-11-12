@@ -168,7 +168,8 @@ namespace WorldFoundry.CelestialBodies
         /// <summary>
         /// The average temperature of this <see cref="ICelestialLocation"/>, in K.
         /// </summary>
-        /// <remarks>No less than <see cref="Parent"/>'s ambient temperature.</remarks>
+        /// <remarks>No less than the ambient temperature of its <see
+        /// cref="ContainingCelestialRegion"/>.</remarks>
         public double? Temperature
             => Math.Max(Substance.Temperature, ContainingCelestialRegion?.Temperature ?? 0);
 

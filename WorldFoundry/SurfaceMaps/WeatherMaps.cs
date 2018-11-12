@@ -1,10 +1,11 @@
 ﻿using MathAndScience;
+using Substances;
 using System;
 using System.Linq;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.Climate;
 
-namespace WorldFoundry.SurfaceMaps
+namespace WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A collection of weather maps providing yearlong climate data.
@@ -235,6 +236,237 @@ namespace WorldFoundry.SurfaceMaps
                     (float)(precipitationMaps.Min(x => x.SnowfallRange.Min) * MaxSnowfall),
                     (float)(precipitationMaps.Average(x => x.SnowfallRange.Average) * MaxSnowfall),
                     (float)(precipitationMaps.Max(x => x.SnowfallRange.Max) * MaxSnowfall));
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="WeatherMaps"/>.
+        /// </summary>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="elevationMap">An elevation map.</param>
+        /// <param name="precipitationMaps">A set of weather maps.</param>
+        /// <param name="temperatureRanges">A temperature range map.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        public WeatherMaps(
+            Planetoid planet,
+            float[,] elevationMap,
+            PrecipitationMaps[] precipitationMaps,
+            FloatRange[,] temperatureRanges,
+            int resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null)
+        {
+            MaxPrecipitation = planet.Atmosphere.MaxPrecipitation;
+            MaxTemperature = planet.MaxSurfaceTemperature;
+            PrecipitationMaps = precipitationMaps;
+            TemperatureRanges = temperatureRanges;
+
+            MaxSnowfall = MaxPrecipitation * Atmosphere.SnowToRainRatio;
+            Seasons = precipitationMaps?.Length ?? 0;
+
+            if (temperatureRanges == null)
+            {
+                OverallTemperatureRange = FloatRange.Zero;
+            }
+            else
+            {
+                var xLength = temperatureRanges.GetLength(0);
+                var yLength = temperatureRanges.GetLength(1);
+
+                var min = 2f;
+                var max = -2f;
+                var avgSum = 0f;
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        min = Math.Min(min, temperatureRanges[x, y].Min);
+                        max = Math.Max(max, temperatureRanges[x, y].Max);
+                        avgSum += temperatureRanges[x, y].Average;
+                    }
+                }
+                OverallTemperatureRange = new FloatRange(min, avgSum / (xLength * yLength), max);
+            }
+
+            if ((precipitationMaps?.Length ?? 0) == 0)
+            {
+                Biome = null;
+                Climate = null;
+                Ecology = null;
+                Humidity = null;
+                SeaIceRanges = null;
+                SnowCoverRanges = null;
+                TotalPrecipitation = null;
+                TotalPrecipitationRange = FloatRange.Zero;
+                TotalSnowfall = null;
+                TotalSnowfallRange = FloatRange.Zero;
+            }
+            else
+            {
+                var xLength = precipitationMaps[0].Precipitation.GetLength(0);
+                var yLength = precipitationMaps[0].Precipitation.GetLength(1);
+
+                Biome = new BiomeType[xLength, yLength];
+                Climate = new ClimateType[xLength, yLength];
+                Ecology = new EcologyType[xLength, yLength];
+                var humidity = new HumidityType[xLength, yLength];
+                TotalPrecipitation = new float[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        TotalPrecipitation[x, y] = precipitationMaps.Sum(c => c.Precipitation[x, y]);
+                        Climate[x, y] = ClimateTypes.GetClimateType(temperatureRanges[x, y].Average);
+                        humidity[x, y] = ClimateTypes.GetHumidityType(TotalPrecipitation[x, y] * planet.Atmosphere.MaxPrecipitation);
+                        Biome[x, y] = ClimateTypes.GetBiomeType(Climate[x, y], humidity[x, y], elevationMap[x, y]);
+                        Ecology[x, y] = ClimateTypes.GetEcologyType(Climate[x, y], humidity[x, y], elevationMap[x, y]);
+                    }
+                }
+                Humidity = humidity;
+
+                TotalPrecipitationRange = new FloatRange(
+                    (float)(precipitationMaps.Min(x => x.PrecipitationRange.Min) * MaxPrecipitation),
+                    (float)(precipitationMaps.Average(x => x.PrecipitationRange.Average) * MaxPrecipitation),
+                    (float)(precipitationMaps.Max(x => x.PrecipitationRange.Max) * MaxPrecipitation));
+
+                TotalSnowfall = new float[xLength, yLength];
+                for (var x = 0; x < xLength; x++)
+                {
+                    for (var y = 0; y < yLength; y++)
+                    {
+                        TotalSnowfall[x, y] = precipitationMaps.Sum(c => c.Snowfall[x, y]);
+                    }
+                }
+                TotalSnowfallRange = new FloatRange(
+                    (float)(precipitationMaps.Min(x => x.SnowfallRange.Min) * MaxSnowfall),
+                    (float)(precipitationMaps.Average(x => x.SnowfallRange.Average) * MaxSnowfall),
+                    (float)(precipitationMaps.Max(x => x.SnowfallRange.Max) * MaxSnowfall));
+
+                if (temperatureRanges == null)
+                {
+                    SeaIceRanges = null;
+                    SnowCoverRanges = null;
+                }
+                else
+                {
+                    SeaIceRanges = SurfaceMap.GetSurfaceMap(
+                        (lat, _, x, y) =>
+                        {
+                            if (elevationMap[x, y] > 0 || temperatureRanges[x, y].Min > Chemical.Water_Salt.MeltingPoint)
+                            {
+                                return FloatRange.Zero;
+                            }
+                            if (temperatureRanges[x, y].Max < Chemical.Water_Salt.MeltingPoint)
+                            {
+                                return FloatRange.ZeroToOne;
+                            }
+
+                            var freezeProportion = MathUtility.InverseLerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, Chemical.Water_Salt.MeltingPoint);
+                            if (double.IsNaN(freezeProportion))
+                            {
+                                return FloatRange.Zero;
+                            }
+                            // Freezes more than melts; never fully melts.
+                            if (freezeProportion >= 0.5)
+                            {
+                                return FloatRange.ZeroToOne;
+                            }
+
+                            var meltStart = freezeProportion / 2;
+                            var iceMeltFinish = freezeProportion;
+                            var snowMeltFinish = freezeProportion * 3 / 4;
+                            var freezeStart = 1 - (freezeProportion / 2);
+                            if (lat < 0)
+                            {
+                                iceMeltFinish += 0.5;
+                                if (iceMeltFinish > 1)
+                                {
+                                    iceMeltFinish--;
+                                }
+
+                                snowMeltFinish += 0.5;
+                                if (snowMeltFinish > 1)
+                                {
+                                    snowMeltFinish--;
+                                }
+
+                                freezeStart -= 0.5;
+                            }
+                            return new FloatRange((float)freezeStart, (float)iceMeltFinish);
+                        },
+                        resolution,
+                        centralMeridian,
+                        centralParallel,
+                        standardParallels,
+                        range);
+                    SnowCoverRanges = SurfaceMap.GetSurfaceMap(
+                        (lat, _, x, y) =>
+                        {
+                            if (elevationMap[x, y] <= 0
+                                || humidity[x, y] <= HumidityType.Perarid
+                                || temperatureRanges[x, y].Min > Chemical.Water_Salt.MeltingPoint)
+                            {
+                                return FloatRange.Zero;
+                            }
+                            if (temperatureRanges[x, y].Max < Chemical.Water_Salt.MeltingPoint)
+                            {
+                                return FloatRange.ZeroToOne;
+                            }
+
+                            var freezeProportion = MathUtility.InverseLerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, Chemical.Water_Salt.MeltingPoint);
+                            if (double.IsNaN(freezeProportion))
+                            {
+                                return FloatRange.Zero;
+                            }
+                            // Freezes more than melts; never fully melts.
+                            if (freezeProportion >= 0.5)
+                            {
+                                return FloatRange.ZeroToOne;
+                            }
+
+                            var meltStart = freezeProportion / 2;
+                            var iceMeltFinish = freezeProportion;
+                            var snowMeltFinish = freezeProportion * 3 / 4;
+                            var freezeStart = 1 - (freezeProportion / 2);
+                            if (lat < 0)
+                            {
+                                iceMeltFinish += 0.5;
+                                if (iceMeltFinish > 1)
+                                {
+                                    iceMeltFinish--;
+                                }
+
+                                snowMeltFinish += 0.5;
+                                if (snowMeltFinish > 1)
+                                {
+                                    snowMeltFinish--;
+                                }
+
+                                freezeStart -= 0.5;
+                            }
+                            return new FloatRange((float)freezeStart, (float)snowMeltFinish);
+                        },
+                        resolution,
+                        centralMeridian,
+                        centralParallel,
+                        standardParallels,
+                        range);
+                }
             }
         }
 
