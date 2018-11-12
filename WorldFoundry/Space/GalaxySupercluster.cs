@@ -1,9 +1,7 @@
-﻿using MathAndScience.Shapes;
-using Substances;
-using System;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
-using System.Numerics;
-using WorldFoundry.Substances;
+using System.Linq;
 
 namespace WorldFoundry.Space
 {
@@ -12,41 +10,25 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxySupercluster : CelestialRegion
     {
-        private const string _baseTypeName = "Galaxy Supercluster";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        internal const double Space = 9.4607e25;
 
-        private const double _childDensity = 1.0e-73;
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => _childDensity;
+        private const double ChildDensity = 1.0e-73;
 
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                (typeof(GalaxyCluster), 1.0 / 3.0, null),
-                (typeof(GalaxyGroup), 2.0 / 3.0, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, ChildDensity / 3),
+            new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, ChildDensity * 2 / 3),
+        };
+
+        private protected override string BaseTypeName => "Galaxy Supercluster";
+
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/>.
         /// </summary>
-        public GalaxySupercluster() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
-        /// </param>
-        public GalaxySupercluster(CelestialRegion parent) : base(parent) { }
+        internal GalaxySupercluster() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySupercluster"/> with the given parameters.
@@ -55,56 +37,49 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxySupercluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxySupercluster"/>.</param>
-        public GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GalaxySupercluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        /// <remarks>
-        /// May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
-        /// </remarks>
-        private protected override void GenerateSubstance()
+        // General average; 1.0e16–1.0e17 solar masses
+        private protected override double GetMass() => Randomizer.Instance.NextDouble(2.0e46, 2.0e47);
+
+        private protected override IShape GetShape()
         {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntergalacticMedium.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(2.0e46, 2.0e47), // General average; 1.0e16–1.0e17 solar masses
-            };
-            var majorAxis = Randomizer.Static.NextDouble(9.4607e23, 9.4607e25);
-            var minorAxis1 = majorAxis * Randomizer.Static.NextDouble(0.02, 0.15);
+            // May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
+            var majorAxis = Randomizer.Instance.NextDouble(9.4607e23, 9.4607e25);
+            var minorAxis1 = majorAxis * Randomizer.Instance.NextDouble(0.02, 0.15);
             double minorAxis2;
-            if (Randomizer.Static.NextBoolean()) // Filament
+            if (Randomizer.Instance.NextBoolean()) // Filament
             {
                 minorAxis2 = minorAxis1;
             }
             else // Wall/sheet
             {
-                minorAxis2 = majorAxis * Randomizer.Static.NextDouble(0.3, 0.8);
+                minorAxis2 = majorAxis * Randomizer.Instance.NextDouble(0.3, 0.8);
             }
-            var chance = Randomizer.Static.Next(6);
+            var chance = Randomizer.Instance.Next(6);
             if (chance == 0)
             {
-                SetShape(new Ellipsoid(majorAxis, minorAxis1, minorAxis2));
+                return new Ellipsoid(majorAxis, minorAxis1, minorAxis2, Position);
             }
             else if (chance == 1)
             {
-                SetShape(new Ellipsoid(majorAxis, minorAxis2, minorAxis1));
+                return new Ellipsoid(majorAxis, minorAxis2, minorAxis1, Position);
             }
             else if (chance == 2)
             {
-                SetShape(new Ellipsoid(minorAxis1, majorAxis, minorAxis2));
+                return new Ellipsoid(minorAxis1, majorAxis, minorAxis2, Position);
             }
             else if (chance == 3)
             {
-                SetShape(new Ellipsoid(minorAxis2, majorAxis, minorAxis1));
+                return new Ellipsoid(minorAxis2, majorAxis, minorAxis1, Position);
             }
             else if (chance == 4)
             {
-                SetShape(new Ellipsoid(minorAxis1, minorAxis2, majorAxis));
+                return new Ellipsoid(minorAxis1, minorAxis2, majorAxis, Position);
             }
             else
             {
-                SetShape(new Ellipsoid(minorAxis2, minorAxis1, majorAxis));
+                return new Ellipsoid(minorAxis2, minorAxis1, majorAxis, Position);
             }
         }
     }

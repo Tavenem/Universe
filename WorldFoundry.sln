@@ -14,6 +14,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorldFoundry.Test", "WorldFoundry.Test\WorldFoundry.Test.csproj", "{33445077-4D5D-41B0-99EC-723D6C29A24A}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WorldFoundry.Bson", "WorldFoundry.Bson\WorldFoundry.Bson.csproj", "{A58DA42E-C25C-4165-9A39-970C1EFD4F69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorldFoundry.ConsoleTester", "WorldFoundry.ConsoleTester\WorldFoundry.ConsoleTester.csproj", "{56288B88-458C-4F68-BEF1-B86AD914668E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -28,6 +32,14 @@ Global
 		{33445077-4D5D-41B0-99EC-723D6C29A24A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{33445077-4D5D-41B0-99EC-723D6C29A24A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{33445077-4D5D-41B0-99EC-723D6C29A24A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A58DA42E-C25C-4165-9A39-970C1EFD4F69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A58DA42E-C25C-4165-9A39-970C1EFD4F69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A58DA42E-C25C-4165-9A39-970C1EFD4F69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A58DA42E-C25C-4165-9A39-970C1EFD4F69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{56288B88-458C-4F68-BEF1-B86AD914668E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{56288B88-458C-4F68-BEF1-B86AD914668E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{56288B88-458C-4F68-BEF1-B86AD914668E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{56288B88-458C-4F68-BEF1-B86AD914668E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

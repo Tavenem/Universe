@@ -1,9 +1,7 @@
-﻿using MathAndScience.Shapes;
-using Substances;
-using System;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System.Collections.Generic;
-using System.Numerics;
-using WorldFoundry.Substances;
+using System.Linq;
 
 namespace WorldFoundry.Space
 {
@@ -12,40 +10,22 @@ namespace WorldFoundry.Space
     /// </summary>
     public class GalaxyCluster : CelestialRegion
     {
-        private const string _baseTypeName = "Galaxy Cluster";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        internal const double Space = 1.5e24;
 
-        private const double _childDensity = 1.8e-70;
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => _childDensity;
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, 1.8e-70),
+        };
 
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type,double proportion, object[] constructorParameters)>
-            {
-                (typeof(GalaxyGroup), 1, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        private protected override string BaseTypeName => "Galaxy Cluster";
+
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyCluster"/>.
         /// </summary>
-        public GalaxyCluster() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="GalaxyCluster"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyCluster"/> is located.
-        /// </param>
-        public GalaxyCluster(CelestialRegion parent) : base(parent) { }
+        internal GalaxyCluster() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxyCluster"/> with the given parameters.
@@ -54,19 +34,11 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="GalaxyCluster"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="GalaxyCluster"/>.</param>
-        public GalaxyCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal GalaxyCluster(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.IntraclusterMedium.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(2.0e45, 2.0e46), // general average; 1.0e15–1.0e16 solar masses
-            };
-            SetShape(new Sphere(Randomizer.Static.NextDouble(3.0e23, 1.5e24))); // ~1–5 Mpc
-        }
+        // General average; 1.0e15–1.0e16 solar masses
+        private protected override double GetMass() => Randomizer.Instance.NextDouble(2.0e45, 2.0e46);
+
+        private protected override IShape GetShape() => new Sphere(Randomizer.Instance.NextDouble(3.0e23, 1.5e24), Position); // ~1–5 Mpc
     }
 }

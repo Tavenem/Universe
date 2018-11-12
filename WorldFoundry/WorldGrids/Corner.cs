@@ -1,6 +1,5 @@
 ﻿using System;
-using System.Linq;
-using System.Numerics;
+using MathAndScience.Numerics;
 
 namespace WorldFoundry.WorldGrids
 {
@@ -10,12 +9,13 @@ namespace WorldFoundry.WorldGrids
     public class Corner
     {
         /// <summary>
-        /// The indexes of the <see cref="Corner"/>s to which this one is connected.
+        /// The indexes of the <see cref="Corner"/> instances to which this one is connected.
         /// </summary>
         public int[] Corners { get; }
 
         /// <summary>
-        /// The indexes of the <see cref="Edge"/>s to which this <see cref="Corner"/> is connected.
+        /// The indexes of the <see cref="Edge"/> instances to which this <see cref="Corner"/> is
+        /// connected.
         /// </summary>
         public int[] Edges { get; }
 
@@ -23,16 +23,6 @@ namespace WorldFoundry.WorldGrids
         /// The elevation above sea level of this <see cref="Corner"/>, in meters.
         /// </summary>
         public float Elevation { get; internal set; }
-
-        /// <summary>
-        /// The index of this <see cref="Corner"/>.
-        /// </summary>
-        public int Index { get; }
-
-        /// <summary>
-        /// The depth of the lake on this <see cref="Corner"/> (if any).
-        /// </summary>
-        public float LakeDepth { get; set; }
 
         /// <summary>
         /// The latitude of this <see cref="Corner"/>, as an angle in radians from the equator.
@@ -45,12 +35,8 @@ namespace WorldFoundry.WorldGrids
         public float Longitude { get; internal set; }
 
         /// <summary>
-        /// The <see cref="WorldFoundry.TerrainType"/> of this <see cref="Corner"/>.
-        /// </summary>
-        public TerrainType TerrainType { get; internal set; } = TerrainType.Land;
-
-        /// <summary>
-        /// The indexes of the <see cref="Tile"/>s to which this <see cref="Corner"/> is connected.
+        /// The indexes of the <see cref="Tile"/> instances to which this <see cref="Corner"/> is
+        /// connected.
         /// </summary>
         public int[] Tiles { get; }
 
@@ -62,15 +48,8 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Corner"/>.
         /// </summary>
-        public Corner() { }
-
-        /// <summary>
-        /// Creates a new instance of <see cref="Corner"/>.
-        /// </summary>
-        /// <param name="index">The <see cref="Index"/> of the <see cref="Corner"/>.</param>
-        internal Corner(int index)
+        public Corner()
         {
-            Index = index;
             Corners = new int[3];
             Edges = new int[3];
             Tiles = new int[3];
@@ -80,20 +59,6 @@ namespace WorldFoundry.WorldGrids
                 Edges[i] = -1;
                 Tiles[i] = -1;
             }
-        }
-
-        internal Corner GetLowestCorner(WorldGrid grid, bool riverSources = false)
-        {
-            var corners = Corners.Select(i => grid.Corners[i]);
-            if (riverSources)
-            {
-                var riverSourceCorners = Corners.Select(i => grid.Corners[i]).Where(c => c.Edges.Any(e => grid.Edges[e].RiverSource == c.Index));
-                if (riverSourceCorners.Any())
-                {
-                    return riverSourceCorners.OrderBy(c => c.Elevation).First();
-                }
-            }
-            return corners.OrderBy(c => c.Elevation).First();
         }
 
         internal int IndexOfCorner(int cornerIndex) => Array.IndexOf(Corners, cornerIndex);

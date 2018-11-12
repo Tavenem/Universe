@@ -1,10 +1,9 @@
-﻿using MathAndScience.Shapes;
-using Substances;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space
 {
@@ -13,41 +12,23 @@ namespace WorldFoundry.Space
     /// </summary>
     public class HIIRegion : Nebula
     {
-        private const string _baseTypeName = "HII Region";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private const double ChildDensity = 6.0e-50;
 
-        private const double _childDensity = 6.0e-50;
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => _childDensity;
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.9998, typeof(Star), SpectralClass.B, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.0002, typeof(Star), SpectralClass.O, LuminosityClass.V),
+        };
 
-        internal static IList<(Type type,double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type,double proportion, object[] constructorParameters)>
-            {
-                (typeof(StarSystem), 0.9998, new object[]{ typeof(Star), SpectralClass.B, LuminosityClass.V }),
-                (typeof(StarSystem), 0.0002, new object[]{ typeof(Star), SpectralClass.O, LuminosityClass.V }),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type,double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
+        private protected override string BaseTypeName => "HII Region";
+
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
         /// </summary>
-        public HIIRegion() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="HIIRegion"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="HIIRegion"/> is located.
-        /// </param>
-        public HIIRegion(CelestialRegion parent) : base(parent) { }
+        internal HIIRegion() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/> with the given parameters.
@@ -56,32 +37,28 @@ namespace WorldFoundry.Space
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="HIIRegion"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="HIIRegion"/>.</param>
-        public HIIRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal HIIRegion(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
+        private protected override double GetMass() => Randomizer.Instance.NextDouble(1.99e33, 1.99e37); // ~10e3–10e7 solar masses
+
+        // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
+        // which the dust clouds and filaments roughly fit. The radius follows a log-normal
+        // distribution, with  ~20 ly as the mode, starting at ~10 ly, and cutting off around ~600
+        // ly.
+        private protected override IShape GetShape()
         {
-            Substance = new Substance
-            {
-                Composition = CosmicSubstances.StellarMaterial.GetDeepCopy(),
-                Mass = Randomizer.Static.NextDouble(1.99e33, 1.99e37), // ~10e3–10e7 solar masses
-                Temperature = 10000,
-            };
-
-            // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
-            // which the dust clouds and filaments roughly fit. The radius follows a log-normal
-            // distribution, with  ~20 ly as the mode, starting at ~10 ly, and cutting off around ~600 ly.
             var axis = 0.0;
             do
             {
-                axis = Math.Round(1.0e17 + (Randomizer.Static.Lognormal(0, 1) * 1.0e17));
-            } while (axis > 5.5e18);
-            SetShape(new Ellipsoid(
+                axis = Math.Round(1.0e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.0e17));
+            } while (axis > Space);
+            return new Ellipsoid(
                 axis,
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5)),
-                Math.Round(axis * Randomizer.Static.NextDouble(0.5, 1.5))));
+                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5)),
+                Math.Round(axis * Randomizer.Instance.NextDouble(0.5, 1.5)),
+                Position);
         }
+
+        private protected override double GetTemperature() => 10000;
     }
 }

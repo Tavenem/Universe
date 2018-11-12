@@ -2,10 +2,9 @@
 using MathAndScience.Shapes;
 using Substances;
 using System;
-using System.Numerics;
+using MathAndScience.Numerics;
 using System.Text;
 using WorldFoundry.Space;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -16,25 +15,13 @@ namespace WorldFoundry.CelestialBodies.Stars
     {
         private const string RedDwarfTypeName = "Red Dwarf";
 
-        private const string _baseTypeName = "Star";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
-
-        private string _designatorPrefix;
-        /// <summary>
-        /// An optional string which is placed before a <see cref="CelestialEntity"/>'s <see cref="CelestialEntity.Designation"/>.
-        /// </summary>
-        protected override string DesignatorPrefix => GetProperty(ref _designatorPrefix, GenerateDesignatorPrefix);
-
         private double? _luminosity;
         /// <summary>
         /// The luminosity of this <see cref="Star"/>, in Watts.
         /// </summary>
         public double Luminosity
         {
-            get => GetProperty(ref _luminosity, GenerateLuminosity) ?? 0;
+            get => _luminosity ?? (_luminosity = GetLuminosity()).Value;
             set => _luminosity = value;
         }
 
@@ -44,7 +31,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public LuminosityClass LuminosityClass
         {
-            get => GetProperty(ref _luminosityClass, GenerateLuminosityClass) ?? LuminosityClass.None;
+            get => _luminosityClass ?? (_luminosityClass = GetLuminosityClass()).Value;
             set => _luminosityClass = value;
         }
 
@@ -59,27 +46,26 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public SpectralClass SpectralClass
         {
-            get => GetProperty(ref _spectralClass, GenerateSpectralClass) ?? SpectralClass.None;
+            get => _spectralClass ?? (_spectralClass = GetSpectralClass()).Value;
             set => _spectralClass = value;
         }
 
         /// <summary>
-        /// The name for this type of <see cref="CelestialEntity"/>.
+        /// The name for this type of <see cref="ICelestialLocation"/>.
         /// </summary>
         public override string TypeName => SpectralClass == SpectralClass.M ? RedDwarfTypeName : BaseTypeName;
+
+        internal override bool IsHospitable => true;
+
+        private protected override string BaseTypeName => "Star";
+
+        private string _designatorPrefix;
+        private protected override string DesignatorPrefix => _designatorPrefix ?? (_designatorPrefix = GetDesignatorPrefix());
 
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/>.
         /// </summary>
-        public Star() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Star"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Star"/> is located.
-        /// </param>
-        public Star(CelestialRegion parent) : base(parent) { }
+        internal Star() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/> with the given parameters.
@@ -93,7 +79,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// The <see cref="Stars.LuminosityClass"/> of this <see cref="Star"/>.
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="Star"/>.</param>
-        public Star(
+        internal Star(
             CelestialRegion parent,
             Vector3 position,
             SpectralClass? spectralClass = null,
@@ -113,7 +99,138 @@ namespace WorldFoundry.CelestialBodies.Stars
             IsPopulationII = populationII;
         }
 
-        private void GenerateDesignatorPrefix()
+        /// <summary>
+        /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.
+        /// The final number may be affected by other factors.
+        /// </summary>
+        /// <returns>
+        /// A value tuple with the number of giants, ice giants, and terrestrial planets, in that order.
+        /// </returns>
+        internal (int numGiants, int numIceGiants, int numTerrestrial) GetNumPlanets()
+        {
+            var hasGiants = GetWillHaveGiantPlanets();
+            var hasIceGiants = GetWillHaveIceGiants();
+            var hasTerrestrial = GetWillHaveTerrestrialPlanets();
+
+            var numPlanets = 0;
+            if (hasGiants || hasIceGiants || hasTerrestrial)
+            {
+                // Slightly less than half of systems have a large collection of planets. The rest
+                // have just a few. White dwarfs never have many.
+                if (!(this is WhiteDwarf) && Randomizer.Instance.NextDouble() <= 0.45)
+                {
+                    numPlanets = Randomizer.Instance.NextDouble(4.2, 8).RoundToInt(); // 6.1 +/-1.9
+                }
+                // 1-3 in a Gaussian distribution, with 1 as the mean
+                else
+                {
+                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Instance.Normal(0, 1)));
+                }
+            }
+
+            // If any, then up to 1/3 the total (but at least 1).
+            var numGiants = hasGiants ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt() : 0;
+
+            // If any, and the total is not already taken up by giants (may happen if only 1 total
+            // but both types of giant are indicated), then up to 1/3 the total (but at least 1).
+            var numIceGiants = (hasIceGiants && numGiants < numPlanets)
+                ? Math.Max(1, Randomizer.Instance.NextDouble(numPlanets / 3.0)).RoundToInt()
+                : 0;
+
+            var numTerrestrial = 0;
+            if (hasTerrestrial)
+            {
+                // If the giants and ice giants have already filled the total,
+                // and the total is greater than 2, take one slot back.
+                if (numGiants + numIceGiants >= numPlanets && numPlanets > 2)
+                {
+                    // Pick the type form which to take the slot back at random.
+                    if (Randomizer.Instance.NextBoolean())
+                    {
+                        numGiants--;
+                    }
+                    else
+                    {
+                        numIceGiants--;
+                    }
+                }
+                // Take all the remaining slots.
+                numTerrestrial = Math.Max(0, numPlanets - numGiants - numIceGiants);
+            }
+            return (numGiants, numIceGiants, numTerrestrial);
+        }
+
+        /// <summary>
+        /// Calculates the temperature this <see cref="Star"/> would have to be in order to cause
+        /// the given effective temperature at the given distance.
+        /// </summary>
+        /// <param name="temperature">The desired temperature, in K.</param>
+        /// <param name="distance">The desired distance, in meters.</param>
+        /// <param name="albedo">The albedo of the target body.</param>
+        internal void SetTempForTargetPlanetTemp(double temperature, double distance, double albedo = 0)
+            => Substance.Temperature = temperature / (Math.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
+
+        // Mass scales with radius for main-sequence stars, with the scale changing at around 1
+        // solar mass/radius.
+        private protected virtual double GenerateMass(IShape shape)
+            => Math.Pow(shape.ContainingRadius / 6.955e8, shape.ContainingRadius < 6.955e8 ? 1.25 : 1.75) * 1.99e30;
+
+        private protected virtual IShape GenerateShape()
+        {
+            // A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
+            var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
+            var radius = d.IsZero() ? 0 : Math.Round(Math.Sqrt(Luminosity / d));
+            var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
+            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
+        }
+
+        private protected override void GenerateSubstance()
+        {
+            Substance = new Substance
+            {
+                Composition = IsPopulationII
+                    ? CosmicSubstances.CosmicSubstances.StellarMaterialPopulationII
+                    : CosmicSubstances.CosmicSubstances.StellarMaterial,
+                Temperature = GenerateTemperature(),
+            };
+
+            Shape = GenerateShape();
+
+            Substance.Mass = GenerateMass(Shape);
+        }
+
+        private protected virtual double GenerateTemperature()
+        {
+            switch (SpectralClass)
+            {
+                case SpectralClass.O:
+                    return Math.Round(30000 + Math.Abs(Randomizer.Instance.Normal(0, 6666)));
+                case SpectralClass.B:
+                    return Math.Round(Randomizer.Instance.NextDouble(10000, 30000));
+                case SpectralClass.A:
+                    return Math.Round(Randomizer.Instance.NextDouble(7500, 10000));
+                case SpectralClass.F:
+                    return Math.Round(Randomizer.Instance.NextDouble(6000, 7500));
+                case SpectralClass.G:
+                    return Math.Round(Randomizer.Instance.NextDouble(5200, 6000));
+                case SpectralClass.K:
+                    return Math.Round(Randomizer.Instance.NextDouble(3700, 5200));
+                case SpectralClass.M:
+                    return Math.Round(Randomizer.Instance.NextDouble(2400, 3700));
+                case SpectralClass.L:
+                    return Math.Round(Randomizer.Instance.NextDouble(1300, 2400));
+                case SpectralClass.T:
+                    return Math.Round(Randomizer.Instance.NextDouble(500, 1300));
+                case SpectralClass.Y:
+                    return Math.Round(Randomizer.Instance.NextDouble(250, 500));
+                case SpectralClass.W:
+                    return Math.Round(30000 + Math.Abs(Randomizer.Instance.Normal(0, 56666)));
+                default: // No way to know what 'None' or 'Other' should be.
+                    return 0;
+            }
+        }
+
+        private string GetDesignatorPrefix()
         {
             var sb = new StringBuilder();
 
@@ -142,241 +259,72 @@ namespace WorldFoundry.CelestialBodies.Stars
                 sb.Append(LuminosityClass.ToString());
             }
 
-            _designatorPrefix = sb.ToString();
+            return sb.ToString();
         }
 
-        /// <summary>
-        /// Randomly determines a <see cref="Luminosity"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// Luminosity scales with temperature for main-sequence stars.
-        /// </remarks>
-        private protected virtual void GenerateLuminosity()
+        private protected virtual double GetLuminosity()
         {
-            Luminosity = Math.Pow((Temperature ?? 0) / 5778.0, 5.6) * 3.846e26;
+            // Luminosity scales with temperature for main-sequence stars.
+            var luminosity = Math.Pow((Temperature ?? 0) / 5778.0, 5.6) * 3.846e26;
 
             // If a special luminosity class had been assigned, take it into account.
             if (LuminosityClass == LuminosityClass.sd)
             {
                 // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
-                Luminosity /= Randomizer.Static.NextDouble(55, 100);
+                return luminosity / Randomizer.Instance.NextDouble(55, 100);
             }
             else if (LuminosityClass == LuminosityClass.IV)
             {
                 // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
-                Luminosity *= Randomizer.Static.NextDouble(55, 100);
-            }
-        }
-
-        /// <summary>
-        /// Randomly determines a <see cref="LuminosityClass"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// The base class handles main-sequence stars (class V).
-        /// </remarks>
-        private protected virtual void GenerateLuminosityClass() => LuminosityClass = LuminosityClass.V;
-
-        /// <summary>
-        /// Generates the mass of this <see cref="Star"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Star"/>.</param>
-        /// <remarks>
-        /// Mass scales with radius for main-sequence stars, with the scale changing at around 1
-        /// solar mass/radius.
-        /// </remarks>
-        private protected virtual double GenerateMass(IShape shape)
-        {
-            if (shape.ContainingRadius < 6.955e8)
-            {
-                return Math.Pow(shape.ContainingRadius / 6.955e8, 1.25) * 1.99e30;
+                return luminosity * Randomizer.Instance.NextDouble(55, 100);
             }
             else
             {
-                return Math.Pow(shape.ContainingRadius / 6.955e8, 1.75) * 1.99e30;
+                return luminosity;
             }
         }
 
-        /// <summary>
-        /// Generates the shape of this <see cref="Star"/>.
-        /// </summary>
-        private protected virtual IShape GenerateShape()
-        {
-            // A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
-            var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
-            var radius = Math.Round(Math.Sqrt(Luminosity / d));
-            var flattening = Math.Max(Randomizer.Static.Normal(0.15, 0.05), 0);
-            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)));
-        }
+        private protected virtual LuminosityClass GetLuminosityClass() => LuminosityClass.V;
 
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = IsPopulationII
-                    ? CosmicSubstances.StellarMaterialPopulationII.GetDeepCopy()
-                    : CosmicSubstances.StellarMaterial.GetDeepCopy(),
-                Temperature = GenerateTemperature(),
-            };
-
-            var shape = GenerateShape();
-
-            Substance.Mass = GenerateMass(shape);
-
-            SetShape(shape);
-        }
-
-        /// <summary>
-        /// Randomly determines a <see cref="SpectralClass"/> for this <see cref="Star"/>.
-        /// </summary>
-        /// <remarks>
-        /// The base class handles main-sequence stars.
-        /// </remarks>
-        private protected virtual void GenerateSpectralClass()
-        {
-            var chance = Randomizer.Static.NextDouble();
-            if (chance <= 0.0000003)
-            {
-                SpectralClass = SpectralClass.O; // 0.00003%
-            }
-            else if (chance <= 0.0013)
-            {
-                SpectralClass = SpectralClass.B; // ~0.13%
-            }
-            else if (chance <= 0.0073)
-            {
-                SpectralClass = SpectralClass.A; // ~0.6%
-            }
-            else if (chance <= 0.0373)
-            {
-                SpectralClass = SpectralClass.F; // ~3%
-            }
-            else if (chance <= 0.1133)
-            {
-                SpectralClass = SpectralClass.G; // ~7.6%
-            }
-            else if (chance <= 0.2343)
-            {
-                SpectralClass = SpectralClass.K; // ~12.1%
-            }
-            else
-            {
-                SpectralClass = SpectralClass.M; // ~76.45%
-            }
-        }
-
-        /// <summary>
-        /// Determines a temperature for this <see cref="Star"/>, in K.
-        /// </summary>
-        private protected virtual double GenerateTemperature()
-        {
-            switch (SpectralClass)
-            {
-                case SpectralClass.O:
-                    return Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 6666)));
-                case SpectralClass.B:
-                    return Math.Round(Randomizer.Static.NextDouble(10000, 30000));
-                case SpectralClass.A:
-                    return Math.Round(Randomizer.Static.NextDouble(7500, 10000));
-                case SpectralClass.F:
-                    return Math.Round(Randomizer.Static.NextDouble(6000, 7500));
-                case SpectralClass.G:
-                    return Math.Round(Randomizer.Static.NextDouble(5200, 6000));
-                case SpectralClass.K:
-                    return Math.Round(Randomizer.Static.NextDouble(3700, 5200));
-                case SpectralClass.M:
-                    return Math.Round(Randomizer.Static.NextDouble(2400, 3700));
-                case SpectralClass.L:
-                    return Math.Round(Randomizer.Static.NextDouble(1300, 2400));
-                case SpectralClass.T:
-                    return Math.Round(Randomizer.Static.NextDouble(500, 1300));
-                case SpectralClass.Y:
-                    return Math.Round(Randomizer.Static.NextDouble(250, 500));
-                case SpectralClass.W:
-                    return Math.Round(30000 + Math.Abs(Randomizer.Static.Normal(0, 56666)));
-                default: // No way to know what 'None' or 'Other' should be.
-                    return 0;
-            }
-        }
-
-        /// <summary>
-        /// Determines <see cref="Luminosity"/> based on this <see cref="Star"/>'s <see cref="CelestialEntity.Radius"/>.
-        /// </summary>
         private protected double GetLuminosityFromRadius()
             => MathConstants.FourPI * RadiusSquared * ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
 
-        /// <summary>
-        /// Calculates the number of giant, ice giant, and terrestrial planets this star may have.
-        /// The final number may be affected by other factors.
-        /// </summary>
-        /// <returns>
-        /// A value tuple with the number of giants, ice giants, and terrestrial planets, in that order.
-        /// </returns>
-        internal (int numGiants, int numIceGiants, int numTerrestrial) GetNumPlanets()
+        private protected virtual SpectralClass GetSpectralClass()
         {
-            var hasGiants = GetWillHaveGiantPlanets();
-            var hasIceGiants = GetWillHaveIceGiants();
-            var hasTerrestrial = GetWillHaveTerrestrialPlanets();
-
-            var numPlanets = 0;
-            if (hasGiants || hasIceGiants || hasTerrestrial)
+            var chance = Randomizer.Instance.NextDouble();
+            if (chance <= 0.0000003)
             {
-                // Slightly less than half of systems have a large collection of planets. The rest
-                // have just a few. White dwarfs never have many.
-                if (!(this is WhiteDwarf) && Randomizer.Static.NextDouble() <= 0.45)
-                {
-                    numPlanets = (int)Math.Round(Randomizer.Static.NextDouble(4.2, 8)); // 6.1 +/-1.9
-                }
-                // 1-3 in a Gaussian distribution, with 1 as the mean
-                else
-                {
-                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Static.Normal(0, 1)));
-                }
+                return SpectralClass.O; // 0.00003%
             }
-
-            // If any, then up to 1/3 the total (but at least 1).
-            var numGiants = hasGiants ? (int)Math.Round(Math.Max(1, Randomizer.Static.NextDouble(numPlanets / 3.0))) : 0;
-
-            // If any, and the total is not already taken up by giants (may happen if only 1 total
-            // but both types of giant are indicated), then up to 1/3 the total (but at least 1).
-            var numIceGiants = (hasIceGiants && numGiants < numPlanets)
-                ? (int)Math.Round(Math.Max(1, Randomizer.Static.NextDouble(numPlanets / 3.0)))
-                : 0;
-
-            var numTerrestrial = 0;
-            if (hasTerrestrial)
+            else if (chance <= 0.0013)
             {
-                // If the giants and ice giants have already filled the total,
-                // and the total is greater than 2, take one slot back.
-                if (numGiants + numIceGiants >= numPlanets && numPlanets > 2)
-                {
-                    // Pick the type form which to take the slot back at random.
-                    if (Randomizer.Static.NextBoolean())
-                    {
-                        numGiants--;
-                    }
-                    else
-                    {
-                        numIceGiants--;
-                    }
-                }
-                // Take all the remaining slots.
-                numTerrestrial = Math.Max(0, numPlanets - numGiants - numIceGiants);
+                return SpectralClass.B; // ~0.13%
             }
-            return (numGiants, numIceGiants, numTerrestrial);
+            else if (chance <= 0.0073)
+            {
+                return SpectralClass.A; // ~0.6%
+            }
+            else if (chance <= 0.0373)
+            {
+                return SpectralClass.F; // ~3%
+            }
+            else if (chance <= 0.1133)
+            {
+                return SpectralClass.G; // ~7.6%
+            }
+            else if (chance <= 0.2343)
+            {
+                return SpectralClass.K; // ~12.1%
+            }
+            else
+            {
+                return SpectralClass.M; // ~76.45%
+            }
         }
 
-        /// <summary>
-        /// Determines <see cref="SpectralClass"/> from temperature.
-        /// </summary>
-        /// <param name="temperature">The temperature of the <see cref="Star"/>.</param>
-        /// <remarks>
-        /// Only applies to the standard classes (excludes W).
-        /// </remarks>
         private protected SpectralClass GetSpectralClassFromTemperature(double temperature)
         {
+            // Only applies to the standard classes (excludes W).
             if (temperature < 500)
             {
                 return SpectralClass.Y;
@@ -419,11 +367,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have giant planets, based
-        /// on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have giant planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveGiantPlanets()
         {
             // O-type stars and brown dwarfs do not have giant planets
@@ -438,7 +381,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             // Very few Population II stars have giant planets.
             else if (IsPopulationII)
             {
-                if (Randomizer.Static.NextDouble() <= 0.9)
+                if (Randomizer.Instance.NextDouble() <= 0.9)
                 {
                     return false;
                 }
@@ -449,7 +392,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 || SpectralClass == SpectralClass.G
                 || SpectralClass == SpectralClass.K)
             {
-                if (Randomizer.Static.NextDouble() <= 0.68)
+                if (Randomizer.Instance.NextDouble() <= 0.68)
                 {
                     return false;
                 }
@@ -459,14 +402,14 @@ namespace WorldFoundry.CelestialBodies.Stars
             else if (SpectralClass == SpectralClass.M
                 && LuminosityClass == LuminosityClass.V)
             {
-                if (Randomizer.Static.NextDouble() <= 0.98)
+                if (Randomizer.Instance.NextDouble() <= 0.98)
                 {
                     return false;
                 }
             }
 
             // 1 in 6 other stars have giant planets
-            else if (Randomizer.Static.NextDouble() <= 5.0 / 6.0)
+            else if (Randomizer.Instance.NextDouble() <= 5.0 / 6.0)
             {
                 return false;
             }
@@ -474,11 +417,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have ice giant planets,
-        /// based on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have ice giant planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveIceGiants()
         {
             // O-type stars and brown dwarfs do not have ice giants
@@ -493,7 +431,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             // Very few Population II stars have ice giants.
             else if (IsPopulationII)
             {
-                if (Randomizer.Static.NextDouble() <= 0.9)
+                if (Randomizer.Instance.NextDouble() <= 0.9)
                 {
                     return false;
                 }
@@ -504,7 +442,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 || SpectralClass == SpectralClass.G
                 || SpectralClass == SpectralClass.K)
             {
-                if (Randomizer.Static.NextDouble() <= 0.30)
+                if (Randomizer.Instance.NextDouble() <= 0.30)
                 {
                     return false;
                 }
@@ -514,14 +452,14 @@ namespace WorldFoundry.CelestialBodies.Stars
             else if (SpectralClass == SpectralClass.M
                 && LuminosityClass == LuminosityClass.V)
             {
-                if (Randomizer.Static.NextDouble() <= 2.0 / 3.0)
+                if (Randomizer.Instance.NextDouble() <= 2.0 / 3.0)
                 {
                     return false;
                 }
             }
 
             // 1 in 6 other stars have ice giants
-            else if (Randomizer.Static.NextDouble() <= 5.0 / 6.0)
+            else if (Randomizer.Instance.NextDouble() <= 5.0 / 6.0)
             {
                 return false;
             }
@@ -529,11 +467,6 @@ namespace WorldFoundry.CelestialBodies.Stars
             return true;
         }
 
-        /// <summary>
-        /// Pseudo-randomly determines whether this <see cref="Star"/> will have terrestrial planets,
-        /// based on its characteristics.
-        /// </summary>
-        /// <returns>true if this <see cref="Star"/> will have terrestrial planets; false otherwise.</returns>
         private protected virtual bool GetWillHaveTerrestrialPlanets()
         {
             // O-type stars do not have planets
@@ -553,7 +486,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 || SpectralClass == SpectralClass.G
                 || SpectralClass == SpectralClass.K)
             {
-                if (Randomizer.Static.NextDouble() <= 0.38)
+                if (Randomizer.Instance.NextDouble() <= 0.38)
                 {
                     return false;
                 }
@@ -565,14 +498,14 @@ namespace WorldFoundry.CelestialBodies.Stars
                 || SpectralClass == SpectralClass.T
                 || SpectralClass == SpectralClass.Y)
             {
-                if (Randomizer.Static.NextDouble() <= 0.55)
+                if (Randomizer.Instance.NextDouble() <= 0.55)
                 {
                     return false;
                 }
             }
 
             // 1 in 6 other stars have terrestrial planets
-            else if (Randomizer.Static.NextDouble() <= 5.0 / 6.0)
+            else if (Randomizer.Instance.NextDouble() <= 5.0 / 6.0)
             {
                 return false;
             }

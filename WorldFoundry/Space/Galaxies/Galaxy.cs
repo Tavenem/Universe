@@ -1,15 +1,13 @@
 ﻿using MathAndScience.Shapes;
-using Substances;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
+using System.Linq;
+using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.BlackHoles;
 using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Orbits;
-using WorldFoundry.Substances;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -18,124 +16,102 @@ namespace WorldFoundry.Space.Galaxies
     /// </summary>
     public class Galaxy : CelestialRegion
     {
-        private const string _baseTypeName = "Galaxy";
-        /// <summary>
-        /// The base name for this type of <see cref="CelestialEntity"/>.
-        /// </summary>
-        public override string BaseTypeName => _baseTypeName;
+        private const double ChildDensity = 4e-50;
+        private const double RogueDensity = ChildDensity * 0.6;
+        private const double RedDensity = ChildDensity * 0.1437;
+        private const double KDensity = ChildDensity * 0.023;
+        private const double GDensity = ChildDensity * 0.0145;
+        private const double FDensity = ChildDensity * 0.0057;
+        private const double RedGiantDensity = ChildDensity * 0.001;
+        private const double BlueGiantDensity = ChildDensity * 0.0008;
+        private const double YellowGiantDensity = ChildDensity * 0.0004;
 
-        private const double _childDensity = 4.0e-50;
-        /// <summary>
-        /// The average number of children within the grid per m³.
-        /// </summary>
-        public override double ChildDensity => _childDensity;
+        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        {
+            new ChildDefinition(typeof(GiantPlanet), GiantPlanet.Space, RogueDensity * 5 / 12),
+            new ChildDefinition(typeof(IceGiant), GiantPlanet.Space, RogueDensity * 0.25),
+            new ChildDefinition(typeof(TerrestrialPlanet), TerrestrialPlanet.Space, RogueDensity / 6),
+            new ChildDefinition(typeof(OceanPlanet), TerrestrialPlanet.Space, RogueDensity / 24),
+            new ChildDefinition(typeof(IronPlanet), TerrestrialPlanet.Space, RogueDensity / 24),
+            new ChildDefinition(typeof(CarbonPlanet), TerrestrialPlanet.Space, RogueDensity / 12),
 
-        internal static IList<(Type type, double proportion, object[] constructorParameters)> _childPossibilities =
-            new List<(Type type, double proportion, object[] constructorParameters)>
-            {
-                // Rogue planets, 60% overall.
-                (typeof(GiantPlanet), 0.25, null),
-                (typeof(IceGiant), 0.15, null),
-                (typeof(TerrestrialPlanet), 0.1, null),
-                (typeof(IronPlanet), 0.025, null),
-                (typeof(CarbonPlanet), 0.025, null),
-                (typeof(OceanPlanet), 0.05, null),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.19, typeof(BrownDwarf)),
 
-                // Brown dwarfs, 19%.
-                (typeof(StarSystem), 0.19, new object[]{ typeof(BrownDwarf) }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedDensity * 0.998, typeof(Star), SpectralClass.M, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedDensity * 0.002, typeof(Star), SpectralClass.M, LuminosityClass.sd),
 
-                // Red dwarfs, 14.37% overall.
-                (typeof(StarSystem), 0.1434, new object[]{ typeof(Star), SpectralClass.M, LuminosityClass.V }),
-                (typeof(StarSystem), 0.0003, new object[]{ typeof(Star), SpectralClass.M, LuminosityClass.sd }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, KDensity * 0.987, typeof(Star), SpectralClass.K, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, KDensity * 0.01, typeof(Star), SpectralClass.K, LuminosityClass.IV),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, KDensity * 0.003, typeof(Star), SpectralClass.K, LuminosityClass.sd),
 
-                // K-type main sequence stars, 2.3% overall.
-                (typeof(StarSystem), 0.0227, new object[]{ typeof(Star), SpectralClass.K, LuminosityClass.V }),
-                (typeof(StarSystem), 0.00024, new object[]{ typeof(Star), SpectralClass.K, LuminosityClass.IV }),
-                (typeof(StarSystem), 0.00006, new object[]{ typeof(Star), SpectralClass.K, LuminosityClass.sd }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.018, typeof(WhiteDwarf)),
 
-                // White dwarfs, 1.8%.
-                (typeof(StarSystem), 0.018, new object[]{ typeof(WhiteDwarf) }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, GDensity * 0.992, typeof(Star), SpectralClass.G, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, GDensity * 0.008, typeof(Star), SpectralClass.G, LuminosityClass.IV),
 
-                // G-type main sequence stars, 1.45% overall.
-                (typeof(StarSystem), 0.01438, new object[]{ typeof(Star), SpectralClass.G, LuminosityClass.V }),
-                (typeof(StarSystem), 0.00012, new object[]{ typeof(Star), SpectralClass.G, LuminosityClass.IV }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, FDensity * 0.982, typeof(Star), SpectralClass.F, LuminosityClass.V),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, FDensity * 0.018, typeof(Star), SpectralClass.F, LuminosityClass.IV),
 
-                // F-type main sequence stars, 0.57% overall.
-                (typeof(StarSystem), 0.0056, new object[]{ typeof(Star), SpectralClass.F, LuminosityClass.V }),
-                (typeof(StarSystem), 0.0001, new object[]{ typeof(Star), SpectralClass.F, LuminosityClass.IV }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.0014, typeof(NeutronStar)),
 
-                // Neutron stars, 0.14%.
-                (typeof(StarSystem), 0.0014, new object[]{ typeof(NeutronStar) }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.00115, typeof(Star), SpectralClass.A, LuminosityClass.V),
 
-                // A-type main sequence stars, 0.115%.
-                (typeof(StarSystem), 0.00115, new object[]{ typeof(Star), SpectralClass.A, LuminosityClass.V }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedGiantDensity * 0.96, typeof(RedGiant)),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedGiantDensity * 0.018, typeof(RedGiant), null, LuminosityClass.II),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedGiantDensity * 0.016, typeof(RedGiant), null, LuminosityClass.Ib),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedGiantDensity * 0.0055, typeof(RedGiant), null, LuminosityClass.Ia),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, RedGiantDensity * 0.0005, typeof(RedGiant), null, LuminosityClass.Zero),
 
-                // Red giants, 0.1% overall.
-                (typeof(StarSystem), 0.00096, new object[]{ typeof(RedGiant) }),
-                (typeof(StarSystem), 0.000018, new object[]{ typeof(RedGiant), null, LuminosityClass.II }),
-                (typeof(StarSystem), 0.000016, new object[]{ typeof(RedGiant), null, LuminosityClass.Ib }),
-                (typeof(StarSystem), 0.0000055, new object[]{ typeof(RedGiant), null, LuminosityClass.Ia }),
-                (typeof(StarSystem), 0.0000005, new object[]{ typeof(RedGiant), null, LuminosityClass.Zero }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, BlueGiantDensity * 0.95, typeof(BlueGiant)),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, BlueGiantDensity * 0.025, typeof(BlueGiant), null, LuminosityClass.II),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, BlueGiantDensity * 0.02, typeof(BlueGiant), null, LuminosityClass.Ib),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, BlueGiantDensity * 0.0045, typeof(BlueGiant), null, LuminosityClass.Ia),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, BlueGiantDensity * 0.0005, typeof(BlueGiant), null, LuminosityClass.Zero),
 
-                // Blue giants, 0.08% overall.
-                (typeof(StarSystem), 0.00076, new object[]{ typeof(BlueGiant) }),
-                (typeof(StarSystem), 0.00002, new object[]{ typeof(BlueGiant), null, LuminosityClass.II }),
-                (typeof(StarSystem), 0.000016, new object[]{ typeof(BlueGiant), null, LuminosityClass.Ib }),
-                (typeof(StarSystem), 0.0000036, new object[]{ typeof(BlueGiant), null, LuminosityClass.Ia }),
-                (typeof(StarSystem), 0.0000004, new object[]{ typeof(BlueGiant), null, LuminosityClass.Zero }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, YellowGiantDensity * 0.95, typeof(YellowGiant)),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, YellowGiantDensity * 0.02, typeof(YellowGiant), null, LuminosityClass.II),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, YellowGiantDensity * 0.023, typeof(YellowGiant), null, LuminosityClass.Ib),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, YellowGiantDensity * 0.006, typeof(YellowGiant), null, LuminosityClass.Ia),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, YellowGiantDensity * 0.001, typeof(YellowGiant), null, LuminosityClass.Zero),
 
-                // Yellow giants, 0.04% overall.
-                (typeof(StarSystem), 0.00038, new object[]{ typeof(YellowGiant) }),
-                (typeof(StarSystem), 0.000008, new object[]{ typeof(YellowGiant), null, LuminosityClass.II }),
-                (typeof(StarSystem), 0.0000092, new object[]{ typeof(YellowGiant), null, LuminosityClass.Ib }),
-                (typeof(StarSystem), 0.0000024, new object[]{ typeof(YellowGiant), null, LuminosityClass.Ia }),
-                (typeof(StarSystem), 0.0000004, new object[]{ typeof(YellowGiant), null, LuminosityClass.Zero }),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.00025, typeof(Star), SpectralClass.B, LuminosityClass.V),
 
-                // B-type main sequence stars, 0.02499%.
-                (typeof(StarSystem), 0.0002499, new object[]{ typeof(Star), SpectralClass.B, LuminosityClass.V }),
+            new ChildDefinition(typeof(BlackHole), BlackHole.Space, ChildDensity * 0.0001),
 
-                // Black holes, 0.01%.
-                (typeof(BlackHole), 0.0001, null),
+            new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 7e-8, typeof(Star), SpectralClass.O, LuminosityClass.V),
 
-                // O-type main sequence stars, 0.00000696%.
-                (typeof(StarSystem), 6.96e-8, new object[]{ typeof(Star), SpectralClass.O, LuminosityClass.V }),
+            new ChildDefinition(typeof(PlanetaryNebula), PlanetaryNebula.Space, ChildDensity * 3e-8),
 
-                // Planetary nebulae, 0.000003%.
-                (typeof(PlanetaryNebula), 3.0e-8, null),
+            new ChildDefinition(typeof(Nebula), Nebula.Space, ChildDensity * 2e-10),
 
-                // Nebulae, 0.00000002%.
-                (typeof(PlanetaryNebula), 2.0e-10, null),
+            new ChildDefinition(typeof(HIIRegion), Nebula.Space, ChildDensity * 2e-10),
+        };
 
-                // HII regions, 0.00000002%.
-                (typeof(HIIRegion), 2.0e-10, null),
-            };
-        /// <summary>
-        /// The types of children this region of space might have.
-        /// </summary>
-        public override IList<(Type type, double proportion, object[] constructorParameters)> ChildPossibilities => _childPossibilities;
-
-        private BlackHole _galacticCore;
+        private string _galacticCore;
         /// <summary>
         /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
         /// </summary>
         public BlackHole GalacticCore
         {
-            get => GetProperty(ref _galacticCore, GenerateGalacticCore);
-            protected set => _galacticCore = value;
+            get
+            {
+                if (_galacticCore == null)
+                {
+                    _galacticCore = GetGalacticCore();
+                }
+                return CelestialChildren.OfType<BlackHole>().FirstOrDefault(x => x.Id == _galacticCore);
+            }
         }
+
+        private protected override string BaseTypeName => "Galaxy";
+
+        private protected override IEnumerable<ChildDefinition> ChildDefinitions
+            => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/>.
         /// </summary>
-        public Galaxy() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Galaxy"/> is located.
-        /// </param>
-        public Galaxy(CelestialRegion parent) : base(parent) { }
+        internal Galaxy() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
@@ -144,33 +120,19 @@ namespace WorldFoundry.Space.Galaxies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Galaxy"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Galaxy"/>.</param>
-        public Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        /// <summary>
-        /// Generates a child of the specified type within this <see cref="CelestialRegion"/>.
-        /// </summary>
-        /// <param name="type">
-        /// The type of child to generate. Does not need to be one of this object's usual child
-        /// types, but must be a subclass of <see cref="Orbiter"/>.
-        /// </param>
-        /// <param name="position">
-        /// The location at which to generate the child. If null, a randomly-selected free space will
-        /// be selected.
-        /// </param>
-        /// <param name="constructorParameters">
-        /// An optional list of parameters with which to call the child's constructor. May be null.
-        /// </param>
-        public override Orbiter GenerateChildOfType(Type type, Vector3? position, object[] constructorParameters)
+        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
         {
-            var child = base.GenerateChildOfType(type, position, constructorParameters);
+            var child = base.GenerateChild(definition);
 
-            Orbit.SetOrbit(
+            Space.Orbit.SetOrbit(
                 child,
                 GalacticCore,
-                Math.Round(Randomizer.Static.NextDouble(0.1), 3));
+                Randomizer.Instance.NextDouble(0.1));
 
             // Small chance of satellites for rogue planets.
-            if (child is Planemo planemo && Randomizer.Static.NextDouble() <= 0.2)
+            if (child is Planemo planemo && Randomizer.Instance.NextDouble() <= 0.2)
             {
                 planemo.GenerateSatellites();
             }
@@ -186,34 +148,28 @@ namespace WorldFoundry.Space.Galaxies
         /// A factor by which the mass of this <see cref="Galaxy"/> will be multiplied due to the
         /// abundance of dark matter.
         /// </returns>
-        private protected virtual double GenerateDarkMatterMultiplier() => Randomizer.Static.NextDouble(5, 15);
+        private protected virtual double GenerateDarkMatterMultiplier() => Randomizer.Instance.NextDouble(5, 15);
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        private protected virtual void GenerateGalacticCore() => GalacticCore = new SupermassiveBlackHole(this);
-
-        /// <summary>
-        /// Produces a rough approximation of the mass of all children, plus the galactic core, plus
-        /// an additional high proportion of dark matter.
-        /// </summary>
-        /// <param name="shape">The shape of the <see cref="Galaxy"/>.</param>
-        private protected double GenerateMass(IShape shape) => Math.Round(((shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
-
-        /// <summary>
-        /// Generates the <see cref="CelestialEntity.Substance"/> of this <see cref="CelestialEntity"/>.
-        /// </summary>
-        private protected override void GenerateSubstance()
+        private protected virtual string GetGalacticCore()
         {
-            Substance = new Substance { Composition = CosmicSubstances.InterstellarMedium.GetDeepCopy() };
+            var core = new SupermassiveBlackHole(this, Vector3.Zero);
+            core.Init();
+            return core.Id;
+        }
 
-            var radius = Randomizer.Static.NextDouble(1.55e19, 1.55e21); // ~1600–160000 ly
-            var axis = radius * Randomizer.Static.Normal(0.02, 0.001);
-            var shape = new Ellipsoid(radius, axis);
+        // Produces a rough approximation of the mass of all children, plus the galactic core, plus
+        // an additional high proportion of dark matter.
+        private protected override double GetMass()
+            => Math.Round(((Shape.Volume * ChildDensity * 1.0e30) + GalacticCore.Mass) * GenerateDarkMatterMultiplier());
 
-            Substance.Mass = GenerateMass(shape);
-
-            SetShape(shape);
+        private protected override IShape GetShape()
+        {
+            var radius = Randomizer.Instance.NextDouble(1.55e19, 1.55e21); // ~1600–160000 ly
+            var axis = radius * Randomizer.Instance.Normal(0.02, 0.001);
+            return new Ellipsoid(radius, axis, Position);
         }
     }
 }

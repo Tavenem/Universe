@@ -1,35 +1,95 @@
-﻿namespace WorldFoundry.Place
+﻿using MathAndScience.Shapes;
+using System.Collections.Generic;
+using System.Linq;
+using MathAndScience.Numerics;
+
+namespace WorldFoundry.Place
 {
     /// <summary>
-    /// A <see cref="Place"/> which describes a region.
+    /// A collection of regions which define a conceptually unified area (though they may not form a
+    /// contiguous region).
     /// </summary>
-    public class Territory : Place
+    public class Territory : Region
     {
+        private List<Region> _regions;
         /// <summary>
-        /// Gets a deep clone of this <see cref="Territory"/>.
+        /// The <see cref="Region"/> instances which make up this <see cref="Territory"/>.
         /// </summary>
-        public Territory GetDeepCopy() => GetDeepClone() as Territory;
+        public IEnumerable<Region> Regions => _regions ?? Enumerable.Empty<Region>();
 
         /// <summary>
-        /// Indicates whether this <see cref="Territory"/> includes the given <see cref="Place"/>.
+        /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
-        /// <param name="place">A <see cref="Place"/> to test for inclusion.</param>
-        public virtual bool Includes(Place place) => Entity == place?.Entity;
+        private protected Territory() { }
 
         /// <summary>
-        /// Determines whether the specified <see cref="Place"/> is equivalent to the current object.
+        /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
-        /// <param name="obj">The object to compare with the current object.</param>
-        /// <returns>
-        /// <see langword="true"/> if the specified <see cref="Place"/> is equivalent to the
-        /// current object; otherwise, <see langword="false"/>.
-        /// </returns>
-        public override bool Matches(Place obj) => obj is Territory territory && base.Matches(territory);
+        /// <param name="regions">The <see cref="Region"/> instances to include.</param>
+        public Territory(IEnumerable<Region> regions) => AddRegions(regions);
 
         /// <summary>
-        /// Indicates whether this <see cref="Territory"/> overlaps the given <see cref="Place"/>.
+        /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
-        /// <param name="place">The <see cref="Place"/> to test for overlap.</param>
-        public virtual bool Overlaps(Place place) => Entity == place?.Entity;
+        /// <param name="regions">One or more <see cref="Region"/> instances to include.</param>
+        public Territory(params Region[] regions) => AddRegions(regions);
+
+        /// <summary>
+        /// Adds the given <paramref name="regions"/> to this instance.
+        /// </summary>
+        /// <param name="regions">The <see cref="Region"/> instances to add.</param>
+        /// <returns>This instance.</returns>
+        public Territory AddRegions(IEnumerable<Region> regions)
+        {
+            (_regions ?? (_regions = new List<Region>())).AddRange(regions);
+            CalculateShape();
+            return this;
+        }
+
+        /// <summary>
+        /// Adds the given <paramref name="regions"/> to this instance.
+        /// </summary>
+        /// <param name="regions">One or more <see cref="Region"/> instances to add.</param>
+        /// <returns>This instance.</returns>
+        public Territory AddRegions(params Region[] regions)
+            => AddRegions(regions.AsEnumerable());
+
+        private void CalculateShape()
+        {
+            if ((_regions?.Count ?? 0) == 0)
+            {
+                return;
+            }
+
+            var parent = _regions[0].ContainingRegion;
+
+            var regions = new List<(Vector3 position, double radius)>();
+            if (Regions.Any(x => x.ContainingRegion != _regions[0].ContainingRegion))
+            {
+                parent = Regions.Aggregate(
+                    parent,
+                    (p, x) => p?.GetCommonContainingRegion(x.ContainingRegion));
+                if (parent == null)
+                {
+                    return;
+                }
+
+                regions.AddRange(Regions.Select(x => (parent.GetLocalizedPosition(x), x.Shape.ContainingRadius)));
+            }
+            else
+            {
+                regions.AddRange(Regions.Select(x => (x.Position, x.Shape.ContainingRadius)));
+            }
+
+            var center = Vector3.Zero;
+            foreach (var (position, _) in regions)
+            {
+                center += position;
+            }
+            center /= regions.Count;
+
+            SetNewContainingRegion(parent);
+            Shape = new Sphere(regions.Max(x => Vector3.Distance(x.position, center) + x.radius), center);
+        }
     }
 }
