@@ -42,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         {
             Substance = new Substance
             {
-                Composition = new Material(CosmicSubstances.CosmicSubstances.NeutronDegenerateMatter, Phase.Plasma),
+                Composition = new Material(Chemical.NeutronDegenerateMatter, Phase.Plasma),
                 Mass = Randomizer.Instance.Normal(4.4178e30, 5.174e29), // between 1.44 and 3 times solar mass
                 Temperature = Math.Round(Randomizer.Instance.Normal(600000, 133333)),
             };

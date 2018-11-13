@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using WorldFoundry.Climate;
-using WorldFoundry.CosmicSubstances;
 using WorldFoundry.Place;
 using WorldFoundry.Space;
 using WorldFoundry.WorldGrids;
@@ -500,6 +499,35 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
+        /// instance.
+        /// </summary>
+        /// <param name="position">The normalized position vector of the center of the
+        /// region.</param>
+        /// <param name="radius">The radius of the region, in meters.</param>
+        /// <returns>This instance.</returns>
+        public Planetoid AddSurfaceRegion(Vector3 position, double radius)
+        {
+            (_surfaceRegions ?? (_surfaceRegions = new List<SurfaceRegion>())).Add(new SurfaceRegion(this, position, radius));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
+        /// instance.
+        /// </summary>
+        /// <param name="latitude">The latitude of the center of the region.</param>
+        /// <param name="longitude">The longitude of the center of the region.</param>
+        /// <param name="radius">The radius of the region, in meters.</param>
+        /// <returns>This instance.</returns>
+        public Planetoid AddSurfaceRegion(double latitude, double longitude, double radius)
+        {
+            var position = LatitudeAndLongitudeToVector(latitude, longitude);
+            (_surfaceRegions ?? (_surfaceRegions = new List<SurfaceRegion>())).Add(new SurfaceRegion(this, position, radius));
+            return this;
+        }
+
+        /// <summary>
         /// Calculates the atmospheric drag on a spherical object within the <see
         /// cref="Atmosphere"/> of this <see cref="Planetoid"/> under given conditions, in N.
         /// </summary>
@@ -965,7 +993,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 : Math.Atan2(u.X, u.Z);
         }
 
-        internal void GenerateSatellites(int? max = null)
+        internal void GenerateSatellites()
         {
             if (MaxSatellites <= 0)
             {
@@ -975,7 +1003,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var minPeriapsis = MinSatellitePeriapsis;
             var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3.0 : Shape.ContainingRadius * 100;
 
-            while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < MaxSatellites && (!max.HasValue || (_satelliteIDs?.Count ?? 0) < max.Value))
+            while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < MaxSatellites)
             {
                 var periapsis = Math.Round(Randomizer.Instance.NextDouble(minPeriapsis, maxApoapsis));
 

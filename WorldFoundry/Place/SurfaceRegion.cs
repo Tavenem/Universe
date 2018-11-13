@@ -1,4 +1,5 @@
-﻿using MathAndScience.Shapes;
+﻿using MathAndScience.Numerics;
+using MathAndScience.Shapes;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
@@ -54,6 +55,14 @@ namespace WorldFoundry.Place
         /// <param name="containingRegion">The region in which this one is found.</param>
         /// <param name="shape">The shape of the region.</param>
         public SurfaceRegion(Region containingRegion, IShape shape) : base(containingRegion, shape) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="SurfaceRegion"/>.
+        /// </summary>
+        /// <param name="planet">The planet on which this region is found.</param>
+        /// <param name="position">The normalized position vector of this region.</param>
+        /// <param name="radius">The radius of this region, in meters.</param>
+        public SurfaceRegion(Planetoid planet, Vector3 position, double radius) : base(new Sphere(radius, position * planet.Shape.ContainingRadius)) { }
 
         /// <summary>
         /// Loads an image as the hydrology depth overlay for this region.

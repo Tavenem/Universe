@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using WorldFoundry.Climate;
-using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -94,6 +93,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         public bool? HasMagnetosphere { get; }
 
         /// <summary>
+        /// The number of satellites to place in orbit around the planet.
+        /// </summary>
+        public byte? NumSatellites { get; }
+
+        /// <summary>
         /// The target radius, in meters.
         /// </summary>
         public int? Radius { get; }
@@ -135,7 +139,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
-        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is
+        /// required.</param>
+        /// <param name="numSatellites">The number of satellites to place in orbit around the planet.</param>
         /// <param name="radius">The target radius, in meters.</param>
         /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
         /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
@@ -149,6 +155,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? axialTilt = null,
             double? eccentricity = null,
             bool? hasMagnetosphere = null,
+            byte? numSatellites = null,
             int? radius = null,
             double? revolutionPeriod = null,
             double? rotationalPeriod = null,
@@ -162,6 +169,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             HasMagnetosphere = hasMagnetosphere;
+            NumSatellites = numSatellites;
             Radius = radius;
             RevolutionPeriod = revolutionPeriod;
             RotationalPeriod = rotationalPeriod;
@@ -179,6 +187,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="axialTilt">The target axial tilt, in radians.</param>
         /// <param name="eccentricity">The target orbital eccentricity.</param>
         /// <param name="hasMagnetosphere">Indicates whether a strong magnetosphere is required.</param>
+        /// <param name="numSatellites">The number of satellites to place in orbit around the planet.</param>
         /// <param name="radius">The target radius, in meters.</param>
         /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
         /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
@@ -192,6 +201,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
             bool? hasMagnetosphere = true,
+            byte? numSatellites = null,
             int? radius = DefaultRadius,
             double? revolutionPeriod = DefaultRevolutionPeriod,
             double? rotationalPeriod = DefaultRotationalPeriod,
@@ -210,6 +220,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 axialTilt,
                 eccentricity,
                 hasMagnetosphere,
+                numSatellites,
                 radius,
                 revolutionPeriod,
                 rotationalPeriod,

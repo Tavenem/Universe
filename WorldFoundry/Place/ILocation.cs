@@ -1,5 +1,4 @@
 ﻿using MathAndScience.Numerics;
-using WorldFoundry.Space;
 
 namespace WorldFoundry.Place
 {

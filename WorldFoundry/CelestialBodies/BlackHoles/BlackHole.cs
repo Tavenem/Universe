@@ -36,12 +36,11 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         {
             Substance = new Singularity
             {
-                Composition = new Material(CosmicSubstances.CosmicSubstances.Fuzzball, Phase.Plasma),
+                Composition = new Material(Chemical.Fuzzball, Phase.Plasma),
                 Mass = GenerateMass(),
             };
 
-            // Black holes are strange objects with zero volume and infinite density. The shape given is
-            // presumed to refer to the shape of the event horizon.
+            // The shape given is presumed to refer to the shape of the event horizon.
             Shape = new Sphere(Math.Round(1.48e-27 * Substance.Mass), Position);
         }
     }

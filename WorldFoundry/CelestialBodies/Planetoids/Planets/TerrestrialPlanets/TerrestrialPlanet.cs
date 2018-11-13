@@ -90,6 +90,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override int MaxRotationalPeriod => 6500000;
 
+        private int _maxSatellites = 5;
+        private protected override int MaxSatellites => _maxSatellites;
+
         private protected virtual double MetalProportion => 0.05;
 
         private protected virtual double MinDensity => 3750;
@@ -159,6 +162,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 planet = new TerrestrialPlanet(star?.ContainingCelestialRegion, Vector3.Zero);
                 planet.Init();
+                if (pParams.NumSatellites.HasValue)
+                {
+                    planet._maxSatellites = pParams.NumSatellites.Value;
+                }
                 if (pParams.HasMagnetosphere.HasValue)
                 {
                     planet.HasMagnetosphere = pParams.HasMagnetosphere.Value;

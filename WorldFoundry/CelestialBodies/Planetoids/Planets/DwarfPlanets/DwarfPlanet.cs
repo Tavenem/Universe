@@ -6,7 +6,6 @@ using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.Climate;
 using WorldFoundry.Space;
-using WorldFoundry.CosmicSubstances;
 using System.Collections.Generic;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets

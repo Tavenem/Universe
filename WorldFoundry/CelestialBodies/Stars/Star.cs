@@ -189,8 +189,8 @@ namespace WorldFoundry.CelestialBodies.Stars
             Substance = new Substance
             {
                 Composition = IsPopulationII
-                    ? CosmicSubstances.CosmicSubstances.StellarMaterialPopulationII
-                    : CosmicSubstances.CosmicSubstances.StellarMaterial,
+                    ? Composite.StellarMaterialPopulationII
+                    : Composite.StellarMaterial,
                 Temperature = GenerateTemperature(),
             };
 
