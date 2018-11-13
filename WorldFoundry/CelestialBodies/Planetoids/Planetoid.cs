@@ -1396,11 +1396,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double GetMaxSurfaceTemperature() => (SurfaceTemperatureAtPeriapsis * InsolationFactor_Equatorial) + GreenhouseEffect;
 
-        private protected double GetMinEquatorTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + GreenhouseEffect;
+        private protected double GetMinEquatorTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + GreenhouseEffect - DiurnalTemperatureVariation;
 
         private protected virtual double GetMinSatellitePeriapsis() => 0;
 
-        private double GetMinSurfaceTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + GreenhouseEffect;
+        private double GetMinSurfaceTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + GreenhouseEffect - DiurnalTemperatureVariation;
 
         private double GetPolarAirMass(double atmosphericScaleHeight)
         {

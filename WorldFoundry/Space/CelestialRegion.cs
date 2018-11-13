@@ -398,9 +398,9 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Updates the orbital position and velocity of this object's <see cref="Orbit"/> after the
-        /// specified number of seconds have passed, assuming no influences on the body's motion
-        /// have occurred aside from its orbit. Has no effect if the body is not in orbit.
+        /// Updates the position and velocity of this object based on its <see cref="Orbit"/> after
+        /// the specified number of seconds have passed, assuming no influences on the object's
+        /// motion have occurred aside from its orbit. Has no effect if the object is not in orbit.
         /// </summary>
         /// <param name="elapsedSeconds">
         /// The number of seconds which have elapsed since the orbit was last updated.

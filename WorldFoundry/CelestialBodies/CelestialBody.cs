@@ -282,6 +282,19 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
+        /// Calculates the total luminous flux on this body from nearby sources of light (stars in
+        /// the same system), in lux.
+        /// </summary>
+        /// <returns>The total luminous flux on the body, in lux.</returns>
+        /// <remarks>
+        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
+        /// may not be as precise for other stellar bodies.
+        /// </remarks>
+        public double GetLuminousFlux()
+            => ContainingCelestialRegion.GetAllChildren<Star>()
+            .Sum(x => x.Luminosity / (MathConstants.FourPI * GetDistanceSquaredTo(x)) / 0.0079);
+
+        /// <summary>
         /// Calculates the total force of gravity on this <see cref="ICelestialLocation"/>, in N, as a
         /// vector. Note that results may be highly inaccurate if the parent region has not been
         /// populated thoroughly enough in the vicinity of this entity (with the scale of "vicinity"
@@ -337,8 +350,8 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
-        /// Updates the orbital position and velocity of this object's <see cref="Orbit"/> after the
-        /// specified number of seconds have passed, assuming no influences on the body's motion
+        /// Updates the position and velocity of this object based on its <see cref="Orbit"/> after
+        /// the specified number of seconds have passed, assuming no influences on the body's motion
         /// have occurred aside from its orbit. Has no effect if the body is not in orbit.
         /// </summary>
         /// <param name="elapsedSeconds">

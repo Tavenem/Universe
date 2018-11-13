@@ -221,6 +221,8 @@ namespace WorldFoundry.Place
             region?.AddChild(this);
         }
 
+        internal double GetDistanceSquaredTo(ILocation other) => GetLocalizedPosition(other).LengthSquared();
+
         internal virtual void Init() => Id = ItemIdProvider.DefaultIDProvider.GetNewID();
 
         private protected virtual Stack<Region> GetPathToLocation(Stack<Region> path = null)
