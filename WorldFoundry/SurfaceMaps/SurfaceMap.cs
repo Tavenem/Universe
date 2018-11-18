@@ -1,10 +1,12 @@
 ﻿using ExtensionLib;
 using MathAndScience;
+using MathAndScience.Numerics;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UniversalTime;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.Place;
 
@@ -16,6 +18,19 @@ namespace WorldFoundry.SurfaceMapping
     /// </summary>
     public static class SurfaceMap
     {
+        /// <summary>
+        /// Gets a specific value from a range which varies over the course of a year.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="range">The range being interpolated.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns></returns>
+        public static double GetAnnualRangeValue(
+            this Planetoid planet,
+            FloatRange range,
+            Duration time)
+            => MathUtility.Lerp(range.Min, range.Max, planet.Orbit?.GetTrueAnomalyAtTime(time) ?? 0);
+
         /// <summary>
         /// Calculates the approximate area of a point on an equirectangular projection with the
         /// given characteristics, by transforming the point and its nearest neighbors to latitude
@@ -180,6 +195,36 @@ namespace WorldFoundry.SurfaceMapping
                 centralMeridian,
                 centralParallel,
                 standardParallels);
+
+        /// <summary>
+        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
+        /// given <paramref name="position"/> relative to the center of the specified mapped
+        /// <paramref name="region"/>, where 0,0 is at the top, left and is the northwestern-most
+        /// point on the map.
+        /// </summary>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians.
+        /// </returns>
+        public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
+            Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            int resolution)
+        {
+            var pos = region.Position + position;
+            return GetEquirectangularProjectionFromLatLong(
+                planet.VectorToLatitude(pos),
+                planet.VectorToLongitude(pos),
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+        }
 
         /// <summary>
         /// Calculates the latitude and longitude that correspond to a set of coordinates from an
@@ -569,6 +614,22 @@ namespace WorldFoundry.SurfaceMapping
             }
             return new HydrologyMaps(depth, flow, hydrologyMaps.MaxFlow);
         }
+
+        /// <summary>
+        /// Gets a specific temperature value from a temperature range.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="range">The range being interpolated.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="latitude">The latitude at which the calculation is being performed (used to
+        /// determine hemisphere, and thus season).</param>
+        /// <returns></returns>
+        public static double GetTemperatureRangeValue(
+            this Planetoid planet,
+            FloatRange range,
+            Duration time,
+            double latitude)
+            => MathUtility.Lerp(range.Min, range.Max, planet.GetSeasonalProportionAtTime(time, latitude));
 
         /// <summary>
         /// <para>

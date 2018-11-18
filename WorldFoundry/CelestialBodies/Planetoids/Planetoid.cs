@@ -1092,6 +1092,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => GetSurfaceTemperatureAt(time, VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>
+        /// Determines the proportion of a year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given <paramref name="time"/>.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="latitude">Used to determine hemisphere.</param>
+        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given <paramref name="time"/>.</returns>
+        public double GetSeasonalProportionAtTime(Duration time, double latitude)
+        {
+            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
+            var proportionOfYear = (trueAnomaly - WinterSolsticeTrueAnomaly + MathConstants.TwoPI) % MathConstants.TwoPI / MathConstants.TwoPI;
+            if (proportionOfYear > 0.5)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+            proportionOfYear *= 2;
+            if (latitude < 0)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+            return proportionOfYear;
+        }
+
+        /// <summary>
         /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
         /// <paramref name="elevation"/>, from winter to summer, in K.
         /// </summary>
