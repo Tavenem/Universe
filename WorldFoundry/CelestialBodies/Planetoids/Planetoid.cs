@@ -658,6 +658,86 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Calculates the total illumination on the given position from nearby sources of light
+        /// (stars in the same system), as well as the light reflected from any natural satellites,
+        /// modified according to the angle of incidence at the given time, in lux (lumens per m²).
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="latitude">The latitude at which to make the calculation.</param>
+        /// <param name="longitude">The longitude at which to make the calculation.</param>
+        /// <returns>The total illumination on the body, in lux (lumens per m²).</returns>
+        /// <remarks>
+        /// <para>
+        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
+        /// may not be as precise for other stellar bodies.
+        /// </para>
+        /// <para>
+        /// This method modifies total illumination based on an angle on incidence calculated from
+        /// the star orbited by this body, or by the body it orbits (in the case of satellites).
+        /// This will be accurate for single-star systems, and will be roughly accurate for binary
+        /// or multi-star systems where the secondary stars are either very distant compared to the
+        /// main, orbited star (and hence contribute little to overall illumination), or else are
+        /// very close to the main star relative to the body (and hence share a similar angle of
+        /// incidence). In multi-star systems where the stellar bodies are close enough to the body
+        /// to contribute significantly to total illumination, but have significantly different
+        /// positions (and hence, angles of incidence), this method's results will be significantly
+        /// less accurate. Such systems should be rare, however, as multi-star systems, by default,
+        /// are generated in either of the two configurations described above which produce
+        /// reasonable results.
+        /// </para>
+        /// </remarks>
+        public double GetIllumination(Duration time, double latitude, double longitude)
+        {
+            var pos = GetPositionAtTime(time);
+            var stellarOrbiter = Orbit.HasValue
+                ? Orbit.Value.OrbitedObject is Star
+                    ? this
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                        ? planet
+                        : null
+                : null;
+            var stellarOrbit = stellarOrbiter?.Orbit;
+            var starPos = stellarOrbit?.OrbitedObject.GetPositionAtTime(time) ?? Vector3.Zero;
+
+            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+            var longitudeOffset = longitude - solarRightAscension;
+            if (longitudeOffset > Math.PI)
+            {
+                longitudeOffset -= MathConstants.TwoPI;
+            }
+            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
+
+            var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude)) + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
+            var solarElevation = Math.Asin(sinSolarElevation);
+            var lux = solarElevation <= 0 ? 0 : GetLuminousFlux() * sinSolarElevation;
+
+            var starDist = Vector3.Distance(pos, starPos);
+            var (_, starLon) = GetEclipticLatLon(pos, starPos);
+            foreach (var satellite in Satellites)
+            {
+                var satPos = satellite.GetPositionAtTime(time);
+                var satDist2 = Vector3.DistanceSquared(pos, satPos);
+                var satDist = Math.Sqrt(satDist2);
+
+                var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+
+                // satellite-centered elongation of the planet from the star (ratio of illuminated
+                // surface area to total surface area)
+                var le = Math.Acos(Math.Cos(satLat) * Math.Cos(starLon - satLon));
+                var e = Math.Atan2(satDist - (starDist * Math.Cos(le)), starDist * Math.Sin(le));
+                // fraction of illuminated surface area
+                var phase = (1 + Math.Cos(e)) / 2;
+
+                // Total light from the satellite is the flux incident on the satellite, reduced
+                // according to the proportion lit (vs. shadowed), further reduced according to the
+                // albedo, then the distance the light must travel after being reflected.
+                lux += satellite.GetLuminousFlux() * phase * satellite.Albedo / (MathConstants.FourPI * satDist2);
+            }
+
+            return lux;
+        }
+
+        /// <summary>
         /// Determines if the given position is mountainous (see Remarks).
         /// </summary>
         /// <param name="latitude">The latitude of the position to check.</param>
@@ -848,85 +928,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => (longitude > Math.PI ? longitude - MathConstants.TwoPI : longitude) * RotationalPeriod / MathConstants.TwoPI;
 
         /// <summary>
-        /// Calculates the total luminous flux on the given position from nearby sources of light
-        /// (stars in the same system), as well as the light reflected from any natural satellites,
-        /// modified according to the angle of incidence at the given time, in lux.
-        /// </summary>
-        /// <param name="time">The time at which to make the calculation.</param>
-        /// <param name="latitude">The latitude at which to make the calculation.</param>
-        /// <param name="longitude">The longitude at which to make the calculation.</param>
-        /// <returns>The total luminous flux on the body, in lux.</returns>
-        /// <remarks>
-        /// <para>
-        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
-        /// may not be as precise for other stellar bodies.
-        /// </para>
-        /// <para>
-        /// This method modifies total flux based on an angle on incidence calculated from the star
-        /// orbited by this body, or by the body it orbits (in the case of satellites). This will be
-        /// accurate for single-star systems, and will be roughly accurate for binary or multi-star
-        /// systems where the secondary stars are either very distant compared to the main, orbited
-        /// star (and hence contribute little to overall flux), or else are very close to the main
-        /// star relative to the body (and hence share a similar angle of incidence). In multi-star
-        /// systems where the stellar bodies are close enough to the body to contribute
-        /// significantly to total flux, but have significantly different positions (and hence,
-        /// angles of incidence), this method's results will be significantly less accurate. Such
-        /// systems should be rare, however, as multi-star systems, by default, are generated in
-        /// either of the two configurations described above which produce reasonable results.
-        /// </para>
-        /// </remarks>
-        public double GetLuminousFlux(Duration time, double latitude, double longitude)
-        {
-            var pos = GetPositionAtTime(time);
-            var stellarOrbiter = Orbit.HasValue
-                ? Orbit.Value.OrbitedObject is Star
-                    ? this
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
-                        ? planet
-                        : null
-                : null;
-            var stellarOrbit = stellarOrbiter?.Orbit;
-            var starPos = stellarOrbit?.OrbitedObject.GetPositionAtTime(time) ?? Vector3.Zero;
-
-            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
-            var longitudeOffset = longitude - solarRightAscension;
-            if (longitudeOffset > Math.PI)
-            {
-                longitudeOffset -= MathConstants.TwoPI;
-            }
-            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
-
-            var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude)) + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
-            var solarElevation = Math.Asin(sinSolarElevation);
-            var lux = solarElevation <= 0 ? 0 : GetLuminousFlux() * sinSolarElevation;
-
-            var starDist = Vector3.Distance(pos, starPos);
-            var (_, starLon) = GetEclipticLatLon(pos, starPos);
-            foreach (var satellite in Satellites)
-            {
-                var satPos = satellite.GetPositionAtTime(time);
-                var satDist2 = Vector3.DistanceSquared(pos, satPos);
-                var satDist = Math.Sqrt(satDist2);
-
-                var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
-
-                // satellite-centered elongation of the planet from the star (ratio of illuminated
-                // surface area to total surface area)
-                var le = Math.Acos(Math.Cos(satLat) * Math.Cos(starLon - satLon));
-                var e = Math.Atan2(satDist - (starDist * Math.Cos(le)), starDist * Math.Sin(le));
-                // fraction of illuminated surface area
-                var p = (1 + Math.Cos(e)) / 2;
-
-                // Total light from the satellite is the flux incident on the satellite, reduced
-                // according to the proportion lit (vs. shadowed), further reduced according to the
-                // additional distance the light must travel after being reflected.
-                lux += satellite.GetLuminousFlux() * p / (MathConstants.FourPI * satDist2);
-            }
-
-            return lux;
-        }
-
-        /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
         /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
         /// below sea level.
@@ -999,6 +1000,53 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             => Resources.TryGetValue(chemical.Name, out var resource)
                 ? resource.GetResourceRichnessAt(LatitudeAndLongitudeToVector(latitude, longitude))
                 : 0;
+
+        /// <summary>
+        /// Gets phase information for the given <paramref name="satellite"/>.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="satellite">A natural satellite of this body. If the specified body is not
+        /// one of this one's satellites, the return value will always be <c>(0.0, <see
+        /// langword="false"/>)</c>.</param>
+        /// <returns>The proportion of the satellite which is currently illuminated, and a boolean
+        /// value indicating whether the body is in the waxing half of its cycle (vs. the waning
+        /// half).</returns>
+        public (double phase, bool waxing) GetSatellitePhase(Duration time, Planetoid satellite)
+        {
+            if (!Satellites.Contains(satellite) || !satellite.Orbit.HasValue || satellite.Orbit.Value.OrbitedObject != this)
+            {
+                return (0.0, false);
+            }
+
+            var pos = GetPositionAtTime(time);
+
+            var starPos = Orbit.HasValue
+                ? Orbit.Value.OrbitedObject is Star
+                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                        : Vector3.Zero
+                : Vector3.Zero;
+            var starDist = Vector3.Distance(pos, starPos);
+            var (_, starLon) = GetEclipticLatLon(pos, starPos);
+
+            var satellitePosition = satellite.GetPositionAtTime(time);
+            var satDist2 = Vector3.DistanceSquared(pos, satellitePosition);
+            var satDist = Math.Sqrt(satDist2);
+            var (satLat, satLon) = GetEclipticLatLon(pos, satellitePosition);
+
+            // satellite-centered elongation of the planet from the star (ratio of illuminated
+            // surface area to total surface area)
+            var le = Math.Acos(Math.Cos(satLat) * Math.Cos(starLon - satLon));
+            var e = Math.Atan2(satDist - (starDist * Math.Cos(le)), starDist * Math.Sin(le));
+            // fraction of illuminated surface area
+            var phase = (1 + Math.Cos(e)) / 2;
+
+            var (planetRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, pos);
+            var (starRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, Orbit?.OrbitedObject is Star star ? star.GetPositionAtTime(time) : Vector3.Zero);
+
+            return (phase, (starRightAscension - planetRightAscension + MathConstants.TwoPI) % MathConstants.TwoPI <= Math.PI);
+        }
 
         /// <summary>
         /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
@@ -1539,11 +1587,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private (double rightAscension, double declination) GetRightAscensionAndDeclination(Vector3 position, Vector3 otherPosition)
         {
-            var equatorialPos = Vector3.Transform(position - otherPosition, AxisRotation);
-            var r = equatorialPos.Length();
-            var l = equatorialPos.X / r;
-            var m = equatorialPos.Y / r;
-            var n = equatorialPos.Z / r;
+            var equatorialPosition = Vector3.Transform(position - otherPosition, AxisRotation);
+            var r = equatorialPosition.Length();
+            var l = equatorialPosition.X / r;
+            var m = equatorialPosition.Y / r;
+            var n = equatorialPosition.Z / r;
             var declination = Math.Asin(n);
             if (declination > Math.PI)
             {

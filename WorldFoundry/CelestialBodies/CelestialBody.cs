@@ -288,13 +288,13 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
-        /// Calculates the total luminous flux on this body from nearby sources of light (stars in
-        /// the same system), in lux.
+        /// Calculates the total luminous flux incident on this body from nearby sources of light
+        /// (stars in the same system), in lumens.
         /// </summary>
-        /// <returns>The total luminous flux on the body, in lux.</returns>
+        /// <returns>The total illumination on the body, in lumens.</returns>
         /// <remarks>
-        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
-        /// may not be as precise for other stellar bodies.
+        /// A conversion of 0.0079 W/m² per lumen is used, which is roughly accurate for the sun,
+        /// but may not be as precise for other stellar bodies.
         /// </remarks>
         public double GetLuminousFlux()
             => ContainingCelestialRegion.GetAllChildren<Star>()
