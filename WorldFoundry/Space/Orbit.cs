@@ -2,6 +2,7 @@
 using System;
 using MathAndScience.Numerics;
 using WorldFoundry.CelestialBodies;
+using UniversalTime;
 
 namespace WorldFoundry.Space
 {
@@ -18,7 +19,8 @@ namespace WorldFoundry.Space
         private readonly double _alpha;
 
         /// <summary>
-        /// The apoapsis of this orbit. For orbits with <see cref="Eccentricity"/> >= 1, gives <see cref="double.PositiveInfinity"/>.
+        /// The apoapsis of this orbit, in meters. For orbits with <see cref="Eccentricity"/> >= 1,
+        /// gives <see cref="double.PositiveInfinity"/>.
         /// </summary>
         public double Apoapsis { get; }
 
@@ -28,10 +30,26 @@ namespace WorldFoundry.Space
         public double Eccentricity { get; }
 
         /// <summary>
+        /// The time at which the state of this orbit is defined, which coincides with a time of
+        /// pericenter passage.
+        /// </summary>
+        public Duration Epoch { get; }
+
+        /// <summary>
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
         /// of the orbit, in radians.
         /// </summary>
         public double Inclination { get; }
+
+        /// <summary>
+        /// The mean longitude of this orbit at epoch, in radians.
+        /// </summary>
+        public double MeanLongitude { get; }
+
+        /// <summary>
+        /// The mean motion of this orbit, in radians per second.
+        /// </summary>
+        public double MeanMotion { get; }
 
         /// <summary>
         /// The entity which is being orbited.
@@ -39,12 +57,12 @@ namespace WorldFoundry.Space
         public ICelestialLocation OrbitedObject { get; }
 
         /// <summary>
-        /// The periapsis of this orbit.
+        /// The periapsis of this orbit, in meters.
         /// </summary>
         public double Periapsis { get; }
 
         /// <summary>
-        /// The period of this orbit.
+        /// The period of this orbit, in seconds.
         /// </summary>
         public double Period { get; }
 
@@ -54,12 +72,12 @@ namespace WorldFoundry.Space
         public Vector3 R0 { get; }
 
         /// <summary>
-        /// The radius of the orbit at the current position.
+        /// The radius of the orbit at the current position, in meters.
         /// </summary>
         public double Radius { get; }
 
         /// <summary>
-        /// The semi-major axis of this <see cref="Orbit"/>.
+        /// The semi-major axis of this <see cref="Orbit"/>, in meters.
         /// </summary>
         public double SemiMajorAxis { get; }
 
@@ -81,55 +99,6 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Orbit"/>.
         /// </summary>
-        /// <param name="orbitingObject">The <see cref="CelestialBody"/> which will be in orbit around
-        /// <paramref name="orbitedObject"/>.</param>
-        /// <param name="orbitedObject">The <see cref="ICelestialLocation"/> which will be orbited by <paramref
-        /// name="orbitingObject"/>.</param>
-        public Orbit(ICelestialLocation orbitingObject, ICelestialLocation orbitedObject)
-        {
-            OrbitedObject = orbitedObject ?? throw new ArgumentNullException(nameof(orbitedObject), $"{nameof(orbitedObject)} cannot be null");
-            if (orbitingObject == null)
-            {
-                throw new ArgumentNullException(nameof(orbitingObject), $"{nameof(orbitingObject)} cannot be null");
-            }
-
-            R0 = orbitedObject.ContainingCelestialRegion != orbitingObject.ContainingCelestialRegion
-                ? orbitingObject.GetLocalizedPosition(orbitedObject, orbitedObject.Position)
-                : orbitingObject.Position - orbitedObject.Position;
-
-            V0 = orbitingObject.Velocity;
-
-            StandardGravitationalParameter = ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass);
-
-            Radius = R0.Length();
-
-            SemiMajorAxis = -(StandardGravitationalParameter / 2.0) * Math.Pow((Math.Pow(V0.Length(), 2) / 2.0) - (StandardGravitationalParameter / Radius), -1);
-
-            _alpha = StandardGravitationalParameter / SemiMajorAxis;
-
-            Period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(SemiMajorAxis, 3) / StandardGravitationalParameter);
-
-            var h = Vector3.Cross(R0, V0);
-            Inclination = Math.Acos(h.Z / h.Length());
-
-            var e = (Vector3.Cross(V0, h) / StandardGravitationalParameter) - Vector3.Normalize(R0);
-            Eccentricity = e.Length();
-
-            var p = SemiMajorAxis * (1 - (Eccentricity * Eccentricity));
-            TrueAnomaly = Math.Atan2(Math.Sqrt(p / StandardGravitationalParameter) * Vector3.Dot(R0, R0), p - Radius);
-
-            Apoapsis = Eccentricity >= 1
-                ? double.PositiveInfinity
-                : (1 + Eccentricity) * SemiMajorAxis;
-
-            Periapsis = Eccentricity == 1
-                ? SemiMajorAxis
-                : (1 - Eccentricity) * SemiMajorAxis;
-        }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Orbit"/>.
-        /// </summary>
         /// <param name="orbitedObject">The <see cref="ICelestialLocation"/> which will be
         /// orbited.</param>
         /// <param name="alpha">Derived value equal to the standard gravitational parameter divided
@@ -137,6 +106,8 @@ namespace WorldFoundry.Space
         /// <param name="eccentricity">The eccentricity of this orbit.</param>
         /// <param name="inclination">The angle between the X-Z plane through the center of the
         /// object orbited, and the plane of the orbit, in radians.</param>
+        /// <param name="meanLongitude">The mean longitude of this orbit at epoch.</param>
+        /// <param name="meanMotion">The mean motion of this orbit, in radians per second.</param>
         /// <param name="periapsis">The periapsis of this orbit.</param>
         /// <param name="r0">The initial position of the orbiting object relative to the orbited
         /// one.</param>
@@ -147,23 +118,32 @@ namespace WorldFoundry.Space
         /// <param name="trueAnomaly">The current true anomaly of this orbit.</param>
         /// <param name="v0">The initial velocity of the orbiting object relative to the orbited
         /// one.</param>
+        /// <param name="period">The period of this orbit.</param>
+        /// <param name="epoch">The time at which the state of this orbit is defined, which
+        /// coincides with a time of pericenter passage.</param>
         public Orbit(
             ICelestialLocation orbitedObject,
             double alpha,
             double eccentricity,
             double inclination,
+            double meanLongitude,
+            double meanMotion,
             double periapsis,
             Vector3 r0,
             double radius,
             double semiMajorAxis,
             double standardGravitationalParameter,
             double trueAnomaly,
-            Vector3 v0)
+            Vector3 v0,
+            double period,
+            Duration epoch)
         {
             OrbitedObject = orbitedObject;
             _alpha = alpha;
             Eccentricity = eccentricity;
             Inclination = inclination;
+            MeanLongitude = meanLongitude;
+            MeanMotion = meanMotion;
             Periapsis = periapsis;
             R0 = r0;
             Radius = radius;
@@ -171,11 +151,12 @@ namespace WorldFoundry.Space
             StandardGravitationalParameter = standardGravitationalParameter;
             TrueAnomaly = trueAnomaly;
             V0 = v0;
+            Period = period;
+            Epoch = epoch;
 
             Apoapsis = eccentricity >= 1
                 ? double.PositiveInfinity
                 : (1 + eccentricity) * semiMajorAxis;
-            Period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(semiMajorAxis, 3) / standardGravitationalParameter);
         }
 
         /// <summary>
@@ -265,18 +246,26 @@ namespace WorldFoundry.Space
             var alpha = standardGravitationalParameter / semiMajorAxis;
             orbitingObject.Velocity = Math.Sqrt(alpha) * perifocalQ;
 
+            var meanLongitude = angleAscending + argPeriapsis;
+
+            var period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(semiMajorAxis, 3) / standardGravitationalParameter);
+
             orbitingObject.Orbit = new Orbit(
                 orbitedObject,
                 alpha,
                 0,
                 inclination,
+                meanLongitude,
+                MathConstants.TwoPI / period,
                 periapsis,
                 r0,
                 radius,
                 semiMajorAxis,
                 standardGravitationalParameter,
                 0,
-                orbitingObject.Velocity);
+                orbitingObject.Velocity,
+                period,
+                orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero);
         }
 
         /// <summary>
@@ -339,6 +328,19 @@ namespace WorldFoundry.Space
             {
                 semiMajorAxis = periapsis;
             }
+            var period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(semiMajorAxis, 3) / standardGravitationalParameter);
+            // If at periapsis now, this is the epoch;
+            // if not, the epoch is half the period away.
+            var epoch = orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero;
+            if (radius > semiMajorAxis)
+            {
+                var epochOffset = Duration.FromSeconds(period / 2);
+                // Preferably set the epoch in the past; but if the current age of the universe is
+                // less than half the period, set it in the future.
+                epoch = epoch >= epochOffset
+                    ? epoch - epochOffset
+                    : epoch + epochOffset;
+            }
 
             // Calculate the perifocal vectors
             var cosineAngleAscending = Math.Cos(angleAscending);
@@ -365,6 +367,8 @@ namespace WorldFoundry.Space
             var cosineTrueAnomaly = Math.Cos(trueAnomaly);
             var sineTrueAnomaly = Math.Sin(trueAnomaly);
 
+            var meanLongitude = angleAscending + argumentPeriapsis;
+
             orbitingObject.Velocity = Math.Sqrt(standardGravitationalParameter / semiLatusRectum)
                 * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
@@ -373,13 +377,17 @@ namespace WorldFoundry.Space
                 alpha,
                 eccentricity,
                 inclination,
+                meanLongitude,
+                MathConstants.TwoPI / period,
                 periapsis,
                 r0,
                 radius,
                 semiMajorAxis,
                 standardGravitationalParameter,
                 trueAnomaly,
-                orbitingObject.Velocity);
+                orbitingObject.Velocity,
+                period,
+                epoch);
         }
 
         /// <summary>
@@ -451,11 +459,12 @@ namespace WorldFoundry.Space
 
             var semiLatusRectum = periapsis * (1 + eccentricity);
 
+            var eccentricitySquared = eccentricity * eccentricity;
             // For parabolic orbits, semi-major axis is undefined, and is set to the periapsis
             // instead.
             var semiMajorAxis = eccentricity == 1
                 ? periapsis
-                : semiLatusRectum / (1 - (eccentricity * eccentricity));
+                : semiLatusRectum / (1 - eccentricitySquared);
 
             var alpha = standardGravitationalParameter / semiMajorAxis;
 
@@ -482,6 +491,8 @@ namespace WorldFoundry.Space
             var sineTrueAnomaly = Math.Sin(trueAnomaly);
             var radius = semiLatusRectum / (1 + (eccentricity * cosineTrueAnomaly));
 
+            var meanLongitude = angleAscending + argPeriapsis;
+
             var r0 = (radius * cosineTrueAnomaly * perifocalP) + (radius * sineTrueAnomaly * perifocalQ);
             if (orbitingObject.ContainingCelestialRegion != orbitedObject.ContainingCelestialRegion)
             {
@@ -495,33 +506,80 @@ namespace WorldFoundry.Space
             orbitingObject.Velocity = Math.Sqrt(standardGravitationalParameter / semiLatusRectum)
                 * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
+            var eccentricAnomaly = Math.Atan2(eccentricity + cosineTrueAnomaly, Math.Sqrt(1 - eccentricitySquared) * sineTrueAnomaly);
+            var meanAnomaly = eccentricAnomaly - (eccentricity * Math.Sin(eccentricAnomaly));
+            var semiMajorAxisCubed = Math.Pow(semiMajorAxis, 3);
+            var period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(semiMajorAxis, 3) / standardGravitationalParameter);
+            var meanMotion = MathConstants.TwoPI / period;
+            var time = orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero;
+            var epochOffsetSeconds = meanAnomaly / meanMotion;
+            var epochOffset = Duration.FromSeconds(epochOffsetSeconds);
+            var epoch = time > epochOffset
+                ? time - epochOffset
+                : time + Duration.FromSeconds(period - epochOffsetSeconds);
+
             orbitingObject.Orbit = new Orbit(
                 orbitedObject,
                 alpha,
                 eccentricity,
                 inclination,
+                meanLongitude,
+                meanMotion,
                 periapsis,
                 r0,
                 radius,
                 semiMajorAxis,
                 standardGravitationalParameter,
                 trueAnomaly,
-                orbitingObject.Velocity);
+                orbitingObject.Velocity,
+                period,
+                epoch);
         }
 
-        internal static double GetHillSphereRadius(ICelestialLocation orbitingObject, ICelestialLocation orbitedObject, double semiMajorAxis, double eccentricity)
-            => semiMajorAxis * (1 - eccentricity) * Math.Pow(orbitingObject.Mass / (3 * orbitedObject.Mass), 1.0 / 3.0);
-
-        internal static double GetSemiMajorAxisForPeriod(ICelestialLocation orbitingObject, ICelestialLocation orbitedObject, double period)
-            => Math.Pow(ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period / (MathConstants.FourPI * Math.PI), 1.0 / 3.0);
+        /// <summary>
+        /// Gets the ecliptic longitude of the orbited body from the perspective of the orbiting
+        /// body at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The ecliptic longitude of the orbited body from the perspective of the orbiting
+        /// body, in radians (normalized to 0-2π).</returns>
+        public double GetEclipticLongitudeAtTrueAnomaly(double t)
+            => (MeanLongitude + t + Math.PI) % MathConstants.TwoPI;
 
         /// <summary>
-        /// Gets updated orbital position and velocity vectors.
+        /// Gets orbital parameters at a given time.
         /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the conditions when the
-        /// orbit was defined were true.</param>
-        /// <returns>An array with 2 elements: the position vector (relative to the orbited object),
-        /// and the velocity vector.</returns>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
+        public (double meanLongitude, double meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(double t)
+        {
+            var meanAnomaly = MeanMotion * t % MathConstants.TwoPI;
+            return ((MeanLongitude + meanAnomaly) % MathConstants.TwoPI, meanAnomaly);
+        }
+
+        /// <summary>
+        /// Gets orbital parameters at a given time.
+        /// </summary>
+        /// <param name="time">The time at which to determine orbital parameters.</param>
+        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
+        public (double meanLongitude, double meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Duration time)
+        {
+            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            if (time < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetMeanLongitudeAndAnomalyAtTime(t);
+        }
+
+        /// <summary>
+        /// Gets orbital state vectors at a given time.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The position vector (relative to the orbited object), and the velocity
+        /// vector.</returns>
         public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(double t)
         {
             // Universal variable formulas; Newton's method
@@ -561,6 +619,57 @@ namespace WorldFoundry.Space
 
             return (r, v);
         }
+
+        /// <summary>
+        /// Gets orbital state vectors at a given time.
+        /// </summary>
+        /// <param name="time">The time at which to determine orbital state vectors.</param>
+        /// <returns>The position vector (relative to the orbited object), and the velocity
+        /// vector.</returns>
+        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Duration time)
+        {
+            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            if (time < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetStateVectorsAtTime(t);
+        }
+
+        /// <summary>
+        /// Gets the true anomaly of this orbit at a given time.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The true anomaly, in radians.</returns>
+        public double GetTrueAnomalyAtTime(double t)
+        {
+            var (r, _) = GetStateVectorsAtTime(t);
+
+            var p = SemiMajorAxis * (1 - (Eccentricity * Eccentricity));
+            return Math.Atan2(Math.Sqrt(p / StandardGravitationalParameter) * Vector3.Dot(r, r), p - Radius);
+        }
+
+        /// <summary>
+        /// Gets the true anomaly of this orbit at a given time.
+        /// </summary>
+        /// <param name="time">The time at which to determine orbital state vectors.</param>
+        /// <returns>The true anomaly, in radians.</returns>
+        public double GetTrueAnomalyAtTime(Duration time)
+        {
+            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            if (time < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetTrueAnomalyAtTime(t);
+        }
+
+        internal static double GetHillSphereRadius(ICelestialLocation orbitingObject, ICelestialLocation orbitedObject, double semiMajorAxis, double eccentricity)
+            => semiMajorAxis * (1 - eccentricity) * Math.Pow(orbitingObject.Mass / (3 * orbitedObject.Mass), 1.0 / 3.0);
+
+        internal static double GetSemiMajorAxisForPeriod(ICelestialLocation orbitingObject, ICelestialLocation orbitedObject, double period)
+            => Math.Pow(ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period / (MathConstants.FourPI * Math.PI), 1.0 / 3.0);
 
         internal double GetHillSphereRadius(ICelestialLocation orbitingObject)
             => GetHillSphereRadius(orbitingObject, OrbitedObject, SemiMajorAxis, Eccentricity);

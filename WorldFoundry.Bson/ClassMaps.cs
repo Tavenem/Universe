@@ -223,6 +223,7 @@ namespace WorldFoundry.Bson
                 cm.UnmapMember(x => x.HasMagnetosphere);
                 cm.MapField("_hasMagnetosphere");
                 cm.MapField("_maxElevation");
+                cm.MapField("_rotationalOffset");
                 cm.UnmapMember(x => x.RotationalPeriod);
                 cm.MapField("_rotationalPeriod");
                 cm.MapField("_resources").SetSerializer(new DictionaryInterfaceImplementerSerializer<Dictionary<string, Resource>>(DictionaryRepresentation.ArrayOfDocuments));

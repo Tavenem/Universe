@@ -764,7 +764,7 @@ namespace WorldFoundry.SurfaceMapping
 
                     if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                     {
-                        winterLat = Math.Abs(planet.GetSeasonalLatitudeFromEquator(lat, planet.WinterSolarEquator));
+                        winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -planet.AxialTilt));
                         winterLatitudes.Add(lat, winterLat);
                     }
                     if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
@@ -780,7 +780,7 @@ namespace WorldFoundry.SurfaceMapping
 
                     if (!summerLatitudes.TryGetValue(lat, out var summerLat))
                     {
-                        summerLat = Math.Abs(planet.GetSeasonalLatitudeFromEquator(lat, planet.SummerSolarEquator));
+                        summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, planet.AxialTilt));
                         summerLatitudes.Add(lat, summerLat);
                     }
                     if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
@@ -811,7 +811,7 @@ namespace WorldFoundry.SurfaceMapping
             var precipitationMaps = new PrecipitationMaps[steps];
             for (var i = 0; i < steps; i++)
             {
-                var solarEquator = planet.GetSolarEquator(trueAnomaly);
+                var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
 
                 // Precipitation & snowfall
                 var snowfallMap = new float[doubleResolution, resolution];
@@ -820,7 +820,7 @@ namespace WorldFoundry.SurfaceMapping
                     {
                         var precipitation = planet.GetPrecipitation(
                             planet.LatitudeAndLongitudeToVector(lat, lon),
-                            planet.GetSeasonalLatitudeFromEquator(lat, solarEquator),
+                            planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
                             MathUtility.Lerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
                             proportionOfYear,
                             out var snow);

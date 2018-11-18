@@ -158,6 +158,42 @@ namespace WorldFoundry.Space
             SpectralClass? spectralClass = null,
             LuminosityClass? luminosityClass = null) : this(parent, position, starType, spectralClass, luminosityClass, false) { }
 
+        /// <summary>
+        /// Updates the position and velocity of all direct child objects to correspond with the
+        /// state predicted by their orbits at the current time of the containing <see
+        /// cref="Universe"/>, assuming no influences on the bodies' motion have occurred aside from
+        /// their orbits. Has no effect on bodies not in orbit (i.e. gravitational effects are not
+        /// integrated over time for objects without defined orbits).
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Only affects direct children. Nested children of any contained regions are not affected.
+        /// The child regions assigned to star systems by default are asteroid fields of various
+        /// sorts, some of which are assigned orbits as a whole (e.g. trojan asteroid fields).
+        /// </para>
+        /// <para>
+        /// The simplification of assuming that individual small bodies will keep their relative
+        /// positions within a given field allows this method to perform relatively quickly even
+        /// when many asteroids have been generated, but may become increasingly inaccurate if
+        /// cometary bodies are generated which have eccentric orbits that should take them well
+        /// away from their neighbors. It is left to calling code to decide when it is worth the
+        /// calculation costs to update <i>all</i> children recursively.
+        /// </para>
+        /// </remarks>
+        public void UpdateOrbits()
+        {
+            var universe = ContainingUniverse;
+            if (universe == null)
+            {
+                return;
+            }
+
+            foreach (var child in CelestialChildren)
+            {
+                child.UpdateOrbit();
+            }
+        }
+
         internal override void PrepopulateRegion()
         {
             if (_isPrepopulated)
@@ -915,7 +951,7 @@ namespace WorldFoundry.Space
         {
             var doubleHillRadius = planet.GetHillSphereRadius() * 2;
             var asteroids = new AsteroidField(this, -Vector3.UnitZ * periapsis, star, doubleHillRadius);
-            var trueAnomaly = planet.Orbit.Value.TrueAnomaly + 1.04719755; // +60°
+            var trueAnomaly = planet.Orbit.Value.TrueAnomaly + (Math.PI / 3); // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
                 trueAnomaly -= MathConstants.TwoPI;
@@ -932,7 +968,7 @@ namespace WorldFoundry.Space
 
             asteroids = new AsteroidField(this, Vector3.UnitZ * periapsis, star, doubleHillRadius);
             asteroids.Init();
-            trueAnomaly = planet.Orbit.Value.TrueAnomaly - 1.04719755; // -60°
+            trueAnomaly = planet.Orbit.Value.TrueAnomaly - (Math.PI / 3); // -60°
             while (trueAnomaly < 0)
             {
                 trueAnomaly += MathConstants.TwoPI;

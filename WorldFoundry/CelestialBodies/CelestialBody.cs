@@ -5,6 +5,7 @@ using Substances;
 using System;
 using System.Linq;
 using System.Text;
+using UniversalTime;
 using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Place;
 using WorldFoundry.Space;
@@ -64,6 +65,11 @@ namespace WorldFoundry.CelestialBodies
         /// The <see cref="CelestialRegion"/> which directly contains this <see cref="ICelestialLocation"/>.
         /// </summary>
         public CelestialRegion ContainingCelestialRegion => ContainingRegion as CelestialRegion;
+
+        /// <summary>
+        /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
+        /// </summary>
+        public Universe ContainingUniverse => ContainingRegion is Universe universe ? universe : ContainingCelestialRegion?.ContainingUniverse;
 
         /// <summary>
         /// A string that uniquely identifies this <see cref="ICelestialLocation"/> for display
@@ -184,7 +190,7 @@ namespace WorldFoundry.CelestialBodies
         public virtual string TypeName => BaseTypeName;
 
         /// <summary>
-        /// Specifies the velocity of the <see cref="ICelestialLocation"/>.
+        /// Specifies the velocity of the <see cref="ICelestialLocation"/> in m/s.
         /// </summary>
         public Vector3 Velocity { get; set; }
 
@@ -295,6 +301,36 @@ namespace WorldFoundry.CelestialBodies
             .Sum(x => x.Luminosity / (MathConstants.FourPI * GetDistanceSquaredTo(x)) / 0.0079);
 
         /// <summary>
+        /// Calculates the position of this <see cref="ICelestialLocation"/> at the given time,
+        /// taking its orbit or velocity into account, without actually updating its current
+        /// <see cref="Position"/>. Does not perform integration over time of gravitational
+        /// influences not reflected by <see cref="Orbit"/>.
+        /// </summary>
+        /// <param name="time">The time at which to get a position.</param>
+        /// <returns>A <see cref="Vector3"/> representing position relative to the center of the
+        /// <see cref="ContainingCelestialRegion"/>.</returns>
+        public Vector3 GetPositionAtTime(Duration time)
+        {
+            if (Orbit.HasValue)
+            {
+                var (position, _) = Orbit.Value.GetStateVectorsAtTime(time);
+
+                if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
+                {
+                    return ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                }
+                else
+                {
+                    return Orbit.Value.OrbitedObject.Position + position;
+                }
+            }
+            else
+            {
+                return Position + (Velocity * time.ToSeconds());
+            }
+        }
+
+        /// <summary>
         /// Calculates the total force of gravity on this <see cref="ICelestialLocation"/>, in N, as a
         /// vector. Note that results may be highly inaccurate if the parent region has not been
         /// populated thoroughly enough in the vicinity of this entity (with the scale of "vicinity"
@@ -350,12 +386,42 @@ namespace WorldFoundry.CelestialBodies
         }
 
         /// <summary>
-        /// Updates the position and velocity of this object based on its <see cref="Orbit"/> after
-        /// the specified number of seconds have passed, assuming no influences on the body's motion
-        /// have occurred aside from its orbit. Has no effect if the body is not in orbit.
+        /// Updates the position and velocity of this object to correspond with the state predicted
+        /// by its <see cref="Orbit"/> at the current time of its containing <see cref="Universe"/>,
+        /// assuming no influences on the body's motion have occurred aside from its orbit. Has no
+        /// effect if the body is not in orbit.
+        /// </summary>
+        public void UpdateOrbit()
+        {
+            var universe = ContainingUniverse;
+            if (!Orbit.HasValue || universe == null)
+            {
+                return;
+            }
+
+            var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(universe.Time.Now);
+
+            if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
+            {
+                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+            }
+            else
+            {
+                Position = Orbit.Value.OrbitedObject.Position + position;
+            }
+
+            Velocity = velocity;
+        }
+
+        /// <summary>
+        /// Updates the position and velocity of this object to correspond with the state predicted
+        /// by its <see cref="Orbit"/> after the specified number of seconds since its orbit's epoch
+        /// (initial time of pericenter), assuming no influences on the body's motion have occurred
+        /// aside from its orbit. Has no effect if the body is not in orbit.
         /// </summary>
         /// <param name="elapsedSeconds">
-        /// The number of seconds which have elapsed since the orbit was last updated.
+        /// The number of seconds which have elapsed since the orbit's defining epoch (time of
+        /// pericenter).
         /// </param>
         public void UpdateOrbit(double elapsedSeconds)
         {
@@ -376,8 +442,6 @@ namespace WorldFoundry.CelestialBodies
             }
 
             Velocity = velocity;
-
-            Orbit = new Orbit(this, Orbit.Value.OrbitedObject);
         }
 
         internal virtual void GenerateOrbit(ICelestialLocation orbitedObject)
@@ -524,7 +588,5 @@ namespace WorldFoundry.CelestialBodies
             _surfaceTemperatureAtApoapsis = null;
             _surfaceTemperatureAtPeriapsis = null;
         }
-
-        private protected virtual void ResetOrbitalProperties() { }
     }
 }

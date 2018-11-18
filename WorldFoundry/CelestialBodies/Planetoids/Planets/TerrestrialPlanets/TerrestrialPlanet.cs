@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Troschuetz.Random;
+using UniversalTime;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.CelestialBodies.Stars;
@@ -293,12 +294,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Determines the average precipitation at the given <paramref name="position"/> under the
         /// given conditions, over the given duration, in mm.
         /// </summary>
+        /// <param name="time">The beginning of the period during which precipitation is to be
+        /// determined.</param>
         /// <param name="position">The position on the planet's surface at which to determine
         /// precipitation.</param>
         /// <param name="proportionOfYear">The proportion of the year over which to determine
         /// precipitation.</param>
-        /// <param name="trueAnomaly">The true anomaly of the planet's orbit at the beginning of the
-        /// period during which precipitation is to be determined.</param>
         /// <param name="snow">
         /// <para>
         /// When the method returns, will be set to the amount of snow which falls. Note that this
@@ -308,8 +309,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </param>
         /// <returns>The average precipitation at the given <paramref name="position"/> and time of
         /// year, in mm.</returns>
-        public double GetPrecipitation(Vector3 position, double proportionOfYear, double trueAnomaly, out double snow)
+        public double GetPrecipitation(Duration time, Vector3 position, double proportionOfYear, out double snow)
         {
+            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
             var latitude = VectorToLatitude(position);
             var seasonalLatitude = Math.Abs(GetSeasonalLatitude(latitude, trueAnomaly));
             return GetPrecipitation(
@@ -340,7 +342,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <returns>The average precipitation at the given <paramref name="position"/>, in
         /// mm.</returns>
         public double GetPrecipitation(Vector3 position, double proportionOfYear, out double snow)
-            => GetPrecipitation(position, proportionOfYear, Orbit?.TrueAnomaly ?? 0, out snow);
+            => GetPrecipitation(ContainingUniverse?.Time.Now ?? Duration.Zero, position, proportionOfYear, out snow);
 
         /// <summary>
         /// Determines if the planet is habitable by a species with the given requirements. Does not

@@ -1,6 +1,7 @@
 ﻿using MathAndScience.Numerics;
 using MathAndScience.Shapes;
 using System;
+using UniversalTime;
 using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
@@ -41,6 +42,11 @@ namespace WorldFoundry.Space
         CelestialRegion ContainingCelestialRegion { get; }
 
         /// <summary>
+        /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
+        /// </summary>
+        Universe ContainingUniverse { get; }
+
+        /// <summary>
         /// The shape of this <see cref="ICelestialLocation"/>.
         /// </summary>
         IShape Shape { get; }
@@ -62,7 +68,7 @@ namespace WorldFoundry.Space
         string TypeName { get; }
 
         /// <summary>
-        /// Specifies the velocity of the <see cref="ICelestialLocation"/>.
+        /// Specifies the velocity of the <see cref="ICelestialLocation"/> in m/s.
         /// </summary>
         Vector3 Velocity { get; set; }
 
@@ -92,6 +98,17 @@ namespace WorldFoundry.Space
         Vector3 GetGravityFromObject(ICelestialLocation other);
 
         /// <summary>
+        /// Calculates the position of this <see cref="ICelestialLocation"/> at the given time,
+        /// taking its orbit or velocity into account, without actually updating its current
+        /// position. Does not perform integration over time of gravitational influences not
+        /// reflected by <see cref="Orbit"/>.
+        /// </summary>
+        /// <param name="time">The time at which to get a position.</param>
+        /// <returns>A <see cref="Vector3"/> representing position relative to the center of the
+        /// <see cref="ContainingCelestialRegion"/>.</returns>
+        Vector3 GetPositionAtTime(Duration time);
+
+        /// <summary>
         /// Calculates the total force of gravity on this <see cref="ICelestialLocation"/>, in N, as a
         /// vector. Note that results may be highly inaccurate if the parent region has not been
         /// populated thoroughly enough in the vicinity of this entity (with the scale of "vicinity"
@@ -112,12 +129,22 @@ namespace WorldFoundry.Space
         Vector3 GetTotalLocalGravity();
 
         /// <summary>
-        /// Updates the orbital position and velocity of this object's <see cref="Orbit"/> after the
-        /// specified number of seconds have passed, assuming no influences on the body's motion
-        /// have occurred aside from its orbit. Has no effect if the body is not in orbit.
+        /// Updates the position and velocity of this object to correspond with the state predicted
+        /// by its <see cref="Orbit"/> at the current time of its containing <see cref="Universe"/>,
+        /// assuming no influences on the body's motion have occurred aside from its orbit. Has no
+        /// effect if the body is not in orbit.
+        /// </summary>
+        void UpdateOrbit();
+
+        /// <summary>
+        /// Updates the position and velocity of this object to correspond with the state predicted
+        /// by its <see cref="Orbit"/> after the specified number of seconds since its orbit's epoch
+        /// (initial time of pericenter), assuming no influences on the body's motion have occurred
+        /// aside from its orbit. Has no effect if the body is not in orbit.
         /// </summary>
         /// <param name="elapsedSeconds">
-        /// The number of seconds which have elapsed since the orbit was last updated.
+        /// The number of seconds which have elapsed since the orbit's defining epoch (time of
+        /// pericenter).
         /// </param>
         void UpdateOrbit(double elapsedSeconds);
     }

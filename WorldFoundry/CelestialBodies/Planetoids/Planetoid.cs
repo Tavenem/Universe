@@ -6,6 +6,8 @@ using Substances;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UniversalTime;
+using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Climate;
 using WorldFoundry.Place;
 using WorldFoundry.Space;
@@ -70,8 +72,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double? _angularVelocity;
         /// <summary>
-        /// The angular velocity of this <see cref="Planetoid"/>, in m/s. Read-only; set via <see
-        /// cref="RotationalPeriod"/>.
+        /// The angular velocity of this <see cref="Planetoid"/>, in radians per second. Read-only;
+        /// set via <see cref="RotationalPeriod"/>.
         /// </summary>
         public double AngularVelocity
             => _angularVelocity ?? (_angularVelocity = RotationalPeriod == 0 ? 0 : MathConstants.TwoPI / RotationalPeriod).Value;
@@ -245,6 +247,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double MinSurfaceTemperature
             => _minSurfaceTemperature ?? (_minSurfaceTemperature = GetMinSurfaceTemperature()).Value;
 
+        private double? _rotationalOffset;
+        /// <summary>
+        /// The amount of seconds after the beginning of time of the orbited body's transit at the
+        /// prime meridian, if <see cref="RotationalPeriod"/> was unchanged (i.e. solar noon, on a
+        /// planet which orbits a star).
+        /// </summary>
+        public double RotationalOffset
+            => _rotationalOffset ?? (_rotationalOffset = Randomizer.Instance.NextDouble(RotationalPeriod)).Value;
+
         private double? _rotationalPeriod;
         /// <summary>
         /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis, in seconds.
@@ -256,7 +267,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 _rotationalPeriod = value;
                 _angularVelocity = null;
-                _insolationAreaRatio = null;
                 ResetCachedTemperatures();
             }
         }
@@ -327,47 +337,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             set => _insolationFactor_Equatorial = value;
         }
 
-        private double? _summerSolarEquator;
-        internal double SummerSolarEquator
-            => _summerSolarEquator ?? (_summerSolarEquator = AxialTilt * (2.0 / 3.0)).Value;
-
         private double? _summerSolsticeTrueAnomaly;
         internal double SummerSolsticeTrueAnomaly
-        {
-            get
-            {
-                if (!_summerSolsticeTrueAnomaly.HasValue)
-                {
-                    _summerSolsticeTrueAnomaly = AxialPrecession + MathConstants.ThreeHalvesPI;
-                    if (_summerSolsticeTrueAnomaly >= MathConstants.TwoPI)
-                    {
-                        _summerSolsticeTrueAnomaly -= MathConstants.TwoPI;
-                    }
-                }
-                return _summerSolsticeTrueAnomaly ?? 0;
-            }
-        }
-
-        private double? _winterSolarEquator;
-        internal double WinterSolarEquator
-            => _winterSolarEquator ?? (_winterSolarEquator = -AxialTilt * (2.0 / 3.0)).Value;
+            => (_summerSolsticeTrueAnomaly ?? (_summerSolsticeTrueAnomaly = (AxialPrecession + MathConstants.HalfPI) % MathConstants.TwoPI)).Value;
 
         private double? _winterSolsticeTrueAnomaly;
         internal double WinterSolsticeTrueAnomaly
-        {
-            get
-            {
-                if (!_winterSolsticeTrueAnomaly.HasValue)
-                {
-                    _winterSolsticeTrueAnomaly = AxialPrecession + MathConstants.HalfPI;
-                    if (_winterSolsticeTrueAnomaly >= MathConstants.TwoPI)
-                    {
-                        _winterSolsticeTrueAnomaly -= MathConstants.TwoPI;
-                    }
-                }
-                return _winterSolsticeTrueAnomaly ?? 0;
-            }
-        }
+            => (_winterSolsticeTrueAnomaly ?? (_winterSolsticeTrueAnomaly = (AxialPrecession + MathConstants.ThreeHalvesPI) % MathConstants.TwoPI)).Value;
 
         private Quaternion? _axisRotation;
         /// <summary>
@@ -398,9 +374,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual int ExtremeRotationalPeriod => 1100000;
 
         private protected virtual bool HasFlatSurface => false;
-
-        private double? _insolationAreaRatio;
-        private protected double InsolationAreaRatio => _insolationAreaRatio ?? (_insolationAreaRatio = GetInsolationAreaRatio()).Value;
 
         private double? _insolationFactor_Polar;
         private double InsolationFactor_Polar
@@ -456,9 +429,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private FastNoise Noise5 => _noise5 ?? (_noise5 = new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex));
 
         private protected virtual double Rigidity => 3.0e10;
-
-        private double? _solarEquator;
-        private double SolarEquator => _solarEquator ?? (_solarEquator = GetSolarEquator()).Value;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/>.
@@ -531,6 +501,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Calculates the atmospheric drag on a spherical object within the <see
         /// cref="Atmosphere"/> of this <see cref="Planetoid"/> under given conditions, in N.
         /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
         /// <param name="latitude">The latitude of the object.</param>
         /// <param name="longitude">The longitude of the object.</param>
         /// <param name="altitude">The altitude of the object.</param>
@@ -542,33 +513,33 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// is accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public double GetAtmosphericDrag(double latitude, double longitude, double altitude, double speed) =>
-            Atmosphere.GetAtmosphericDrag(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(latitude, longitude), altitude), altitude, speed);
+        public double GetAtmosphericDrag(Duration time, double latitude, double longitude, double altitude, double speed) =>
+            Atmosphere.GetAtmosphericDrag(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(time, latitude, longitude), altitude), altitude, speed);
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, in kPa.
+        /// name="longitude"/>, at the given true anomaly of the planet's orbit, in kPa.
         /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
         /// <param name="latitude">The latitude at which to determine atmospheric pressure.</param>
-        /// <param name="longitude">The longitude at which to determine atmospheric pressure.</param>
+        /// <param name="longitude">The longitude at which to determine atmospheric
+        /// pressure.</param>
         /// <returns>The atmospheric pressure at the specified height, in kPa.</returns>
         /// <remarks>
-        /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the different
-        /// atmospheric layers, but this cannot be easily modeled for arbitrary exoplanetary
-        /// atmospheres, so the simple barometric formula is used, which should be "close enough" for
-        /// the purposes of this library. Also, this calculation uses the molar mass of air on Earth,
-        /// which is clearly not correct for other atmospheres, but is considered "close enough" for
-        /// the purposes of this library.
+        /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the
+        /// different atmospheric layers, but this cannot be easily modeled for arbitrary
+        /// exoplanetary atmospheres, so the simple barometric formula is used, which should be
+        /// "close enough" for the purposes of this library. Also, this calculation uses the molar
+        /// mass of air on Earth, which is clearly not correct for other atmospheres, but is
+        /// considered "close enough" for the purposes of this library.
         /// </remarks>
-        public double GetAtmosphericPressure(double latitude, double longitude)
+        public double GetAtmosphericPressure(Duration time, double latitude, double longitude)
         {
             var elevation = GetElevationAt(latitude, longitude);
-            var temp = GetTemperatureAtElevation(
-                  (BlackbodySurfaceTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude))) + GreenhouseEffect,
-                  elevation);
+            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
             return GetAtmosphericPressureFromTempAndElevation(
                 GetTemperatureAtElevation(
-                    (BlackbodySurfaceTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude))) + GreenhouseEffect,
+                    (BlackbodySurfaceTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude, trueAnomaly))) + GreenhouseEffect,
                     elevation),
                 elevation);
         }
@@ -795,6 +766,167 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Calculate the time of local sunrise and sunset on the current day, based on the planet's
+        /// rotation, as a proportion of a day since midnight.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="latitude">The latitude at which to make the calculation.</param>
+        /// <returns>A pair of <see cref="RelativeDuration"/> instances set to a proportion of a
+        /// local day since midnight. If the sun does not rise and set on the given day (e.g. near
+        /// the poles), then <see langword="null"/> will be returned for sunrise in the case of a
+        /// polar night, and <see langword="null"/> for sunset in the case of a midnight sun.</returns>
+        public (RelativeDuration? sunrise, RelativeDuration? sunset) GetLocalSunriseAndSunset(Duration time, double latitude)
+        {
+            var pos = GetPositionAtTime(time);
+            var starPos = Orbit.HasValue
+                ? Orbit.Value.OrbitedObject is Star
+                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                        : Vector3.Zero
+                : Vector3.Zero;
+
+            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+
+            var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
+            if (d.IsZero())
+            {
+                return (solarDeclination >= 0) == (latitude >= 0)
+                    ? ((RelativeDuration?)RelativeDuration.FromProportionOfDay(0), (RelativeDuration?)null)
+                    : ((RelativeDuration?)null, RelativeDuration.FromProportionOfDay(0));
+            }
+
+            var localSecondsFromSolarNoonAtSunriseAndSet = Math.Acos(-Math.Sin(solarDeclination) * Math.Sin(latitude) / d) / AngularVelocity;
+            var localSecondsSinceMidnightAtSunrise = ((RotationalPeriod / 2) - localSecondsFromSolarNoonAtSunriseAndSet) % RotationalPeriod;
+            var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (RotationalPeriod / 2)) % RotationalPeriod;
+            return (RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunrise / RotationalPeriod),
+                RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunset / RotationalPeriod));
+        }
+
+        /// <summary>
+        /// Gets the time of day at the given <paramref name="time"/> and <paramref
+        /// name="longitude"/>, based on the planet's rotation, as a proportion of a day since
+        /// midnight.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="longitude">The longitude at which to make the calculation.</param>
+        /// <returns>A <see cref="RelativeDuration"/> set to a proportion of a local day since
+        /// midnight.</returns>
+        public RelativeDuration GetLocalTimeOfDay(Duration time, double longitude)
+        {
+            var pos = GetPositionAtTime(time);
+            var starPos = Orbit.HasValue
+                ? Orbit.Value.OrbitedObject is Star
+                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
+                        : Vector3.Zero
+                : Vector3.Zero;
+
+            var (solarRightAscension, _) = GetRightAscensionAndDeclination(pos, starPos);
+            var longitudeOffset = longitude - solarRightAscension;
+            if (longitudeOffset > Math.PI)
+            {
+                longitudeOffset -= MathConstants.TwoPI;
+            }
+            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
+
+            var localSecondsSinceMidnight = (localSecondsSinceSolarNoon + (RotationalPeriod / 2)) % RotationalPeriod;
+            return RelativeDuration.FromProportionOfDay(localSecondsSinceMidnight / RotationalPeriod);
+        }
+
+        /// <summary>
+        /// Gets the number of seconds difference from solar time at zero longitude at the given
+        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
+        /// west.
+        /// </summary>
+        /// <param name="longitude">The longitude at which to determine the time offset.</param>
+        /// <returns>The number of seconds difference from solar time at zero longitude at the given
+        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
+        /// west.</returns>
+        public double GetLocalTimeOffset(double longitude)
+            => (longitude > Math.PI ? longitude - MathConstants.TwoPI : longitude) * RotationalPeriod / MathConstants.TwoPI;
+
+        /// <summary>
+        /// Calculates the total luminous flux on the given position from nearby sources of light
+        /// (stars in the same system), as well as the light reflected from any natural satellites,
+        /// modified according to the angle of incidence at the given time, in lux.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="latitude">The latitude at which to make the calculation.</param>
+        /// <param name="longitude">The longitude at which to make the calculation.</param>
+        /// <returns>The total luminous flux on the body, in lux.</returns>
+        /// <remarks>
+        /// <para>
+        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
+        /// may not be as precise for other stellar bodies.
+        /// </para>
+        /// <para>
+        /// This method modifies total flux based on an angle on incidence calculated from the star
+        /// orbited by this body, or by the body it orbits (in the case of satellites). This will be
+        /// accurate for single-star systems, and will be roughly accurate for binary or multi-star
+        /// systems where the secondary stars are either very distant compared to the main, orbited
+        /// star (and hence contribute little to overall flux), or else are very close to the main
+        /// star relative to the body (and hence share a similar angle of incidence). In multi-star
+        /// systems where the stellar bodies are close enough to the body to contribute
+        /// significantly to total flux, but have significantly different positions (and hence,
+        /// angles of incidence), this method's results will be significantly less accurate. Such
+        /// systems should be rare, however, as multi-star systems, by default, are generated in
+        /// either of the two configurations described above which produce reasonable results.
+        /// </para>
+        /// </remarks>
+        public double GetLuminousFlux(Duration time, double latitude, double longitude)
+        {
+            var pos = GetPositionAtTime(time);
+            var stellarOrbiter = Orbit.HasValue
+                ? Orbit.Value.OrbitedObject is Star
+                    ? this
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                        ? planet
+                        : null
+                : null;
+            var stellarOrbit = stellarOrbiter?.Orbit;
+            var starPos = stellarOrbit?.OrbitedObject.GetPositionAtTime(time) ?? Vector3.Zero;
+
+            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+            var longitudeOffset = longitude - solarRightAscension;
+            if (longitudeOffset > Math.PI)
+            {
+                longitudeOffset -= MathConstants.TwoPI;
+            }
+            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
+
+            var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude)) + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
+            var solarElevation = Math.Asin(sinSolarElevation);
+            var lux = solarElevation <= 0 ? 0 : GetLuminousFlux() * sinSolarElevation;
+
+            var starDist = Vector3.Distance(pos, starPos);
+            var (_, starLon) = GetEclipticLatLon(pos, starPos);
+            foreach (var satellite in Satellites)
+            {
+                var satPos = satellite.GetPositionAtTime(time);
+                var satDist2 = Vector3.DistanceSquared(pos, satPos);
+                var satDist = Math.Sqrt(satDist2);
+
+                var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+
+                // satellite-centered elongation of the planet from the star (ratio of illuminated
+                // surface area to total surface area)
+                var le = Math.Acos(Math.Cos(satLat) * Math.Cos(starLon - satLon));
+                var e = Math.Atan2(satDist - (starDist * Math.Cos(le)), starDist * Math.Sin(le));
+                // fraction of illuminated surface area
+                var p = (1 + Math.Cos(e)) / 2;
+
+                // Total light from the satellite is the flux incident on the satellite, reduced
+                // according to the proportion lit (vs. shadowed), further reduced according to the
+                // additional distance the light must travel after being reflected.
+                lux += satellite.GetLuminousFlux() * p / (MathConstants.FourPI * satDist2);
+            }
+
+            return lux;
+        }
+
+        /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
         /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
         /// below sea level.
@@ -886,6 +1018,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Calculates the effective surface temperature at the given surface position, including
         /// greenhouse effects, in K.
         /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
         /// <param name="latitude">
         /// The latitude at which temperature will be calculated.
         /// </param>
@@ -893,21 +1026,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The longitude at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAt(double latitude, double longitude)
+        public double GetSurfaceTemperatureAt(Duration time, double latitude, double longitude)
             => GetTemperatureAtElevation(
-                  (BlackbodySurfaceTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude))) + GreenhouseEffect,
+                  (BlackbodySurfaceTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude, Orbit?.GetTrueAnomalyAtTime(time) ?? 0))) + GreenhouseEffect,
                   GetElevationAt(latitude, longitude));
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
         /// greenhouse effects, in K.
         /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
         /// <param name="position">
         /// The surface position at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAtSurfacePosition(Vector3 position)
-            => GetSurfaceTemperatureAt(VectorToLatitude(position), VectorToLongitude(position));
+        public double GetSurfaceTemperatureAtSurfacePosition(Duration time, Vector3 position)
+            => GetSurfaceTemperatureAt(time, VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>
         /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
@@ -923,10 +1057,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public FloatRange GetSurfaceTemperatureRangeAt(double latitude, double elevation)
             => new FloatRange(
                 (float)GetTemperatureAtElevation(
-                    GetSurfaceTemperatureAtTrueAnomaly(WinterSolsticeTrueAnomaly, GetSeasonalLatitudeFromEquator(latitude, WinterSolarEquator)),
+                    GetSurfaceTemperatureAtTrueAnomaly(WinterSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, -AxialTilt)),
                     elevation),
                 (float)GetTemperatureAtElevation(
-                    GetSurfaceTemperatureAtTrueAnomaly(SummerSolsticeTrueAnomaly, GetSeasonalLatitudeFromEquator(latitude, SummerSolarEquator)),
+                    GetSurfaceTemperatureAtTrueAnomaly(SummerSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, AxialTilt)),
                     elevation));
 
         /// <summary>
@@ -1087,9 +1221,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return precipitation;
         }
 
-        internal double GetSeasonalLatitudeFromEquator(double latitude, double solarEquator)
+        internal double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
         {
-            var seasonalLatitude = latitude + solarEquator;
+            var seasonalLatitude = latitude + (solarDeclination * 2 / 3);
             if (seasonalLatitude > MathConstants.HalfPI)
             {
                 return Math.PI - seasonalLatitude;
@@ -1101,8 +1235,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return seasonalLatitude;
         }
 
-        internal double GetSolarEquator(double trueAnomaly)
-            => -AxialTilt * Math.Cos(trueAnomaly) * (2.0 / 3.0);
+        internal double GetSolarDeclination(double trueAnomaly)
+            => Orbit.HasValue ? Math.Asin(Math.Sin(AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -1266,11 +1400,30 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private double GetDiurnalTemperatureVariation()
         {
-            var factor = Math.Pow(1 / InsolationAreaRatio, 0.25);
-            return (AverageSurfaceTemperature * factor) + (InsolationFactor_Equatorial * factor);
+            var factor = (1 - ((RotationalPeriod - 2500) / 297500)).Clamp(0, 1);
+            var darkSurfaceTemp = ((AverageBlackbodySurfaceTemperature - (Temperature ?? 0)) * factor) + (Temperature ?? 0);
+            return AverageSurfaceTemperature - ((darkSurfaceTemp * (InsolationFactor_Equatorial * factor)) + GreenhouseEffect);
         }
 
         private double GetEccentricity() => Math.Abs(Randomizer.Instance.Normal(0, 0.05));
+
+        private (double latitude, double longitude) GetEclipticLatLon(Vector3 position, Vector3 otherPosition)
+        {
+            var precession = Quaternion.CreateFromYawPitchRoll(AxialPrecession, 0, 0);
+            var p = Vector3.Transform(position - otherPosition, precession) * -1;
+            var r = p.Length();
+            var lat = Math.Asin(p.Z / r);
+            if (lat >= Math.PI)
+            {
+                lat = MathConstants.TwoPI - lat;
+            }
+            if (lat.IsEqualTo(Math.PI))
+            {
+                lat = 0;
+            }
+            var lon = Math.Acos(p.X / (r * Math.Cos(lat)));
+            return (lat, lon);
+        }
 
         private double GetGreenhouseEffect()
             => Math.Max(0, (AverageBlackbodySurfaceTemperature * InsolationFactor_Equatorial * Atmosphere.GreenhouseFactor) - AverageBlackbodySurfaceTemperature);
@@ -1286,31 +1439,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         private protected virtual bool GetHasMagnetosphere()
             => Randomizer.Instance.NextDouble() <= Mass * 2.88e-19 / RotationalPeriod * MagnetosphereChanceFactor;
-
-        private protected double GetInsolationAreaRatio()
-        {
-            var period = RotationalPeriod;
-            if (period <= 2500)
-            {
-                return 1;
-            }
-            else if (period <= 75000)
-            {
-                return 0.25;
-            }
-            else if (period <= 150000)
-            {
-                return 1.0 / 3.0;
-            }
-            else if (period <= 300000)
-            {
-                return 0.5;
-            }
-            else
-            {
-                return 1;
-            }
-        }
 
         private double GetInsolationFactor(bool polar = false)
             => GetInsolationFactor(Atmosphere.Mass, Atmosphere.AtmosphericScaleHeight, polar);
@@ -1409,6 +1537,33 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return Math.Sqrt((rCosLat * rCosLat) + (2 * r) + 1) - rCosLat;
         }
 
+        private (double rightAscension, double declination) GetRightAscensionAndDeclination(Vector3 position, Vector3 otherPosition)
+        {
+            var equatorialPos = Vector3.Transform(position - otherPosition, AxisRotation);
+            var r = equatorialPos.Length();
+            var l = equatorialPos.X / r;
+            var m = equatorialPos.Y / r;
+            var n = equatorialPos.Z / r;
+            var declination = Math.Asin(n);
+            if (declination > Math.PI)
+            {
+                declination -= MathConstants.TwoPI;
+            }
+            var cosDeclination = Math.Cos(declination);
+            if (cosDeclination.IsZero())
+            {
+                return (0, declination);
+            }
+            var rightAscension = m > 0
+                ? Math.Acos(1 / cosDeclination)
+                : MathConstants.TwoPI - Math.Acos(1 / cosDeclination);
+            if (rightAscension > Math.PI)
+            {
+                rightAscension -= MathConstants.TwoPI;
+            }
+            return (rightAscension, declination);
+        }
+
         private protected virtual double GetRotationalPeriod()
         {
             // Check for tidal locking.
@@ -1434,22 +1589,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private double GetSeasonalLatitude(double latitude)
-        {
-            var seasonalLatitude = latitude - SolarEquator;
-            if (seasonalLatitude > MathConstants.HalfPI)
-            {
-                return Math.PI - seasonalLatitude;
-            }
-            else if (seasonalLatitude < -MathConstants.HalfPI)
-            {
-                return -seasonalLatitude - Math.PI;
-            }
-            return seasonalLatitude;
-        }
-
         private protected double GetSeasonalLatitude(double latitude, double trueAnomaly)
-            => GetSeasonalLatitudeFromEquator(latitude, GetSolarEquator(trueAnomaly));
+            => GetSeasonalLatitudeFromDeclination(latitude, GetSolarDeclination(trueAnomaly));
 
         private protected virtual IShape GetShape(double? mass = null, double? knownRadius = null)
             // Gaussian distribution with most values between 1km and 19km.
@@ -1492,9 +1633,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
         }
 
-        private double GetSolarEquator()
-            => -AxialTilt * (Orbit.HasValue ? Math.Cos(Orbit.Value.TrueAnomaly) : 1) * (2.0 / 3.0);
-
         private protected override void ResetCachedTemperatures()
         {
             base.ResetCachedTemperatures();
@@ -1507,12 +1645,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _minSurfaceTemperature = null;
             _surfaceTemperature = null;
             _atmosphere?.ResetTemperatureDependentProperties(this);
-        }
-
-        private protected override void ResetOrbitalProperties()
-        {
-            _solarEquator = null;
-            ResetCachedTemperatures();
         }
 
         private void ResetPressureDependentProperties()
@@ -1546,8 +1678,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var q = Quaternion.CreateFromAxisAngle(precessionVector, AngleOfRotation);
             _axis = Vector3.Transform(Vector3.UnitY, q);
             _axisRotation = Quaternion.Conjugate(q);
-            _solarEquator = null;
-            ResetOrbitalProperties();
+            ResetCachedTemperatures();
         }
     }
 }

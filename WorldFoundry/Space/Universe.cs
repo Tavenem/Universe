@@ -2,6 +2,7 @@
 using MathAndScience.Shapes;
 using System.Collections.Generic;
 using System.Linq;
+using UniversalTime;
 
 namespace WorldFoundry.Space
 {
@@ -21,6 +22,16 @@ namespace WorldFoundry.Space
             => base.ChildDefinitions.Concat(_childDefinitions);
 
         /// <summary>
+        /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
+        /// </summary>
+        public override Universe ContainingUniverse => this;
+
+        /// <summary>
+        /// The time in this universe.
+        /// </summary>
+        public Time Time { get; private set; }
+
+        /// <summary>
         /// Specifies the velocity of the <see cref="ICelestialLocation"/>.
         /// </summary>
         /// <remarks>
@@ -33,18 +44,20 @@ namespace WorldFoundry.Space
             set { }
         }
 
+        private Universe() => Time = new Time();
+
         /// <summary>
         /// Initializes a new instance of <see cref="Universe"/>.
         /// </summary>
-        internal Universe() { }
+        internal Universe(Duration present) => Time = new Time(present);
 
         /// <summary>
         /// Generates a new universe.
         /// </summary>
         /// <returns>A new <see cref="Universe"/> instance</returns>
-        public static Universe New()
+        public static Universe New(Duration? present = null)
         {
-            var universe = new Universe();
+            var universe = present.HasValue ? new Universe(present.Value) : new Universe();
             universe.Init();
             return universe;
         }
