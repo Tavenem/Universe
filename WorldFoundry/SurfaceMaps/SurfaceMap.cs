@@ -24,12 +24,41 @@ namespace WorldFoundry.SurfaceMapping
         /// <param name="planet">The mapped planet.</param>
         /// <param name="range">The range being interpolated.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns></returns>
+        /// <returns>The specific value from a range which varies over the course of a
+        /// year.</returns>
         public static double GetAnnualRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time)
-            => MathUtility.Lerp(range.Min, range.Max, planet.Orbit?.GetTrueAnomalyAtTime(time) ?? 0);
+            => MathUtility.Lerp(range.Min, range.Max, planet.GetProportionOfYearAtTime(time));
+
+        /// <summary>
+        /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> at a
+        /// given <paramref name="time"/> from a set of ranges.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="ranges">A set of ranges.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns></returns>
+        public static double GetAnnualValueFromLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            FloatRange[,] ranges,
+            Duration time)
+        {
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                ranges.GetLength(0));
+            return planet.GetAnnualRangeValue(
+                ranges[x, y],
+                time);
+        }
 
         /// <summary>
         /// Calculates the approximate area of a point on an equirectangular projection with the
@@ -267,6 +296,32 @@ namespace WorldFoundry.SurfaceMapping
                 centralMeridian,
                 centralParallel,
                 standardParallels);
+
+        /// <summary>
+        /// Calculates the latitude and longitude that correspond to a set of coordinates from an
+        /// equirectangular projection.
+        /// </summary>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
+        /// as the westernmost point.</param>
+        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
+        /// as the northernmost point.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians.
+        /// </returns>
+        public static (double latitude, double longitude) GetLatLonFromLocalPosition(
+            Planetoid planet,
+            SurfaceRegion region,
+            int x, int y,
+            int resolution)
+            => GetLatLonOfEquirectangularProjection(
+                x, y,
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
 
         /// <summary>
         /// Produces a set of equirectangular projections of the specified region describing the
@@ -616,6 +671,72 @@ namespace WorldFoundry.SurfaceMapping
         }
 
         /// <summary>
+        /// Gets the precipitation value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of maps.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="maps">A set of precipitation maps.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns></returns>
+        public static double GetPrecipitationFromLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            PrecipitationMaps[] maps,
+            Duration time)
+        {
+            if ((maps?.Length ?? 0) == 0)
+            {
+                return 0;
+            }
+
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                maps[0].Precipitation.GetLength(0));
+            var proportion = planet.GetProportionOfYearAtTime(time);
+            var seasonIndex = (int)Math.Floor(proportion * maps.Length);
+            return maps[seasonIndex].Precipitation[x, y];
+        }
+
+        /// <summary>
+        /// Gets the snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
+        /// at a given <paramref name="time"/> from a set of maps.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="maps">A set of precipitation maps.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns></returns>
+        public static double GetSnowfallFromLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            PrecipitationMaps[] maps,
+            Duration time)
+        {
+            if ((maps?.Length ?? 0) == 0)
+            {
+                return 0;
+            }
+
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                maps[0].Precipitation.GetLength(0));
+            var proportion = planet.GetProportionOfYearAtTime(time);
+            var seasonIndex = (int)Math.Floor(proportion * maps.Length);
+            return maps[seasonIndex].Snowfall[x, y];
+        }
+
+        /// <summary>
         /// Gets a specific temperature value from a temperature range.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
@@ -623,13 +744,44 @@ namespace WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <param name="latitude">The latitude at which the calculation is being performed (used to
         /// determine hemisphere, and thus season).</param>
-        /// <returns></returns>
+        /// <returns>The specific temperature value from a temperature range.</returns>
         public static double GetTemperatureRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time,
             double latitude)
             => MathUtility.Lerp(range.Min, range.Max, planet.GetSeasonalProportionAtTime(time, latitude));
+
+        /// <summary>
+        /// Gets the temperature value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of temperature ranges.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="temperatureRanges">A set of temperature ranges.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of temperature
+        /// ranges.</returns>
+        public static double GetTemperatureFromLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            FloatRange[,] temperatureRanges,
+            Duration time)
+        {
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                temperatureRanges.GetLength(0));
+            return planet.GetTemperatureRangeValue(
+                temperatureRanges[x, y],
+                time,
+                planet.VectorToLatitude(region.Position + position));
+        }
 
         /// <summary>
         /// <para>
@@ -732,6 +884,31 @@ namespace WorldFoundry.SurfaceMapping
             var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap);
             var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitation);
             return new SurfaceMaps(elevationMap, weatherMapSet, hydrologyMaps);
+        }
+
+        /// <summary>
+        /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> from a
+        /// set of values.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="values">A set of values.</param>
+        /// <returns>The value for a <paramref name="position"/> in a <paramref name="region"/> from
+        /// a set of values.</returns>
+        public static T GetValueFromLocalPosition<T>(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            T[,] values)
+        {
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                values.GetLength(0));
+            return values[x, y];
         }
 
         /// <summary>

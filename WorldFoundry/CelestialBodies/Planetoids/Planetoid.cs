@@ -971,6 +971,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Determines the proportion of a year, starting and ending with midwinter, at the given
+        /// <paramref name="time"/>.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <returns>The proportion of the year, starting and ending with midwinter, at the given
+        /// <paramref name="time"/>.</returns>
+        public double GetProportionOfYearAtTime(Duration time)
+            => ((Orbit?.GetTrueAnomalyAtTime(time) ?? 0) - WinterSolsticeTrueAnomaly + MathConstants.TwoPI) % MathConstants.TwoPI / MathConstants.TwoPI;
+
+        /// <summary>
         /// Gets the richness of the resources at the given <paramref name="latitude"/> and
         /// <paramref name="longitude"/>.
         /// </summary>
@@ -1049,6 +1059,29 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Determines the proportion of a year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given <paramref name="time"/>.
+        /// </summary>
+        /// <param name="time">The time at which to make the calculation.</param>
+        /// <param name="latitude">Used to determine hemisphere.</param>
+        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given <paramref name="time"/>.</returns>
+        public double GetSeasonalProportionAtTime(Duration time, double latitude)
+        {
+            var proportionOfYear = GetProportionOfYearAtTime(time);
+            if (proportionOfYear > 0.5)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+            proportionOfYear *= 2;
+            if (latitude < 0)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+            return proportionOfYear;
+        }
+
+        /// <summary>
         /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
         /// point to the point 1 arc-second away in the cardinal direction which is at the steepest
         /// angle.
@@ -1090,30 +1123,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns>The surface temperature, in K.</returns>
         public double GetSurfaceTemperatureAtSurfacePosition(Duration time, Vector3 position)
             => GetSurfaceTemperatureAt(time, VectorToLatitude(position), VectorToLongitude(position));
-
-        /// <summary>
-        /// Determines the proportion of a year, with 0 indicating winter, and 1 indicating summer,
-        /// at the given <paramref name="time"/>.
-        /// </summary>
-        /// <param name="time">The time at which to make the calculation.</param>
-        /// <param name="latitude">Used to determine hemisphere.</param>
-        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
-        /// at the given <paramref name="time"/>.</returns>
-        public double GetSeasonalProportionAtTime(Duration time, double latitude)
-        {
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
-            var proportionOfYear = (trueAnomaly - WinterSolsticeTrueAnomaly + MathConstants.TwoPI) % MathConstants.TwoPI / MathConstants.TwoPI;
-            if (proportionOfYear > 0.5)
-            {
-                proportionOfYear = 1 - proportionOfYear;
-            }
-            proportionOfYear *= 2;
-            if (latitude < 0)
-            {
-                proportionOfYear = 1 - proportionOfYear;
-            }
-            return proportionOfYear;
-        }
 
         /// <summary>
         /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
