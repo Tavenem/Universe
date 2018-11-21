@@ -15,34 +15,15 @@ namespace WorldFoundry.SurfaceMapping
         /// Converts an image to a surface map.
         /// </summary>
         /// <param name="image">The image to convert.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if the map's values range from 0 to 1
-        /// (the default, true for most maps); <see langword="false"/> of they range from -1 to 1
-        /// (the case for elevation maps, or overlays).</param>
-        /// <returns>A surface map.</returns>
-        public static float[,] ImageToSurfaceMap(this Image<Rgba32> image, bool zeroNormal = true)
-        {
-            var surfaceMap = new float[image.Width, image.Height];
-            for (var y = 0; y < image.Height; y++)
-            {
-                var pixelRow = image.GetPixelRowSpan(y);
-                for (var x = 0; x < image.Width; x++)
-                {
-                    surfaceMap[x, y] = Rgba32ToFloat(pixelRow[x], zeroNormal);
-                }
-            }
-            return surfaceMap;
-        }
-
-        /// <summary>
-        /// Converts an image to a surface map overlay.
-        /// </summary>
-        /// <param name="image">The image to convert.</param>
         /// <param name="destWidth">An optional width to which the image will be stretched. If left
         /// <see langword="null"/> the source width will be retained.</param>
         /// <param name="destHeight">An optional height to which the image will be stretched. If
         /// left <see langword="null"/> the source height will be retained.</param>
-        /// <returns>A surface map overlay.</returns>
-        public static float[,] ImageToOverlay(this Image<Rgba32> image, int? destWidth = null, int? destHeight = null)
+        /// <param name="zeroNormal"><see langword="true"/> if the map's values range from 0 to 1
+        /// (the default, true for most maps); <see langword="false"/> of they range from -1 to 1
+        /// (the case for elevation maps, or overlays).</param>
+        /// <returns>A surface map.</returns>
+        public static float[,] ImageToSurfaceMap(this Image<Rgba32> image, int? destWidth = null, int? destHeight = null, bool zeroNormal = true)
         {
             if (destWidth.HasValue || destHeight.HasValue)
             {
@@ -54,7 +35,7 @@ namespace WorldFoundry.SurfaceMapping
                 var pixelRow = image.GetPixelRowSpan(y);
                 for (var x = 0; x < image.Width; x++)
                 {
-                    surfaceMap[x, y] = Rgba32ToFloat(pixelRow[x], false);
+                    surfaceMap[x, y] = Rgba32ToFloat(pixelRow[x], zeroNormal);
                 }
             }
             return surfaceMap;

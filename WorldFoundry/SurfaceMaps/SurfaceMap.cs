@@ -33,6 +33,26 @@ namespace WorldFoundry.SurfaceMapping
             => MathUtility.Lerp(range.Min, range.Max, planet.GetProportionOfYearAtTime(time));
 
         /// <summary>
+        /// Determines whether the given <paramref name="time"/> falls within the range indicated.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="range">The range being interpolated.</param>
+        /// <param name="time">The time at which the determination is to be performed.</param>
+        /// <returns><see langword="true"/> if the range indicates a positive result for the given
+        /// <paramref name="time"/>; otherwise <see langword="false"/>.</returns>
+        public static bool GetAnnualRangeIsPositiveAtTime(
+            this Planetoid planet,
+            FloatRange range,
+            Duration time)
+        {
+            var proportionOfYear = planet.GetProportionOfYearAtTime(time);
+            return !range.IsZero
+            && (range.Min > range.Max
+                ? proportionOfYear >= range.Min || proportionOfYear <= range.Max
+                : proportionOfYear >= range.Min && proportionOfYear <= range.Max);
+        }
+
+        /// <summary>
         /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> at a
         /// given <paramref name="time"/> from a set of ranges.
         /// </summary>
@@ -58,6 +78,32 @@ namespace WorldFoundry.SurfaceMapping
             return planet.GetAnnualRangeValue(
                 ranges[x, y],
                 time);
+        }
+
+        /// <summary>
+        /// Determines whether the given <paramref name="time"/> falls within the range indicated
+        /// for a <paramref name="position"/> in a <paramref name="region"/>.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="ranges">A set of ranges.</param>
+        /// <param name="time">The time at which the determination is to be performed.</param>
+        /// <returns></returns>
+        public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            FloatRange[,] ranges,
+            Duration time)
+        {
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                ranges.GetLength(0));
+            return planet.GetAnnualRangeIsPositiveAtTime(ranges[x, y], time);
         }
 
         /// <summary>
@@ -175,7 +221,7 @@ namespace WorldFoundry.SurfaceMapping
             {
                 using (var image = Image.LoadPixelData<Rgba32>(region._elevationOverlay, region._elevationOverlayWidth, region._elevationOverlayHeight))
                 {
-                    return SurfaceMapImage.GetCompositeSurfaceMap(elevationMap, image.ImageToOverlay(resolution * 2, resolution), false);
+                    return SurfaceMapImage.GetCompositeSurfaceMap(elevationMap, image.ImageToSurfaceMap(resolution * 2, resolution, false), false);
                 }
             }
             else
@@ -322,6 +368,35 @@ namespace WorldFoundry.SurfaceMapping
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
                 range: region.Shape.ContainingRadius / planet.RadiusSquared);
+
+        /// <summary>
+        /// Calculates the position that corresponds to a set of coordinates from an equirectangular
+        /// projection.
+        /// </summary>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
+        /// as the westernmost point.</param>
+        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
+        /// as the northernmost point.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>
+        /// The local position of the given coordinates, in radians.
+        /// </returns>
+        public static Vector3 GetLocalPositionFromEquirectangularProjection(
+            Planetoid planet,
+            SurfaceRegion region,
+            int x, int y,
+            int resolution)
+        {
+            var (lat, lon) = GetLatLonOfEquirectangularProjection(
+                x, y,
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+            return planet.LatitudeAndLongitudeToVector(lat, lon) - region.Position;
+        }
 
         /// <summary>
         /// Produces a set of equirectangular projections of the specified region describing the
@@ -657,14 +732,14 @@ namespace WorldFoundry.SurfaceMapping
             {
                 using (var image = Image.LoadPixelData<Rgba32>(region._depthOverlay, region._depthOverlayWidth, region._depthOverlayHeight))
                 {
-                    depth = SurfaceMapImage.GetCompositeSurfaceMap(depth, image.ImageToOverlay(doubleResolution, resolution));
+                    depth = SurfaceMapImage.GetCompositeSurfaceMap(depth, image.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
             if (region._flowOverlay != null)
             {
                 using (var image = Image.LoadPixelData<Rgba32>(region._flowOverlay, region._flowOverlayWidth, region._flowOverlayHeight))
                 {
-                    flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToOverlay(doubleResolution, resolution));
+                    flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
             return new HydrologyMaps(depth, flow, hydrologyMaps.MaxFlow);
@@ -699,8 +774,7 @@ namespace WorldFoundry.SurfaceMapping
                 position,
                 maps[0].Precipitation.GetLength(0));
             var proportion = planet.GetProportionOfYearAtTime(time);
-            var seasonIndex = (int)Math.Floor(proportion * maps.Length);
-            return maps[seasonIndex].Precipitation[x, y];
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Precipitation[x, y]);
         }
 
         /// <summary>
@@ -732,8 +806,7 @@ namespace WorldFoundry.SurfaceMapping
                 position,
                 maps[0].Precipitation.GetLength(0));
             var proportion = planet.GetProportionOfYearAtTime(time);
-            var seasonIndex = (int)Math.Floor(proportion * maps.Length);
-            return maps[seasonIndex].Snowfall[x, y];
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Snowfall[x, y]);
         }
 
         /// <summary>
@@ -1166,8 +1239,8 @@ namespace WorldFoundry.SurfaceMapping
                 {
                     tempRanges = SurfaceMapImage.GetCompositeSurfaceMap(
                         tempRanges,
-                        imageWinter.ImageToOverlay(doubleResolution, resolution),
-                        imageSummer.ImageToOverlay(doubleResolution, resolution));
+                        imageWinter.ImageToSurfaceMap(doubleResolution, resolution, false),
+                        imageSummer.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
 
@@ -1183,7 +1256,7 @@ namespace WorldFoundry.SurfaceMapping
                     {
                         precipitationMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
                             precipitationMaps[i],
-                            image.ImageToOverlay(doubleResolution, resolution));
+                            image.ImageToSurfaceMap(doubleResolution, resolution, false));
                     }
                 }
             }
@@ -1197,7 +1270,7 @@ namespace WorldFoundry.SurfaceMapping
                     {
                         snowfallMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
                             snowfallMaps[i],
-                            image.ImageToOverlay(doubleResolution, resolution));
+                            image.ImageToSurfaceMap(doubleResolution, resolution, false));
                     }
                 }
             }
@@ -1333,5 +1406,18 @@ namespace WorldFoundry.SurfaceMapping
             double? standardParallels = null)
             => ((y * scale) + centralParallel,
             (x * scale / Math.Cos(standardParallels ?? centralParallel)) + centralMeridian);
+
+        private static float InterpolateAmongWeatherMaps(PrecipitationMaps[] maps, double proportionOfYear, Func<PrecipitationMaps, float> getValueFromMap)
+        {
+            if ((maps?.Length ?? 0) == 0)
+            {
+                return 0;
+            }
+            var proportionPerSeason = 1.0 / maps.Length;
+            var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
+            var nextSeasonIndex = seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1;
+            var weight = (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
+            return (float)MathUtility.Lerp(getValueFromMap.Invoke(maps[seasonIndex]), getValueFromMap.Invoke(maps[nextSeasonIndex]), weight);
+        }
     }
 }
