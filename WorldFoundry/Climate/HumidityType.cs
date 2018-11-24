@@ -1,23 +1,61 @@
-﻿namespace WorldFoundry.Climate
+﻿using System;
+
+namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Indicates the relative level of humidity in a location.
+    /// Indicates the relative level of humidity in a location. A <see cref="FlagsAttribute"/> <see
+    /// cref="Enum"/>.
     /// </summary>
     public enum HumidityType
     {
         /// <summary>
-        /// Indicates an unset value, rather than zero humidity (which is indicated by <see cref="Superarid"/>).
+        /// Any humidity.
+        /// </summary>
+        Any = ~0,
+
+        /// <summary>
+        /// No humidity level indicated.
         /// </summary>
         None = 0,
-#pragma warning disable CS1591
-        Superarid = 1,
-        Perarid = 2,
-        Arid = 3,
-        Semiarid = 4,
-        Subhumid = 5,
-        Humid = 6,
-        Perhumid = 7,
-        Superhumid = 8,
-#pragma warning restore CS1591
+
+        /// <summary>
+        /// Less than 125mm annual precipitation.
+        /// </summary>
+        Superarid = 1 << 0,
+
+        /// <summary>
+        /// At least 125mm, but less than 250mm annual precipitation.
+        /// </summary>
+        Perarid = 1 << 1,
+
+        /// <summary>
+        /// At least 250mm, but less than 500mm annual precipitation.
+        /// </summary>
+        Arid = 1 << 2,
+
+        /// <summary>
+        /// At least 500mm, but less than 1000mm annual precipitation.
+        /// </summary>
+        Semiarid = 1 << 3,
+
+        /// <summary>
+        /// At least 1000mm, but less than 2000mm annual precipitation.
+        /// </summary>
+        Subhumid = 1 << 4,
+
+        /// <summary>
+        /// At least 2000mm, but less than 4000mm annual precipitation.
+        /// </summary>
+        Humid = 1 << 5,
+
+        /// <summary>
+        /// At least 4000mm, but less than 8000mm annual precipitation.
+        /// </summary>
+        Perhumid = 1 << 6,
+
+        /// <summary>
+        /// At least 8000mm annual precipitation.
+        /// </summary>
+        Superhumid = 1 << 7,
     }
 }
