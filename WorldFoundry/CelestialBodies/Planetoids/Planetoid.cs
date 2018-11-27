@@ -1145,6 +1145,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     elevation));
 
         /// <summary>
+        /// Calculates the temperature of this <see cref="Planetoid"/> at the given elevation, in K.
+        /// </summary>
+        /// <param name="surfaceTemp">The surface temperature at the location, in K.</param>
+        /// <param name="elevation">The elevation, in meters.</param>
+        /// <returns>
+        /// The temperature of this <see cref="Planetoid"/> at the given elevation, in K.
+        /// </returns>
+        /// <remarks>
+        /// In an Earth-like atmosphere, the temperature lapse rate varies considerably in the
+        /// different atmospheric layers, but this cannot be easily modeled for arbitrary
+        /// exoplanetary atmospheres, so a simplified formula is used, which should be "close enough"
+        /// for low elevations.
+        /// </remarks>
+        public double GetTemperatureAtElevation(double surfaceTemp, double elevation)
+        {
+            // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
+            if (elevation >= Atmosphere.AtmosphericHeight)
+            {
+                return AverageBlackbodySurfaceTemperature;
+            }
+
+            if (elevation <= 0)
+            {
+                return surfaceTemp;
+            }
+            else
+            {
+                return surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
+            }
+        }
+
+        /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
         /// </summary>
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
@@ -1343,38 +1375,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
             => (GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly) * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
-
-        /// <summary>
-        /// Calculates the temperature of this <see cref="Planetoid"/> at the given elevation, in K.
-        /// </summary>
-        /// <param name="surfaceTemp">The surface temperature at the location, in K.</param>
-        /// <param name="elevation">The elevation, in meters.</param>
-        /// <returns>
-        /// The temperature of this <see cref="Planetoid"/> at the given elevation, in K.
-        /// </returns>
-        /// <remarks>
-        /// In an Earth-like atmosphere, the temperature lapse rate varies considerably in the
-        /// different atmospheric layers, but this cannot be easily modeled for arbitrary
-        /// exoplanetary atmospheres, so a simplified formula is used, which should be "close enough"
-        /// for low elevations.
-        /// </remarks>
-        internal double GetTemperatureAtElevation(double surfaceTemp, double elevation)
-        {
-            // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
-            if (elevation >= Atmosphere.AtmosphericHeight)
-            {
-                return AverageBlackbodySurfaceTemperature;
-            }
-
-            if (elevation <= 0)
-            {
-                return surfaceTemp;
-            }
-            else
-            {
-                return surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
-            }
-        }
 
         internal override void Init()
         {

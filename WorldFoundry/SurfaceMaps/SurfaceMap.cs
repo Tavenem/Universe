@@ -140,7 +140,7 @@ namespace WorldFoundry.SurfaceMapping
             double centralParallel = 0,
             double? standardParallels = null,
             double? range = null)
-            => GetAreaOfPointFromRadiusSuared(
+            => GetAreaOfPointFromRadiusSquared(
                 radius * radius,
                 x, y,
                 resolution,
@@ -148,6 +148,34 @@ namespace WorldFoundry.SurfaceMapping
                 centralParallel,
                 standardParallels,
                 range);
+
+        /// <summary>
+        /// Calculates the approximate area of a point on an equirectangular projection with the
+        /// given characteristics, by transforming the point and its nearest neighbors to latitude
+        /// and longitude, calculating the midpoints between them, and calculating the area of the
+        /// region enclosed within those midpoints.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
+        /// as the westernmost point.</param>
+        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
+        /// as the northernmost point.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>The area of the given point, in m².</returns>
+        public static double GetAreaOfLocalPoint(
+            this Planetoid planet,
+            SurfaceRegion region,
+            int x, int y,
+            int resolution)
+            => GetAreaOfPointFromRadiusSquared(
+                planet.RadiusSquared,
+                x,
+                y,
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
 
         /// <summary>
         /// Produces an equirectangular projection of an elevation map of the specified region.
@@ -608,7 +636,7 @@ namespace WorldFoundry.SurfaceMapping
                     {
                         if (areaMap[x, y] < 0)
                         {
-                            areaMap[x, y] = GetAreaOfPointFromRadiusSuared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
+                            areaMap[x, y] = GetAreaOfPointFromRadiusSquared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
                         }
                         var runoff = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (planet.Orbit?.Period ?? 31557600));
                         if (drainage[x, y] != (x, y))
@@ -776,6 +804,77 @@ namespace WorldFoundry.SurfaceMapping
             var proportion = planet.GetProportionOfYearAtTime(time);
             return InterpolateAmongWeatherMaps(maps, proportion, map => map.Precipitation[x, y]);
         }
+
+        /// <summary>
+        /// Calculates the approximate distance by which the given point is separated from its
+        /// neighbors on an equirectangular projection with the given characteristics, by
+        /// transforming the point and its nearest neighbors to latitude and longitude, and
+        /// averaging the distances between them.
+        /// </summary>
+        /// <param name="radius">The radius of the planet.</param>
+        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
+        /// as the westernmost point.</param>
+        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
+        /// as the northernmost point.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="centralMeridian">The longitude of the central meridian of the projection,
+        /// in radians.</param>
+        /// <param name="centralParallel">The latitude of the central parallel of the projection, in
+        /// radians.</param>
+        /// <param name="standardParallels">The latitude of the standard parallels (north and south
+        /// of the equator) where the scale of the projection is 1:1, in radians. Zero indicates the
+        /// equator (the plate carrée projection). It does not matter whether the positive or
+        /// negative latitude is provided, if it is non-zero. If <see langword="null"/>, the
+        /// <paramref name="centralParallel"/> will be used.</param>
+        /// <param name="range">If provided, indicates the latitude range (north and south of
+        /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
+        /// provided, or if equal to zero or greater than π, indicates that the entire globe is
+        /// shown.</param>
+        /// <returns>The radius of the given point, in meters.</returns>
+        public static double GetSeparationOfPoint(
+            double radius,
+            int x, int y,
+            int resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null)
+            => GetSeparationOfPointFromRadiusSquared(
+                radius * radius,
+                x, y,
+                resolution,
+                centralMeridian,
+                centralParallel,
+                standardParallels,
+                range);
+
+        /// <summary>
+        /// Calculates the approximate distance by which the given point is separated from its
+        /// neighbors on an equirectangular projection with the given characteristics, by
+        /// transforming the point and its nearest neighbors to latitude and longitude, and
+        /// averaging the distances between them.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="x">The x coordinate of a point on an equirectangular projection, with zero
+        /// as the westernmost point.</param>
+        /// <param name="y">The y coordinate of a point on an equirectangular projection, with zero
+        /// as the northernmost point.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>The area of the given point, in m².</returns>
+        public static double GetSeparationOfPoint(
+            this Planetoid planet,
+            SurfaceRegion region,
+            int x, int y,
+            int resolution)
+            => GetSeparationOfPointFromRadiusSquared(
+                planet.RadiusSquared,
+                x,
+                y,
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
 
         /// <summary>
         /// Gets the snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
@@ -1348,7 +1447,7 @@ namespace WorldFoundry.SurfaceMapping
             return map;
         }
 
-        private static double GetAreaOfPointFromRadiusSuared(
+        private static double GetAreaOfPointFromRadiusSquared(
             double radiusSquared,
             int x, int y,
             int resolution,
@@ -1395,7 +1494,7 @@ namespace WorldFoundry.SurfaceMapping
 
             return radiusSquared
                 * Math.Abs(Math.Sin(latBottomBorder) - Math.Sin(latTopBorder))
-                * Math.Abs(lonRight - lonLeft);
+                * Math.Abs(lonRightBorder - lonLeftBorder);
         }
 
         private static (double latitude, double longitude) GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
@@ -1406,6 +1505,55 @@ namespace WorldFoundry.SurfaceMapping
             double? standardParallels = null)
             => ((y * scale) + centralParallel,
             (x * scale / Math.Cos(standardParallels ?? centralParallel)) + centralMeridian);
+
+        private static double GetSeparationOfPointFromRadiusSquared(
+            double radiusSquared,
+            int x, int y,
+            int resolution,
+            double centralMeridian = 0,
+            double centralParallel = 0,
+            double? standardParallels = null,
+            double? range = null)
+        {
+            var halfResolution = resolution / 2;
+            var scale = range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
+                ? MathConstants.PISquared / (resolution * range.Value)
+                : Math.PI / resolution;
+
+            var centerX = (long)x - resolution;
+            var centerY = (long)y - halfResolution;
+
+            // left: x - 1, y
+            var left = x == 0
+                ? resolution - 1
+                : x - 1;
+            // up: x, y - 1
+            var up = y == 0
+                ? halfResolution - 1
+                : y - 1;
+            // right: x + 1, y
+            var right = centerX == resolution - 1
+                ? -resolution
+                : x + 1;
+            // down: x, y + 1
+            var down = y == resolution - 1
+                ? -halfResolution
+                : y + 1;
+
+            var (latCenter, lonCenter) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, scale, centralMeridian, centralParallel, standardParallels);
+            var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, scale, centralMeridian, centralParallel, standardParallels);
+            var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, scale, centralMeridian, centralParallel, standardParallels);
+
+            var lonLeftBorder = (lonLeft + lonCenter) / 2;
+            var lonRightBorder = (lonRight + lonCenter) / 2;
+            var latTopBorder = (latUp + latCenter) / 2;
+            var latBottomBorder = (latDown + latCenter) / 2;
+
+            return radiusSquared
+                * ((Math.Abs(Math.Sin(latBottomBorder) - Math.Sin(latTopBorder)) + Math.Abs(lonRight - lonLeft)) / 2);
+        }
 
         private static float InterpolateAmongWeatherMaps(PrecipitationMaps[] maps, double proportionOfYear, Func<PrecipitationMaps, float> getValueFromMap)
         {

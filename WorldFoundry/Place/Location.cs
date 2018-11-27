@@ -115,9 +115,34 @@ namespace WorldFoundry.Place
         /// center of this location.</param>
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between the given <paramref name="position"/> and the given <see
-        /// cref="Location"/>, in meters; or zero, if they do not share a common parent.</returns>
+        /// cref="Location"/>, in meters; or <see cref="double.PositiveInfinity"/>, if they do not
+        /// share a common parent.</returns>
         public double GetDistanceFromPositionTo(Vector3 position, ILocation other)
-            => Vector3.Distance(position, GetLocalizedPosition(other));
+        {
+            var pos = GetLocalizedPositionOrNull(other);
+            return pos.HasValue
+                ? Vector3.Distance(position, pos.Value)
+                : double.PositiveInfinity;
+        }
+
+        /// <summary>
+        /// Gets the distance from the given position relative to the center of this instance to the
+        /// given <paramref name="other"/> <see cref="Location"/>.
+        /// </summary>
+        /// <param name="localPosition">A <see cref="Vector3"/> representing a position relative to
+        /// the center of this location.</param>
+        /// <param name="other">Another <see cref="Location"/>.</param>
+        /// <param name="otherPosition">A <see cref="Vector3"/> representing a position relative to
+        /// the center of the <paramref name="other"/> location.</param>
+        /// <returns>The distance between the given positions, in meters; or <see
+        /// cref="double.PositiveInfinity"/>, if they do not share a common parent.</returns>
+        public double GetDistanceFromPositionTo(Vector3 localPosition, ILocation other, Vector3 otherPosition)
+        {
+            var pos = GetLocalizedPositionOrNull(other, otherPosition);
+            return pos.HasValue
+                ? Vector3.Distance(localPosition, pos.Value)
+                : double.PositiveInfinity;
+        }
 
         /// <summary>
         /// Gets the distance from this instance to the given <paramref name="other"/> <see
@@ -125,8 +150,9 @@ namespace WorldFoundry.Place
         /// </summary>
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between this instance and the given <see cref="Location"/>, in
-        /// meters; or zero, if they do not share a common parent.</returns>
-        public double GetDistanceTo(ILocation other) => GetLocalizedPosition(other).Length();
+        /// meters; or <see cref="double.PositiveInfinity"/>, if they do not share a common
+        /// parent.</returns>
+        public double GetDistanceTo(ILocation other) => GetLocalizedPositionOrNull(other)?.Length() ?? double.PositiveInfinity;
 
         /// <summary>
         /// Returns the hash code for this instance.
@@ -149,10 +175,64 @@ namespace WorldFoundry.Place
         /// is <see langword="null"/> or does not share a common parent with this instance.
         /// </returns>
         public Vector3 GetLocalizedPosition(ILocation other, Vector3 position)
+            => GetLocalizedPositionOrNull(other, position) ?? Vector3.Zero;
+
+        /// <summary>
+        /// Translates the center of the given <see cref="Location"/>
+        /// to an equivalent position relative to the center of this instance.
+        /// </summary>
+        /// <param name="other">The <see cref="Location"/> whose center is to be translated.</param>
+        /// <returns>
+        /// A <see cref="Vector3"/> giving the center of the given <see cref="Location"/>
+        /// relative to the center of this instance; or <see cref="Vector3.Zero"/> if <paramref
+        /// name="other"/> is <see langword="null"/> or does not share a common parent with this
+        /// instance.
+        /// </returns>
+        public Vector3 GetLocalizedPosition(ILocation other) => GetLocalizedPosition(other, Vector3.Zero);
+
+        /// <summary>
+        /// Performs the behind-the-scenes work necessary to transfer a <see cref="Location"/>
+        /// to a new <see cref="ContainingRegion"/>.
+        /// </summary>
+        /// <param name="region">The <see cref="Region"/> which will be the new containing region of
+        /// this instance; or <see langword="null"/> to clear <see
+        /// cref="ContainingRegion"/>.</param>
+        /// <remarks>
+        /// If the new containing region is part of the same hierarchy as this instance, its current
+        /// absolute position will be preserved, and translated into the correct local relative <see
+        /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
+        /// </remarks>
+        public virtual void SetNewContainingRegion(Region region)
+        {
+            Position = region?.GetLocalizedPosition(this) ?? Vector3.Zero;
+            ContainingRegion?.RemoveChild(this);
+            ContainingRegion = region;
+            region?.AddChild(this);
+        }
+
+        internal double GetDistanceSquaredTo(ILocation other) => GetLocalizedPosition(other).LengthSquared();
+
+        internal virtual void Init() => Id = ItemIdProvider.DefaultIDProvider.GetNewID();
+
+        /// <summary>
+        /// Translates the given <paramref name="position"/> relative to the center of the given
+        /// <see cref="Location"/> to an equivalent position relative to the center of this
+        /// instance.
+        /// </summary>
+        /// <param name="other">The <see cref="Location"/> in which <paramref name="position"/>
+        /// currently represents a point relative to the center.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="other"/>.</param>
+        /// <returns>
+        /// A <see cref="Vector3"/> giving the location of <paramref name="position"/> relative to
+        /// the center of this instance; or <see langword="null"/> if <paramref name="other"/>
+        /// is <see langword="null"/> or does not share a common parent with this instance.
+        /// </returns>
+        private Vector3? GetLocalizedPositionOrNull(ILocation other, Vector3 position)
         {
             if (other == null)
             {
-                return Vector3.Zero;
+                return null;
             }
             if (other == this)
             {
@@ -162,7 +242,7 @@ namespace WorldFoundry.Place
             var parent = GetCommonContainingRegion(other);
             if (parent == null)
             {
-                return Vector3.Zero;
+                return null;
             }
 
             var current = other;
@@ -195,35 +275,11 @@ namespace WorldFoundry.Place
         /// <param name="other">The <see cref="Location"/> whose center is to be translated.</param>
         /// <returns>
         /// A <see cref="Vector3"/> giving the center of the given <see cref="Location"/>
-        /// relative to the center of this instance; or <see cref="Vector3.Zero"/> if <paramref
-        /// name="other"/>
-        /// is <see langword="null"/> or does not share a common parent with this instance.
+        /// relative to the center of this instance; or <see langword="null"/> if <paramref
+        /// name="other"/> is <see langword="null"/> or does not share a common parent with this
+        /// instance.
         /// </returns>
-        public Vector3 GetLocalizedPosition(ILocation other) => GetLocalizedPosition(other, Vector3.Zero);
-
-        /// <summary>
-        /// Performs the behind-the-scenes work necessary to transfer a <see cref="Location"/>
-        /// to a new <see cref="ContainingRegion"/>.
-        /// </summary>
-        /// <param name="region">The <see cref="Region"/> which will be the new containing region of
-        /// this instance; or <see langword="null"/> to clear <see
-        /// cref="ContainingRegion"/>.</param>
-        /// <remarks>
-        /// If the new containing region is part of the same hierarchy as this instance, its current
-        /// absolute position will be preserved, and translated into the correct local relative <see
-        /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
-        /// </remarks>
-        public virtual void SetNewContainingRegion(Region region)
-        {
-            Position = region?.GetLocalizedPosition(this) ?? Vector3.Zero;
-            ContainingRegion?.RemoveChild(this);
-            ContainingRegion = region;
-            region?.AddChild(this);
-        }
-
-        internal double GetDistanceSquaredTo(ILocation other) => GetLocalizedPosition(other).LengthSquared();
-
-        internal virtual void Init() => Id = ItemIdProvider.DefaultIDProvider.GetNewID();
+        private Vector3? GetLocalizedPositionOrNull(ILocation other) => GetLocalizedPositionOrNull(other, Vector3.Zero);
 
         private protected virtual Stack<Region> GetPathToLocation(Stack<Region> path = null)
             => ContainingRegion?.GetPathToLocation(path) ?? path;
