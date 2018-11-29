@@ -84,6 +84,11 @@ namespace WorldFoundry.SurfaceMapping
         public HumidityType[,] Humidity => _weatherMaps.Humidity;
 
         /// <summary>
+        /// The maximum flow rate of the <see cref="Flow"/> map, in m³/s.
+        /// </summary>
+        public double MaxFlow => _hydrologyMaps.MaxFlow;
+
+        /// <summary>
         /// The maximum annual precipitation expected to be produced by this atmosphere, in mm. Not
         /// necessarily the actual maximum precipitation within the given region (use <c><see
         /// cref="TotalPrecipitationRange"/>.Max</c> for that).
