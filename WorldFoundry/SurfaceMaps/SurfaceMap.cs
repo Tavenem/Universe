@@ -909,53 +909,6 @@ namespace WorldFoundry.SurfaceMapping
         }
 
         /// <summary>
-        /// Gets a specific temperature value from a temperature range.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="range">The range being interpolated.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <param name="latitude">The latitude at which the calculation is being performed (used to
-        /// determine hemisphere, and thus season).</param>
-        /// <returns>The specific temperature value from a temperature range.</returns>
-        public static double GetTemperatureRangeValue(
-            this Planetoid planet,
-            FloatRange range,
-            Duration time,
-            double latitude)
-            => MathUtility.Lerp(range.Min, range.Max, planet.GetSeasonalProportionAtTime(time, latitude));
-
-        /// <summary>
-        /// Gets the temperature value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of temperature ranges.
-        /// </summary>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="region">The mapped region.</param>
-        /// <param name="position">A position relative to the center of <paramref
-        /// name="region"/>.</param>
-        /// <param name="temperatureRanges">A set of temperature ranges.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of temperature
-        /// ranges.</returns>
-        public static double GetTemperatureFromLocalPosition(
-            this Planetoid planet,
-            SurfaceRegion region,
-            Vector3 position,
-            FloatRange[,] temperatureRanges,
-            Duration time)
-        {
-            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
-                planet,
-                region,
-                position,
-                temperatureRanges.GetLength(0));
-            return planet.GetTemperatureRangeValue(
-                temperatureRanges[x, y],
-                time,
-                planet.VectorToLatitude(region.Position + position));
-        }
-
-        /// <summary>
         /// <para>
         /// Produces a set of equirectangular projections of the specified region describing the
         /// surface and climate.
@@ -1056,6 +1009,75 @@ namespace WorldFoundry.SurfaceMapping
             var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap);
             var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitation);
             return new SurfaceMaps(elevationMap, weatherMapSet, hydrologyMaps);
+        }
+
+        /// <summary>
+        /// Gets a specific temperature value from a temperature range.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="range">The range being interpolated.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="latitude">The latitude at which the calculation is being performed (used to
+        /// determine hemisphere, and thus season).</param>
+        /// <returns>The specific temperature value from a temperature range.</returns>
+        public static double GetTemperatureRangeValue(
+            this Planetoid planet,
+            FloatRange range,
+            Duration time,
+            double latitude)
+            => MathUtility.Lerp(range.Min, range.Max, planet.GetSeasonalProportionAtTime(time, latitude));
+
+        /// <summary>
+        /// Gets the temperature value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of temperature ranges.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="region">The mapped region.</param>
+        /// <param name="position">A position relative to the center of <paramref
+        /// name="region"/>.</param>
+        /// <param name="temperatureRanges">A set of temperature ranges.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of temperature
+        /// ranges.</returns>
+        public static double GetTemperatureFromLocalPosition(
+            this Planetoid planet,
+            SurfaceRegion region,
+            Vector3 position,
+            FloatRange[,] temperatureRanges,
+            Duration time)
+        {
+            var (x, y) = GetEquirectangularProjectionFromLocalPosition(
+                planet,
+                region,
+                position,
+                temperatureRanges.GetLength(0));
+            return planet.GetTemperatureRangeValue(
+                temperatureRanges[x, y],
+                time,
+                planet.VectorToLatitude(region.Position + position));
+        }
+
+        /// <summary>
+        /// Gets the total precipitation value at a given <paramref name="time"/> from a set of
+        /// maps.
+        /// </summary>
+        /// <param name="planet">The mapped planet.</param>
+        /// <param name="maps">A set of precipitation maps.</param>
+        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <returns></returns>
+        public static FloatRange GetTotalPrecipitationAtTime(
+            this Planetoid planet,
+            PrecipitationMaps[] maps,
+            Duration time)
+        {
+            if ((maps?.Length ?? 0) == 0)
+            {
+                return FloatRange.Zero;
+            }
+
+            var proportion = planet.GetProportionOfYearAtTime(time);
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.PrecipitationRange);
         }
 
         /// <summary>
@@ -1566,6 +1588,23 @@ namespace WorldFoundry.SurfaceMapping
             var nextSeasonIndex = seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1;
             var weight = (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
             return (float)MathUtility.Lerp(getValueFromMap.Invoke(maps[seasonIndex]), getValueFromMap.Invoke(maps[nextSeasonIndex]), weight);
+        }
+
+        private static FloatRange InterpolateAmongWeatherMaps(PrecipitationMaps[] maps, double proportionOfYear, Func<PrecipitationMaps, FloatRange> getValueFromMap)
+        {
+            if ((maps?.Length ?? 0) == 0)
+            {
+                return FloatRange.Zero;
+            }
+            var proportionPerSeason = 1.0 / maps.Length;
+            var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
+            var nextSeasonIndex = seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1;
+            var weight = (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
+            var value1 = getValueFromMap.Invoke(maps[seasonIndex]);
+            var value2 = getValueFromMap.Invoke(maps[nextSeasonIndex]);
+            var min = (float)MathUtility.Lerp(value1.Min, value2.Min, weight);
+            var max = (float)MathUtility.Lerp(value1.Max, value2.Max, weight);
+            return new FloatRange(min, max);
         }
     }
 }
