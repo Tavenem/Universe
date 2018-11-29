@@ -1603,8 +1603,9 @@ namespace WorldFoundry.SurfaceMapping
             var value1 = getValueFromMap.Invoke(maps[seasonIndex]);
             var value2 = getValueFromMap.Invoke(maps[nextSeasonIndex]);
             var min = (float)MathUtility.Lerp(value1.Min, value2.Min, weight);
+            var avg = (float)MathUtility.Lerp(value1.Average, value2.Average, weight);
             var max = (float)MathUtility.Lerp(value1.Max, value2.Max, weight);
-            return new FloatRange(min, max);
+            return new FloatRange(min, avg, max);
         }
     }
 }

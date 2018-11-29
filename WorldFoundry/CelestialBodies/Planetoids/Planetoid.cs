@@ -971,6 +971,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Determines the proportion of the current season at the given <paramref name="time"/>.
+        /// </summary>
+        /// <param name="numSeasons">The number of seasons.</param>
+        /// <param name="time">The time at which to make the determination.</param>
+        /// <returns></returns>
+        public double GetProportionOfSeasonAtTime(uint numSeasons, Duration time)
+        {
+            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionPerSeason = 1.0 / numSeasons;
+            var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
+            var nextSeasonIndex = seasonIndex == numSeasons - 1 ? 0 : seasonIndex + 1;
+            return (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
+        }
+
+        /// <summary>
         /// Determines the proportion of a year, starting and ending with midwinter, at the given
         /// <paramref name="time"/>.
         /// </summary>
