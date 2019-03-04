@@ -17,7 +17,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private const double IcyRingDensity = 300.0;
         private const double RockyRingDensity = 1380.0;
 
-        private List<PlanetaryRing> _rings;
+        private List<PlanetaryRing>? _rings;
         /// <summary>
         /// The collection of rings around this <see cref="Planemo"/>.
         /// </summary>
@@ -59,7 +59,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         // planemo in the Solar System apart from the giants. No others are known to have more than 2.
         private protected override int MaxSatellites => 5;
 
-        private protected virtual string PlanemoClassPrefix => null;
+        private protected virtual string? PlanemoClassPrefix => null;
 
         private protected virtual double RingChance => 0;
 
@@ -75,7 +75,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        internal Planemo(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Planemo(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
@@ -87,7 +87,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        internal Planemo(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal Planemo(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
@@ -224,7 +224,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 1);
         }
 
-        private protected override double GetMass(IShape shape = null)
+        private protected override double GetMass(IShape? shape = null)
         {
             var maxMass = MaxMass;
             if (ContainingCelestialRegion != null)
@@ -316,9 +316,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {
+            if (mass == null && knownRadius == null)
+            {
+                return new SinglePoint(Position);
+            }
+
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? Math.Max(MinimumRadius, GetRadiusForMass(mass.Value));
+            var radius = knownRadius ?? Math.Max(MinimumRadius, GetRadiusForMass(mass!.Value));
             var flattening = Randomizer.Instance.NextDouble(0.1);
             return new Ellipsoid(radius, radius * (1 - flattening), 1, Position);
         }
@@ -335,7 +340,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// or <see cref="ICelestialLocation.ContainingCelestialRegion"/>.</exception>
         private protected double GetSternLevisonLambdaMass()
         {
-            var semiMajorAxis = 0.0;
+            double semiMajorAxis;
             if (Orbit.HasValue)
             {
                 semiMajorAxis = Orbit.Value.SemiMajorAxis;

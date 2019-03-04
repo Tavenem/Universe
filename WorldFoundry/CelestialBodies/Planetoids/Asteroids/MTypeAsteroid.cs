@@ -29,7 +29,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="MTypeAsteroid"/>.</param>
-        internal MTypeAsteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal MTypeAsteroid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
@@ -41,11 +41,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="MTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        internal MTypeAsteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal MTypeAsteroid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.1, 0.2);
 
-        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
             var satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);

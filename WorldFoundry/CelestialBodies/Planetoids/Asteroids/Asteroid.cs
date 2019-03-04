@@ -39,7 +39,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
-        internal Asteroid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Asteroid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
@@ -51,7 +51,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Asteroid"/> during random generation, in kg.
         /// </param>
-        internal Asteroid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal Asteroid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
@@ -81,7 +81,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 
         private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
         {
-            var axis = Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
+            if (mass == null && knownRadius == null)
+            {
+                return new SinglePoint(Position);
+            }
+
+            var axis = mass == null
+                ? knownRadius!.Value
+                : Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
             var irregularity = Math.Round(Randomizer.Instance.NextDouble(0.5, 1), 2);
             return new Ellipsoid(axis, axis * irregularity, axis / irregularity, Position);
         }

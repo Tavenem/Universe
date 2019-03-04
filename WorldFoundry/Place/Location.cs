@@ -13,12 +13,12 @@ namespace WorldFoundry.Place
         /// <summary>
         /// The containing region in which this location is found.
         /// </summary>
-        public Region ContainingRegion { get; private protected set; }
+        public Region? ContainingRegion { get; private protected set; }
 
         /// <summary>
         /// A unique identifier for this entity.
         /// </summary>
-        public string Id { get; private set; }
+        public string? Id { get; private set; }
 
         private Vector3 _position;
         /// <summary>
@@ -49,7 +49,7 @@ namespace WorldFoundry.Place
         /// location.</param>
         /// <param name="position">The position of the location relative to the center of its
         /// <paramref name="containingRegion"/>.</param>
-        public Location(Region containingRegion, Vector3 position)
+        public Location(Region? containingRegion, Vector3 position)
         {
             Position = position;
             ContainingRegion = containingRegion;
@@ -84,7 +84,7 @@ namespace WorldFoundry.Place
         /// either of them); or <see langword="null"/> if this instance and the given location do
         /// not have a common parent.
         /// </returns>
-        public virtual Region GetCommonContainingRegion(ILocation other)
+        public virtual Region? GetCommonContainingRegion(ILocation? other)
         {
             if (!(other is Location loc))
             {
@@ -158,7 +158,7 @@ namespace WorldFoundry.Place
         /// Returns the hash code for this instance.
         /// </summary>
         /// <returns>The hash code for this instance.</returns>
-        public override int GetHashCode() => Id.GetHashCode();
+        public override int GetHashCode() => Id?.GetHashCode() ?? 0;
 
         /// <summary>
         /// Translates the given <paramref name="position"/> relative to the center of the given
@@ -202,7 +202,7 @@ namespace WorldFoundry.Place
         /// absolute position will be preserved, and translated into the correct local relative <see
         /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
         /// </remarks>
-        public virtual void SetNewContainingRegion(Region region)
+        public virtual void SetNewContainingRegion(Region? region)
         {
             Position = region?.GetLocalizedPosition(this) ?? Vector3.Zero;
             ContainingRegion?.RemoveChild(this);
@@ -249,7 +249,7 @@ namespace WorldFoundry.Place
             while (current != parent)
             {
                 position += current.Position;
-                current = current.ContainingRegion;
+                current = current.ContainingRegion!;
             }
 
             if (current == this)
@@ -262,7 +262,7 @@ namespace WorldFoundry.Place
             while (target != current)
             {
                 targetPosition += target.Position;
-                target = target.ContainingRegion;
+                target = target.ContainingRegion!;
             }
 
             return position - targetPosition;
@@ -281,7 +281,7 @@ namespace WorldFoundry.Place
         /// </returns>
         private Vector3? GetLocalizedPositionOrNull(ILocation other) => GetLocalizedPositionOrNull(other, Vector3.Zero);
 
-        private protected virtual Stack<Region> GetPathToLocation(Stack<Region> path = null)
+        private protected virtual Stack<Region>? GetPathToLocation(Stack<Region>? path = null)
             => ContainingRegion?.GetPathToLocation(path) ?? path;
     }
 }

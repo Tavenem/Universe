@@ -16,7 +16,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override int MaxSatellites => 0;
 
-        private protected override string PlanemoClassPrefix => "Lava";
+        private protected override string? PlanemoClassPrefix => "Lava";
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/>.
@@ -30,7 +30,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
-        internal LavaPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal LavaPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
@@ -42,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
         /// </param>
-        internal LavaPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal LavaPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         private protected override IEnumerable<(IComposition, double)> GetCrust()
         {

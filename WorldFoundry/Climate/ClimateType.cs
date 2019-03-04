@@ -9,10 +9,12 @@ namespace WorldFoundry.Climate
     [Flags]
     public enum ClimateType
     {
+#pragma warning disable RCS1157 // Composite enum value contains undefined flag.
         /// <summary>
         /// Any climate.
         /// </summary>
         Any = ~0,
+#pragma warning restore RCS1157 // Composite enum value contains undefined flag.
 
         /// <summary>
         /// No climate indicated.

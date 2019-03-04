@@ -508,7 +508,6 @@ namespace WorldFoundry.Space
 
             var eccentricAnomaly = Math.Atan2(eccentricity + cosineTrueAnomaly, Math.Sqrt(1 - eccentricitySquared) * sineTrueAnomaly);
             var meanAnomaly = eccentricAnomaly - (eccentricity * Math.Sin(eccentricAnomaly));
-            var semiMajorAxisCubed = Math.Pow(semiMajorAxis, 3);
             var period = MathConstants.TwoPI * Math.Sqrt(Math.Pow(semiMajorAxis, 3) / standardGravitationalParameter);
             var meanMotion = MathConstants.TwoPI / period;
             var time = orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero;

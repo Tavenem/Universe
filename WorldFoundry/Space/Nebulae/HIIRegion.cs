@@ -14,7 +14,7 @@ namespace WorldFoundry.Space
     {
         private const double ChildDensity = 6.0e-50;
 
-        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> BaseChildDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.9998, typeof(Star), SpectralClass.B, LuminosityClass.V),
             new ChildDefinition(typeof(StarSystem), StarSystem.Space, ChildDensity * 0.0002, typeof(Star), SpectralClass.O, LuminosityClass.V),
@@ -23,7 +23,7 @@ namespace WorldFoundry.Space
         private protected override string BaseTypeName => "HII Region";
 
         private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_childDefinitions);
+            => base.ChildDefinitions.Concat(BaseChildDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="HIIRegion"/>.
@@ -47,7 +47,7 @@ namespace WorldFoundry.Space
         // ly.
         private protected override IShape GetShape()
         {
-            var axis = 0.0;
+            double axis;
             do
             {
                 axis = Math.Round(1.0e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.0e17));

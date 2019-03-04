@@ -34,7 +34,7 @@ namespace WorldFoundry.Space
         // ly.
         private protected override IShape GetShape()
         {
-            var axis = 0.0;
+            double axis;
             do
             {
                 axis = 1.5e17 + (Randomizer.Instance.Lognormal(0, 1) * 1.5e17);

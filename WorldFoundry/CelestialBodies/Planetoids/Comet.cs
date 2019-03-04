@@ -141,7 +141,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected override double? GetDensity() => Math.Round(Randomizer.Instance.NextDouble(300, 700));
 
-        private protected override double GetMass(IShape shape = null) => shape.Volume * Density;
+        private protected override double GetMass(IShape? shape = null) => (shape?.Volume ?? 0) * Density;
 
         private protected override (double, IShape) GetMassAndShape()
         {

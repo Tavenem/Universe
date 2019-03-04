@@ -16,7 +16,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The parameters used to construct a new instance of this child.
         /// </summary>
-        public object[] ConstructionParameters { get; }
+        public object?[] ConstructionParameters { get; }
 
         /// <summary>
         /// The density of this type of child within the containing parent region.
@@ -37,9 +37,9 @@ namespace WorldFoundry.Space
         /// Initializes a new instance of <see cref="ChildDefinition"/>.
         /// </summary>
         /// <param name="type">The type of child.</param>
+        /// <param name="space">The radius of the open space required for this child type.</param>
         /// <param name="density">The density of this type of child within the containing parent
         /// region.</param>
-        /// <param name="space">The radius of the open space required for this child type.</param>
         public ChildDefinition(Type type, double space, double density)
         {
             Type = type;
@@ -52,12 +52,12 @@ namespace WorldFoundry.Space
         /// Initializes a new instance of <see cref="ChildDefinition"/>.
         /// </summary>
         /// <param name="type">The type of child.</param>
+        /// <param name="space">The radius of the open space required for this child type.</param>
         /// <param name="density">The density of this type of child within the containing parent
         /// region.</param>
-        /// <param name="space">The radius of the open space required for this child type.</param>
         /// <param name="constructionParameters">The parameters used to construct a new instance of
         /// this child.</param>
-        public ChildDefinition(Type type, double space, double density, params object[] constructionParameters)
+        public ChildDefinition(Type type, double space, double density, params object?[] constructionParameters)
         {
             Type = type;
             Density = density;
@@ -69,17 +69,17 @@ namespace WorldFoundry.Space
         /// Initializes a new instance of <see cref="ChildDefinition"/>.
         /// </summary>
         /// <param name="type">The type of child.</param>
+        /// <param name="space">The radius of the open space required for this child type.</param>
         /// <param name="density">The density of this type of child within the containing parent
         /// region.</param>
-        /// <param name="space">The radius of the open space required for this child type.</param>
         /// <param name="constructionParameters">The parameters used to construct a new instance of
         /// this child.</param>
-        public ChildDefinition(Type type, double space, double density, IEnumerable<object> constructionParameters)
+        public ChildDefinition(Type type, double space, double density, IEnumerable<object?> constructionParameters)
         {
             Type = type;
             Density = density;
             Space = space;
-            ConstructionParameters = constructionParameters.ToArray();
+            ConstructionParameters = constructionParameters?.ToArray() ?? new object[0];
         }
 
         /// <summary>
@@ -96,7 +96,7 @@ namespace WorldFoundry.Space
         /// <returns>A new child instance of the given <paramref name="containingRegion"/> at the
         /// given <paramref name="position"/>; or <see langword="null"/> if no child could be
         /// generated.</returns>
-        public ICelestialLocation GenerateChild(CelestialRegion containingRegion, Vector3? position = null)
+        public ICelestialLocation? GenerateChild(CelestialRegion containingRegion, Vector3? position = null)
         {
             if (!typeof(ICelestialLocation).IsAssignableFrom(Type))
             {

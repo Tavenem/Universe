@@ -2,9 +2,11 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>Preview</LangVersion>
+    <NullableContextOptions>enable</NullableContextOptions>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
-    <Version>0.3.22</Version>
+    <Version>0.4.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -13,19 +15,19 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <LangVersion>latest</LangVersion>
+    <LangVersion>Preview</LangVersion>
     <DocumentationFile>bin\Release\netstandard2.0\WorldFoundry.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>latest</LangVersion>
+    <LangVersion>Preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0005" />
-    <PackageReference Include="Substance" Version="0.2.16" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0006" />
+    <PackageReference Include="Substance" Version="0.2.17" />
     <PackageReference Include="Troschuetz.Random" Version="4.3.0" />
-    <PackageReference Include="UniversalTime" Version="0.2.5" />
+    <PackageReference Include="UniversalTime" Version="0.2.7" />
   </ItemGroup>
 
 </Project>

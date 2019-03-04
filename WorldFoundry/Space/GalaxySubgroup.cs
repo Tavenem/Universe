@@ -15,13 +15,13 @@ namespace WorldFoundry.Space
 
         private const double ChildDensity = 1.0e-70;
 
-        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> BaseChildDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, ChildDensity * 0.26),
             new ChildDefinition(typeof(GlobularCluster), GlobularCluster.Space, ChildDensity * 0.74),
         };
 
-        private string _mainGalaxy;
+        private string? _mainGalaxy;
         /// <summary>
         /// The main <see cref="Galaxy"/> around which the other objects in this <see
         /// cref="GalaxySubgroup"/> orbit.
@@ -41,7 +41,7 @@ namespace WorldFoundry.Space
         private protected override string BaseTypeName => "Galaxy Subgroup";
 
         private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_childDefinitions);
+            => base.ChildDefinitions.Concat(BaseChildDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/>.
@@ -57,9 +57,13 @@ namespace WorldFoundry.Space
         /// <param name="position">The initial position of this <see cref="GalaxySubgroup"/>.</param>
         internal GalaxySubgroup(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation? GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
+            if (child == null)
+            {
+                return null;
+            }
 
             WorldFoundry.Space.Orbit.SetOrbit(
                 child,
@@ -91,7 +95,7 @@ namespace WorldFoundry.Space
                 ? new SpiralGalaxy(this, Vector3.Zero)
                 : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero);
             galaxy.Init();
-            return galaxy.Id;
+            return galaxy.Id!;
         }
 
         // The main galaxy is expected to comprise the bulk of the mass

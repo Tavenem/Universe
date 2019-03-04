@@ -16,14 +16,14 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         public const byte MaxGridSize = 14;
 
-        private static byte _defaultGridSize = 6;
+        private static byte BaseDefaultGridSize = 6;
         /// <summary>
         /// The default grid size (level of detail). Initial value is 6; maximum is <see cref="MaxGridSize"/>.
         /// </summary>
         public static byte DefaultGridSize
         {
-            get => _defaultGridSize;
-            set => _defaultGridSize = Math.Min(value, MaxGridSize);
+            get => BaseDefaultGridSize;
+            set => BaseDefaultGridSize = Math.Min(value, MaxGridSize);
         }
 
         private static readonly List<(double fiveSided, double sixSided)> GridAreas = new List<(double fiveSided, double sixSided)>
@@ -68,7 +68,12 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Initializes a new instance of <see cref="WorldGrid"/>.
         /// </summary>
-        public WorldGrid() { }
+        public WorldGrid()
+        {
+            Corners = new Corner[0];
+            Edges = new Edge[0];
+            Tiles = new Tile[0];
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="WorldGrid"/> with the given values.
@@ -77,7 +82,13 @@ namespace WorldFoundry.WorldGrids
         /// The <see cref="Planetoid"/> this <see cref="WorldGrid"/> will map.
         /// </param>
         /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
-        public WorldGrid(Planetoid planet, byte size) => SubdivideGrid(planet, size);
+        public WorldGrid(Planetoid planet, byte size)
+        {
+            Corners = new Corner[0];
+            Edges = new Edge[0];
+            Tiles = new Tile[0];
+            SubdivideGrid(planet, size);
+        }
 
         private void AddCorner(int index, int[] tileIndexes)
         {
@@ -241,7 +252,7 @@ namespace WorldFoundry.WorldGrids
 
         private void SubdivideGrid()
         {
-            var (prevCorners, prevEdges, prevTiles) = SetNewGridSize((byte)(GridSize + 1));
+            var (prevCorners, _, prevTiles) = SetNewGridSize((byte)(GridSize + 1));
 
             for (var i = 0; i < prevTiles.Length; i++)
             {

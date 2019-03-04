@@ -26,7 +26,7 @@ namespace WorldFoundry.Space.AsteroidFields
         private const string AsteroidBeltTypeName = "Asteroid Belt";
         private const double ChildDensity = 5.8e-26;
 
-        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> BaseChildDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(CTypeAsteroid), Asteroid.Space, ChildDensity * 0.74),
             new ChildDefinition(typeof(STypeAsteroid), Asteroid.Space, ChildDensity * 0.14),
@@ -36,11 +36,11 @@ namespace WorldFoundry.Space.AsteroidFields
             new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, ChildDensity * 1e-10),
         };
 
-        private protected string _star;
+        private protected string? _star;
         /// <summary>
         /// The star around which this <see cref="AsteroidField"/> orbits, if any.
         /// </summary>
-        public Star Star => ContainingCelestialRegion.CelestialChildren.OfType<Star>().FirstOrDefault(x => x.Id == _star);
+        public Star? Star => ContainingCelestialRegion?.CelestialChildren.OfType<Star>().FirstOrDefault(x => x.Id == _star);
 
         /// <summary>
         /// The name for this type of <see cref="ICelestialLocation"/>.
@@ -48,7 +48,7 @@ namespace WorldFoundry.Space.AsteroidFields
         public override string TypeName => Star == null ? BaseTypeName : AsteroidBeltTypeName;
 
         private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_childDefinitions);
+            => base.ChildDefinitions.Concat(BaseChildDefinitions);
 
         private protected override string BaseTypeName => "Asteroid Field";
 
@@ -73,14 +73,14 @@ namespace WorldFoundry.Space.AsteroidFields
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="AsteroidField"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="AsteroidField"/>.</param>
+        /// <param name="star">
+        /// The star around which this <see cref="AsteroidField"/> orbits, if any.
+        /// </param>
         /// <param name="majorRadius">
         /// The length of the major radius of this <see cref="AsteroidField"/>, in meters.
         /// </param>
         /// <param name="minorRadius">
         /// The length of the minor radius of this <see cref="AsteroidField"/>, in meters.
-        /// </param>
-        /// <param name="star">
-        /// The star around which this <see cref="AsteroidField"/> orbits, if any.
         /// </param>
         public AsteroidField(CelestialRegion parent, Vector3 position, Star star, double majorRadius, double? minorRadius = null) : base(parent, position)
         {
@@ -88,7 +88,7 @@ namespace WorldFoundry.Space.AsteroidFields
             _shape = GetShape(majorRadius, minorRadius);
         }
 
-        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation? GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
             if (!(child is CelestialBody body))

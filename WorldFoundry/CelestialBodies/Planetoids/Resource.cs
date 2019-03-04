@@ -24,7 +24,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         internal int Seed { get; }
 
-        private FastNoise _noise;
+        private FastNoise? _noise;
         private FastNoise Noise
         {
             get

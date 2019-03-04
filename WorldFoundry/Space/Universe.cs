@@ -24,7 +24,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
         /// </summary>
-        public override Universe ContainingUniverse => this;
+        public override Universe? ContainingUniverse => this;
 
         /// <summary>
         /// The time in this universe.

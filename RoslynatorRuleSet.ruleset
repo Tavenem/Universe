@@ -15,6 +15,7 @@
     <Rule Id="RCS1170" Action="None" />
     <Rule Id="RCS1184" Action="Info" />
     <Rule Id="RCS1198" Action="Info" />
+    <Rule Id="RCS1213" Action="None" />
     <Rule Id="RCS1219" Action="Info" />
   </Rules>
 </RuleSet>

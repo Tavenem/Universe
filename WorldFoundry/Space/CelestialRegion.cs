@@ -25,19 +25,21 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The <see cref="CelestialRegion"/> which directly contains this <see cref="ICelestialLocation"/>.
         /// </summary>
-        public CelestialRegion ContainingCelestialRegion => ContainingRegion as CelestialRegion;
+        public CelestialRegion? ContainingCelestialRegion => ContainingRegion as CelestialRegion;
 
         /// <summary>
         /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
         /// </summary>
-        public virtual Universe ContainingUniverse => ContainingRegion is Universe universe ? universe : ContainingCelestialRegion?.ContainingUniverse;
+        public virtual Universe? ContainingUniverse => ContainingRegion is Universe universe ? universe : ContainingCelestialRegion?.ContainingUniverse;
 
         /// <summary>
         /// A string that uniquely identifies this <see cref="ICelestialLocation"/> for display
         /// purposes.
         /// </summary>
         public string Designation
-            => string.IsNullOrEmpty(DesignatorPrefix) ? Id : $"{DesignatorPrefix} {Id}";
+            => string.IsNullOrEmpty(DesignatorPrefix)
+                ? Id ?? string.Empty
+                : $"{DesignatorPrefix} {Id}";
 
         private protected double? _mass;
         /// <summary>
@@ -52,7 +54,7 @@ namespace WorldFoundry.Space
         /// Not every <see cref="ICelestialLocation"/> must have a name. They may be uniquely identified
         /// by their <see cref="Designation"/>, instead.
         /// </remarks>
-        public virtual string Name { get; set; }
+        public virtual string? Name { get; set; }
 
         /// <summary>
         /// The orbit occupied by this <see cref="ICelestialLocation"/> (may be null).
@@ -82,13 +84,13 @@ namespace WorldFoundry.Space
         /// </summary>
         public double Radius => Shape.ContainingRadius;
 
-        private protected IShape _shape;
+        private protected IShape? _shape;
         /// <summary>
         /// The shape of this <see cref="ICelestialLocation"/>.
         /// </summary>
         public override IShape Shape
         {
-            get => _shape ?? (_shape = GetShape());
+            get => _shape ??= GetShape();
             set => _shape = value?.GetCloneAtPosition(Position);
         }
 
@@ -135,7 +137,7 @@ namespace WorldFoundry.Space
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialRegion"/>.</param>
         internal CelestialRegion(CelestialRegion containingRegion, Vector3 position)
-            : base(containingRegion, null) => _position = position;
+            : base(containingRegion, SinglePoint.Origin) => _position = position;
 
         /// <summary>
         /// Enumerates all the <see cref="ICelestialLocation"/> descendant children instances in this
@@ -233,7 +235,9 @@ namespace WorldFoundry.Space
 
                 if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
                 {
-                    return ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                    return ContainingRegion == null
+                        ? position
+                        : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
                 }
                 else
                 {
@@ -451,7 +455,9 @@ namespace WorldFoundry.Space
 
             if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
             {
-                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                Position = ContainingRegion == null
+                    ? position
+                    : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
             }
             else
             {
@@ -482,7 +488,9 @@ namespace WorldFoundry.Space
 
             if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
             {
-                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                Position = ContainingRegion == null
+                    ? position
+                    : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
             }
             else
             {
@@ -494,7 +502,7 @@ namespace WorldFoundry.Space
 
         internal virtual void PrepopulateRegion() => _isPrepopulated = true;
 
-        internal virtual ICelestialLocation GenerateChild(ChildDefinition definition)
+        internal virtual ICelestialLocation? GenerateChild(ChildDefinition definition)
             => definition.GenerateChild(this);
 
         private protected virtual double GetMass() => 0;

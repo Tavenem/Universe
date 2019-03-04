@@ -64,14 +64,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             }
 
             // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
-            IComposition upperLayer = null;
+            IComposition upperLayer;
             if (ch4 > 0 || nh4 > 0)
             {
                 var components = new Dictionary<Material, double>()
                 {
                     { new Material(Chemical.Water, Phase.Liquid), water },
                 };
-                var composite = (Composite)upperLayer;
                 if (ch4 > 0)
                 {
                     components[new Material(Chemical.Methane, Phase.Liquid)] = ch4;

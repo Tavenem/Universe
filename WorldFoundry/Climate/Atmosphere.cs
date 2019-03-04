@@ -17,7 +17,11 @@ namespace WorldFoundry.Climate
         internal const int SnowToRainRatio = 13;
         private const double StandardHeightDensity = 124191.6;
 
-        private static readonly List<Requirement> _humanBreathabilityRequirements = new List<Requirement>()
+        /// <summary>
+        /// A range of acceptable amounts of O2, and list of maximum limits of common
+        /// atmospheric gases for acceptable human breathability.
+        /// </summary>
+        public static Requirement[] HumanBreathabilityRequirements { get; } = new Requirement[]
         {
             new Requirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07, MaximumProportion = 0.53, Phase = Phase.Gas },
             new Requirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005 },
@@ -30,11 +34,6 @@ namespace WorldFoundry.Climate
             new Requirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003 },
             new Requirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002 },
         };
-        /// <summary>
-        /// A range of acceptable amounts of O2, and list of maximum limits of common
-        /// atmospheric gases for acceptable human breathability.
-        /// </summary>
-        public static IEnumerable<Requirement> HumanBreathabilityRequirements => _humanBreathabilityRequirements;
 
         internal static readonly double TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure(TMath.Tolerance);
 
@@ -97,6 +96,10 @@ namespace WorldFoundry.Climate
                 if (!_greenhouseFactor.HasValue)
                 {
                     SetGreenhouseFactor();
+                    if (!_greenhouseFactor.HasValue)
+                    {
+                        _greenhouseFactor = 1;
+                    }
                 }
                 return _greenhouseFactor.Value;
             }
@@ -130,11 +133,10 @@ namespace WorldFoundry.Climate
             _atmosphericPressure = pressure;
             SetAtmosphericScaleHeight(planet);
             Mass = GetAtmosphericMass(planet);
-            SetGreenhouseFactor();
 
             planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(Mass, AtmosphericScaleHeight);
             var tIF = planet.AverageBlackbodySurfaceTemperature * planet.InsolationFactor_Equatorial;
-            planet._greenhouseEffect = (tIF * _greenhouseFactor.Value) - planet.AverageBlackbodySurfaceTemperature;
+            planet._greenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodySurfaceTemperature;
             var temp = tIF + planet.GreenhouseEffect;
             SetAtmosphericHeight(planet, temp);
             SetPrecipitation(planet);
@@ -146,8 +148,8 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Calculates the atmospheric density for the given conditions, in kg/m³.
         /// </summary>
-        /// <param name="pressure">A pressure, in kPa.</param>
         /// <param name="temperature">A temperature, in K.</param>
+        /// <param name="pressure">A pressure, in kPa.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
         internal static double GetAtmosphericDensity(double temperature, double pressure)
             => pressure * 1000 / (287.058 * temperature);
@@ -218,11 +220,11 @@ namespace WorldFoundry.Climate
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
         /// made.</param>
+        /// <param name="temperature">The temperature at the given elevation, in K.</param>
         /// <param name="elevation">
         /// An elevation above the reference elevation for standard atmospheric pressure (sea
         /// level), in meters.
         /// </param>
-        /// <param name="temperature">The temperature at the given elevation, in K.</param>
         /// <returns>The atmospheric pressure at the specified height, in kPa.</returns>
         /// <remarks>
         /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the
@@ -286,7 +288,7 @@ namespace WorldFoundry.Climate
         /// An <see cref="IEnumerable{T}"/> of <see cref="Requirement"/>s with proportions
         /// adjusted for <see cref="AtmosphericPressure"/>.
         /// </returns>
-        internal IEnumerable<Requirement> ConvertRequirementsForPressure(IEnumerable<Requirement> requirements)
+        internal IEnumerable<Requirement> ConvertRequirementsForPressure(IEnumerable<Requirement>? requirements)
         {
             if (requirements == null)
             {
@@ -310,7 +312,7 @@ namespace WorldFoundry.Climate
 
         internal void DifferentiateTroposphere()
         {
-            if (!(Composition is LayeredComposite lc))
+            if (!(Composition is LayeredComposite))
             {
                 // Separate troposphere from upper atmosphere if undifferentiated.
                 Composition = Composition.Split(0.8, 0.2);

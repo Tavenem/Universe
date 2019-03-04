@@ -64,19 +64,21 @@ namespace WorldFoundry.CelestialBodies
         /// <summary>
         /// The <see cref="CelestialRegion"/> which directly contains this <see cref="ICelestialLocation"/>.
         /// </summary>
-        public CelestialRegion ContainingCelestialRegion => ContainingRegion as CelestialRegion;
+        public CelestialRegion? ContainingCelestialRegion => ContainingRegion as CelestialRegion;
 
         /// <summary>
         /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
         /// </summary>
-        public Universe ContainingUniverse => ContainingRegion is Universe universe ? universe : ContainingCelestialRegion?.ContainingUniverse;
+        public Universe? ContainingUniverse => ContainingRegion is Universe universe ? universe : ContainingCelestialRegion?.ContainingUniverse;
 
         /// <summary>
         /// A string that uniquely identifies this <see cref="ICelestialLocation"/> for display
         /// purposes.
         /// </summary>
         public string Designation
-            => string.IsNullOrEmpty(DesignatorPrefix) ? Id : $"{DesignatorPrefix} {Id}";
+            => string.IsNullOrEmpty(DesignatorPrefix)
+                ? Id ?? string.Empty
+                : $"{DesignatorPrefix} {Id}";
 
         /// <summary>
         /// The total mass of this <see cref="ICelestialLocation"/>, in kg.
@@ -90,7 +92,7 @@ namespace WorldFoundry.CelestialBodies
         /// Not every <see cref="ICelestialLocation"/> must have a name. They may be uniquely identified
         /// by their <see cref="Designation"/>, instead.
         /// </remarks>
-        public string Name { get; set; }
+        public string? Name { get; set; }
 
         private Orbit? _orbit;
         /// <summary>
@@ -138,7 +140,7 @@ namespace WorldFoundry.CelestialBodies
             }
         }
 
-        private Substance _substance;
+        private Substance? _substance;
         /// <summary>
         /// The substance which represents the physical form of this <see cref="CelestialBody"/>.
         /// </summary>
@@ -239,7 +241,7 @@ namespace WorldFoundry.CelestialBodies
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CelestialBody"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CelestialBody"/>.</param>
-        internal CelestialBody(CelestialRegion containingRegion, Vector3 position) : base(containingRegion, position) { }
+        internal CelestialBody(CelestialRegion? containingRegion, Vector3 position) : base(containingRegion, position) { }
 
         /// <summary>
         /// Calculates the escape velocity from this body, in m/s.
@@ -297,8 +299,8 @@ namespace WorldFoundry.CelestialBodies
         /// but may not be as precise for other stellar bodies.
         /// </remarks>
         public double GetLuminousFlux()
-            => ContainingCelestialRegion.GetAllChildren<Star>()
-            .Sum(x => x.Luminosity / (MathConstants.FourPI * GetDistanceSquaredTo(x)) / 0.0079);
+            => ContainingCelestialRegion?.GetAllChildren<Star>()
+            .Sum(x => x.Luminosity / (MathConstants.FourPI * GetDistanceSquaredTo(x)) / 0.0079) ?? 0;
 
         /// <summary>
         /// Calculates the position of this <see cref="ICelestialLocation"/> at the given time,
@@ -317,7 +319,9 @@ namespace WorldFoundry.CelestialBodies
 
                 if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
                 {
-                    return ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                    return ContainingRegion == null
+                        ? position
+                        : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
                 }
                 else
                 {
@@ -403,7 +407,9 @@ namespace WorldFoundry.CelestialBodies
 
             if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
             {
-                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                Position = ContainingRegion == null
+                    ? position
+                    : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
             }
             else
             {
@@ -434,7 +440,9 @@ namespace WorldFoundry.CelestialBodies
 
             if (Orbit.Value.OrbitedObject.ContainingCelestialRegion != ContainingCelestialRegion)
             {
-                Position = ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                Position = ContainingRegion == null
+                    ? position
+                    : ContainingRegion.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
             }
             else
             {
@@ -504,7 +512,9 @@ namespace WorldFoundry.CelestialBodies
         /// in K.
         /// </returns>
         private double GetInsolationHeat(Vector3 position)
-            => Math.Pow(1 - Albedo, 0.25) * ContainingCelestialRegion
+            => ContainingCelestialRegion == null
+            ? 0
+            : Math.Pow(1 - Albedo, 0.25) * ContainingCelestialRegion
                 .GetAllChildren<Star>()
                 .Where(x => x != this)
                 .Sum(x => (x.Temperature ?? 0) * Math.Sqrt(x.Shape.ContainingRadius / (2 * GetDistanceFromPositionTo(position, x))));

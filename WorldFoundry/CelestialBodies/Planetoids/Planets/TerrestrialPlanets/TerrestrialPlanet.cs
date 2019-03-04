@@ -38,7 +38,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </remarks>
         public bool HasBiosphere { get; set; }
 
-        private protected IComposition _hydrosphere;
+        private protected IComposition? _hydrosphere;
         /// <summary>
         /// This planet's surface liquids and ices (not necessarily water).
         /// </summary>
@@ -53,6 +53,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 if (_hydrosphere == null)
                 {
                     GenerateHydrosphere();
+                    if (_hydrosphere == null)
+                    {
+                        _hydrosphere = Material.Empty;
+                    }
                 }
                 return _hydrosphere;
             }
@@ -81,13 +85,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override int ExtremeRotationalPeriod => 22000000;
 
-        internal const double _maxDensity = 6000;
-        private protected virtual double MaxDensity => _maxDensity;
+        internal const double BaseMaxDensity = 6000;
+        private protected virtual double MaxDensity => BaseMaxDensity;
 
-        private const double _maxMassForType = 6.0e25;
+        private const double BaseMaxMassForType = 6.0e25;
         // At around this limit the planet will have sufficient mass to retain hydrogen, and become
         // a giant.
-        private protected override double? MaxMassForType => _maxMassForType;
+        private protected override double? MaxMassForType => BaseMaxMassForType;
 
         private protected override int MaxRotationalPeriod => 6500000;
 
@@ -98,14 +102,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected virtual double MinDensity => 3750;
 
-        internal const double _minMassForType = 2.0e22;
+        internal const double BaseMinMassForType = 2.0e22;
         // An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
         // systems, a calculated value for clearing the neighborhood is used instead.
-        private protected override double? MinMassForType => _minMassForType;
+        private protected override double? MinMassForType => BaseMinMassForType;
 
         private protected override int MinRotationalPeriod => 40000;
 
-        private protected override string PlanemoClassPrefix => "Terrestrial";
+        private protected override string? PlanemoClassPrefix => "Terrestrial";
 
         private protected override double RingChance => 10;
 
@@ -122,7 +126,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// cref="TerrestrialPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="TerrestrialPlanet"/>.</param>
-        internal TerrestrialPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal TerrestrialPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="TerrestrialPlanet"/> with the given parameters.
@@ -134,7 +138,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="TerrestrialPlanet"/> during random generation, in kg.
         /// </param>
-        internal TerrestrialPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal TerrestrialPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Given a star, generates a terrestrial planet with the given parameters, and puts the
@@ -155,7 +159,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             TerrestrialPlanetParams? planetParams = null,
             HabitabilityRequirements? habitabilityRequirements = null)
         {
-            TerrestrialPlanet planet = null;
+            TerrestrialPlanet planet;
             var pParams = planetParams ?? TerrestrialPlanetParams.FromDefaults();
             var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
             var sanityCheck = 0;
@@ -179,7 +183,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 planet.GenerateOrbit(star, pParams, habitabilityRequirements);
 
                 sanityCheck++;
-                if (planet.IsHabitable(requirements, out var reason))
+                if (planet.IsHabitable(requirements, out _))
                 {
                     break;
                 }
@@ -203,18 +207,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
         /// <returns>A planet with the given parameters.</returns>
-        public static TerrestrialPlanet GetPlanetForGalaxy(
+        public static TerrestrialPlanet? GetPlanetForGalaxy(
             Galaxy galaxy,
             TerrestrialPlanetParams? planetParams = null,
             HabitabilityRequirements? habitabilityRequirements = null)
         {
-            StarSystem system = null;
+            StarSystem? system;
+            var sanityCheck = 10000;
             do
             {
                 system = galaxy?.GenerateChild(new ChildDefinition(typeof(StarSystem), StarSystem.Space, 1, typeof(Star), SpectralClass.G, LuminosityClass.V)) as StarSystem;
-            } while (system.Stars.Skip(1).Any()); // Prevent binary systems, which will interfere with the temperature-balancing logic.
+                sanityCheck--;
+            } while (sanityCheck > 0 && (system?.Stars.Skip(1).Any() != false)); // Prevent binary systems, which will interfere with the temperature-balancing logic.
             var star = system?.Stars.FirstOrDefault();
-            return GetPlanetForStar(star, planetParams, habitabilityRequirements);
+            return star != null
+                ? GetPlanetForStar(star, planetParams, habitabilityRequirements)
+                : null;
         }
 
         /// <summary>
@@ -229,7 +237,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
         /// <returns>A planet with the given parameters.</returns>
-        public static TerrestrialPlanet GetPlanetForUniverse(
+        public static TerrestrialPlanet? GetPlanetForUniverse(
             Universe universe,
             TerrestrialPlanetParams? planetParams = null,
             HabitabilityRequirements? habitabilityRequirements = null)
@@ -238,8 +246,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var gc = gsc?.GenerateChild(new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, 1)) as GalaxyCluster;
             var gg = gc?.GenerateChild(new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, 1)) as GalaxyGroup;
             gg?.PrepopulateRegion();
-            var gsg = gg?.CelestialChildren.FirstOrDefault(x => x is GalaxySubgroup) as GalaxySubgroup;
-            return GetPlanetForGalaxy(gsg?.MainGalaxy, planetParams, habitabilityRequirements);
+            return !(gg?.CelestialChildren.FirstOrDefault(x => x is GalaxySubgroup) is GalaxySubgroup gsg)
+                ? null
+                : GetPlanetForGalaxy(gsg?.MainGalaxy, planetParams, habitabilityRequirements);
         }
 
         /// <summary>
@@ -253,7 +262,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
         /// <returns>A planet with the given parameters.</returns>
-        public static TerrestrialPlanet GetPlanetForNewUniverse(
+        public static TerrestrialPlanet? GetPlanetForNewUniverse(
             TerrestrialPlanetParams? planetParams = null,
             HabitabilityRequirements? habitabilityRequirements = null)
             => GetPlanetForUniverse(Universe.New(), planetParams, habitabilityRequirements);
@@ -444,18 +453,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 var t = grid.Tiles[i];
                 var (x, y) = SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(t.Latitude, t.Longitude, resolution, scale);
 
-                t.Temperature = surfaceMapSet.Value.TemperatureRanges[x, y];
-                t.SeaIce = surfaceMapSet.Value.SeaIceRanges[x, y];
-                t.SnowCover = surfaceMapSet.Value.SnowCoverRanges[x, y];
+                t.Temperature = surfaceMapSet.Value.TemperatureRangeMap[x, y];
+                t.SeaIce = surfaceMapSet.Value.SeaIceRangeMap[x, y];
+                t.SnowCover = surfaceMapSet.Value.SnowCoverRangeMap[x, y];
 
-                t.Precipitation = (float)(surfaceMapSet.Value.TotalPrecipitation[x, y] * Atmosphere.MaxPrecipitation);
-                t.SnowFall = (float)(surfaceMapSet.Value.PrecipitationMaps.Sum(c => c.Snowfall[x, y]) * Atmosphere.MaxSnowfall);
+                t.Precipitation = (float)(surfaceMapSet.Value.TotalPrecipitationMap[x, y] * Atmosphere.MaxPrecipitation);
+                t.SnowFall = (float)(surfaceMapSet.Value.PrecipitationMaps.Sum(c => c.SnowfallMap[x, y]) * Atmosphere.MaxSnowfall);
 
-                t.ClimateType = surfaceMapSet.Value.Climate[x, y];
-                t.HumidityType = surfaceMapSet.Value.Humidity[x, y];
+                t.ClimateType = surfaceMapSet.Value.ClimateMap[x, y];
+                t.HumidityType = surfaceMapSet.Value.HumidityMap[x, y];
 
-                t.EcologyType = surfaceMapSet.Value.Ecology[x, y];
-                t.BiomeType = surfaceMapSet.Value.Biome[x, y];
+                t.EcologyType = surfaceMapSet.Value.EcologyMap[x, y];
+                t.BiomeType = surfaceMapSet.Value.BiomeMap[x, y];
             }
 
             return surfaceMapSet.Value;
@@ -469,7 +478,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
             // This allows calculation of the correct distance/orbit for an average
             // orbital temperature (rather than the temperature at the current position).
-            if (planetParams?.RevolutionPeriod.HasValue == true)
+            if (planetParams?.RevolutionPeriod.HasValue == true && semiMajorAxis.HasValue)
             {
                 star.SetTempForTargetPlanetTemp(targetTemp, semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2)), Albedo);
             }
@@ -539,7 +548,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             var oldAlbedo = Albedo;
 
             // Ices significantly impact albedo.
-            var iceAmount = Math.Min(1, Hydrosphere.GetSurface().GetChemicals(Phase.Solid).Sum(x => x.proportion));
+            var iceAmount = Math.Min(1, Hydrosphere.GetSurface()?.GetChemicals(Phase.Solid).Sum(x => x.proportion) ?? 0);
             Albedo = (SurfaceAlbedo * (1 - iceAmount)) + (0.9 * iceAmount);
 
             // Clouds also impact albedo.
@@ -593,9 +602,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // carbon-silicate cycle.
 
             var air = Atmosphere.Composition.GetSurface();
-            if (air.GetProportion(Chemical.Water, Phase.Gas) * Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
+            if ((air?.GetProportion(Chemical.Water, Phase.Gas) ?? 0) * Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
             {
-                var co2 = air.GetProportion(Chemical.CarbonDioxide, Phase.Gas);
+                var co2 = air?.GetProportion(Chemical.CarbonDioxide, Phase.Gas) ?? 0;
                 if (co2 < 1.0e-3)
                 {
                     return;
@@ -665,7 +674,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // approximation of 25% average humidity overall is used.
             if (chemical == Chemical.Water && planetParams?.WaterVaporRatio.HasValue == true)
             {
-                vaporProportion = planetParams.Value.WaterVaporRatio.Value;
+                vaporProportion = planetParams!.Value.WaterVaporRatio!.Value;
             }
             else
             {
@@ -937,7 +946,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             else
             {
                 _axialPrecession = Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4);
-                var axialTilt = planetParams.Value.AxialTilt.Value;
+                var axialTilt = planetParams!.Value.AxialTilt!.Value;
                 if (Orbit.HasValue)
                 {
                     axialTilt += Orbit.Value.Inclination;
@@ -1074,15 +1083,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double pressure;
             if (planetParams?.AtmosphericPressure.HasValue == true)
             {
-                pressure = Math.Max(0, planetParams.Value.AtmosphericPressure.Value);
+                pressure = Math.Max(0, planetParams!.Value.AtmosphericPressure!.Value);
             }
             else if (habitabilityRequirements?.MinimumPressure.HasValue == true
                 || habitabilityRequirements?.MaximumPressure.HasValue == true)
             {
                 // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                if (!habitabilityRequirements.Value.MaximumPressure.HasValue)
+                if (!habitabilityRequirements!.Value.MaximumPressure!.HasValue)
                 {
-                    pressure = habitabilityRequirements.Value.MinimumPressure.Value
+                    pressure = habitabilityRequirements!.Value.MinimumPressure!.Value
                         + Math.Abs(Randomizer.Instance.Normal(0, habitabilityRequirements.Value.MinimumPressure.Value / 3));
                 }
                 else
@@ -1456,8 +1465,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             // If the habitable zone is a subsurface ocean, no further adjustments occur.
             var hydrosphereSurface = Hydrosphere.GetSurface();
-            if (!hydrosphereSurface.ContainsSubstance(Chemical.Water, Phase.Liquid)
-                && !hydrosphereSurface.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid))
+            if (hydrosphereSurface?.ContainsSubstance(Chemical.Water, Phase.Liquid) != true
+                && hydrosphereSurface?.ContainsSubstance(Chemical.Water_Salt, Phase.Liquid) != true)
             {
                 return false;
             }
@@ -1511,7 +1520,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         {
             if (planetParams?.RotationalPeriod.HasValue == true)
             {
-                RotationalPeriod = Math.Max(0, planetParams.Value.RotationalPeriod.Value);
+                RotationalPeriod = Math.Max(0, planetParams!.Value.RotationalPeriod!.Value);
             }
             GenerateAngleOfRotation(planetParams);
 
@@ -1522,7 +1531,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (planetParams?.Eccentricity.HasValue == true)
             {
-                Eccentricity = planetParams.Value.Eccentricity.Value;
+                Eccentricity = planetParams!.Value.Eccentricity!.Value;
             }
 
             var ta = Randomizer.Instance.NextDouble(MathConstants.TwoPI);
@@ -1530,7 +1539,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (planetParams?.RevolutionPeriod.HasValue == true)
             {
-                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams.Value.RevolutionPeriod.Value);
+                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
                 GenerateOrbit(orbitedObject, semiMajorAxis.Value, ta);
             }
 
@@ -1539,14 +1548,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 || habitabilityRequirements?.MinimumTemperature.HasValue == true
                 || habitabilityRequirements?.MaximumTemperature.HasValue == true))
             {
-                var targetTemp = 250.0;
+                double targetTemp;
                 if (planetParams?.SurfaceTemperature.HasValue == true)
                 {
-                    targetTemp = planetParams.Value.SurfaceTemperature.Value;
+                    targetTemp = planetParams!.Value.SurfaceTemperature!.Value;
                 }
                 else if (habitabilityRequirements?.MinimumTemperature.HasValue == true)
                 {
-                    targetTemp = habitabilityRequirements.Value.MinimumTemperature.Value;
+                    targetTemp = habitabilityRequirements!.Value.MinimumTemperature!.Value;
                 }
                 else
                 {
@@ -1569,7 +1578,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // target can be adjusted. This is repeated until the real target is approached to
                 // within an acceptable tolerance, but not to excess.
                 var count = 0;
-                var prevDelta = 0.0;
+                double prevDelta;
                 var delta = 0.0;
                 var originalHydrosphere = _hydrosphere;
                 var originalHydrosphereProportion = _hydrosphereProportion;
@@ -1588,16 +1597,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     {
                         delta = targetEffectiveTemp - GetTemperatureAtElevation(AverageSurfaceTemperature, avgElevation);
                     }
-                    else
+                    else if (habitabilityRequirements.HasValue)
                     {
-                        var coolestEquatorialTemp = GetMinEquatorTemperature();
-                        if (coolestEquatorialTemp < habitabilityRequirements?.MinimumTemperature)
+                        var tooCold = false;
+                        if (habitabilityRequirements.Value.MinimumTemperature.HasValue)
                         {
-                            delta = habitabilityRequirements.Value.MaximumTemperature.HasValue
-                                ? habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
-                                : habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
+                            var coolestEquatorialTemp = GetMinEquatorTemperature();
+                            if (coolestEquatorialTemp < habitabilityRequirements.Value.MinimumTemperature)
+                            {
+                                delta = habitabilityRequirements.Value.MaximumTemperature.HasValue
+                                    ? habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
+                                    : habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
+                                tooCold = true;
+                            }
                         }
-                        else
+                        if (!tooCold && habitabilityRequirements.Value.MaximumTemperature.HasValue)
                         {
                             var warmestPolarTemp = GetMaxPolarTemperature();
                             if (warmestPolarTemp > habitabilityRequirements?.MaximumTemperature)
@@ -1642,12 +1656,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override void GenerateResources()
         {
-            AddResources(Substance.Composition.GetSurface()
+            AddResources(Substance.Composition.GetSurface()?
                 .GetChemicals(Phase.Solid).Where(x => x.chemical.IsMetal)
-                .Select(x => (x.chemical, x.proportion, true)));
+                .Select(x => (x.chemical, x.proportion, true))
+                ?? Enumerable.Empty<(Chemical, double, bool)>());
 
-            var uranium = Substance.Composition.GetSurface()
-                .GetProportion(Chemical.Uranium, Phase.Solid);
+            var uranium = Substance.Composition.GetSurface()?
+                .GetProportion(Chemical.Uranium, Phase.Solid) ?? 0;
             if (!uranium.IsZero())
             {
                 AddResource(Chemical.Uranium, uranium, false);
@@ -1657,8 +1672,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             // This, in turn, indicates elemental sulfur at the surface.
             if (HasMagnetosphere)
             {
-                var sulfur = Substance.Composition.GetSurface()
-                    .GetProportion(Chemical.Sulfur, Phase.Solid);
+                var sulfur = Substance.Composition.GetSurface()?
+                    .GetProportion(Chemical.Sulfur, Phase.Solid) ?? 0;
                 if (!sulfur.IsZero())
                 {
                     AddResource(Chemical.Sulfur, sulfur, false);
@@ -1666,13 +1681,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
-            Planetoid satellite = null;
+            Planetoid? satellite = null;
             var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _minMassForType && Randomizer.Instance.NextBoolean())
+            if (maxMass > BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -1681,7 +1696,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(BaseMaxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
@@ -1696,10 +1711,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Instance.NextBoolean())
+            else if (maxMass > DwarfPlanet.BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
@@ -1864,10 +1879,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             yield return (new Material(Chemical.Rock, Phase.Liquid), 1);
         }
 
-        private protected override double GetMass(IShape shape = null)
+        private protected override double GetMass(IShape? shape = null)
             => GetMass(null, shape);
 
-        private double GetMass(double? gravity, IShape shape = null)
+        private double GetMass(double? gravity, IShape? shape = null)
         {
             var minMass = MinMass;
             var maxMass = TMath.IsZero(MaxMass) ? null : (double?)MaxMass;
@@ -1902,19 +1917,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? gravity = null;
             if (planetParams?.SurfaceGravity.HasValue == true)
             {
-                gravity = planetParams.Value.SurfaceGravity.Value;
+                gravity = planetParams!.Value.SurfaceGravity!.Value;
             }
             else if (habitabilityRequirements?.MinimumGravity.HasValue == true
                 || habitabilityRequirements?.MaximumGravity.HasValue == true)
             {
-                double maxGravity = 0;
+                double maxGravity;
                 if (habitabilityRequirements?.MaximumGravity.HasValue == true)
                 {
-                    maxGravity = habitabilityRequirements.Value.MaximumGravity.Value;
+                    maxGravity = habitabilityRequirements!.Value.MaximumGravity!.Value;
                 }
                 else // Determine the absolute maximum gravity a terrestrial planet could have, before it would become a giant.
                 {
-                    var maxMass = MaxMassForType ?? _maxMassForType;
+                    var maxMass = MaxMassForType ?? BaseMaxMassForType;
                     var maxVolume = maxMass / Density;
                     var maxRadius = Math.Pow(maxVolume / MathConstants.FourThirdsPI, 1.0 / 3.0);
                     maxGravity = ScienceConstants.G * maxMass / (maxRadius * maxRadius);
@@ -1924,14 +1939,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
             if (planetParams?.Radius.HasValue == true)
             {
-                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, planetParams.Value.Radius.Value));
+                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, planetParams!.Value.Radius!.Value));
                 return (GetMass(gravity, shape), shape);
             }
             else if (planetParams?.SurfaceGravity.HasValue == true
                 || habitabilityRequirements?.MinimumGravity.HasValue == true
                 || habitabilityRequirements?.MaximumGravity.HasValue == true)
             {
-                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, Math.Min(GetRadiusForSurfaceGravity(gravity.Value), GetMaxRadius())));
+                var shape = GetShape(knownRadius: Math.Max(MinimumRadius, Math.Min(GetRadiusForSurfaceGravity(gravity!.Value), GetMaxRadius())));
                 return (GetMass(gravity, shape), shape);
             }
             else
@@ -1941,8 +1956,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
         }
 
-        private double GetMassForSurfaceGravity(IShape shape, double gravity)
-            => gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
+        private double GetMassForSurfaceGravity(IShape? shape, double gravity)
+            => shape == null ? 0 : gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
 
         private double GetRadiusForSurfaceGravity(double gravity) => Math.Sqrt(Mass * ScienceConstants.G / gravity);
 

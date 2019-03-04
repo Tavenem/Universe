@@ -29,7 +29,7 @@ namespace WorldFoundry.Space
         /// Not every <see cref="ICelestialLocation"/> must have a name. They may be uniquely identified
         /// by their <see cref="Designation"/>, instead.
         /// </remarks>
-        string Name { get; set; }
+        string? Name { get; set; }
 
         /// <summary>
         /// The orbit occupied by this <see cref="ICelestialLocation"/> (may be null).
@@ -39,12 +39,12 @@ namespace WorldFoundry.Space
         /// <summary>
         /// The <see cref="CelestialRegion"/> which directly contains this <see cref="ICelestialLocation"/>.
         /// </summary>
-        CelestialRegion ContainingCelestialRegion { get; }
+        CelestialRegion? ContainingCelestialRegion { get; }
 
         /// <summary>
         /// The <see cref="Universe"/> which contains this <see cref="ICelestialLocation"/>, if any.
         /// </summary>
-        Universe ContainingUniverse { get; }
+        Universe? ContainingUniverse { get; }
 
         /// <summary>
         /// The shape of this <see cref="ICelestialLocation"/>.

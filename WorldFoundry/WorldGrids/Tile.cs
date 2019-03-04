@@ -125,7 +125,12 @@ namespace WorldFoundry.WorldGrids
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.
         /// </summary>
-        public Tile() { }
+        public Tile()
+        {
+            Corners = new int[0];
+            Edges = new int[0];
+            Tiles = new int[0];
+        }
 
         /// <summary>
         /// Creates a new instance of <see cref="Tile"/>.

@@ -16,25 +16,25 @@ namespace WorldFoundry.Place
     /// </summary>
     public class SurfaceRegion : Region
     {
-        internal byte[] _depthOverlay;
+        internal byte[]? _depthOverlay;
         internal int _depthOverlayHeight;
         internal int _depthOverlayWidth;
-        internal byte[] _elevationOverlay;
+        internal byte[]? _elevationOverlay;
         internal int _elevationOverlayHeight;
         internal int _elevationOverlayWidth;
-        internal byte[] _flowOverlay;
+        internal byte[]? _flowOverlay;
         internal int _flowOverlayHeight;
         internal int _flowOverlayWidth;
-        internal byte[][] _precipitationOverlays;
+        internal byte[][]? _precipitationOverlays;
         internal int _precipitationOverlayHeight;
         internal int _precipitationOverlayWidth;
-        internal byte[][] _snowfallOverlays;
+        internal byte[][]? _snowfallOverlays;
         internal int _snowfallOverlayHeight;
         internal int _snowfallOverlayWidth;
-        internal byte[] _temperatureOverlaySummer;
+        internal byte[]? _temperatureOverlaySummer;
         internal int _temperatureOverlayHeightSummer;
         internal int _temperatureOverlayWidthSummer;
-        internal byte[] _temperatureOverlayWinter;
+        internal byte[]? _temperatureOverlayWinter;
         internal int _temperatureOverlayHeightWinter;
         internal int _temperatureOverlayWidthWinter;
 

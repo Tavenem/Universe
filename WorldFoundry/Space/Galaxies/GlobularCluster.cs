@@ -104,7 +104,7 @@ namespace WorldFoundry.Space.Galaxies
         {
             var core = new BlackHole(this, Vector3.Zero);
             core.Init();
-            return core.Id;
+            return core.Id!;
         }
 
         private protected override IShape GetShape()

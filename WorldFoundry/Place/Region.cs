@@ -1,4 +1,4 @@
-﻿using ExtensionLib;
+﻿using ExtensionFoundry;
 using MathAndScience.Numerics;
 using MathAndScience.Shapes;
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ namespace WorldFoundry.Place
     /// </summary>
     public class Region : Location, ISupportInitialize
     {
-        private List<ILocation> _children;
+        private List<ILocation>? _children;
         /// <summary>
         /// The child locations contained within this one.
         /// </summary>
@@ -28,7 +28,7 @@ namespace WorldFoundry.Place
             set => Shape = Shape.GetCloneAtPosition(value);
         }
 
-        private IShape _shape;
+        private IShape _shape = SinglePoint.Origin;
         /// <summary>
         /// The shape of this region.
         /// </summary>
@@ -150,7 +150,7 @@ namespace WorldFoundry.Place
         /// either of them); or <see langword="null"/> if this instance and the given location do
         /// not have a common parent.
         /// </returns>
-        public override Region GetCommonContainingRegion(ILocation other)
+        public override Region? GetCommonContainingRegion(ILocation? other)
             => other == this ? this : base.GetCommonContainingRegion(other);
 
         /// <summary>
@@ -199,12 +199,15 @@ namespace WorldFoundry.Place
         /// absolute position will be preserved, and translated into the correct local relative <see
         /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
         /// </remarks>
-        public override void SetNewContainingRegion(Region region)
+        public override void SetNewContainingRegion(Region? region)
         {
             base.SetNewContainingRegion(region);
-            foreach (var child in region.Children.Where(x => x != this && Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < Shape.ContainingRadius)))
+            if (region != null)
             {
-                child.SetNewContainingRegion(this);
+                foreach (var child in region.Children.Where(x => x != this && Contains(x.Position) && (!(x is Region r) || r.Shape.ContainingRadius < Shape.ContainingRadius)))
+                {
+                    child.SetNewContainingRegion(this);
+                }
             }
         }
 
@@ -241,9 +244,9 @@ namespace WorldFoundry.Place
 
         internal void RemoveChild(ILocation location) => _children?.Remove(location);
 
-        private protected override Stack<Region> GetPathToLocation(Stack<Region> path = null)
+        private protected override Stack<Region>? GetPathToLocation(Stack<Region>? path = null)
         {
-            (path ?? (path = new Stack<Region>())).Push(this);
+            (path ??= new Stack<Region>()).Push(this);
             return ContainingRegion?.GetPathToLocation(path) ?? path;
         }
     }

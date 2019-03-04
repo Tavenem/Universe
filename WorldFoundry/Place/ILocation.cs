@@ -10,12 +10,12 @@ namespace WorldFoundry.Place
         /// <summary>
         /// The containing region in which this location is found.
         /// </summary>
-        Region ContainingRegion { get; }
+        Region? ContainingRegion { get; }
 
         /// <summary>
         /// A unique identifier for this entity.
         /// </summary>
-        string Id { get; }
+        string? Id { get; }
 
         /// <summary>
         /// The position of this location relative to the center of its <see cref="ContainingRegion"/>.
@@ -31,7 +31,7 @@ namespace WorldFoundry.Place
         /// either of them); or <see langword="null"/> if this instance and the given location do
         /// not have a common parent.
         /// </returns>
-        Region GetCommonContainingRegion(ILocation other);
+        Region? GetCommonContainingRegion(ILocation? other);
 
         /// <summary>
         /// Gets the distance from the given <paramref name="position"/> relative to the center of
@@ -94,6 +94,6 @@ namespace WorldFoundry.Place
         /// absolute position will be preserved, and translated into the correct local relative <see
         /// cref="Position"/>. Otherwise, they will be reset to <see cref="Vector3.Zero"/>.
         /// </remarks>
-        void SetNewContainingRegion(Region region);
+        void SetNewContainingRegion(Region? region);
     }
 }

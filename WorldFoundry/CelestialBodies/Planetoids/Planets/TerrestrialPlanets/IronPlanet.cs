@@ -19,7 +19,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override double MinDensity => 5250;
 
-        private protected override string PlanemoClassPrefix => "Iron";
+        private protected override string? PlanemoClassPrefix => "Iron";
 
         /// <summary>
         /// Initializes a new instance of <see cref="IronPlanet"/>.
@@ -33,7 +33,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="IronPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="IronPlanet"/>.</param>
-        internal IronPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal IronPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IronPlanet"/> with the given parameters.
@@ -45,7 +45,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="IronPlanet"/> during random generation, in kg.
         /// </param>
-        internal IronPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal IronPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         private protected override double GetCoreProportion(double mass) => 0.4;
     }

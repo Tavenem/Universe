@@ -11,7 +11,7 @@ namespace WorldFoundry.Place
     /// </summary>
     public class Territory : Region
     {
-        private List<Region> _regions;
+        private List<Region>? _regions;
         /// <summary>
         /// The <see cref="Region"/> instances which make up this <see cref="Territory"/>.
         /// </summary>
@@ -61,10 +61,10 @@ namespace WorldFoundry.Place
                 return;
             }
 
-            var parent = _regions[0].ContainingRegion;
+            var parent = _regions![0].ContainingRegion;
 
             var regions = new List<(Vector3 position, double radius)>();
-            if (Regions.Any(x => x.ContainingRegion != _regions[0].ContainingRegion))
+            if (Regions.Any(x => x.ContainingRegion != _regions![0].ContainingRegion))
             {
                 parent = Regions.Aggregate(
                     parent,

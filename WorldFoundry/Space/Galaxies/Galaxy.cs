@@ -26,7 +26,7 @@ namespace WorldFoundry.Space.Galaxies
         private const double BlueGiantDensity = ChildDensity * 0.0008;
         private const double YellowGiantDensity = ChildDensity * 0.0004;
 
-        private static readonly List<ChildDefinition> _childDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> BaseChildDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(GiantPlanet), GiantPlanet.Space, RogueDensity * 5 / 12),
             new ChildDefinition(typeof(IceGiant), GiantPlanet.Space, RogueDensity * 0.25),
@@ -87,7 +87,7 @@ namespace WorldFoundry.Space.Galaxies
             new ChildDefinition(typeof(HIIRegion), Nebula.Space, ChildDensity * 2e-10),
         };
 
-        private string _galacticCore;
+        private string? _galacticCore;
         /// <summary>
         /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
         /// </summary>
@@ -106,7 +106,7 @@ namespace WorldFoundry.Space.Galaxies
         private protected override string BaseTypeName => "Galaxy";
 
         private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_childDefinitions);
+            => base.ChildDefinitions.Concat(BaseChildDefinitions);
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/>.
@@ -122,9 +122,13 @@ namespace WorldFoundry.Space.Galaxies
         /// <param name="position">The initial position of this <see cref="Galaxy"/>.</param>
         internal Galaxy(CelestialRegion parent, Vector3 position) : base(parent, position) { }
 
-        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation? GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
+            if (child == null)
+            {
+                return null;
+            }
 
             Space.Orbit.SetOrbit(
                 child,
@@ -157,7 +161,7 @@ namespace WorldFoundry.Space.Galaxies
         {
             var core = new SupermassiveBlackHole(this, Vector3.Zero);
             core.Init();
-            return core.Id;
+            return core.Id!;
         }
 
         // Produces a rough approximation of the mass of all children, plus the galactic core, plus

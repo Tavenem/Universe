@@ -1,4 +1,6 @@
-﻿namespace WorldFoundry.SurfaceMapping
+﻿using System;
+
+namespace WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A set of two-dimensional arrays corresponding to points on an equirectangular projected map
@@ -42,13 +44,50 @@
         public double MaxFlow { get; }
 
         /// <summary>
+        /// The length of the "X" (0-index) dimension of the maps.
+        /// </summary>
+        public int XLength { get; }
+
+        /// <summary>
+        /// The length of the "Y" (1-index) dimension of the maps.
+        /// </summary>
+        public int YLength { get; }
+
+        /// <summary>
         /// Initializes a new instance of <see cref="HydrologyMaps"/>.
         /// </summary>
-        /// <param name="flow">A flow map.</param>
+        /// <param name="xLength">The length of the "X" (0-index) dimension of the maps.</param>
+        /// <param name="yLength">The length of the "Y" (1-index) dimension of the maps.</param>
         /// <param name="depth">A depth map.</param>
+        /// <param name="flow">A flow map.</param>
         /// <param name="maxFlow">The maximum flow rate of the map, in m³/s.</param>
-        public HydrologyMaps(float[,] depth, float[,] flow, double maxFlow)
+        public HydrologyMaps(
+            int xLength,
+            int yLength,
+            float[,] depth,
+            float[,] flow,
+            double maxFlow)
         {
+            if (depth.GetLength(0) != xLength)
+            {
+                throw new ArgumentException($"Length of {nameof(depth)} was not equal to {nameof(xLength)}", nameof(xLength));
+            }
+            if (depth.GetLength(1) != yLength)
+            {
+                throw new ArgumentException($"Length of {nameof(depth)} was not equal to {nameof(yLength)}", nameof(yLength));
+            }
+            if (flow.GetLength(0) != xLength)
+            {
+                throw new ArgumentException($"Length of {nameof(flow)} was not equal to {nameof(xLength)}", nameof(xLength));
+            }
+            if (flow.GetLength(1) != yLength)
+            {
+                throw new ArgumentException($"Length of {nameof(flow)} was not equal to {nameof(yLength)}", nameof(yLength));
+            }
+
+            XLength = xLength;
+            YLength = yLength;
+
             Depth = depth;
             Flow = flow;
             MaxFlow = maxFlow;

@@ -1,4 +1,5 @@
-﻿#pragma warning disable IDE0047, IDE0048, CS1591, RCS1110, IDE1006, RCS1036, RCS1032, RCS1123, RCS1212, RCS1099
+﻿#nullable disable
+#pragma warning disable IDE0047, IDE0048, CS1591, RCS1110, IDE1006, RCS1036, RCS1032, RCS1123, RCS1212, RCS1099
 // FastNoise.cs
 //
 // MIT License
@@ -359,21 +360,6 @@ public class FastNoise
 		hash ^= X_PRIME * x;
 		hash ^= Y_PRIME * y;
 		hash ^= Z_PRIME * z;
-
-		hash = hash * hash * hash * 60493;
-		hash = (hash >> 13) ^ hash;
-
-		return hash;
-	}
-
-	[MethodImpl(FN_INLINE)]
-	private static int Hash4D(int seed, int x, int y, int z, int w)
-	{
-		var hash = seed;
-		hash ^= X_PRIME * x;
-		hash ^= Y_PRIME * y;
-		hash ^= Z_PRIME * z;
-		hash ^= W_PRIME * w;
 
 		hash = hash * hash * hash * 60493;
 		hash = (hash >> 13) ^ hash;

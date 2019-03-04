@@ -59,7 +59,7 @@ namespace WorldFoundry.Space.AsteroidFields
             _shape = GetShape(starSystemRadius);
         }
 
-        internal override ICelestialLocation GenerateChild(ChildDefinition definition)
+        internal override ICelestialLocation? GenerateChild(ChildDefinition definition)
         {
             var child = base.GenerateChild(definition);
 

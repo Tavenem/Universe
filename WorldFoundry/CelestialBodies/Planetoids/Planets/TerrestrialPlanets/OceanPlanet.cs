@@ -18,7 +18,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override double MagnetosphereChanceFactor => 0.5;
 
-        private protected override string PlanemoClassPrefix => "Ocean";
+        private protected override string? PlanemoClassPrefix => "Ocean";
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/>.
@@ -32,7 +32,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="OceanPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="OceanPlanet"/>.</param>
-        internal OceanPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal OceanPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="OceanPlanet"/> with the given parameters.
@@ -44,7 +44,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="OceanPlanet"/> during random generation, in kg.
         /// </param>
-        internal OceanPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal OceanPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         /// <summary>
         /// Generates an appropriate hydrosphere for this <see cref="TerrestrialPlanet"/>.

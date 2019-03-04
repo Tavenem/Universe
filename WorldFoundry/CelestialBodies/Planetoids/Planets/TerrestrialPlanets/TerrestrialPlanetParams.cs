@@ -75,7 +75,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// All atmospheric requirements.
         /// </summary>
-        public IList<Requirement> AtmosphericRequirements { get; }
+        public Requirement[] AtmosphericRequirements { get; }
 
         /// <summary>
         /// The target axial tilt, in radians.
@@ -151,7 +151,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="waterVaporRatio">The target mass fraction of water in the atmosphere.</param>
         public TerrestrialPlanetParams(
             double? atmosphericPressure = null,
-            IEnumerable<Requirement> atmosphericRequirements = null,
+            IEnumerable<Requirement>? atmosphericRequirements = null,
             double? axialTilt = null,
             double? eccentricity = null,
             bool? hasMagnetosphere = null,
@@ -165,7 +165,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             double? waterVaporRatio = null)
         {
             AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = atmosphericRequirements.ToList();
+            AtmosphericRequirements = atmosphericRequirements?.ToArray() ?? new Requirement[0];
             AxialTilt = axialTilt;
             Eccentricity = eccentricity;
             HasMagnetosphere = hasMagnetosphere;
@@ -197,7 +197,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="waterVaporRatio">The target mass fraction of water in the atmosphere.</param>
         public static TerrestrialPlanetParams FromDefaults(
             double? atmosphericPressure = DefaultAtmosphericPressure,
-            IEnumerable<Requirement> atmosphericRequirements = null,
+            IEnumerable<Requirement>? atmosphericRequirements = null,
             double? axialTilt = DefaultAxialTilt,
             double? eccentricity = DefaultEccentricity,
             bool? hasMagnetosphere = true,

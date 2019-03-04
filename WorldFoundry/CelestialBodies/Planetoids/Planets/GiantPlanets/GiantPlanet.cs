@@ -180,13 +180,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             _atmosphere = new Atmosphere(this, new Composite(components), 1000);
         }
 
-        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
-            Planetoid satellite = null;
+            Planetoid? satellite = null;
             double chance;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > TerrestrialPlanet._minMassForType && Randomizer.Instance.NextBoolean())
+            if (maxMass > TerrestrialPlanet.BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Select from the standard distribution of types.
                 chance = Randomizer.Instance.NextDouble();
@@ -197,7 +197,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
                 // The maximum mass and density are used to calculate an outer
                 // Roche limit (may not be the actual Roche limit for the body
                 // which gets generated).
-                if (periapsis < GetRocheLimit(TerrestrialPlanet._maxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(TerrestrialPlanet.BaseMaxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
@@ -216,11 +216,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Instance.NextBoolean())
+            else if (maxMass > DwarfPlanet.BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 chance = Randomizer.Instance.NextDouble();
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
@@ -344,7 +344,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
             yield return (new Composite(components), upperLayerProportion);
         }
 
-        private protected override double GetMass(IShape shape = null)
+        private protected override double GetMass(IShape? shape = null)
             => Math.Round(Randomizer.Instance.NextDouble(MinMass, MaxMass));
     }
 }

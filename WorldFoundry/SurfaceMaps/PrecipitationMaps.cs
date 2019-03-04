@@ -10,6 +10,14 @@ namespace WorldFoundry.SurfaceMapping
     public struct PrecipitationMaps
     {
         /// <summary>
+        /// A range giving the minimum, maximum, and average precipitation throughout the specified
+        /// area during the period represented by this map, as a value between 0 and 1, with 1
+        /// indicating the maximum annual potential precipitation of the planet's atmosphere.
+        /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
+        /// </summary>
+        public FloatRange Precipitation { get; }
+
+        /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent the total amount of
@@ -17,15 +25,15 @@ namespace WorldFoundry.SurfaceMapping
         /// indicating the maximum annual potential precipitation of the planet's atmosphere.
         /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
         /// </summary>
-        public float[,] Precipitation { get; }
+        public float[,] PrecipitationMap { get; }
 
         /// <summary>
-        /// A range giving the minimum, maximum, and average precipitation throughout the specified
-        /// area during the period represented by this map, as a value between 0 and 1, with 1
-        /// indicating the maximum annual potential precipitation of the planet's atmosphere.
-        /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
+        /// A range giving the minimum, maximum, and average snowfall throughout the specified
+        /// area, as a value between 0 and 1, with 1 indicating the maximum annual potential
+        /// snowfall of the planet's atmosphere.
+        /// <seealso cref="Climate.Atmosphere.MaxSnowfall"/>
         /// </summary>
-        public FloatRange PrecipitationRange { get; }
+        public FloatRange Snowfall { get; }
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -35,36 +43,60 @@ namespace WorldFoundry.SurfaceMapping
         /// indicating the maximum potential snowfall of the planet's atmosphere.
         /// <seealso cref="Climate.Atmosphere.MaxSnowfall"/>
         /// </summary>
-        public float[,] Snowfall { get; }
+        public float[,] SnowfallMap { get; }
 
         /// <summary>
-        /// A range giving the minimum, maximum, and average snowfall throughout the specified
-        /// area, as a value between 0 and 1, with 1 indicating the maximum annual potential
-        /// snowfall of the planet's atmosphere.
-        /// <seealso cref="Climate.Atmosphere.MaxSnowfall"/>
+        /// The length of the "X" (0-index) dimension of the maps.
         /// </summary>
-        public FloatRange SnowfallRange { get; }
+        public int XLength { get; }
+
+        /// <summary>
+        /// The length of the "Y" (1-index) dimension of the maps.
+        /// </summary>
+        public int YLength { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PrecipitationMaps"/>.
         /// </summary>
+        /// <param name="xLength">The length of the "X" (0-index) dimension of the maps.</param>
+        /// <param name="yLength">The length of the "Y" (1-index) dimension of the maps.</param>
         /// <param name="precipitation">A precipitation map.</param>
         /// <param name="snowfall">A snowfall map.</param>
         public PrecipitationMaps(
+            int xLength,
+            int yLength,
             float[,] precipitation,
             float[,] snowfall)
         {
-            Precipitation = precipitation;
-            Snowfall = snowfall;
+            if (precipitation.GetLength(0) != xLength)
+            {
+                throw new ArgumentException($"Length of {nameof(precipitation)} was not equal to {nameof(xLength)}", nameof(xLength));
+            }
+            if (precipitation.GetLength(1) != yLength)
+            {
+                throw new ArgumentException($"Length of {nameof(precipitation)} was not equal to {nameof(yLength)}", nameof(yLength));
+            }
+            if (snowfall.GetLength(0) != xLength)
+            {
+                throw new ArgumentException($"Length of {nameof(snowfall)} was not equal to {nameof(xLength)}", nameof(xLength));
+            }
+            if (snowfall.GetLength(1) != yLength)
+            {
+                throw new ArgumentException($"Length of {nameof(snowfall)} was not equal to {nameof(yLength)}", nameof(yLength));
+            }
+
+            XLength = xLength;
+            YLength = yLength;
+
+            PrecipitationMap = precipitation;
+            SnowfallMap = snowfall;
 
             if (precipitation == null)
             {
-                PrecipitationRange = FloatRange.Zero;
+                Precipitation = FloatRange.Zero;
             }
             else
             {
-                var xLength = precipitation.GetLength(0);
-                var yLength = precipitation.GetLength(1);
                 var min = 2f;
                 var max = -2f;
                 var sum = 0f;
@@ -77,17 +109,15 @@ namespace WorldFoundry.SurfaceMapping
                         sum += precipitation[x, y];
                     }
                 }
-                PrecipitationRange = new FloatRange(min, sum / (xLength * yLength), max);
+                Precipitation = new FloatRange(min, sum / (xLength * yLength), max);
             }
 
             if (snowfall == null)
             {
-                SnowfallRange = FloatRange.Zero;
+                Snowfall = FloatRange.Zero;
             }
             else
             {
-                var xLength = snowfall.GetLength(0);
-                var yLength = snowfall.GetLength(1);
                 var min = 2f;
                 var max = -2f;
                 var sum = 0f;
@@ -100,7 +130,7 @@ namespace WorldFoundry.SurfaceMapping
                         sum += snowfall[x, y];
                     }
                 }
-                SnowfallRange = new FloatRange(min, sum / (xLength * yLength), max);
+                Snowfall = new FloatRange(min, sum / (xLength * yLength), max);
             }
         }
     }

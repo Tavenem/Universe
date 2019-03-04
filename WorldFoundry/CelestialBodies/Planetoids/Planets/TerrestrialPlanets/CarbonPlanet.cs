@@ -19,7 +19,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private protected override bool CanHaveWater => false;
 
-        private protected override string PlanemoClassPrefix => "Carbon";
+        private protected override string? PlanemoClassPrefix => "Carbon";
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/>.
@@ -33,7 +33,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
-        internal CarbonPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal CarbonPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
@@ -45,15 +45,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        internal CarbonPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal CarbonPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
-        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
-            Planetoid satellite = null;
+            Planetoid? satellite = null;
             var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _minMassForType && Randomizer.Instance.NextBoolean())
+            if (maxMass > BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Select from the standard distribution of types.
 
@@ -62,7 +62,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(_maxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(BaseMaxDensity) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }
@@ -81,10 +81,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet._minMassForType && Randomizer.Instance.NextBoolean())
+            else if (maxMass > DwarfPlanet.BaseMinMassForType && Randomizer.Instance.NextBoolean())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet._densityForType) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * 1.05 || chance <= 0.01)
                 {
                     satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
                 }

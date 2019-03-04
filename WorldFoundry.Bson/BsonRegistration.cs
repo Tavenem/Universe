@@ -14,7 +14,7 @@ namespace WorldFoundry.Bson
         /// <param name="idGenerator">The <see cref="IIdGenerator"/> to use. If left <see
         /// langword="null"/>, <see cref="MongoDB.Bson.Serialization.IdGenerators.GuidGenerator"/>
         /// will be used, corresponding to the default <see cref="IItemIdProvider"/>.</param>
-        public static void Register(IIdGenerator idGenerator = null)
+        public static void Register(IIdGenerator? idGenerator = null)
         {
             SerializationProviders.Register();
             if (idGenerator != null)

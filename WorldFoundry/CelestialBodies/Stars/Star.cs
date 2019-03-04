@@ -59,7 +59,7 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private protected override string BaseTypeName => "Star";
 
-        private string _designatorPrefix;
+        private string? _designatorPrefix;
         private protected override string DesignatorPrefix => _designatorPrefix ?? (_designatorPrefix = GetDesignatorPrefix());
 
         /// <summary>

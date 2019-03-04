@@ -20,16 +20,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
         private protected override string BaseTypeName => "Dwarf Planet";
 
-        internal const double _densityForType = 2000;
-        private protected override double DensityForType => _densityForType;
+        internal const double BaseDensityForType = 2000;
+        private protected override double DensityForType => BaseDensityForType;
 
         // An arbitrary limit separating rogue dwarf planets from rogue planets.
         // Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         private protected override double? MaxMassForType => 2.0e22;
 
-        internal const double _minMassForType = 3.4e20;
+        internal const double BaseMinMassForType = 3.4e20;
         // The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
-        private protected override double? MinMassForType => _minMassForType;
+        private protected override double? MinMassForType => BaseMinMassForType;
 
         private protected override double RingChance => 10;
 
@@ -45,7 +45,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="DwarfPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="DwarfPlanet"/>.</param>
-        internal DwarfPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal DwarfPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
@@ -57,7 +57,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="DwarfPlanet"/> during random generation, in kg.
         /// </param>
-        internal DwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal DwarfPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         internal override void GenerateOrbit(ICelestialLocation orbitedObject)
         {
@@ -96,22 +96,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
             var crust = Substance.Composition.GetSurface();
 
-            var water = crust.GetProportion(Chemical.Water, Phase.Solid);
+            var water = crust?.GetProportion(Chemical.Water, Phase.Solid) ?? 0;
             var anyIces = water > 0;
 
-            var n2 = crust.GetProportion(Chemical.Nitrogen, Phase.Solid);
+            var n2 = crust?.GetProportion(Chemical.Nitrogen, Phase.Solid) ?? 0;
             anyIces &= n2 > 0;
 
-            var ch4 = crust.GetProportion(Chemical.Methane, Phase.Solid);
+            var ch4 = crust?.GetProportion(Chemical.Methane, Phase.Solid) ?? 0;
             anyIces &= ch4 > 0;
 
-            var co = crust.GetProportion(Chemical.CarbonMonoxide, Phase.Solid);
+            var co = crust?.GetProportion(Chemical.CarbonMonoxide, Phase.Solid) ?? 0;
             anyIces &= co > 0;
 
-            var co2 = crust.GetProportion(Chemical.CarbonDioxide, Phase.Solid);
+            var co2 = crust?.GetProportion(Chemical.CarbonDioxide, Phase.Solid) ?? 0;
             anyIces &= co2 > 0;
 
-            var nh3 = crust.GetProportion(Chemical.Ammonia, Phase.Solid);
+            var nh3 = crust?.GetProportion(Chemical.Ammonia, Phase.Solid) ?? 0;
             anyIces &= nh3 > 0;
 
             if (!anyIces)
@@ -148,9 +148,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             _atmosphere = new Atmosphere(this, new Composite(components), Math.Round(Randomizer.Instance.NextDouble(2.5)));
         }
 
-        private protected override Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
         {
-            Planetoid satellite = null;
+            Planetoid satellite;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller dwarf planet.
             if (maxMass > MinMass && Randomizer.Instance.NextBoolean())

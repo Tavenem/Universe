@@ -22,7 +22,7 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid(GridSize);
+            var grid = planet!.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
@@ -40,7 +40,7 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid(GridSize);
+            var grid = planet!.GetGrid(GridSize);
             Assert.IsNotNull(grid);
         }
 
@@ -52,7 +52,7 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid(GridSize);
+            var grid = planet!.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             Console.WriteLine($"Tiles: {grid.Tiles.Length.ToString()}");
@@ -82,7 +82,7 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var grid = planet.GetGrid(GridSize);
+            var grid = planet!.GetGrid(GridSize);
             Assert.IsNotNull(grid);
 
             planet.SetClimate(grid, NumSeasons);
@@ -249,7 +249,7 @@ namespace WorldFoundry.Test
             sb.AppendLine();
         }
 
-#pragma warning disable RCS1213 // Remove unused member declaration.
+#pragma warning disable IDE0051 // Remove unused member declaration.
         private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet, WorldGrid grid)
         {
             var land = grid.Tiles.Count(t => t.Elevation > 0 && t.Corners.All(c => grid.Corners[c].Elevation > 0)) * 100.0 / grid.Tiles.Length;
@@ -306,6 +306,6 @@ namespace WorldFoundry.Test
             sb.AppendFormat("  Max:                     {0}m", Math.Round(grid.Tiles.Max(t => t.Elevation)));
             sb.AppendLine();
         }
-#pragma warning restore RCS1213 // Remove unused member declaration.
+#pragma warning restore IDE0051 // Remove unused member declaration.
     }
 }

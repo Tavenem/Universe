@@ -1,4 +1,4 @@
-﻿using ExtensionLib;
+﻿using ExtensionFoundry;
 using MathAndScience;
 using MathAndScience.Numerics;
 using SixLabors.ImageSharp;
@@ -283,7 +283,8 @@ namespace WorldFoundry.SurfaceMapping
         /// The latitude and longitude of the given coordinates, in radians.
         /// </returns>
         public static (int x, int y) GetEquirectangularProjectionFromLatLong(
-            double latitude, double longitude,
+            double latitude,
+            double longitude,
             int resolution,
             double centralMeridian = 0,
             double centralParallel = 0,
@@ -328,6 +329,33 @@ namespace WorldFoundry.SurfaceMapping
                 planet.VectorToLatitude(region.Position),
                 range: region.Shape.ContainingRadius / planet.RadiusSquared);
         }
+
+        /// <summary>
+        /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
+        /// given latitude and longitude, where 0,0 is at the top, left and is the northwestern-most
+        /// point on the map.
+        /// </summary>
+        /// <param name="planet">The planet being mapped.</param>
+        /// <param name="region">The region being mapped.</param>
+        /// <param name="latitude">The latitude to convert, in radians.</param>
+        /// <param name="longitude">The longitude to convert.</param>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <returns>
+        /// The latitude and longitude of the given coordinates, in radians.
+        /// </returns>
+        public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
+            Planetoid planet,
+            SurfaceRegion region,
+            double latitude,
+            double longitude,
+            int resolution)
+            => GetEquirectangularProjectionFromLatLong(
+                latitude,
+                longitude,
+                resolution,
+                planet.VectorToLongitude(region.Position),
+                planet.VectorToLatitude(region.Position),
+                range: region.Shape.ContainingRadius / planet.RadiusSquared);
 
         /// <summary>
         /// Calculates the latitude and longitude that correspond to a set of coordinates from an
@@ -457,6 +485,8 @@ namespace WorldFoundry.SurfaceMapping
         /// steps used to generate it. A pre-generated map <i>must</i> share the same projection
         /// parameters (<paramref name="resolution"/>, <paramref name="centralMeridian"/>, etc.). If
         /// it does not, a new one will be generated anyway.</param>
+        /// <param name="averageElevation">The average elevation of the area. If left <see
+        /// langword="null"/> it will be calculated.</param>
         /// <returns>A <see cref="HydrologyMaps"/> instance with a set of equirectangular
         /// projections of the specified region describing the hydrology.</returns>
         /// <remarks>
@@ -478,8 +508,9 @@ namespace WorldFoundry.SurfaceMapping
             double centralParallel = 0,
             double? standardParallels = null,
             double? range = null,
-            float[,] elevationMap = null,
-            float[,] precipitationMap = null)
+            float[,]? elevationMap = null,
+            float[,]? precipitationMap = null,
+            float? averageElevation = null)
         {
             if (planet == null)
             {
@@ -497,7 +528,7 @@ namespace WorldFoundry.SurfaceMapping
             }
             if (precipitationMap == null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
             {
-                precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap).TotalPrecipitation;
+                precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap, averageElevation).TotalPrecipitationMap;
             }
 
             // Set each point's drainage to be its neighbor with the lowest elevation.
@@ -691,7 +722,7 @@ namespace WorldFoundry.SurfaceMapping
                 }
             }
 
-            return new HydrologyMaps(depthMap, flowMap, maxFlow);
+            return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap, maxFlow);
         }
 
         /// <summary>
@@ -712,6 +743,8 @@ namespace WorldFoundry.SurfaceMapping
         /// steps used to generate it. A pre-generated map <i>must</i> share the same projection
         /// parameters (<paramref name="resolution"/>). If it does not, a new one will be generated
         /// anyway.</param>
+        /// <param name="averageElevation">The average elevation of the area. If left <see
+        /// langword="null"/> it will be calculated.</param>
         /// <returns>A <see cref="HydrologyMaps"/> instance with a set of equirectangular
         /// projections of the region describing the hydrology, taking into account any
         /// overlay.</returns>
@@ -731,8 +764,9 @@ namespace WorldFoundry.SurfaceMapping
             this Planetoid planet,
             SurfaceRegion region,
             int resolution,
-            float[,] elevationMap = null,
-            float[,] precipitationMap = null)
+            float[,]? elevationMap = null,
+            float[,]? precipitationMap = null,
+            float? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
             if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
@@ -741,7 +775,7 @@ namespace WorldFoundry.SurfaceMapping
             }
             if (precipitationMap == null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
             {
-                precipitationMap = planet.GetWeatherMaps(region, resolution, 1, elevationMap).TotalPrecipitation;
+                precipitationMap = planet.GetWeatherMaps(region, resolution, 1, elevationMap, averageElevation).TotalPrecipitationMap;
             }
             var hydrologyMaps = planet.GetHydrologyMaps(
                   resolution,
@@ -749,7 +783,8 @@ namespace WorldFoundry.SurfaceMapping
                   planet.VectorToLatitude(region.Position),
                   range: region.Shape.ContainingRadius / planet.RadiusSquared,
                   elevationMap: elevationMap,
-                  precipitationMap: precipitationMap);
+                  precipitationMap: precipitationMap,
+                  averageElevation: averageElevation);
             if (region._depthOverlay == null && region._flowOverlay == null)
             {
                 return hydrologyMaps;
@@ -770,7 +805,7 @@ namespace WorldFoundry.SurfaceMapping
                     flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
-            return new HydrologyMaps(depth, flow, hydrologyMaps.MaxFlow);
+            return new HydrologyMaps(doubleResolution, resolution, depth, flow, hydrologyMaps.MaxFlow);
         }
 
         /// <summary>
@@ -800,9 +835,9 @@ namespace WorldFoundry.SurfaceMapping
                 planet,
                 region,
                 position,
-                maps[0].Precipitation.GetLength(0));
+                maps[0].PrecipitationMap.GetLength(0));
             var proportion = planet.GetProportionOfYearAtTime(time);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Precipitation[x, y]);
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.PrecipitationMap[x, y]);
         }
 
         /// <summary>
@@ -903,9 +938,9 @@ namespace WorldFoundry.SurfaceMapping
                 planet,
                 region,
                 position,
-                maps[0].Precipitation.GetLength(0));
+                maps[0].PrecipitationMap.GetLength(0));
             var proportion = planet.GetProportionOfYearAtTime(time);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Snowfall[x, y]);
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.SnowfallMap[x, y]);
         }
 
         /// <summary>
@@ -916,8 +951,8 @@ namespace WorldFoundry.SurfaceMapping
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
         /// double, double, double?, double?)"/>, <see cref="GetWeatherMaps(Planetoid, int, double,
-        /// double, double?, double?, int, float[,])"/>, and <see cref="GetHydrologyMaps(Planetoid,
-        /// int, double, double, double?, double?, float[,], float[,])"/> separately.
+        /// double, double?, double?, int, float[,], float?)"/>, and <see cref="GetHydrologyMaps(Planetoid,
+        /// int, double, double, double?, double?, float[,], float[,], float?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -962,9 +997,20 @@ namespace WorldFoundry.SurfaceMapping
             int steps = 12)
         {
             var elevationMap = GetElevationMap(planet, resolution, centralMeridian, centralParallel, standardParallels, range);
-            var weatherMapSet = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap);
-            var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitation);
-            return new SurfaceMaps(elevationMap, weatherMapSet, hydrologyMaps);
+            var totalElevation = 0.0;
+            var doubleResolution = resolution * 2;
+            for (var x = 0; x < doubleResolution; x++)
+            {
+                for (var y = 0; y < resolution; y++)
+                {
+                    totalElevation += elevationMap[x, y];
+                }
+            }
+            var averageElevation = (float)(totalElevation / (resolution * 3));
+
+            var weatherMapSet = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap, averageElevation);
+            var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
+            return new SurfaceMaps(doubleResolution, resolution, elevationMap, averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -975,8 +1021,8 @@ namespace WorldFoundry.SurfaceMapping
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid,
         /// SurfaceRegion, int)"/>, <see cref="GetWeatherMaps(Planetoid, SurfaceRegion, int, int,
-        /// float[,])"/>, and <see cref="GetHydrologyMaps(Planetoid, SurfaceRegion, int, float[,],
-        /// float[,])"/> separately.
+        /// float[,], float?)"/>, and <see cref="GetHydrologyMaps(Planetoid, SurfaceRegion, int, float[,],
+        /// float[,], float?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -1006,9 +1052,20 @@ namespace WorldFoundry.SurfaceMapping
             int steps = 12)
         {
             var elevationMap = planet.GetElevationMap(region, resolution);
-            var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap);
-            var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitation);
-            return new SurfaceMaps(elevationMap, weatherMapSet, hydrologyMaps);
+            var totalElevation = 0.0;
+            var doubleResolution = resolution * 2;
+            for (var x = 0; x < doubleResolution; x++)
+            {
+                for (var y = 0; y < resolution; y++)
+                {
+                    totalElevation += elevationMap[x, y];
+                }
+            }
+            var averageElevation = (float)(totalElevation / (resolution * 3));
+
+            var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap, averageElevation);
+            var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
+            return new SurfaceMaps(doubleResolution, resolution, elevationMap, averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -1077,7 +1134,7 @@ namespace WorldFoundry.SurfaceMapping
             }
 
             var proportion = planet.GetProportionOfYearAtTime(time);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.PrecipitationRange);
+            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Precipitation);
         }
 
         /// <summary>
@@ -1137,6 +1194,8 @@ namespace WorldFoundry.SurfaceMapping
         /// projection parameters (<paramref name="resolution"/>, <paramref
         /// name="centralMeridian"/>, etc.). If it does not, a new one will be generated
         /// anyway.</param>
+        /// <param name="averageElevation">The average elevation of the area. If left <see
+        /// langword="null"/> it will be calculated.</param>
         /// <returns>A <see cref="WeatherMaps"/> instance with an array of <see
         /// cref="PrecipitationMaps"/> instances equal to the number of <paramref name="steps"/>
         /// specified, starting with the "season" whose midpoint is at the winter solstice of the
@@ -1160,7 +1219,8 @@ namespace WorldFoundry.SurfaceMapping
             double? standardParallels = null,
             double? range = null,
             int steps = 12,
-            float[,] elevationMap = null)
+            float[,]? elevationMap = null,
+            float? averageElevation = null)
         {
             if (planet == null)
             {
@@ -1192,7 +1252,7 @@ namespace WorldFoundry.SurfaceMapping
                     var latitudeTemperatures = new Dictionary<double, double>();
                     var elevationTemperatures = new Dictionary<(double, double), double>();
 
-                    var roundedElevation = Math.Round(Math.Max(0, elevationMap[x, y] * planet.MaxElevation) / 100) * 100;
+                    var roundedElevation = Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
 
                     if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                     {
@@ -1264,7 +1324,7 @@ namespace WorldFoundry.SurfaceMapping
                     centralParallel,
                     standardParallels,
                     range);
-                precipitationMaps[i] = new PrecipitationMaps(precipMap, snowfallMap);
+                precipitationMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipMap, snowfallMap);
 
                 proportionOfYearAtMidpoint += proportionOfYear;
                 proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5 - proportionOfYearAtMidpoint) / 0.5);
@@ -1277,6 +1337,8 @@ namespace WorldFoundry.SurfaceMapping
 
             return new WeatherMaps(
                 planet,
+                doubleResolution,
+                resolution,
                 elevationMap,
                 precipitationMaps,
                 temperatureRanges,
@@ -1284,7 +1346,8 @@ namespace WorldFoundry.SurfaceMapping
                 centralMeridian,
                 centralParallel,
                 standardParallels,
-                range);
+                range,
+                averageElevation);
         }
 
         /// <summary>
@@ -1306,6 +1369,8 @@ namespace WorldFoundry.SurfaceMapping
         /// langword="null"/> one will be generated. A pre-generated map <i>must</i> share the same
         /// projection parameters (<paramref name="resolution"/>). If it does not, a new one will be
         /// generated anyway.</param>
+        /// <param name="averageElevation">The average elevation of the area. If left <see
+        /// langword="null"/> it will be calculated.</param>
         /// <returns>A <see cref="WeatherMaps"/> instance with an array of <see
         /// cref="PrecipitationMaps"/> instances equal to the number of <paramref name="steps"/>
         /// specified, starting with the "season" whose midpoint is at the winter solstice of the
@@ -1326,7 +1391,8 @@ namespace WorldFoundry.SurfaceMapping
             SurfaceRegion region,
             int resolution,
             int steps = 12,
-            float[,] elevationMap = null)
+            float[,]? elevationMap = null,
+            float? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
             var longitude = planet.VectorToLongitude(region.Position);
@@ -1341,14 +1407,15 @@ namespace WorldFoundry.SurfaceMapping
                 latitude,
                 range: region.Shape.ContainingRadius / planet.RadiusSquared,
                 steps: steps,
-                elevationMap: elevationMap);
+                elevationMap: elevationMap,
+                averageElevation: averageElevation);
             if (region._temperatureOverlaySummer == null && region._temperatureOverlayWinter == null
                 && region._precipitationOverlays == null && region._snowfallOverlays == null)
             {
                 return weatherMaps;
             }
 
-            var tempRanges = weatherMaps.TemperatureRanges;
+            var tempRanges = weatherMaps.TemperatureRangeMap;
             if (region._temperatureOverlaySummer != null || region._temperatureOverlayWinter != null)
             {
                 var summer = region._temperatureOverlaySummer ?? region._temperatureOverlayWinter;
@@ -1365,8 +1432,8 @@ namespace WorldFoundry.SurfaceMapping
                 }
             }
 
-            var precipitationMaps = weatherMaps.PrecipitationMaps.Select(x => x.Precipitation).ToArray();
-            var snowfallMaps = weatherMaps.PrecipitationMaps.Select(x => x.Snowfall).ToArray();
+            var precipitationMaps = weatherMaps.PrecipitationMaps.Select(x => x.PrecipitationMap).ToArray();
+            var snowfallMaps = weatherMaps.PrecipitationMaps.Select(x => x.SnowfallMap).ToArray();
             if (region._precipitationOverlays != null)
             {
                 var overlayRatio = (double)region._precipitationOverlays.Length / precipitationMaps.Length;
@@ -1398,18 +1465,34 @@ namespace WorldFoundry.SurfaceMapping
             var precipMaps = new PrecipitationMaps[precipitationMaps.Length];
             for (var i = 0; i < precipitationMaps.Length; i++)
             {
-                precipMaps[i] = new PrecipitationMaps(precipitationMaps[i], snowfallMaps[i]);
+                precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
             }
 
             return new WeatherMaps(
                 planet,
+                doubleResolution,
+                resolution,
                 elevationMap,
                 precipMaps,
                 tempRanges,
                 resolution,
                 longitude,
                 latitude,
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: region.Shape.ContainingRadius / planet.RadiusSquared,
+                averageElevation: averageElevation);
+        }
+
+        internal static T[,] GetInitializedArray<T>(int xLength, int yLength, T defaultValue)
+        {
+            var arr = new T[xLength, yLength];
+            for (var x = 0; x < xLength; x++)
+            {
+                for (var y = 0; y < yLength; y++)
+                {
+                    arr[x, y] = defaultValue;
+                }
+            }
+            return arr;
         }
 
         internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
@@ -1499,7 +1582,7 @@ namespace WorldFoundry.SurfaceMapping
                 ? -resolution
                 : x + 1;
             // down: x, y + 1
-            var down = y == resolution - 1
+            var down = centerY == resolution - 1
                 ? -halfResolution
                 : y + 1;
 
@@ -1558,18 +1641,16 @@ namespace WorldFoundry.SurfaceMapping
                 ? -resolution
                 : x + 1;
             // down: x, y + 1
-            var down = y == resolution - 1
+            var down = centerY == resolution - 1
                 ? -halfResolution
                 : y + 1;
 
-            var (latCenter, lonCenter) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
+            var (latCenter, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
             var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, scale, centralMeridian, centralParallel, standardParallels);
             var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, scale, centralMeridian, centralParallel, standardParallels);
             var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, scale, centralMeridian, centralParallel, standardParallels);
             var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, scale, centralMeridian, centralParallel, standardParallels);
 
-            var lonLeftBorder = (lonLeft + lonCenter) / 2;
-            var lonRightBorder = (lonRight + lonCenter) / 2;
             var latTopBorder = (latUp + latCenter) / 2;
             var latBottomBorder = (latDown + latCenter) / 2;
 

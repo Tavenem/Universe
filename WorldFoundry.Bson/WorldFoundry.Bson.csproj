@@ -1,16 +1,18 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>Preview</LangVersion>
+    <NullableContextOptions>enable</NullableContextOptions>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.3.1</Version>
+    <Version>0.3.2</Version>
     <Authors>Wil Stead</Authors>
     <Company>Wil Stead</Company>
     <Description>Auxilliary library for WorldFoundry with helper classes and methods for MongoDb.Bson</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Substance.Bson" Version="0.2.3" />
+    <PackageReference Include="Substance.Bson" Version="0.2.4" />
   </ItemGroup>
 
   <ItemGroup>

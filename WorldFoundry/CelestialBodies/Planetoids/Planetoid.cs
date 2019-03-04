@@ -1,4 +1,4 @@
-﻿using ExtensionLib;
+﻿using ExtensionFoundry;
 using MathAndScience;
 using MathAndScience.Numerics;
 using MathAndScience.Shapes;
@@ -39,7 +39,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private static readonly double LowTemp = Chemical.Water.MeltingPoint - 16;
 
-        private WorldGrid _grid;
+        private WorldGrid? _grid;
         private float _normalizedSeaLevel;
         private protected int _seed1;
         private protected int _seed2;
@@ -78,7 +78,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public double AngularVelocity
             => _angularVelocity ?? (_angularVelocity = RotationalPeriod == 0 ? 0 : MathConstants.TwoPI / RotationalPeriod).Value;
 
-        private protected Atmosphere _atmosphere;
+        private protected Atmosphere? _atmosphere;
         /// <summary>
         /// The atmosphere possessed by this <see cref="Planetoid"/> (may be <see
         /// langword="null"/>).
@@ -271,7 +271,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private Dictionary<string, Resource> _resources;
+        private Dictionary<string, Resource>? _resources;
         /// <summary>
         /// The resources of this <see cref="Planetoid"/>, as a dictionary of <see cref="Chemical"/>
         /// names along with <see cref="Resource"/> values.
@@ -289,7 +289,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private List<string> _satelliteIDs;
+        private List<string>? _satelliteIDs;
         /// <summary>
         /// The collection of natural satellites around this <see cref="Planetoid"/>.
         /// </summary>
@@ -298,7 +298,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// in the local <see cref="CelestialRegion"/> hierarchy, which merely share an orbital relationship.
         /// </remarks>
         public IEnumerable<Planetoid> Satellites
-            => ContainingCelestialRegion?.CelestialChildren.OfType<Planetoid>().Where(x => _satelliteIDs?.Contains(x.Id) == true) ?? Enumerable.Empty<Planetoid>();
+            => ContainingCelestialRegion?.CelestialChildren
+            .OfType<Planetoid>()
+            .Where(x => !string.IsNullOrEmpty(x.Id) && _satelliteIDs?.Contains(x.Id) == true)
+            ?? Enumerable.Empty<Planetoid>();
 
         private double? _seaLevel;
         /// <summary>
@@ -315,7 +318,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private List<SurfaceRegion> _surfaceRegions;
+        private List<SurfaceRegion>? _surfaceRegions;
         /// <summary>
         /// The collection of <see cref="SurfaceRegion"/> instances which describe the surface of
         /// this <see cref="Planetoid"/>.
@@ -413,20 +416,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private double MinSatellitePeriapsis
             => _minSatellitePeriapsis ?? (_minSatellitePeriapsis = GetMinSatellitePeriapsis()).Value;
 
-        private FastNoise _noise1;
-        private FastNoise Noise1 => _noise1 ?? (_noise1 = new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6));
+        private FastNoise? _noise1;
+        private FastNoise Noise1 => _noise1 ??= new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6);
 
-        private FastNoise _noise2;
-        private FastNoise Noise2 => _noise2 ?? (_noise2 = new FastNoise(_seed2, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 5));
+        private FastNoise? _noise2;
+        private FastNoise Noise2 => _noise2 ??= new FastNoise(_seed2, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 5);
 
-        private FastNoise _noise3;
-        private FastNoise Noise3 => _noise3 ?? (_noise3 = new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4));
+        private FastNoise? _noise3;
+        private FastNoise Noise3 => _noise3 ??= new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4);
 
-        private FastNoise _noise4;
-        private FastNoise Noise4 => _noise4 ?? (_noise4 = new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3));
+        private FastNoise? _noise4;
+        private FastNoise Noise4 => _noise4 ??= new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3);
 
-        private FastNoise _noise5;
-        private FastNoise Noise5 => _noise5 ?? (_noise5 = new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex));
+        private FastNoise? _noise5;
+        private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex);
 
         private protected virtual double Rigidity => 3.0e10;
 
@@ -442,7 +445,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planetoid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planetoid"/>.</param>
-        internal Planetoid(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Planetoid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
@@ -454,7 +457,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
         /// </param>
-        internal Planetoid(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
+        internal Planetoid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position) => MaxMass = maxMass;
 
         /// <summary>
         /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
@@ -705,7 +708,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 longitudeOffset -= MathConstants.TwoPI;
             }
-            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
 
             var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude)) + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
             var solarElevation = Math.Asin(sinSolarElevation);
@@ -861,12 +863,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var starPos = Orbit.HasValue
                 ? Orbit.Value.OrbitedObject is Star
                     ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
                         ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
                         : Vector3.Zero
                 : Vector3.Zero;
 
-            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+            var (_, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
 
             var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
             if (d.IsZero())
@@ -898,7 +900,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var starPos = Orbit.HasValue
                 ? Orbit.Value.OrbitedObject is Star
                     ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
                         ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
                         : Vector3.Zero
                 : Vector3.Zero;
@@ -975,13 +977,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="numSeasons">The number of seasons.</param>
         /// <param name="time">The time at which to make the determination.</param>
-        /// <returns></returns>
+        /// <returns>>The proportion of the current season, as a value between 0.0 and 1.0, at the
+        /// given <paramref name="time"/>.</returns>
         public double GetProportionOfSeasonAtTime(uint numSeasons, Duration time)
         {
             var proportionOfYear = GetProportionOfYearAtTime(time);
             var proportionPerSeason = 1.0 / numSeasons;
             var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
-            var nextSeasonIndex = seasonIndex == numSeasons - 1 ? 0 : seasonIndex + 1;
             return (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
         }
 
@@ -1048,7 +1050,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var starPos = Orbit.HasValue
                 ? Orbit.Value.OrbitedObject is Star
                     ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
+                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
                         ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
                         : Vector3.Zero
                 : Vector3.Zero;
@@ -1094,6 +1096,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 proportionOfYear = 1 - proportionOfYear;
             }
             return proportionOfYear;
+        }
+
+        /// <summary>
+        /// Determines the current season at the given <paramref name="time"/>.
+        /// </summary>
+        /// <param name="numSeasons">The number of seasons.</param>
+        /// <param name="time">The time at which to make the determination.</param>
+        /// <returns>The 0-based index of the current season at the given <paramref
+        /// name="time"/>.</returns>
+        public int GetSeasonAtTime(uint numSeasons, Duration time)
+        {
+            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionPerSeason = 1.0 / numSeasons;
+            return (int)Math.Floor(proportionOfYear / proportionPerSeason);
         }
 
         /// <summary>
@@ -1285,9 +1301,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 }
 
                 satellite.Init();
-                (_satelliteIDs ?? (_satelliteIDs = new List<string>())).Add(satellite.Id);
+                (_satelliteIDs ??= new List<string>()).Add(satellite.Id!);
 
-                minPeriapsis = satellite.Orbit.Value.Apoapsis + satellite.GetSphereOfInfluenceRadius();
+                minPeriapsis = satellite.Orbit!.Value.Apoapsis + satellite.GetSphereOfInfluenceRadius();
             }
         }
 
@@ -1446,11 +1462,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private protected virtual void GenerateAtmosphere() { }
 
         private protected virtual void GenerateResources()
-            => AddResources(Substance.Composition.GetSurface()
-                .GetChemicals(Phase.Solid).Where(x => x.chemical.IsMetal)
-                .Select(x => (x.chemical, x.proportion, true)));
+            => AddResources(Substance.Composition.GetSurface()?
+                .GetChemicals(Phase.Solid)
+                .Where(x => x.chemical.IsMetal)
+                .Select(x => (x.chemical, x.proportion, true))
+                ?? Enumerable.Empty<(Chemical, double, bool)>());
 
-        private protected virtual Planetoid GenerateSatellite(double periapsis, double eccentricity, double maxMass) => null;
+        private protected virtual Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass) => null;
 
         private protected override void GenerateSubstance()
         {
@@ -1586,9 +1604,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return SurfaceGravity * (numerator / denominator);
         }
 
-        private protected virtual double GetMass(IShape shape = null)
+        private protected virtual double GetMass(IShape? shape = null)
         {
-            var mass = 0.0;
+            double mass;
             do
             {
                 mass = MinMass + Math.Abs(Randomizer.Instance.Normal(0, (MaxMass - MinMass) / 3.0));
@@ -1637,7 +1655,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         {
             var equatorialPosition = Vector3.Transform(position - otherPosition, AxisRotation);
             var r = equatorialPosition.Length();
-            var l = equatorialPosition.X / r;
             var m = equatorialPosition.Y / r;
             var n = equatorialPosition.Z / r;
             var declination = Math.Asin(n);

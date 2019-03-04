@@ -16,7 +16,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 
         private protected override int MaxSatellites => 0;
 
-        private protected override string PlanemoClassPrefix => "Lava";
+        private protected override string? PlanemoClassPrefix => "Lava";
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/>.
@@ -30,7 +30,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaDwarfPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaDwarfPlanet"/>.</param>
-        internal LavaDwarfPlanet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal LavaDwarfPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaDwarfPlanet"/> with the given parameters.
@@ -42,7 +42,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaDwarfPlanet"/> during random generation, in kg.
         /// </param>
-        internal LavaDwarfPlanet(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal LavaDwarfPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
 
         private protected override IEnumerable<(IComposition, double)> GetCrust()
         {
