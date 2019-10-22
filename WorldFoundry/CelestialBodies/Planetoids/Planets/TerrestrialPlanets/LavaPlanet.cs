@@ -1,7 +1,12 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using MathAndScience.Numerics;
+using System.Runtime.Serialization;
+using WorldFoundry.Climate;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -10,6 +15,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// A terrestrial planet with little to no crust, whether due to a catastrophic collision event,
     /// or severe tidal forces due to a close orbit.
     /// </summary>
+    [Serializable]
     public class LavaPlanet : TerrestrialPlanet
     {
         private protected override bool CanHaveWater => false;
@@ -27,78 +33,112 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
-        internal LavaPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal LavaPlanet(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="LavaPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="LavaPlanet"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="LavaPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="LavaPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="LavaPlanet"/> during random generation, in kg.
         /// </param>
-        internal LavaPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal LavaPlanet(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
-        private protected override IEnumerable<(IComposition, double)> GetCrust()
-        {
-            // Molten crust with trace elements
-            // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = Math.Round(Randomizer.Instance.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+        private LavaPlanet(
+            string id,
+            string? name,
+            bool isPrepopulated,
+            double? albedo,
+            double? surfaceAlbedo,
+            Vector3 velocity,
+            double normalizedSeaLevel,
+            int seed1,
+            int seed2,
+            int seed3,
+            int seed4,
+            int seed5,
+            double? angleOfRotation,
+            Atmosphere? atmosphere,
+            double? axialPrecession,
+            bool? hasMagnetosphere,
+            double? maxElevation,
+            Number? rotationalOffset,
+            Number? rotationalPeriod,
+            List<Resource>? resources,
+            List<string>? satelliteIds,
+            List<SurfaceRegion>? surfaceRegions,
+            Number? maxMass,
+            Orbit? orbit,
+            IMaterial? material,
+            IMaterial? hydrosphere,
+            List<PlanetaryRing>? rings,
+            List<Location>? children)
+            : base(
+                id,
+                name,
+                isPrepopulated,
+                albedo,
+                surfaceAlbedo,
+                velocity,
+                normalizedSeaLevel,
+                seed1,
+                seed2,
+                seed3,
+                seed4,
+                seed5,
+                angleOfRotation,
+                atmosphere,
+                axialPrecession,
+                hasMagnetosphere,
+                maxElevation,
+                rotationalOffset,
+                rotationalPeriod,
+                resources,
+                satelliteIds,
+                surfaceRegions,
+                maxMass,
+                orbit,
+                material,
+                hydrosphere,
+                rings,
+                children) { }
 
-            var nickel = Math.Round(Randomizer.Instance.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = Math.Round(Randomizer.Instance.NextDouble(0.075, 0.225) * metals, 4);
+        private LavaPlanet(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (string?)info.GetValue(nameof(Name), typeof(string)),
+            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
+            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(SurfaceAlbedo), typeof(double?)),
+            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
+            (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
+            (int)info.GetValue(nameof(_seed1), typeof(int)),
+            (int)info.GetValue(nameof(_seed2), typeof(int)),
+            (int)info.GetValue(nameof(_seed3), typeof(int)),
+            (int)info.GetValue(nameof(_seed4), typeof(int)),
+            (int)info.GetValue(nameof(_seed5), typeof(int)),
+            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
+            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
+            (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
+            (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
+            (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
+            (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
+            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
+            (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
+            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(Hydrosphere), typeof(IMaterial)),
+            (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
 
-            var titanium = Math.Round(Randomizer.Instance.NextDouble(0.05, 0.3) * metals, 4);
-
-            var iron = metals - nickel - aluminum - titanium;
-
-            var copper = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= copper;
-
-            var lead = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= lead;
-
-            var uranium = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= uranium;
-
-            var tin = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= tin;
-
-            var silver = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= silver;
-
-            var gold = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= gold;
-
-            var platinum = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= platinum;
-
-            var sulfur = Math.Round(Randomizer.Instance.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
-
-            var rock = 1 - metals - sulfur;
-
-            yield return (new Composite(
-                (Chemical.Aluminium, Phase.Solid, aluminum),
-                (Chemical.Copper, Phase.Solid, copper),
-                (Chemical.Gold, Phase.Solid, gold),
-                (Chemical.Iron, Phase.Solid, iron),
-                (Chemical.Lead, Phase.Solid, lead),
-                (Chemical.Nickel, Phase.Solid, nickel),
-                (Chemical.Platinum, Phase.Solid, platinum),
-                (Chemical.Rock, Phase.Liquid, rock),
-                (Chemical.Silver, Phase.Solid, silver),
-                (Chemical.Sulfur, Phase.Solid, sulfur),
-                (Chemical.Tin, Phase.Solid, tin),
-                (Chemical.Titanium, Phase.Solid, titanium),
-                (Chemical.Uranium, Phase.Solid, uranium)),
-                1);
-        }
-
-        private protected override double GetInternalTemperature() => Randomizer.Instance.NextDouble(974.15, 1574.15);
+        private protected override double GetInternalTemperature() => Randomizer.Instance.NextDouble(974, 1574);
     }
 }

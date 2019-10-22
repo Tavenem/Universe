@@ -1,19 +1,31 @@
-﻿using MathAndScience;
-using MathAndScience.Shapes;
-using Substances;
-using System;
-using MathAndScience.Numerics;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using System.Text;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
+using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
     /// <summary>
     /// A stellar body.
     /// </summary>
-    public class Star : CelestialBody
+    [Serializable]
+    public class Star : CelestialLocation
     {
         private const string RedDwarfTypeName = "Red Dwarf";
+
+        private static readonly Number _SolarMass = new Number(6.955, 8);
+
+        // True for most stars.
+        internal override bool IsHospitable => true;
 
         private double? _luminosity;
         /// <summary>
@@ -21,7 +33,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public double Luminosity
         {
-            get => _luminosity ?? (_luminosity = GetLuminosity()).Value;
+            get => _luminosity ??= GetLuminosity();
             set => _luminosity = value;
         }
 
@@ -31,7 +43,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public LuminosityClass LuminosityClass
         {
-            get => _luminosityClass ?? (_luminosityClass = GetLuminosityClass()).Value;
+            get => _luminosityClass ??= GetLuminosityClass();
             set => _luminosityClass = value;
         }
 
@@ -46,21 +58,19 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public SpectralClass SpectralClass
         {
-            get => _spectralClass ?? (_spectralClass = GetSpectralClass()).Value;
+            get => _spectralClass ??= GetSpectralClass();
             set => _spectralClass = value;
         }
 
         /// <summary>
-        /// The name for this type of <see cref="ICelestialLocation"/>.
+        /// The name for this type of <see cref="CelestialLocation"/>.
         /// </summary>
         public override string TypeName => SpectralClass == SpectralClass.M ? RedDwarfTypeName : BaseTypeName;
-
-        internal override bool IsHospitable => true;
 
         private protected override string BaseTypeName => "Star";
 
         private string? _designatorPrefix;
-        private protected override string DesignatorPrefix => _designatorPrefix ?? (_designatorPrefix = GetDesignatorPrefix());
+        private protected override string DesignatorPrefix => _designatorPrefix ??= GetDesignatorPrefix();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/>.
@@ -71,7 +81,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// Initializes a new instance of <see cref="Star"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Star"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Star"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Star"/>.</param>
         /// <param name="spectralClass">The <see cref="Stars.SpectralClass"/> of this <see cref="Star"/>.</param>
@@ -80,7 +90,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </param>
         /// <param name="populationII">Set to true if this is to be a Population II <see cref="Star"/>.</param>
         internal Star(
-            CelestialRegion parent,
+            Location parent,
             Vector3 position,
             SpectralClass? spectralClass = null,
             LuminosityClass? luminosityClass = null,
@@ -97,6 +107,74 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
 
             IsPopulationII = populationII;
+        }
+
+        private protected Star(
+            string id,
+            string? name,
+            bool isPrepopulated,
+            double? luminosity,
+            LuminosityClass? luminosityClass,
+            bool isPopulationII,
+            SpectralClass? spectralClass,
+            double? albedo,
+            Vector3 velocity,
+            Orbit? orbit,
+            IMaterial? material,
+            List<Location>? children)
+            : base(
+                id,
+                name,
+                isPrepopulated,
+                albedo,
+                velocity,
+                orbit,
+                material,
+                children)
+        {
+            _luminosity = luminosity;
+            _luminosityClass = luminosityClass;
+            IsPopulationII = isPopulationII;
+            _spectralClass = spectralClass;
+        }
+
+        private Star(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (string?)info.GetValue(nameof(Name), typeof(string)),
+            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
+            (double?)info.GetValue(nameof(Luminosity), typeof(double?)),
+            (LuminosityClass?)info.GetValue(nameof(LuminosityClass), typeof(LuminosityClass?)),
+            (bool)info.GetValue(nameof(IsPopulationII), typeof(bool)),
+            (SpectralClass?)info.GetValue(nameof(SpectralClass), typeof(SpectralClass?)),
+            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
+            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(Id), Id);
+            info.AddValue(nameof(Name), Name);
+            info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
+            info.AddValue(nameof(Luminosity), _luminosity);
+            info.AddValue(nameof(LuminosityClass), _luminosityClass);
+            info.AddValue(nameof(IsPopulationII), IsPopulationII);
+            info.AddValue(nameof(SpectralClass), _spectralClass);
+            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(Velocity), Velocity);
+            info.AddValue(nameof(Orbit), _orbit);
+            info.AddValue(nameof(Material), Material);
+            info.AddValue(nameof(Children), Children.ToList());
         }
 
         /// <summary>
@@ -124,7 +202,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 // 1-3 in a Gaussian distribution, with 1 as the mean
                 else
                 {
-                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Instance.Normal(0, 1)));
+                    numPlanets = (int)Math.Ceiling(1 + Math.Abs(Randomizer.Instance.NormalDistributionSample(0, 1)));
                 }
             }
 
@@ -145,7 +223,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 if (numGiants + numIceGiants >= numPlanets && numPlanets > 2)
                 {
                     // Pick the type form which to take the slot back at random.
-                    if (Randomizer.Instance.NextBoolean())
+                    if (Randomizer.Instance.NextBool())
                     {
                         numGiants--;
                     }
@@ -166,69 +244,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         /// <param name="temperature">The desired temperature, in K.</param>
         /// <param name="distance">The desired distance, in meters.</param>
-        /// <param name="albedo">The albedo of the target body.</param>
-        internal void SetTempForTargetPlanetTemp(double temperature, double distance, double albedo = 0)
-            => Substance.Temperature = temperature / (Math.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - albedo, 0.25));
-
-        // Mass scales with radius for main-sequence stars, with the scale changing at around 1
-        // solar mass/radius.
-        private protected virtual double GenerateMass(IShape shape)
-            => Math.Pow(shape.ContainingRadius / 6.955e8, shape.ContainingRadius < 6.955e8 ? 1.25 : 1.75) * 1.99e30;
-
-        private protected virtual IShape GenerateShape()
-        {
-            // A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
-            var d = MathConstants.FourPI * 5.67e-8 * Math.Pow(Temperature ?? 0, 4);
-            var radius = d.IsZero() ? 0 : Math.Round(Math.Sqrt(Luminosity / d));
-            var flattening = Math.Max(Randomizer.Instance.Normal(0.15, 0.05), 0);
-            return new Ellipsoid(radius, Math.Round(radius * (1 - flattening)), Position);
-        }
-
-        private protected override void GenerateSubstance()
-        {
-            Substance = new Substance
-            {
-                Composition = IsPopulationII
-                    ? Composite.StellarMaterialPopulationII
-                    : Composite.StellarMaterial,
-                Temperature = GenerateTemperature(),
-            };
-
-            Shape = GenerateShape();
-
-            Substance.Mass = GenerateMass(Shape);
-        }
-
-        private protected virtual double GenerateTemperature()
-        {
-            switch (SpectralClass)
-            {
-                case SpectralClass.O:
-                    return Math.Round(30000 + Math.Abs(Randomizer.Instance.Normal(0, 6666)));
-                case SpectralClass.B:
-                    return Math.Round(Randomizer.Instance.NextDouble(10000, 30000));
-                case SpectralClass.A:
-                    return Math.Round(Randomizer.Instance.NextDouble(7500, 10000));
-                case SpectralClass.F:
-                    return Math.Round(Randomizer.Instance.NextDouble(6000, 7500));
-                case SpectralClass.G:
-                    return Math.Round(Randomizer.Instance.NextDouble(5200, 6000));
-                case SpectralClass.K:
-                    return Math.Round(Randomizer.Instance.NextDouble(3700, 5200));
-                case SpectralClass.M:
-                    return Math.Round(Randomizer.Instance.NextDouble(2400, 3700));
-                case SpectralClass.L:
-                    return Math.Round(Randomizer.Instance.NextDouble(1300, 2400));
-                case SpectralClass.T:
-                    return Math.Round(Randomizer.Instance.NextDouble(500, 1300));
-                case SpectralClass.Y:
-                    return Math.Round(Randomizer.Instance.NextDouble(250, 500));
-                case SpectralClass.W:
-                    return Math.Round(30000 + Math.Abs(Randomizer.Instance.Normal(0, 56666)));
-                default: // No way to know what 'None' or 'Other' should be.
-                    return 0;
-            }
-        }
+        /// <param name="albedo">The albedo of the target body. Defaults to zero.</param>
+        internal void SetTempForTargetPlanetTemp(double temperature, Number distance, double? albedo = null)
+            => Temperature = temperature / (double)(Number.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - (albedo ?? 0), 0.25));
 
         private string GetDesignatorPrefix()
         {
@@ -262,10 +280,10 @@ namespace WorldFoundry.CelestialBodies.Stars
             return sb.ToString();
         }
 
-        private protected virtual double GetLuminosity()
+        private protected virtual double GetLuminosity(Number? temperature = null)
         {
             // Luminosity scales with temperature for main-sequence stars.
-            var luminosity = Math.Pow((Temperature ?? 0) / 5778.0, 5.6) * 3.846e26;
+            var luminosity = Math.Pow((double)(temperature ?? Number.Zero) / 5778, 5.6) * 3.846e26;
 
             // If a special luminosity class had been assigned, take it into account.
             if (LuminosityClass == LuminosityClass.sd)
@@ -287,7 +305,32 @@ namespace WorldFoundry.CelestialBodies.Stars
         private protected virtual LuminosityClass GetLuminosityClass() => LuminosityClass.V;
 
         private protected double GetLuminosityFromRadius()
-            => MathConstants.FourPI * RadiusSquared * ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
+            => NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * (double)RadiusSquared * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
+
+        private protected override IMaterial GetMaterial()
+        {
+            var temperature = GetTemperature();
+
+            var shape = GetShape(temperature);
+
+            // Mass scales with radius for main-sequence stars, with the scale changing at around 1
+            // solar mass/radius.
+            var mass = Number.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new Number(125, -2) : new Number(175, -2)) * new Number(1.99, 30);
+
+            return GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+        }
+
+        /// <summary>
+        /// A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
+        /// </summary>
+        private protected IShape GetShape(Number? temperature)
+        {
+            var d = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * 5.67e-8 * Math.Pow((double)(temperature ?? Number.Zero), 4);
+            _luminosity = GetLuminosity(temperature);
+            var radius = d.IsNearlyZero() ? Number.Zero : Math.Sqrt(Luminosity / d);
+            var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
+            return new Ellipsoid(radius, radius * (1 - flattening), Position);
+        }
 
         private protected virtual SpectralClass GetSpectralClass()
         {
@@ -322,7 +365,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        private protected SpectralClass GetSpectralClassFromTemperature(double temperature)
+        private protected SpectralClass GetSpectralClassFromTemperature(Number temperature)
         {
             // Only applies to the standard classes (excludes W).
             if (temperature < 500)
@@ -366,6 +409,25 @@ namespace WorldFoundry.CelestialBodies.Stars
                 return SpectralClass.O;
             }
         }
+
+        private protected override ISubstanceReference? GetSubstance()
+            => IsPopulationII ? CelestialSubstances.StellarMaterialPopulationII : CelestialSubstances.StellarMaterial;
+
+        private protected override double? GetTemperature() => SpectralClass switch
+        {
+            SpectralClass.O => Randomizer.Instance.PositiveNormalDistributionSample(30000, 6666),
+            SpectralClass.B => Randomizer.Instance.NextDouble(10000, 30000),
+            SpectralClass.A => Randomizer.Instance.NextDouble(7500, 10000),
+            SpectralClass.F => Randomizer.Instance.NextDouble(6000, 7500),
+            SpectralClass.G => Randomizer.Instance.NextDouble(5200, 6000),
+            SpectralClass.K => Randomizer.Instance.NextDouble(3700, 5200),
+            SpectralClass.M => Randomizer.Instance.NextDouble(2400, 3700),
+            SpectralClass.L => Randomizer.Instance.NextDouble(1300, 2400),
+            SpectralClass.T => Randomizer.Instance.NextDouble(500, 1300),
+            SpectralClass.Y => Randomizer.Instance.NextDouble(250, 500),
+            SpectralClass.W => Randomizer.Instance.PositiveNormalDistributionSample(30000, 56666),
+            _ => 0,
+        };
 
         private protected virtual bool GetWillHaveGiantPlanets()
         {

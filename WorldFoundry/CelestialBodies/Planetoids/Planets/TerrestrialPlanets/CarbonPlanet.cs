@@ -1,11 +1,16 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using MathAndScience.Numerics;
+using System.Runtime.Serialization;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
+using WorldFoundry.Climate;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
-using MathAndScience.Shapes;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -13,6 +18,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// A terrestrial planet with an unusually high concentration of carbon, rather than silicates,
     /// including such features as naturally-occurring steel, and diamond volcanoes.
     /// </summary>
+    [Serializable]
     public class CarbonPlanet : TerrestrialPlanet
     {
         private protected override bool CanHaveOxygen => false;
@@ -30,30 +36,119 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
-        internal CarbonPlanet(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal CarbonPlanet(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CarbonPlanet"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="CarbonPlanet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        internal CarbonPlanet(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal CarbonPlanet(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
-        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private CarbonPlanet(
+            string id,
+            string? name,
+            bool isPrepopulated,
+            double? albedo,
+            double? surfaceAlbedo,
+            Vector3 velocity,
+            double normalizedSeaLevel,
+            int seed1,
+            int seed2,
+            int seed3,
+            int seed4,
+            int seed5,
+            double? angleOfRotation,
+            Atmosphere? atmosphere,
+            double? axialPrecession,
+            bool? hasMagnetosphere,
+            double? maxElevation,
+            Number? rotationalOffset,
+            Number? rotationalPeriod,
+            List<Resource>? resources,
+            List<string>? satelliteIds,
+            List<SurfaceRegion>? surfaceRegions,
+            Number? maxMass,
+            Orbit? orbit,
+            IMaterial? material,
+            IMaterial? hydrosphere,
+            List<PlanetaryRing>? rings,
+            List<Location>? children)
+            : base(
+                id,
+                name,
+                isPrepopulated,
+                albedo,
+                surfaceAlbedo,
+                velocity,
+                normalizedSeaLevel,
+                seed1,
+                seed2,
+                seed3,
+                seed4,
+                seed5,
+                angleOfRotation,
+                atmosphere,
+                axialPrecession,
+                hasMagnetosphere,
+                maxElevation,
+                rotationalOffset,
+                rotationalPeriod,
+                resources,
+                satelliteIds,
+                surfaceRegions,
+                maxMass,
+                orbit,
+                material,
+                hydrosphere,
+                rings,
+                children) { }
+
+        private CarbonPlanet(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (string?)info.GetValue(nameof(Name), typeof(string)),
+            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
+            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(SurfaceAlbedo), typeof(double?)),
+            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
+            (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
+            (int)info.GetValue(nameof(_seed1), typeof(int)),
+            (int)info.GetValue(nameof(_seed2), typeof(int)),
+            (int)info.GetValue(nameof(_seed3), typeof(int)),
+            (int)info.GetValue(nameof(_seed4), typeof(int)),
+            (int)info.GetValue(nameof(_seed5), typeof(int)),
+            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
+            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
+            (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
+            (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
+            (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
+            (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
+            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
+            (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
+            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(Hydrosphere), typeof(IMaterial)),
+            (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+
+        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
         {
             Planetoid? satellite = null;
             var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > BaseMinMassForType && Randomizer.Instance.NextBoolean())
+            if (maxMass > BaseMinMassForType && Randomizer.Instance.NextBool())
             {
                 // Select from the standard distribution of types.
 
@@ -62,39 +157,39 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
                 // The maximum mass and density are used to calculate an outer Roche limit (may not
                 // be the actual Roche limit for the body which gets generated).
-                if (periapsis < GetRocheLimit(BaseMaxDensity) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(BaseMaxDensity) * new Number(105, -2) || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new LavaPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.45) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new TerrestrialPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.77)
                 {
-                    satellite = new CarbonPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new CarbonPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new OceanPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > DwarfPlanet.BaseMinMassForType && Randomizer.Instance.NextBoolean())
+            else if (maxMass > DwarfPlanet.BaseMinMassForType && Randomizer.Instance.NextBool())
             {
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * 1.05 || chance <= 0.01)
+                if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * new Number(105, -2) || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new LavaDwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new DwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new RockyDwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -103,15 +198,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new CTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new STypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
+                    satellite = new MTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
                 }
             }
 
@@ -122,98 +217,243 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                     this,
                     periapsis,
                     eccentricity,
-                    Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
-                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4),
-                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4),
-                    Math.Round(Randomizer.Instance.NextDouble(Math.PI * 2), 4));
+                    Randomizer.Instance.NextDouble(0.5),
+                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             }
 
             return satellite;
         }
 
-        private protected override IEnumerable<(IComposition, double)> GetCore(double mass)
+        private protected override Number GetCoreProportion() => new Number(4, -1);
+
+        private protected override (ISubstanceReference, decimal)[] GetCoreConstituents()
         {
             // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
-            var coreNickel = Math.Round(Randomizer.Instance.NextDouble(0.03, 0.15), 4);
-            var coreSteel = Math.Round(Randomizer.Instance.NextDouble(1 - coreNickel), 4);
-            yield return (new Composite(
-                (Chemical.Iron, Phase.Solid, 1 - coreNickel - coreSteel),
-                (Chemical.Nickel, Phase.Solid, coreNickel),
-                (Chemical.Steel, Phase.Solid, coreSteel)),
-                1);
+            var coreSteel = Randomizer.Instance.NextDecimal(0.945m);
+            return new (ISubstanceReference, decimal)[]
+            {
+                (Substances.GetChemicalReference(Substances.Chemicals.Iron), 0.945m - coreSteel),
+                (Substances.GetSolutionReference(Substances.Solutions.CarbonSteel), coreSteel),
+                (Substances.GetChemicalReference(Substances.Chemicals.Nickel), 0.055m),
+            };
         }
 
-        private protected override double GetCoreProportion(double mass) => 0.4;
-
-        private protected override IEnumerable<(IComposition, double)> GetCrust()
+        private protected override IEnumerable<(IMaterial, decimal)> GetCrust(
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
         {
-            // Rocky crust with trace elements
-            // Metal content varies by approx. +/-15% from standard value in a Gaussian distribution.
-            var metals = Math.Round(Randomizer.Instance.Normal(MetalProportion, 0.05 * MetalProportion), 4);
+            var crustMass = planetMass * crustProportion;
 
-            var nickel = Math.Round(Randomizer.Instance.NextDouble(0.025, 0.075) * metals, 4);
-            var aluminum = Math.Round(Randomizer.Instance.NextDouble(0.075, 0.225) * metals, 4);
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
 
-            var titanium = Math.Round(Randomizer.Instance.NextDouble(0.05, 0.3) * metals, 4);
+            // Carbonaceous crust of graphite, diamond, and hydrocarbons, with trace minerals
 
-            var iron = metals - nickel - aluminum - titanium;
-            var diamond = Math.Round(iron * Randomizer.Instance.NextDouble(0.01, 0.05), 4);
-            iron -= diamond;
-            var steel = Math.Round(Randomizer.Instance.NextDouble(iron), 4);
-            iron -= steel;
+            var graphite = 1m;
 
-            var copper = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= copper;
+            var aluminium = (decimal)Randomizer.Instance.NormalDistributionSample(0.026, 4e-3, minimum: 0);
+            var iron = (decimal)Randomizer.Instance.NormalDistributionSample(1.67e-2, 2.75e-3, minimum: 0);
+            var titanium = (decimal)Randomizer.Instance.NormalDistributionSample(5.7e-3, 9e-4, minimum: 0);
 
-            var lead = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= lead;
+            var chalcopyrite = (decimal)Randomizer.Instance.NormalDistributionSample(1.1e-3, 1.8e-4, minimum: 0); // copper
+            graphite -= chalcopyrite;
+            var chromite = (decimal)Randomizer.Instance.NormalDistributionSample(5.5e-4, 9e-5, minimum: 0);
+            graphite -= chromite;
+            var sphalerite = (decimal)Randomizer.Instance.NormalDistributionSample(8.1e-5, 1.3e-5, minimum: 0); // zinc
+            graphite -= sphalerite;
+            var galena = (decimal)Randomizer.Instance.NormalDistributionSample(2e-5, 3.3e-6, minimum: 0); // lead
+            graphite -= galena;
+            var uraninite = (decimal)Randomizer.Instance.NormalDistributionSample(7.15e-6, 1.1e-6, minimum: 0);
+            graphite -= uraninite;
+            var cassiterite = (decimal)Randomizer.Instance.NormalDistributionSample(6.7e-6, 1.1e-6, minimum: 0); // tin
+            graphite -= cassiterite;
+            var cinnabar = (decimal)Randomizer.Instance.NormalDistributionSample(1.35e-7, 2.3e-8, minimum: 0); // mercury
+            graphite -= cinnabar;
+            var acanthite = (decimal)Randomizer.Instance.NormalDistributionSample(5e-8, 8.3e-9, minimum: 0); // silver
+            graphite -= acanthite;
+            var sperrylite = (decimal)Randomizer.Instance.NormalDistributionSample(1.17e-8, 2e-9, minimum: 0); // platinum
+            graphite -= sperrylite;
+            var gold = (decimal)Randomizer.Instance.NormalDistributionSample(2.75e-9, 4.6e-10, minimum: 0);
+            graphite -= gold;
 
-            var uranium = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= uranium;
+            var bauxite = aluminium * 1.57m;
+            graphite -= bauxite;
 
-            var tin = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= tin;
+            var hematiteIron = iron * 3 / 4 * (decimal)Randomizer.Instance.NormalDistributionSample(1, 0.167, minimum: 0);
+            var hematite = hematiteIron * 2.88m;
+            graphite -= hematite;
+            var magnetite = (iron - hematiteIron) * 4.14m;
+            graphite -= magnetite;
 
-            var silver = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= silver;
+            var ilmenite = titanium * 2.33m;
+            graphite -= ilmenite;
 
-            var gold = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= gold;
+            var coal = graphite * (decimal)Randomizer.Instance.NormalDistributionSample(0.25, 0.042, minimum: 0);
+            graphite -= coal * 2;
+            var oil = graphite * (decimal)Randomizer.Instance.NormalDistributionSample(0.25, 0.042, minimum: 0);
+            graphite -= oil;
+            var gas = graphite * (decimal)Randomizer.Instance.NormalDistributionSample(0.25, 0.042, minimum: 0);
+            graphite -= gas;
+            var diamond = graphite * (decimal)Randomizer.Instance.NormalDistributionSample(0.125, 0.021, minimum: 0);
+            graphite -= diamond;
 
-            var platinum = titanium > 0 ? Math.Round(Randomizer.Instance.NextDouble(titanium), 4) : 0;
-            titanium -= platinum;
+            var components = new List<(ISubstanceReference, decimal)>();
+            if (graphite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.AmorphousCarbon), graphite));
+            }
+            if (coal > 0)
+            {
+                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Anthracite), coal));
+                components.Add((Substances.GetMixtureReference(Substances.Mixtures.BituminousCoal), coal));
+            }
+            if (oil > 0)
+            {
+                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Petroleum), oil));
+            }
+            if (gas > 0)
+            {
+                components.Add((Substances.GetMixtureReference(Substances.Mixtures.NaturalGas), gas));
+            }
+            if (diamond > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Diamond), diamond));
+            }
 
-            var sulfur = Math.Round(Randomizer.Instance.Normal(3.5e-5, 0.05 * 3.5e-5), 4);
+            if (chalcopyrite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chalcopyrite), chalcopyrite));
+            }
+            if (chromite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chromite), chromite));
+            }
+            if (sphalerite > 0)
+            {
+                components.Add((Substances.GetSolutionReference(Substances.Solutions.Sphalerite), sphalerite));
+            }
+            if (galena > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Galena), galena));
+            }
+            if (uraninite > 0)
+            {
+                components.Add((Substances.GetSolutionReference(Substances.Solutions.Uraninite), uraninite));
+            }
+            if (cassiterite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cassiterite), cassiterite));
+            }
+            if (cinnabar > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cinnabar), cinnabar));
+            }
+            if (acanthite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Acanthite), acanthite));
+            }
+            if (sperrylite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Sperrylite), sperrylite));
+            }
+            if (gold > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Gold), gold));
+            }
+            if (bauxite > 0)
+            {
+                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Bauxite), bauxite));
+            }
+            if (hematite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Hematite), hematite));
+            }
+            if (magnetite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Magnetite), magnetite));
+            }
+            if (ilmenite > 0)
+            {
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ilmenite), ilmenite));
+            }
 
-            var rock = 1 - metals - sulfur;
-
-            yield return (new Composite(
-                (Chemical.Aluminium, Phase.Solid, aluminum),
-                (Chemical.Copper, Phase.Solid, copper),
-                (Chemical.Diamond, Phase.Solid, diamond),
-                (Chemical.Gold, Phase.Solid, gold),
-                (Chemical.Iron, Phase.Solid, iron),
-                (Chemical.Lead, Phase.Solid, lead),
-                (Chemical.Nickel, Phase.Solid, nickel),
-                (Chemical.Platinum, Phase.Solid, platinum),
-                (Chemical.Rock, Phase.Solid, rock),
-                (Chemical.Silver, Phase.Solid, silver),
-                (Chemical.Steel, Phase.Solid, steel),
-                (Chemical.Sulfur, Phase.Solid, sulfur),
-                (Chemical.Tin, Phase.Solid, tin),
-                (Chemical.Titanium, Phase.Solid, titanium),
-                (Chemical.Uranium, Phase.Solid, uranium)),
-                1);
+            yield return (new Material(
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape,
+                null,
+                components.ToArray()), 1);
         }
 
-        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
+        private protected override IEnumerable<(IMaterial, decimal)> GetMantle(
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
         {
-            // Molten rock mantle, with a significant amount of compressed carbon in form of diamond
-            var diamond = Math.Round(Randomizer.Instance.NextDouble(0.01, 0.05), 4);
-            yield return (new Composite(
-                (Chemical.Diamond, Phase.Solid, diamond),
-                (Chemical.Rock, Phase.Liquid, 1 - diamond)),
-                1);
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
+
+            var innerTemp = coreTemp;
+
+            var innerBoundary = planetShape.ContainingRadius;
+            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
+
+            var mantleMass = planetMass * mantleProportion;
+
+            // Molten silicon carbide lower mantle
+            var lowerLayer = Number.Max(0, Randomizer.Instance.NextNumber(-Number.Deci, new Number(55, -2))) / mantleProportion;
+            if (lowerLayer.IsPositive)
+            {
+                var lowerLayerMass = mantleMass * lowerLayer;
+
+                var lowerLayerBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
+                var lowerLayerShape = new HollowSphere(
+                    innerBoundary,
+                    lowerLayerBoundary,
+                    planetShape.Position);
+                innerBoundary = lowerLayerBoundary;
+
+                var lowerLayerBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)lowerLayer);
+                var lowerLayerTemp = (lowerLayerBoundaryTemp + innerTemp) / 2;
+                innerTemp = lowerLayerTemp;
+
+                yield return (new Material(
+                    Substances.GetChemicalReference(Substances.Chemicals.SiliconCarbide),
+                    (double)(lowerLayerMass / lowerLayerShape.Volume),
+                    lowerLayerMass,
+                    lowerLayerShape,
+                    lowerLayerTemp),
+                    (decimal)lowerLayer);
+            }
+
+            // Diamond upper layer
+            var upperLayerProportion = 1 - lowerLayer;
+
+            var upperLayerMass = mantleMass * upperLayerProportion;
+
+            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
+            var upperLayerShape = new HollowSphere(
+                innerBoundary,
+                upperLayerBoundary,
+                planetShape.Position);
+
+            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
+
+            yield return (new Material(
+                Substances.GetChemicalReference(Substances.Chemicals.Diamond),
+                (double)(upperLayerMass / upperLayerShape.Volume),
+                upperLayerMass,
+                upperLayerShape,
+                upperLayerTemp),
+                (decimal)upperLayerProportion);
         }
     }
 }

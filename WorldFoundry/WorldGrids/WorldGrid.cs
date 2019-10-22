@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using MathAndScience.Numerics;
+using System.Numerics;
 using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.WorldGrids
 {
     /// <summary>
-    /// A specialized data structure to describe the topography and contents of the surface of a <see cref="Planetoid"/>.
+    /// A specialized data structure to describe the topography of the surface of a <see cref="Planetoid"/>.
     /// </summary>
-    public class WorldGrid
+    internal class WorldGrid
     {
         /// <summary>
         /// The maximum grid size (level of detail). Even values below this limit may be impractical,
@@ -16,17 +16,17 @@ namespace WorldFoundry.WorldGrids
         /// </summary>
         public const byte MaxGridSize = 14;
 
-        private static byte BaseDefaultGridSize = 6;
+        private static byte _DefaultGridSize = 6;
         /// <summary>
         /// The default grid size (level of detail). Initial value is 6; maximum is <see cref="MaxGridSize"/>.
         /// </summary>
         public static byte DefaultGridSize
         {
-            get => BaseDefaultGridSize;
-            set => BaseDefaultGridSize = Math.Min(value, MaxGridSize);
+            get => _DefaultGridSize;
+            set => _DefaultGridSize = Math.Min(value, MaxGridSize);
         }
 
-        private static readonly List<(double fiveSided, double sixSided)> GridAreas = new List<(double fiveSided, double sixSided)>
+        internal static readonly List<(double fiveSided, double sixSided)> GridAreas = new List<(double fiveSided, double sixSided)>
         {
             { (0.995824126333975, 0) },
             { (0.322738912263057, 0.485548584813836) },
@@ -51,11 +51,6 @@ namespace WorldFoundry.WorldGrids
         public Corner[] Corners { get; private set; }
 
         /// <summary>
-        /// The array of all <see cref="Edge"/>s which make up the <see cref="WorldGrid"/>.
-        /// </summary>
-        public Edge[] Edges { get; private set; }
-
-        /// <summary>
         /// The current grid size (level of detail).
         /// </summary>
         public short GridSize { get; private set; } = -1;
@@ -64,16 +59,6 @@ namespace WorldFoundry.WorldGrids
         /// The array of all <see cref="Tile"/>s which make up the <see cref="WorldGrid"/>.
         /// </summary>
         public Tile[] Tiles { get; private set; }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="WorldGrid"/>.
-        /// </summary>
-        public WorldGrid()
-        {
-            Corners = new Corner[0];
-            Edges = new Edge[0];
-            Tiles = new Tile[0];
-        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="WorldGrid"/> with the given values.
@@ -85,7 +70,6 @@ namespace WorldFoundry.WorldGrids
         public WorldGrid(Planetoid planet, byte size)
         {
             Corners = new Corner[0];
-            Edges = new Edge[0];
             Tiles = new Tile[0];
             SubdivideGrid(planet, size);
         }
@@ -102,24 +86,6 @@ namespace WorldFoundry.WorldGrids
                 c.Tiles[i] = tileIndexes[i];
                 var t = Tiles[tileIndexes[i]];
                 t.Corners[t.IndexOfTile(tileIndexes[(i + 2) % 3])] = index;
-            }
-        }
-
-        private void AddEdge(int index, int t0, int t1)
-        {
-            var e = Edges[index];
-            e.Tiles[0] = t0;
-            e.Tiles[1] = t1;
-            var tile0 = Tiles[t0];
-            var tile0t1 = tile0.IndexOfTile(t1);
-            e.Corners[0] = tile0.Corners[tile0t1];
-            e.Corners[1] = tile0.Corners[(tile0t1 + 1) % tile0.EdgeCount];
-            for (var i = 0; i < 2; i++)
-            {
-                var t = Tiles[e.Tiles[i]];
-                t.Edges[t.IndexOfTile(e.Tiles[(i + 1) % 2])] = index;
-                var c = Corners[e.Corners[i]];
-                c.Edges[c.IndexOfCorner(e.Corners[(i + 1) % 2])] = index;
             }
         }
 
@@ -199,22 +165,9 @@ namespace WorldFoundry.WorldGrids
                     c.Corners[k] = t.Corners[(t.IndexOfCorner(i) + 1) % 5];
                 }
             }
-
-            var nextEdgeId = 0;
-            for (var i = 0; i < Tiles.Length; i++)
-            {
-                for (var k = 0; k < 5; k++)
-                {
-                    if (Tiles[i].Edges[k] == -1)
-                    {
-                        AddEdge(nextEdgeId, i, presetIndexes[i, k]);
-                        nextEdgeId++;
-                    }
-                }
-            }
         }
 
-        private (Corner[], Edge[], Tile[]) SetNewGridSize(byte size)
+        private (Corner[], Tile[]) SetNewGridSize(byte size)
         {
             GridSize = size;
 
@@ -229,15 +182,6 @@ namespace WorldFoundry.WorldGrids
                 Corners[i] = new Corner();
             }
 
-            var prevEdges = new Edge[Edges?.Length ?? 0];
-            Edges?.CopyTo(prevEdges, 0);
-            var edgeCount = 30 * baseCount;
-            Edges = new Edge[edgeCount];
-            for (var i = 0; i < edgeCount; i++)
-            {
-                Edges[i] = new Edge();
-            }
-
             var prevTiles = new Tile[Tiles?.Length ?? 0];
             Tiles?.CopyTo(prevTiles, 0);
             var tileCount = (10 * baseCount) + 2;
@@ -247,12 +191,12 @@ namespace WorldFoundry.WorldGrids
                 Tiles[i] = new Tile(i);
             }
 
-            return (prevCorners, prevEdges, prevTiles);
+            return (prevCorners, prevTiles);
         }
 
         private void SubdivideGrid()
         {
-            var (prevCorners, _, prevTiles) = SetNewGridSize((byte)(GridSize + 1));
+            var (prevCorners, prevTiles) = SetNewGridSize((byte)(GridSize + 1));
 
             for (var i = 0; i < prevTiles.Length; i++)
             {
@@ -296,23 +240,9 @@ namespace WorldFoundry.WorldGrids
                     c.Corners[k] = t.Corners[(t.IndexOfCorner(i) + 1) % t.EdgeCount];
                 }
             }
-
-            var nextEdgeId = 0;
-            for (var i = 0; i < Tiles.Length; i++)
-            {
-                var t = Tiles[i];
-                for (var k = 0; k < t.EdgeCount; k++)
-                {
-                    if (t.Edges[k] == -1)
-                    {
-                        AddEdge(nextEdgeId, i, t.Tiles[k]);
-                        nextEdgeId++;
-                    }
-                }
-            }
         }
 
-        internal void SubdivideGrid(Planetoid planet, byte size)
+        private void SubdivideGrid(Planetoid planet, byte size)
         {
             size = Math.Min(MaxGridSize, size);
             if (GridSize < 0 || size < GridSize)
@@ -324,25 +254,9 @@ namespace WorldFoundry.WorldGrids
                 SubdivideGrid();
             }
 
-            foreach (var c in Corners)
-            {
-                c.Latitude = (float)planet.VectorToLatitude(c.Vector);
-                c.Longitude = (float)planet.VectorToLongitude(c.Vector);
-                c.Elevation = (float)planet.GetElevationAt(c.Vector);
-            }
-
-            var fiveSided = Array.Find(Tiles, x => x.EdgeCount == 5);
-            var sixSided = Array.Find(Tiles, x => x.EdgeCount == 6);
-
-            var fiveSidedArea = planet.RadiusSquared * GridAreas[size].fiveSided;
-            var sixSidedArea = sixSided == null ? 0 : planet.RadiusSquared * GridAreas[size].sixSided;
-
             foreach (var t in Tiles)
             {
-                t.Area = t.EdgeCount == 5 ? fiveSidedArea : sixSidedArea;
-                t.Latitude = (float)planet.VectorToLatitude(t.Vector);
-                t.Longitude = (float)planet.VectorToLongitude(t.Vector);
-                t.Elevation = (float)planet.GetElevationAt(t.Vector);
+                t.Elevation = planet.GetElevationNoiseAt(t.Vector.X, t.Vector.Y, t.Vector.Z);
             }
         }
     }

@@ -1,43 +1,47 @@
-﻿using MathAndScience;
-using MathAndScience.Shapes;
-using Substances;
+﻿using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Constants.Numbers;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Troschuetz.Random;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.Climate
 {
     /// <summary>
-    /// Represents a planetary atmosphere, represented as a <see cref="Substance"/>.
+    /// Represents a planetary atmosphere.
     /// </summary>
-    public class Atmosphere : Substance
+    [Serializable]
+    public class Atmosphere : ISerializable
     {
         internal const int SnowToRainRatio = 13;
+
+        // The approximate value of 0.05 + e^1.25. Used to calculate MaxPrecipitation.
+        private const double ExpFiveFourthsPlusOneTwentieth = 3.5403429574618413761305460296723;
+
         private const double StandardHeightDensity = 124191.6;
 
         /// <summary>
         /// A range of acceptable amounts of O2, and list of maximum limits of common
         /// atmospheric gases for acceptable human breathability.
         /// </summary>
-        public static Requirement[] HumanBreathabilityRequirements { get; } = new Requirement[]
+        public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } = new SubstanceRequirement[]
         {
-            new Requirement { Chemical = Chemical.Oxygen, MinimumProportion = 0.07, MaximumProportion = 0.53, Phase = Phase.Gas },
-            new Requirement { Chemical = Chemical.Ammonia, MaximumProportion = 0.00005 },
-            new Requirement { Chemical = Chemical.AmmoniumHydrosulfide, MaximumProportion = 0.000001 },
-            new Requirement { Chemical = Chemical.CarbonMonoxide, MaximumProportion = 0.00005 },
-            new Requirement { Chemical = Chemical.CarbonDioxide, MaximumProportion = 0.005 },
-            new Requirement { Chemical = Chemical.HydrogenSulfide, MaximumProportion = 0.0 },
-            new Requirement { Chemical = Chemical.Methane, MaximumProportion = 0.001 },
-            new Requirement { Chemical = Chemical.Ozone, MaximumProportion = 0.0000001 },
-            new Requirement { Chemical = Chemical.Phosphine, MaximumProportion = 0.0000003 },
-            new Requirement { Chemical = Chemical.SulphurDioxide, MaximumProportion = 0.000002 },
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Oxygen), 0.07m, 0.53m, PhaseType.Gas),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Ammonia), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.AmmoniumHydrosulfide), maximumProportion: 1e-6m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), maximumProportion: 0.005m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.HydrogenSulfide), maximumProportion: 0),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Methane), maximumProportion: 0.001m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Ozone), maximumProportion: 1e-7m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Phosphine), maximumProportion: 3e-7m),
+            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), maximumProportion: 2e-6m),
         };
-
-        internal static readonly double TemperatureAtNearlyZeroSaturationVaporPressure = GetTemperatureAtSaturationVaporPressure(TMath.Tolerance);
-
-        internal double _averageSeaLevelDensity;
 
         /// <summary>
         /// The proportion of precipitation produced by this atmosphere relative to that of Earth.
@@ -48,13 +52,12 @@ namespace WorldFoundry.Climate
         /// Specifies the average height of this <see cref="Atmosphere"/>, in meters. Read-only;
         /// derived from the properties of the planet and atmosphere.
         /// </summary>
-        public double AtmosphericHeight { get; private set; }
+        public double AtmosphericHeight { get; set; }
 
-        private double _atmosphericPressure;
         /// <summary>
         /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
         /// </summary>
-        public double AtmosphericPressure => Composition.IsEmpty ? 0 : _atmosphericPressure;
+        public double AtmosphericPressure { get; private set; }
 
         /// <summary>
         /// Specifies the average scale height of this <see cref="Atmosphere"/>, in meters.
@@ -62,28 +65,28 @@ namespace WorldFoundry.Climate
         /// </summary>
         public double AtmosphericScaleHeight { get; private set; }
 
+        /// <summary>
+        /// The physical makeup of this atmosphere.
+        /// </summary>
+        public IMaterial Material { get; private set; }
+
         private double? _maxPrecipitation;
         /// <summary>
         /// The maximum annual precipitation expected to be produced by this atmosphere, in mm.
         /// </summary>
         public double MaxPrecipitation
-            => _maxPrecipitation ?? (_maxPrecipitation = AveragePrecipitation * (0.05 + Math.Exp(1.25))).Value;
+            => _maxPrecipitation ??= AveragePrecipitation * ExpFiveFourthsPlusOneTwentieth;
 
         private double? _maxSnowfall;
         /// <summary>
         /// The maximum annual snowfall expected to be produced by this atmosphere, in mm.
         /// </summary>
-        public double MaxSnowfall
-            => _maxSnowfall ?? (_maxSnowfall = MaxPrecipitation * SnowToRainRatio).Value;
+        public double MaxSnowfall => _maxSnowfall ??= MaxPrecipitation * SnowToRainRatio;
 
         /// <summary>
         /// The average annual precipitation expected to be produced by this atmosphere.
         /// </summary>
         internal double AveragePrecipitation { get; private set; }
-
-        private bool? _containsWaterVapor;
-        internal bool ContainsWaterVapor
-            => _containsWaterVapor ?? (_containsWaterVapor = Composition?.ContainsSubstance(Chemical.Water, Phase.Gas) ?? false).Value;
 
         private double? _greenhouseFactor;
         /// <summary>
@@ -105,44 +108,95 @@ namespace WorldFoundry.Climate
             }
         }
 
-        private double? _waterRatio;
-        internal double WaterRatio
-            => _waterRatio ?? (_waterRatio = Composition?.GetProportion(Chemical.Water, Phase.Gas) ?? 0).Value;
+        private decimal? _waterRatio;
+        internal decimal WaterRatio => _waterRatio ??= Material.Constituents.Sum(x => x.substance.Substance.GetWaterProportion() * x.proportion);
+
+        private double? _waterRatioDouble;
+        internal double WaterRatioDouble => _waterRatioDouble ??= (double)WaterRatio;
 
         private double? _wetness;
         /// <summary>
         /// The total mass of water in this atmosphere relative to that of Earth.
         /// </summary>
-        internal double Wetness
-            => _wetness ?? (_wetness = WaterRatio * Mass / 1.287e16).Value;
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Atmosphere"/>.
-        /// </summary>
-        private Atmosphere() { }
+        internal double Wetness => _wetness ??= (double)((Number)WaterRatio * (Material.Mass / new Number(1.287, 16)));
 
         /// <summary>
         /// Initializes a new instance of <see cref="Atmosphere"/>.
         /// </summary>
         /// <param name="planet">The <see cref="Planetoid"/> this <see cref="Atmosphere"/> surrounds.</param>
-        /// <param name="composition">The <see cref="IComposition"/> which defines this <see cref="Atmosphere"/>.</param>
+        /// <param name="substance">The material composition of this <see cref="Atmosphere"/>.</param>
         /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
-        public Atmosphere(Planetoid planet, IComposition composition, double pressure)
+        public Atmosphere(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents)
         {
-            Composition = composition;
-            _atmosphericPressure = pressure;
+            AtmosphericPressure = constituents.Length == 0 || constituents.All(x => x.substance?.Substance.IsEmpty != false) ? 0 : pressure;
+
             SetAtmosphericScaleHeight(planet);
-            Mass = GetAtmosphericMass(planet);
 
-            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(Mass, AtmosphericScaleHeight);
-            var tIF = planet.AverageBlackbodySurfaceTemperature * planet.InsolationFactor_Equatorial;
-            planet._greenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodySurfaceTemperature;
-            var temp = tIF + planet.GreenhouseEffect;
-            SetAtmosphericHeight(planet, temp);
+            var mass = GetAtmosphericMass(planet, AtmosphericPressure);
+
+            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
+            var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
+            SetGreenhouseFactor(constituents);
+            planet._greenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
+            var temperature = tIF + planet.GreenhouseEffect;
+
+            SetAtmosphericHeight(planet, temperature);
+
+            var density = GetAtmosphericDensity(temperature, AtmosphericPressure);
+
+            var shape = GetShape(planet);
+
+            Material = new Material(
+                density,
+                mass,
+                shape,
+                temperature,
+                constituents);
+
             SetPrecipitation(planet);
-            Shape = GetShape(planet);
+        }
 
-            _averageSeaLevelDensity = GetAtmosphericDensity(temp, AtmosphericPressure);
+        private Atmosphere(
+            IMaterial material,
+            double precipitationFactor,
+            double atmosphericHeight,
+            double atmosphericPressure,
+            double atmosphericScaleHeight,
+            double averagePrecipitation)
+        {
+            Material = material;
+            _precipitationFactor = precipitationFactor;
+            AtmosphericHeight = atmosphericHeight;
+            AtmosphericPressure = atmosphericPressure;
+            AtmosphericScaleHeight = atmosphericScaleHeight;
+            AveragePrecipitation = averagePrecipitation;
+        }
+
+        private Atmosphere(SerializationInfo info, StreamingContext context) : this(
+            (IMaterial)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (double)info.GetValue(nameof(_precipitationFactor), typeof(double)),
+            (double)info.GetValue(nameof(AtmosphericHeight), typeof(double)),
+            (double)info.GetValue(nameof(AtmosphericPressure), typeof(double)),
+            (double)info.GetValue(nameof(AtmosphericScaleHeight), typeof(double)),
+            (double)info.GetValue(nameof(AveragePrecipitation), typeof(double))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(Material), Material);
+            info.AddValue(nameof(_precipitationFactor), _precipitationFactor);
+            info.AddValue(nameof(AtmosphericHeight), AtmosphericHeight);
+            info.AddValue(nameof(AtmosphericPressure), AtmosphericPressure);
+            info.AddValue(nameof(AtmosphericScaleHeight), AtmosphericScaleHeight);
+            info.AddValue(nameof(AveragePrecipitation), AveragePrecipitation);
         }
 
         /// <summary>
@@ -151,50 +205,28 @@ namespace WorldFoundry.Climate
         /// <param name="temperature">A temperature, in K.</param>
         /// <param name="pressure">A pressure, in kPa.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        internal static double GetAtmosphericDensity(double temperature, double pressure)
+        public static double GetAtmosphericDensity(double temperature, double pressure)
             => pressure * 1000 / (287.058 * temperature);
 
-        /// <summary>
-        /// Calculates the saturation mixing ratio of water under the given conditions.
-        /// </summary>
-        /// <param name="vaporPressure">A vapor pressure, in Pa.</param>
-        /// <param name="pressure">The total pressure, in kPa.</param>
-        /// <returns>The saturation mixing ratio of water under the given conditions.</returns>
-        internal static double GetSaturationMixingRatio(double vaporPressure, double pressure)
-        {
-            var vp = vaporPressure / 1000;
-            if (vp >= pressure)
-            {
-                vp = pressure * 0.99999;
-            }
-            return 0.6219907 * vp / (pressure - vp);
-        }
+        internal static Number GetAtmosphericMass(Planetoid planet, double pressure)
+            => MathConstants.FourPI * planet.RadiusSquared * pressure * 1000 / planet.SurfaceGravity;
+
+        internal static double GetGreenhouseFactor(double greenhousePotential, double pressure)
+            => greenhousePotential.IsNearlyZero()
+                ? 1
+                : 933835e-6 + (441533e-7 * Math.Exp(179077e-5 * greenhousePotential) * (111169e-5 + Math.Log(pressure)));
 
         /// <summary>
-        /// Calculates the saturation vapor pressure of water at the given temperature, in Pa.
+        /// Calculates the atmospheric density for the given conditions, in kg/m³.
         /// </summary>
         /// <param name="temperature">A temperature, in K.</param>
-        /// <returns>The saturation vapor pressure of water at the given temperature, in Pa.</returns>
-        internal static double GetSaturationVaporPressure(double temperature)
-        {
-            var a = temperature > Chemical.Water.MeltingPoint
-                ? 611.21
-                : 611.15;
-            var b = temperature > Chemical.Water.MeltingPoint
-                ? 18.678
-                : 23.036;
-            var c = temperature > Chemical.Water.MeltingPoint
-                ? 234.5
-                : 333.7;
-            var d = temperature > Chemical.Water.MeltingPoint
-                ? 257.14
-                : 279.82;
-            var t = temperature - Chemical.Water.MeltingPoint;
-            return a * Math.Exp((b - (t / c)) * (t / (d + t)));
-        }
-
-        private static double GetTemperatureAtSaturationVaporPressure(double satVaporPressure)
-            => (237.3 / ((7.5 / Math.Log10(satVaporPressure / 611.15)) - 1)) + Chemical.Water.MeltingPoint;
+        /// <param name="elevation">
+        /// An elevation above the reference elevation for standard atmospheric pressure (sea
+        /// level), in meters.
+        /// </param>
+        /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
+        public double GetAtmosphericDensity(Planetoid planet, double temperature, double elevation)
+            => GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, elevation));
 
         /// <summary>
         /// Calculates the atmospheric drag on a spherical object within this <see
@@ -213,7 +245,7 @@ namespace WorldFoundry.Climate
         /// accurately is not desired in this library.
         /// </remarks>
         public double GetAtmosphericDrag(Planetoid planet, double temperature, double altitude, double speed) =>
-            0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * planet.Shape.ContainingRadius;
+            0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * (double)planet.Shape.ContainingRadius;
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -235,16 +267,9 @@ namespace WorldFoundry.Climate
         /// considered "close enough" for the purposes of this library.
         /// </remarks>
         public double GetAtmosphericPressure(Planetoid planet, double temperature, double elevation)
-        {
-            if (elevation <= 0)
-            {
-                return AtmosphericPressure;
-            }
-            else
-            {
-                return AtmosphericPressure * Math.Exp(planet.SurfaceGravity * ScienceConstants.MAir * elevation / (ScienceConstants.R * temperature));
-            }
-        }
+            => elevation <= 0
+            ? AtmosphericPressure
+            : AtmosphericPressure * Math.Exp((double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir * elevation / (NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * temperature));
 
         /// <summary>
         /// Sets the atmospheric pressure of this atmosphere to the given <paramref name="value"/>.
@@ -254,41 +279,50 @@ namespace WorldFoundry.Climate
         /// <param name="value">The new pressure, in kPa.</param>
         public void SetAtmosphericPressure(Planetoid planet, double value)
         {
-            _atmosphericPressure = value;
+            AtmosphericPressure = value;
             ResetPressureDependentProperties(planet);
         }
 
         /// <summary>
         /// Determines if this <see cref="Atmosphere"/> meets the given requirements.
         /// </summary>
-        /// <param name="requirements">An enumeration of <see cref="Requirement"/>s.</param>
-        /// <returns>true if this <see cref="Atmosphere"/> meets the requirements; false otherwise.</returns>
-        public bool MeetsRequirements(IEnumerable<Requirement> requirements)
+        /// <param name="requirements">An enumeration of <see cref="SubstanceRequirement"/>
+        /// instances.</param>
+        /// <returns><see langword="true"/> if this <see cref="Atmosphere"/> meets the requirements;
+        /// otherwise <see langword="false"/>.</returns>
+        public bool MeetsRequirements(IEnumerable<SubstanceRequirement> requirements)
         {
-            var surfaceLayer = (Composition is LayeredComposite lc) ? lc.Layers[0].substance : Composition;
-            return surfaceLayer
-                .GetFailedRequirements(requirements)
-                .All(x => x == FailureType.None);
+            var surfaceLayer = Material is LayeredComposite lc && lc.Layers.Count > 0
+                ? lc.Layers[0].material
+                : Material;
+            if (surfaceLayer?.IsEmpty != false)
+            {
+                return !requirements.Any();
+            }
+            var pressure = AtmosphericPressure;
+            return requirements.All(x => x.IsSatisfiedBy(surfaceLayer, pressure));
         }
 
-        internal void AddToTroposphere(Chemical chemical, Phase phase, double proportion)
+        internal void AddToTroposphere(IHomogeneousReference constituent, decimal proportion)
         {
             DifferentiateTroposphere();
-            var layers = ((LayeredComposite)Composition).Layers.ToList();
-            layers[0] = (layers[0].substance.AddComponent(chemical, phase, proportion), layers[0].proportion);
-            Composition = new LayeredComposite(layers);
+            if (Material is LayeredComposite lc
+                && lc.Layers.Count > 0)
+            {
+                AddConstituent(lc.Layers[0].material, constituent, proportion);
+            }
         }
 
         /// <summary>
-        /// Standard pressure of 101.325 kPa is presumed for <see cref="Requirement"/>s.
+        /// Standard pressure of 101.325 kPa is presumed for <see cref="SubstanceRequirement"/>s.
         /// This method converts the proportional values to reflect <see cref="AtmosphericPressure"/>.
         /// </summary>
-        /// <param name="requirements">The <see cref="Requirement"/>s to convert.</param>
+        /// <param name="requirements">The <see cref="SubstanceRequirement"/>s to convert.</param>
         /// <returns>
-        /// An <see cref="IEnumerable{T}"/> of <see cref="Requirement"/>s with proportions
+        /// An <see cref="IEnumerable{T}"/> of <see cref="SubstanceRequirement"/>s with proportions
         /// adjusted for <see cref="AtmosphericPressure"/>.
         /// </returns>
-        internal IEnumerable<Requirement> ConvertRequirementsForPressure(IEnumerable<Requirement>? requirements)
+        internal IEnumerable<SubstanceRequirement> ConvertRequirementsForPressure(IEnumerable<SubstanceRequirement>? requirements)
         {
             if (requirements == null)
             {
@@ -303,19 +337,12 @@ namespace WorldFoundry.Climate
             }
         }
 
-        /// <summary>
-        /// Performs the Exner function on the given pressure.
-        /// </summary>
-        /// <param name="pressure">A pressure, in kPa.</param>
-        /// <returns>The non-dimensionalized pressure.</returns>
-        internal double Exner(double pressure) => Math.Pow(pressure / AtmosphericPressure, ScienceConstants.RSpecificOverCpDryAir);
-
         internal void DifferentiateTroposphere()
         {
-            if (!(Composition is LayeredComposite))
+            if (!(Material is LayeredComposite))
             {
                 // Separate troposphere from upper atmosphere if undifferentiated.
-                Composition = Composition.Split(0.8, 0.2);
+                Material = Material.Split(0.8m);
             }
         }
 
@@ -328,10 +355,17 @@ namespace WorldFoundry.Climate
         internal void ResetPressureDependentProperties(Planetoid planet)
         {
             SetAtmosphericScaleHeight(planet);
-            Mass = GetAtmosphericMass(planet);
+            Material = Material.GetClone((decimal)(GetAtmosphericMass(planet, AtmosphericPressure) / Material.Mass));
             SetAtmosphericHeight(planet);
-            Shape = GetShape(planet);
-            _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            Material.Shape = GetShape(planet);
+            Material.Density = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            if (Material is LayeredComposite lc)
+            {
+                foreach (var (material, _) in lc.Layers)
+                {
+                    material.Density = Material.Density;
+                }
+            }
             SetPrecipitation(planet);
         }
 
@@ -339,40 +373,61 @@ namespace WorldFoundry.Climate
         {
             SetAtmosphericScaleHeight(planet);
             SetAtmosphericHeight(planet);
-            Shape = GetShape(planet);
-            _averageSeaLevelDensity = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            Material.Shape = GetShape(planet);
+            Material.Density = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            if (Material is LayeredComposite lc)
+            {
+                foreach (var (material, _) in lc.Layers)
+                {
+                    material.Density = Material.Density;
+                }
+            }
             SetPrecipitation(planet);
         }
 
         internal void ResetWater(Planetoid planet)
         {
-            _containsWaterVapor = null;
             _waterRatio = null;
+            _waterRatioDouble = null;
             _wetness = null;
             SetPrecipitation(planet);
         }
 
-        internal void SetAtmosphericPressure(double value) => _atmosphericPressure = value;
+        internal void SetAtmosphericPressure(double value) => AtmosphericPressure = value;
+
+        private void AddConstituent(IMaterial material, IHomogeneousReference constituent, decimal proportion)
+        {
+            if (material is Material m)
+            {
+                m.AddConstituent(constituent, proportion);
+            }
+            else if (material is Composite composite)
+            {
+                foreach (var component in composite.Components)
+                {
+                    AddConstituent(component, constituent, proportion);
+                }
+            }
+        }
 
         /// <summary>
-        /// Standard pressure of 101.325 kPa is presumed for a <see cref="Requirement"/>.
+        /// Standard pressure of 101.325 kPa is presumed for a <see cref="SubstanceRequirement"/>.
         /// This method converts the proportional values to reflect <see cref="AtmosphericPressure"/>.
         /// </summary>
-        /// <param name="requirement">The <see cref="Requirement"/> to convert.</param>
+        /// <param name="requirement">The <see cref="SubstanceRequirement"/> to convert.</param>
         /// <returns>
-        /// A new <see cref="Requirement"/> with proportions adjusted for <see cref="AtmosphericPressure"/>.
+        /// A new <see cref="SubstanceRequirement"/> with proportions adjusted for <see cref="AtmosphericPressure"/>.
         /// </returns>
-        private Requirement ConvertRequirementForPressure(Requirement requirement)
+        private SubstanceRequirement ConvertRequirementForPressure(SubstanceRequirement requirement)
         {
-            var minActual = requirement.MinimumProportion * ScienceConstants.atm;
-            var maxActual = requirement.MaximumProportion.HasValue ? requirement.MaximumProportion * ScienceConstants.atm : null;
-            return new Requirement
-            {
-                Chemical = requirement.Chemical,
-                MaximumProportion = maxActual.HasValue ? maxActual / AtmosphericPressure : null,
-                MinimumProportion = minActual / AtmosphericPressure,
-                Phase = requirement.Phase,
-            };
+            var minActual = requirement.MinimumProportion * NeverFoundry.MathAndScience.Constants.Decimals.ScienceConstants.atm;
+            var maxActual = requirement.MaximumProportion.HasValue ? requirement.MaximumProportion * NeverFoundry.MathAndScience.Constants.Decimals.ScienceConstants.atm : null;
+            var atm = (decimal)AtmosphericPressure;
+            return new SubstanceRequirement(
+                requirement.Substance,
+                minActual / atm,
+                maxActual.HasValue ? maxActual / atm : null,
+                requirement.Phase);
         }
 
         /// <summary>
@@ -390,13 +445,10 @@ namespace WorldFoundry.Climate
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
         private void SetAtmosphericHeight(Planetoid planet, double? temp = null)
-            => AtmosphericHeight = Math.Log(5e-4 / AtmosphericPressure) * ScienceConstants.R * (temp ?? planet.AverageSurfaceTemperature) / (-planet.SurfaceGravity * ScienceConstants.MAir);
-
-        private double GetAtmosphericMass(Planetoid planet)
-            => MathConstants.FourPI * planet.RadiusSquared * AtmosphericPressure * 1000 / planet.SurfaceGravity;
+            => AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * (temp ?? planet.AverageSurfaceTemperature) / (-(double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir);
 
         private void SetAtmosphericScaleHeight(Planetoid planet)
-            => AtmosphericScaleHeight = AtmosphericPressure * 1000 / (planet.SurfaceGravity * GetAtmosphericDensity(planet.AverageBlackbodySurfaceTemperature, AtmosphericPressure));
+            => AtmosphericScaleHeight = AtmosphericPressure * 1000 / (double)planet.SurfaceGravity / GetAtmosphericDensity(planet.AverageBlackbodyTemperature, AtmosphericPressure);
 
         /// <summary>
         /// Calculates the total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.
@@ -411,13 +463,12 @@ namespace WorldFoundry.Climate
         /// temperature based on changing proportions in an existing atmosphere is well-studied, and
         /// relies on unique formulas for each gas, which is impractical for this library.
         /// </remarks>
-        private void SetGreenhouseFactor()
-        {
-            var total = Composition.GetGreenhousePotential();
-            _greenhouseFactor = TMath.IsZero(total)
-                ? 1
-                : 0.933835 + (0.0441533 * Math.Exp(1.79077 * total) * (1.11169 + Math.Log(AtmosphericPressure)));
-        }
+        private void SetGreenhouseFactor() => SetGreenhouseFactor(Material.Constituents);
+
+        private void SetGreenhouseFactor(IEnumerable<(ISubstanceReference substance, decimal proportion)> substances)
+            => _greenhouseFactor = GetGreenhouseFactor(
+                substances.Sum(x => x.substance.Substance.GreenhousePotential * (double)x.proportion),
+                AtmosphericPressure);
 
         /// <summary>
         /// Calculates the <see cref="Atmosphere"/>'s shape.
@@ -428,9 +479,9 @@ namespace WorldFoundry.Climate
 
         private void SetPrecipitation(Planetoid planet)
         {
-            _precipitationFactor = Wetness * AtmosphericHeight * _averageSeaLevelDensity / StandardHeightDensity;
+            _precipitationFactor = Wetness * Material.Density * AtmosphericHeight / StandardHeightDensity;
             // An average "year" is a standard astronomical year of 31557600 seconds.
-            AveragePrecipitation = _precipitationFactor * 990 * (planet.Orbit.HasValue ? planet.Orbit.Value.Period / 31557600 : 1);
+            AveragePrecipitation = _precipitationFactor * 990 * (planet.Orbit.HasValue ? (double)planet.Orbit.Value.Period / 31557600 : 1);
             _maxPrecipitation = null;
             _maxSnowfall = null;
         }

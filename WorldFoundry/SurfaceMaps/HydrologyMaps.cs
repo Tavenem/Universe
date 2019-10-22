@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -6,7 +8,8 @@ namespace WorldFoundry.SurfaceMapping
     /// A set of two-dimensional arrays corresponding to points on an equirectangular projected map
     /// of a terrestrial planet's surface, with information about the planet's hydrology.
     /// </summary>
-    public struct HydrologyMaps
+    [Serializable]
+    public struct HydrologyMaps : ISerializable
     {
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -91,6 +94,31 @@ namespace WorldFoundry.SurfaceMapping
             Depth = depth;
             Flow = flow;
             MaxFlow = maxFlow;
+        }
+
+        private HydrologyMaps(SerializationInfo info, StreamingContext context) : this(
+            (int)info.GetValue(nameof(XLength), typeof(int)),
+            (int)info.GetValue(nameof(YLength), typeof(int)),
+            (float[,])info.GetValue(nameof(Depth), typeof(float[,])),
+            (float[,])info.GetValue(nameof(Flow), typeof(float[,])),
+            (double)info.GetValue(nameof(MaxFlow), typeof(double))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(XLength), XLength);
+            info.AddValue(nameof(YLength), YLength);
+            info.AddValue(nameof(Depth), Depth);
+            info.AddValue(nameof(Flow), Flow);
+            info.AddValue(nameof(MaxFlow), MaxFlow);
         }
     }
 }

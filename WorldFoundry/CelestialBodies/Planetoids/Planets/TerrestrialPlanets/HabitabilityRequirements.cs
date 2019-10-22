@@ -1,6 +1,9 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience.Numerics;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using WorldFoundry.Climate;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -9,7 +12,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
     /// A collection of parameters for habitability by a given form of life which a <see
     /// cref="TerrestrialPlanet"/> must meet in order for such life to survive unaided.
     /// </summary>
-    public struct HabitabilityRequirements
+    [Serializable]
+    public struct HabitabilityRequirements : ISerializable
     {
         /// <summary>
         /// The <see cref="HabitabilityRequirements"/> for humans.
@@ -39,7 +43,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Any requirements for the atmosphere.
         /// </summary>
-        public List<Requirement> AtmosphericRequirements { get; }
+        public SubstanceRequirement[] AtmosphericRequirements { get; }
 
         /// <summary>
         /// The minimum required temperature in K, if any.
@@ -82,18 +86,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <param name="minimumGravity">The minimum required gravity in N.</param>
         /// <param name="maximumGravity">The maximum required gravity in N.</param>
         public HabitabilityRequirements(
-            IEnumerable<Requirement> atmosphericRequirements,
+            IEnumerable<SubstanceRequirement> atmosphericRequirements,
             double? minimumTemperature, double? maximumTemperature,
             double? minimumPressure, double? maximumPressure,
             double? minimumGravity, double? maximumGravity)
         {
-            AtmosphericRequirements = atmosphericRequirements.ToList();
+            AtmosphericRequirements = atmosphericRequirements.ToArray();
             MinimumTemperature = minimumTemperature;
             MaximumTemperature = maximumTemperature;
             MinimumPressure = minimumPressure;
             MaximumPressure = maximumPressure;
             MinimumGravity = minimumGravity;
             MaximumGravity = maximumGravity;
+        }
+
+        private HabitabilityRequirements(SerializationInfo info, StreamingContext context) : this(
+            (SubstanceRequirement[])info.GetValue(nameof(AtmosphericRequirements), typeof(SubstanceRequirement[])),
+            (double?)info.GetValue(nameof(MinimumTemperature), typeof(double?)),
+            (double?)info.GetValue(nameof(MaximumTemperature), typeof(double?)),
+            (double?)info.GetValue(nameof(MinimumPressure), typeof(double?)),
+            (double?)info.GetValue(nameof(MaximumPressure), typeof(double?)),
+            (double?)info.GetValue(nameof(MinimumGravity), typeof(double?)),
+            (double?)info.GetValue(nameof(MaximumGravity), typeof(double?))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(AtmosphericRequirements), AtmosphericRequirements);
+            info.AddValue(nameof(MinimumTemperature), MinimumTemperature);
+            info.AddValue(nameof(MaximumTemperature), MaximumTemperature);
+            info.AddValue(nameof(MinimumPressure), MinimumPressure);
+            info.AddValue(nameof(MaximumPressure), MaximumPressure);
+            info.AddValue(nameof(MinimumGravity), MinimumGravity);
+            info.AddValue(nameof(MaximumGravity), MaximumGravity);
         }
     }
 }

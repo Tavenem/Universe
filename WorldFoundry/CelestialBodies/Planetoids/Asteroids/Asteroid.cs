@@ -1,31 +1,34 @@
-﻿using MathAndScience;
-using MathAndScience.Shapes;
-using System;
-using MathAndScience.Numerics;
-using WorldFoundry.CelestialBodies.Planetoids.Planets;
+﻿using WorldFoundry.CelestialBodies.Planetoids.Planets;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
+using NeverFoundry.MathAndScience.Constants.Numbers;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
+using System;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// Base class for all asteroids.
     /// </summary>
+    [Serializable]
     public class Asteroid : Planetoid
     {
-        internal const double Space = 400000;
+        internal static readonly Number Space = new Number(400000);
 
         /// <summary>
-        /// The name for this type of <see cref="ICelestialLocation"/>.
+        /// The name for this type of <see cref="CelestialLocation"/>.
         /// </summary>
         public override string TypeName
             => Orbit?.OrbitedObject is Planemo ? $"{BaseTypeName} Moon" : BaseTypeName;
 
         // Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
         // rather than an asteroid.
-        private protected override double? MaxMassForType => 3.4e20;
+        private protected override Number? MaxMassForType => new Number(3.4, 20);
 
         // Below this a body is considered a meteoroid, rather than an asteroid.
-        private protected override double? MinMassForType => 5.9e8;
+        private protected override Number? MinMassForType => new Number(5.9, 8);
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/>.
@@ -36,24 +39,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
-        internal Asteroid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal Asteroid(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Asteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Asteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Asteroid"/> during random generation, in kg.
         /// </param>
-        internal Asteroid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal Asteroid(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
-        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
+        internal override void GenerateOrbit(CelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
@@ -64,44 +67,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 this,
                 orbitedObject,
                 GetDistanceTo(orbitedObject),
-                Math.Round(Randomizer.Instance.NextDouble(0.4), 2),
-                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
+                Randomizer.Instance.NextDouble(0.4),
+                Randomizer.Instance.NextDouble(0.5),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 0);
         }
 
-        private protected override (double, IShape) GetMassAndShape()
+        private protected override (double density, Number mass, IShape shape) GetMatter()
         {
+            var density = GetDensity();
             var mass = GetMass();
-            return (mass, GetShape(mass));
+            return (density, mass, GetShape(density, mass));
         }
 
-        private protected override double GetMinSatellitePeriapsis() => Shape.ContainingRadius + 20;
+        private protected override Number GetMinSatellitePeriapsis() => Shape.ContainingRadius + 20;
 
-        private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
+        private protected IShape GetShape(Number density, Number mass)
         {
-            if (mass == null && knownRadius == null)
-            {
-                return new SinglePoint(Position);
-            }
-
-            var axis = mass == null
-                ? knownRadius!.Value
-                : Math.Pow(mass.Value * 0.75 / (Density * Math.PI), 1.0 / 3.0);
-            var irregularity = Math.Round(Randomizer.Instance.NextDouble(0.5, 1), 2);
+            var axis = (mass * new Number(75, -2) / (density * MathConstants.PI)).CubeRoot();
+            var irregularity = Randomizer.Instance.NextNumber(Number.Half, Number.One);
             return new Ellipsoid(axis, axis * irregularity, axis / irregularity, Position);
         }
 
-        private protected void SetAsteroidSatelliteOrbit(ICelestialLocation satellite, double periapsis, double eccentricity)
+        private protected void SetAsteroidSatelliteOrbit(CelestialLocation satellite, Number periapsis, double eccentricity)
             => WorldFoundry.Space.Orbit.SetOrbit(
                 satellite,
                 this,
                 periapsis,
                 eccentricity,
-                Math.Round(Randomizer.Instance.NextDouble(0.5), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
+                Randomizer.Instance.NextDouble(0.5),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
     }
 }

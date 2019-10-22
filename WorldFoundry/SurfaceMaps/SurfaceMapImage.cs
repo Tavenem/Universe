@@ -3,6 +3,7 @@ using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
+using NeverFoundry.MathAndScience.Numerics;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -78,6 +79,39 @@ namespace WorldFoundry.SurfaceMapping
         /// Get a composite (flattened) surface map from a base map and an overlay.
         /// </summary>
         /// <param name="baseMap">A surface map.</param>
+        /// <param name="overlay">A surface map overlay.</param>
+        /// <param name="zeroNormal"><see langword="true"/> if <paramref name="baseMap"/>'s values
+        /// range from 0 to 1 (the default, true for most maps); <see langword="false"/> of they
+        /// range from -1 to 1 (the case for elevation maps).</param>
+        /// <returns>A composite (flattened) surface map.</returns>
+        /// <exception cref="ArgumentException">The maps must have the same dimensions.</exception>
+        public static double[,] GetCompositeSurfaceMap(double[,] baseMap, float[,] overlay, bool zeroNormal = true)
+        {
+            var xLength = baseMap.GetLength(0);
+            var yLength = baseMap.GetLength(1);
+            if (overlay.GetLength(0) != xLength || overlay.GetLength(1) != yLength)
+            {
+                throw new ArgumentException($"{nameof(overlay)} must have the same dimensions as {nameof(baseMap)}.");
+            }
+            var final = new double[xLength, yLength];
+            for (var x = 0; x < xLength; x++)
+            {
+                for (var y = 0; y < yLength; y++)
+                {
+                    // Overlay value is doubled for a map with a -1 to 1 range, since it's modifying
+                    // a value whose range is twice that of a normal map. This allows, e.g.,
+                    // modifying a 1 all the way down to a -1.
+                    var mod = zeroNormal ? overlay[x, y] : overlay[x, y] * 2;
+                    final[x, y] = baseMap[x, y] + mod;
+                }
+            }
+            return final;
+        }
+
+        /// <summary>
+        /// Get a composite (flattened) surface map from a base map and an overlay.
+        /// </summary>
+        /// <param name="baseMap">A surface map.</param>
         /// <param name="overlayMin">A surface map overlay for the minimum values.</param>
         /// <param name="overlayMax">A surface map overlay for the maximum values.</param>
         /// <param name="zeroNormal"><see langword="true"/> if <paramref name="baseMap"/>'s values
@@ -122,18 +156,16 @@ namespace WorldFoundry.SurfaceMapping
         {
             var xLength = surfaceMap.GetLength(0);
             var yLength = surfaceMap.GetLength(1);
-            using (var image = new Image<Rgba32>(xLength, yLength))
+            using var image = new Image<Rgba32>(xLength, yLength);
+            for (var y = 0; y < xLength; y++)
             {
-                for (var y = 0; y < xLength; y++)
+                var pixelRow = image.GetPixelRowSpan(y);
+                for (var x = 0; x < xLength; x++)
                 {
-                    var pixelRow = image.GetPixelRowSpan(y);
-                    for (var x = 0; x < xLength; x++)
-                    {
-                        pixelRow[x] = FloatToRgba32(surfaceMap[x, y], zeroNormal);
-                    }
+                    pixelRow[x] = FloatToRgba32(surfaceMap[x, y], zeroNormal);
                 }
-                return image;
             }
+            return image;
         }
 
         private static Rgba32 FloatToRgba32(float value, bool zeroNormal = true)

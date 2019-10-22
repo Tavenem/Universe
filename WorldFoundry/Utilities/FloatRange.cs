@@ -1,11 +1,15 @@
-﻿using MathAndScience;
+﻿using NeverFoundry.MathAndScience;
+using System;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 
 namespace WorldFoundry
 {
     /// <summary>
     /// A floating-point value which specifies an average, and optionally a range (minimum to maximum).
     /// </summary>
-    public struct FloatRange
+    [Serializable]
+    public struct FloatRange : ISerializable
     {
         /// <summary>
         /// A <see cref="FloatRange"/> with all values set to zero.
@@ -26,7 +30,7 @@ namespace WorldFoundry
         /// <summary>
         /// Whether this range begins and ends at zero.
         /// </summary>
-        public bool IsZero => Min.IsZero() && Max.IsZero();
+        public bool IsZero => Min.IsNearlyZero() && Max.IsNearlyZero();
 
         /// <summary>
         /// The maximum value.
@@ -73,6 +77,27 @@ namespace WorldFoundry
             Average = average;
             Max = max;
             Min = min;
+        }
+
+        private FloatRange(SerializationInfo info, StreamingContext context) : this(
+            (float)info.GetValue(nameof(Min), typeof(float)),
+            (float)info.GetValue(nameof(Average), typeof(float)),
+            (float)info.GetValue(nameof(Max), typeof(float))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(Min), Min);
+            info.AddValue(nameof(Average), Average);
+            info.AddValue(nameof(Max), Max);
         }
     }
 }

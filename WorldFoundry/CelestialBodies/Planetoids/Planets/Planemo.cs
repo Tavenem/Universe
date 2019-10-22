@@ -1,10 +1,16 @@
-﻿using MathAndScience;
-using MathAndScience.Numerics;
-using MathAndScience.Shapes;
-using Substances;
+﻿using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Constants.Numbers;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using System.Text;
+using WorldFoundry.Climate;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets
@@ -12,19 +18,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
     /// <summary>
     /// Any planetary-mass object (massive enough to be rounded under its own gravity), such as dwarf planets, some moons, and planets.
     /// </summary>
+    [Serializable]
     public class Planemo : Planetoid
     {
-        private const double IcyRingDensity = 300.0;
-        private const double RockyRingDensity = 1380.0;
+        private static readonly Number _IcyRingDensity = 300;
+        private static readonly Number _RockyRingDensity = 1380;
 
-        private List<PlanetaryRing>? _rings;
+        private protected List<PlanetaryRing>? _rings;
         /// <summary>
         /// The collection of rings around this <see cref="Planemo"/>.
         /// </summary>
-        public List<PlanetaryRing> Rings => _rings ?? (_rings = GetRings());
+        public List<PlanetaryRing> Rings => _rings ??= GetRings();
 
         /// <summary>
-        /// The name for this type of <see cref="ICelestialLocation"/>.
+        /// The name for this type of <see cref="CelestialLocation"/>.
         /// </summary>
         public override string TypeName
         {
@@ -40,7 +47,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 {
                     sb.Append("Moon");
                 }
-                else if (ContainingCelestialRegion is StarSystem)
+                else if (CelestialParent is StarSystem)
                 {
                     sb.Append(BaseTypeName);
                 }
@@ -72,26 +79,147 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        internal Planemo(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal Planemo(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Planemo"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Planemo"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        internal Planemo(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal Planemo(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
-        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
+        private protected Planemo(
+            string id,
+            string? name,
+            bool isPrepopulated,
+            double? albedo,
+            Vector3 velocity,
+            double normalizedSeaLevel,
+            int seed1,
+            int seed2,
+            int seed3,
+            int seed4,
+            int seed5,
+            double? angleOfRotation,
+            Atmosphere? atmosphere,
+            double? axialPrecession,
+            bool? hasMagnetosphere,
+            double? maxElevation,
+            Number? rotationalOffset,
+            Number? rotationalPeriod,
+            List<Resource>? resources,
+            List<string>? satelliteIds,
+            List<SurfaceRegion>? surfaceRegions,
+            Number? maxMass,
+            Orbit? orbit,
+            IMaterial? material,
+            List<PlanetaryRing>? rings,
+            List<Location>? children)
+            : base(
+                id,
+                name,
+                isPrepopulated,
+                albedo,
+                velocity,
+                normalizedSeaLevel,
+                seed1,
+                seed2,
+                seed3,
+                seed4,
+                seed5,
+                angleOfRotation,
+                atmosphere,
+                axialPrecession,
+                hasMagnetosphere,
+                maxElevation,
+                rotationalOffset,
+                rotationalPeriod,
+                resources,
+                satelliteIds,
+                surfaceRegions,
+                maxMass,
+                orbit,
+                material,
+                children) => _rings = rings;
+
+        private Planemo(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (string?)info.GetValue(nameof(Name), typeof(string)),
+            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
+            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
+            (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
+            (int)info.GetValue(nameof(_seed1), typeof(int)),
+            (int)info.GetValue(nameof(_seed2), typeof(int)),
+            (int)info.GetValue(nameof(_seed3), typeof(int)),
+            (int)info.GetValue(nameof(_seed4), typeof(int)),
+            (int)info.GetValue(nameof(_seed5), typeof(int)),
+            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
+            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
+            (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
+            (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
+            (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
+            (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
+            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
+            (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
+            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            if (orbitedObject == null)
+            info.AddValue(nameof(Id), Id);
+            info.AddValue(nameof(Name), Name);
+            info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
+            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(Velocity), Velocity);
+            info.AddValue(nameof(_normalizedSeaLevel), _normalizedSeaLevel);
+            info.AddValue(nameof(_seed1), _seed1);
+            info.AddValue(nameof(_seed2), _seed2);
+            info.AddValue(nameof(_seed3), _seed3);
+            info.AddValue(nameof(_seed4), _seed4);
+            info.AddValue(nameof(_seed5), _seed5);
+            info.AddValue(nameof(AngleOfRotation), _angleOfRotation);
+            info.AddValue(nameof(Atmosphere), _atmosphere);
+            info.AddValue(nameof(AxialPrecession), _axialPrecession);
+            info.AddValue(nameof(HasMagnetosphere), _hasMagnetosphere);
+            info.AddValue(nameof(MaxElevation), _maxElevation);
+            info.AddValue(nameof(RotationalOffset), _rotationalOffset);
+            info.AddValue(nameof(RotationalPeriod), _rotationalPeriod);
+            info.AddValue(nameof(Resources), _resources);
+            info.AddValue(nameof(Satellites), _satelliteIDs);
+            info.AddValue(nameof(SurfaceRegions), _surfaceRegions);
+            info.AddValue(nameof(MaxMass), _maxMass);
+            info.AddValue(nameof(Orbit), _orbit);
+            info.AddValue(nameof(Material), _material);
+            info.AddValue(nameof(Rings), _rings);
+            info.AddValue(nameof(Children), Children.ToList());
+        }
+
+        internal override void GenerateOrbit(CelestialLocation orbitedObject)
+        {
+            if (orbitedObject is null)
             {
                 return;
             }
@@ -101,70 +229,131 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 orbitedObject,
                 GetDistanceTo(orbitedObject),
                 Eccentricity,
-                Math.Round(Randomizer.Instance.NextDouble(0.9), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4),
-                Math.Round(Randomizer.Instance.NextDouble(MathConstants.TwoPI), 4));
+                Randomizer.Instance.NextDouble(0.9),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
         }
 
-        private protected override IComposition GetComposition(double mass, IShape shape)
+        private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {
-            var coreProportion = GetCoreProportion(mass);
+            var coreProportion = GetCoreProportion();
             var crustProportion = GetCrustProportion(shape);
+
+            var coreLayers = GetCore(shape, coreProportion, crustProportion, mass).ToList();
+            var topCoreLayer = coreLayers.Last();
+            var coreShape = topCoreLayer.material.Shape;
+            var coreTemp = topCoreLayer.material.Temperature ?? 0;
+
             var mantleProportion = 1 - (coreProportion + crustProportion);
+            var mantleLayers = GetMantle(shape, mantleProportion, crustProportion, mass, coreShape, coreTemp).ToList();
+            if (mantleLayers.Count == 0
+                && mantleProportion.IsPositive)
+            {
+                crustProportion += mantleProportion;
+            }
 
-            var coreLayers = GetCore(mass);
-            var mantleLayers = GetMantle(shape, mantleProportion);
-            var crustLayers = GetCrust();
+            var crustLayers = GetCrust(shape, crustProportion, mass).ToList();
+            if (crustLayers.Count == 0
+                && crustProportion.IsPositive)
+            {
+                if (mantleLayers.Count == 0)
+                {
+                    coreProportion = Number.One;
+                }
+                else
+                {
+                    var ratio = Number.One / (coreProportion + mantleProportion);
+                    coreProportion *= ratio;
+                    mantleProportion *= ratio;
+                }
+            }
 
-            var layers = new List<(IComposition, double)>();
+            var layers = new List<(IMaterial, decimal)>();
+            var coreP = (decimal)coreProportion;
+            var mantleP = (decimal)mantleProportion;
+            var crustP = (decimal)crustProportion;
             foreach (var (layer, proportion) in coreLayers)
             {
-                layers.Add((layer, proportion * coreProportion));
+                layers.Add((layer, proportion * coreP));
             }
             foreach (var (layer, proportion) in mantleLayers)
             {
-                layers.Add((layer, proportion * mantleProportion));
+                layers.Add((layer, proportion * mantleP));
             }
             foreach (var (layer, proportion) in crustLayers)
             {
-                layers.Add((layer, proportion * crustProportion));
+                layers.Add((layer, proportion * crustP));
             }
-            return new LayeredComposite(layers);
+            return new LayeredComposite(
+                layers,
+                shape,
+                density,
+                mass,
+                temperature);
         }
 
-        private protected virtual IEnumerable<(IComposition, double)> GetCore(double mass)
+        private protected virtual IEnumerable<(IMaterial material, decimal proportion)> GetCore(
+            IShape planetShape,
+            Number coreProportion,
+            Number crustProportion,
+            Number planetMass)
         {
-            yield return (new Material(Chemical.Rock, Phase.Solid), 1);
+            var coreMass = planetMass * coreProportion;
+
+            var coreRadius = planetShape.ContainingRadius * coreProportion;
+            var shape = new Sphere(coreRadius, planetShape.Position);
+
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+
+            yield return (new Material(
+                (double)(coreMass / shape.Volume),
+                coreMass,
+                shape,
+                (double)((mantleBoundaryDepth * new Number(115, -2)) + (planetShape.ContainingRadius - coreRadius - mantleBoundaryDepth)),
+                GetCoreConstituents()), 1);
         }
 
-        private protected virtual double GetCoreProportion(double mass) => 0.15;
+        private protected virtual Number GetCoreProportion() => new Number(15, -2);
 
-        private protected virtual IEnumerable<(IComposition, double)> GetCrust()
+        private protected virtual (ISubstanceReference, decimal)[] GetCoreConstituents()
+            => new (ISubstanceReference, decimal)[] { (Substances.GetSolutionReference(Substances.Solutions.IronNickelAlloy), 1) };
+
+        private protected virtual IEnumerable<(IMaterial, decimal)> GetCrust(
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
         {
-            var dust = Randomizer.Instance.NextDouble();
+            var crustMass = planetMass * crustProportion;
+
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
+
+            var dust = Randomizer.Instance.NextDecimal();
             var total = dust;
 
             // 50% chance of not including the following:
-            var waterIce = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var waterIce = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += waterIce;
 
-            var n2 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var n2 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += n2;
 
-            var ch4 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var ch4 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += ch4;
 
-            var co = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var co = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += co;
 
-            var co2 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var co2 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += co2;
 
-            var nh3 = Math.Max(0, Randomizer.Instance.NextDouble(-0.5, 0.5));
+            var nh3 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             total += nh3;
 
-            var ratio = 1.0 / total;
+            var ratio = 1 / total;
             dust *= ratio;
             waterIce *= ratio;
             n2 *= ratio;
@@ -173,81 +362,99 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             co2 *= ratio;
             nh3 *= ratio;
 
-            var components = new Dictionary<Material, double>()
+            var components = new List<(ISubstanceReference, decimal)>()
             {
-                { new Material(Chemical.Dust, Phase.Solid), dust },
+                (Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust),
             };
             if (waterIce > 0)
             {
-                components[new Material(Chemical.Water, Phase.Solid)] = waterIce;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), waterIce));
             }
             if (n2 > 0)
             {
-                components[new Material(Chemical.Nitrogen, Phase.Solid)] = n2;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Nitrogen), n2));
             }
             if (ch4 > 0)
             {
-                components[new Material(Chemical.Methane, Phase.Solid)] = ch4;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
             }
             if (co > 0)
             {
-                components[new Material(Chemical.CarbonMonoxide, Phase.Solid)] = co;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co));
             }
             if (co2 > 0)
             {
-                components[new Material(Chemical.CarbonDioxide, Phase.Solid)] = co2;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2));
             }
             if (nh3 > 0)
             {
-                components[new Material(Chemical.Ammonia, Phase.Solid)] = nh3;
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3));
             }
-            yield return (new Composite(components), 1);
+            yield return (new Material(
+                components,
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape), 1);
         }
 
         // Smaller planemos have thicker crusts due to faster proto-planetary cooling.
-        private protected virtual double GetCrustProportion(IShape shape) => 400000.0 / Math.Pow(shape.ContainingRadius, 1.6);
+        private protected virtual Number GetCrustProportion(IShape shape)
+            => 400000 / Number.Pow(shape.ContainingRadius, new Number(16, -1));
 
-        private protected IComposition GetIronNickelCore()
+        private protected virtual IEnumerable<(IMaterial, decimal)> GetMantle(
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
         {
-            var coreNickel = Randomizer.Instance.NextDouble(0.03, 0.15);
-            return new Composite(
-                (Chemical.Iron, Phase.Solid, 1 - coreNickel),
-                (Chemical.Nickel, Phase.Solid, coreNickel));
-        }
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)mantleBoundaryDepth * 1.15;
+            var mantleTemp = (mantleBoundaryTemp + coreTemp) / 2;
 
-        private protected virtual IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
-        {
-            var mantleIce = Randomizer.Instance.NextDouble(0.2, 1);
-            yield return (new Composite(
-                (Chemical.Water, Phase.Solid, mantleIce),
-                (Chemical.Water, Phase.Liquid, 1 - mantleIce)),
+            var shape = new HollowSphere(coreShape.ContainingRadius, planetShape.ContainingRadius * mantleProportion, planetShape.Position);
+
+            var mantleMass = planetMass * mantleProportion;
+
+            yield return (new Material(
+                GetMantleSubstance(),
+                (double)(mantleMass / shape.Volume),
+                mantleMass,
+                shape,
+                mantleTemp),
                 1);
         }
 
-        private protected override double GetMass(IShape? shape = null)
+        private protected virtual ISubstanceReference GetMantleSubstance()
+            => Substances.GetChemicalReference(Substances.Chemicals.Water);
+
+        private protected override Number GetMass()
         {
             var maxMass = MaxMass;
-            if (ContainingCelestialRegion != null)
+            if (!(Parent is null))
             {
-                maxMass = Math.Min(maxMass, GetSternLevisonLambdaMass() / 100);
+                maxMass = Number.Min(maxMass, GetSternLevisonLambdaMass() / 100);
                 if (maxMass < MinMass)
                 {
                     maxMass = MinMass; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
                 }
             }
 
-            return Randomizer.Instance.NextDouble(MinMass, maxMass);
+            return Randomizer.Instance.NextNumber(MinMass, maxMass);
         }
 
-        private protected override (double, IShape) GetMassAndShape()
+        private protected override (double density, Number mass, IShape shape) GetMatter()
         {
+            var density = GetDensity();
             var mass = GetMass();
-            return (mass, GetShape(mass));
+            return (density, mass, GetShape(density, mass));
         }
 
-        private protected double GetMaxRadius() => MaxMassForType.HasValue ? GetRadiusForMass(MaxMassForType.Value) : double.PositiveInfinity;
+        private protected Number GetMaxRadius(Number density)
+            => MaxMassForType.HasValue ? GetRadiusForMass(density, MaxMassForType.Value) : Number.PositiveInfinity;
 
-        private double GetRadiusForMass(double mass) => Math.Pow(mass / Density / MathConstants.FourThirdsPI, 1.0 / 3.0);
+        private Number GetRadiusForMass(Number density, Number mass) => (mass / density / MathConstants.FourThirdsPI).CubeRoot();
 
         /// <summary>
         /// Calculates the approximate outer distance at which rings of the given density may be
@@ -256,36 +463,39 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <param name="density">The density of the rings, in kg/m³.</param>
         /// <returns>The approximate outer distance at which rings of the given density may be
         /// found, in meters.</returns>
-        private double GetRingDistance(double density) => 1.26 * Shape.ContainingRadius * Math.Pow(Density / density, 1.0 / 3.0);
+        private Number GetRingDistance(Number density)
+            => new Number(126, -2)
+            * Shape.ContainingRadius
+            * (Density / density).CubeRoot();
 
         private List<PlanetaryRing> GetRings()
         {
             var rings = new List<PlanetaryRing>();
 
-            var innerLimit = Atmosphere.AtmosphericHeight;
+            var innerLimit = (Number)Atmosphere.AtmosphericHeight;
 
-            var outerLimit_Icy = GetRingDistance(IcyRingDensity);
+            var outerLimit_Icy = GetRingDistance(_IcyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Icy = Math.Min(outerLimit_Icy, GetHillSphereRadius() / 3.0);
+                outerLimit_Icy = Number.Min(outerLimit_Icy, GetHillSphereRadius() / 3);
             }
             if (innerLimit >= outerLimit_Icy)
             {
                 return rings;
             }
 
-            var outerLimit_Rocky = GetRingDistance(RockyRingDensity);
+            var outerLimit_Rocky = GetRingDistance(_RockyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Rocky = Math.Min(outerLimit_Rocky, GetHillSphereRadius() / 3.0);
+                outerLimit_Rocky = Number.Min(outerLimit_Rocky, GetHillSphereRadius() / 3);
             }
 
             var _ringChance = RingChance;
             while (Randomizer.Instance.NextDouble() <= _ringChance && innerLimit <= outerLimit_Icy)
             {
-                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBoolean())
+                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBool())
                 {
-                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Rocky));
+                    var innerRadius = Randomizer.Instance.NextNumber(innerLimit, outerLimit_Rocky);
 
                     rings.Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
 
@@ -297,7 +507,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 }
                 else
                 {
-                    var innerRadius = Math.Round(Randomizer.Instance.NextDouble(innerLimit, outerLimit_Icy));
+                    var innerRadius = Randomizer.Instance.NextNumber(innerLimit, outerLimit_Icy);
 
                     rings.Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
 
@@ -314,18 +524,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             return rings;
         }
 
-        private protected override IShape GetShape(double? mass = null, double? knownRadius = null)
+        private protected IShape GetShape(Number? density = null, Number? mass = null, Number? knownRadius = null)
         {
-            if (mass == null && knownRadius == null)
+            if (!mass.HasValue && !knownRadius.HasValue)
             {
                 return new SinglePoint(Position);
             }
 
             // If no known radius is provided, an approximate radius as if the shape was a sphere is
             // determined, which is no less than the minimum required for hydrostatic equilibrium.
-            var radius = knownRadius ?? Math.Max(MinimumRadius, GetRadiusForMass(mass!.Value));
-            var flattening = Randomizer.Instance.NextDouble(0.1);
-            return new Ellipsoid(radius, radius * (1 - flattening), 1, Position);
+            var radius = knownRadius ?? Number.Max(MinimumRadius, GetRadiusForMass(density!.Value, mass!.Value));
+            var flattening = Randomizer.Instance.NextNumber(Number.Deci);
+            return new Ellipsoid(radius, radius * (1 - flattening), Position);
         }
 
         /// <summary>
@@ -337,27 +547,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// cref="Planemo"/> doesn't already have a defined orbit.
         /// </remarks>
         /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit
-        /// or <see cref="ICelestialLocation.ContainingCelestialRegion"/>.</exception>
-        private protected double GetSternLevisonLambdaMass()
+        /// or <see cref="Location.Parent"/>.</exception>
+        private protected Number GetSternLevisonLambdaMass()
         {
-            double semiMajorAxis;
+            Number semiMajorAxis;
             if (Orbit.HasValue)
             {
                 semiMajorAxis = Orbit.Value.SemiMajorAxis;
             }
-            else if (ContainingCelestialRegion == null)
+            else if (Parent is null)
             {
-                throw new Exception($"{nameof(GetSternLevisonLambdaMass)} cannot be called on a {nameof(Planemo)} without either an {nameof(Orbit)} or a {nameof(ContainingCelestialRegion)}");
+                throw new Exception($"{nameof(GetSternLevisonLambdaMass)} cannot be called on a {nameof(Planemo)} without either an {nameof(Orbit)} or a {nameof(Parent)}");
             }
             else
             {
                 // Even if this planetoid is not yet in a defined orbit, some orbital
                 // characteristics must be determined early, in order to distinguish a dwarf planet
                 // from a planet, which depends partially on orbital distance.
-                semiMajorAxis = GetDistanceTo(ContainingCelestialRegion) * (1 + Eccentricity) / (1 - Eccentricity);
+                semiMajorAxis = GetDistanceTo(Parent) * ((1 + Eccentricity) / (1 - Eccentricity));
             }
 
-            return Math.Sqrt(Math.Pow(semiMajorAxis, 3.0 / 2.0) / 2.5e-28);
+            return (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
         }
     }
 }

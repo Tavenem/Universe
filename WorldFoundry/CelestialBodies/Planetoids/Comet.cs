@@ -1,23 +1,27 @@
-﻿using MathAndScience;
-using MathAndScience.Numerics;
-using MathAndScience.Shapes;
-using Substances;
-using System;
+﻿using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 using WorldFoundry.Climate;
+using WorldFoundry.Place;
 using WorldFoundry.Space;
+using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// Mostly ice and dust, with a large but thin atmosphere.
     /// </summary>
+    [Serializable]
     public class Comet : Planetoid
     {
-        internal const double Space = 25000;
+        internal static readonly Number Space = new Number(25000);
 
         private protected override string BaseTypeName => "Comet";
 
-        private protected override double Rigidity => 4.0e9;
+        private protected override Number Rigidity => new Number(4, 9);
 
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/>.
@@ -28,14 +32,92 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="Comet"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="Comet"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="Comet"/>.</param>
-        internal Comet(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal Comet(Location parent, Vector3 position) : base(parent, position) { }
 
-        private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.025, 0.055);
+        private Comet(
+            string id,
+            string? name,
+            bool isPrepopulated,
+            double? albedo,
+            Vector3 velocity,
+            double normalizedSeaLevel,
+            int seed1,
+            int seed2,
+            int seed3,
+            int seed4,
+            int seed5,
+            double? angleOfRotation,
+            Atmosphere? atmosphere,
+            double? axialPrecession,
+            bool? hasMagnetosphere,
+            double? maxElevation,
+            Number? rotationalOffset,
+            Number? rotationalPeriod,
+            List<Resource>? resources,
+            List<string>? satelliteIds,
+            List<SurfaceRegion>? surfaceRegions,
+            Number? maxMass,
+            Orbit? orbit,
+            IMaterial? material,
+            List<Location>? children)
+            : base(
+                id,
+                name,
+                isPrepopulated,
+                albedo,
+                velocity,
+                normalizedSeaLevel,
+                seed1,
+                seed2,
+                seed3,
+                seed4,
+                seed5,
+                angleOfRotation,
+                atmosphere,
+                axialPrecession,
+                hasMagnetosphere,
+                maxElevation,
+                rotationalOffset,
+                rotationalPeriod,
+                resources,
+                satelliteIds,
+                surfaceRegions,
+                maxMass,
+                orbit,
+                material,
+                children) { }
 
-        internal override void GenerateOrbit(ICelestialLocation orbitedObject)
+        private Comet(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (string?)info.GetValue(nameof(Name), typeof(string)),
+            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
+            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
+            (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
+            (int)info.GetValue(nameof(_seed1), typeof(int)),
+            (int)info.GetValue(nameof(_seed2), typeof(int)),
+            (int)info.GetValue(nameof(_seed3), typeof(int)),
+            (int)info.GetValue(nameof(_seed4), typeof(int)),
+            (int)info.GetValue(nameof(_seed5), typeof(int)),
+            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
+            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
+            (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
+            (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
+            (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
+            (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
+            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
+            (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
+            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+
+        internal override void GenerateOrbit(CelestialLocation orbitedObject)
         {
             if (orbitedObject == null)
             {
@@ -53,100 +135,67 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 periapsis,
                 eccentricity,
                 Randomizer.Instance.NextDouble(Math.PI),
-                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 Math.PI);
         }
 
+        private protected override void GenerateAlbedo()
+            => Albedo = Randomizer.Instance.NextDouble(0.025, 0.055);
+
         private protected override void GenerateAtmosphere()
         {
-            var dust = 1.0;
+            var dust = 1.0m;
 
-            var water = Math.Round(Randomizer.Instance.NextDouble(0.75, 0.9), 3);
+            var water = Randomizer.Instance.NextDecimal(0.75m, 0.9m);
             dust -= water;
 
-            var co = Math.Round(Randomizer.Instance.NextDouble(0.05, 0.15), 3);
+            var co = Randomizer.Instance.NextDecimal(0.05m, 0.15m);
             dust -= co;
 
             if (dust < 0)
             {
-                water -= 0.1;
-                dust += 0.1;
+                water -= 0.1m;
+                dust += 0.1m;
             }
 
-            var co2 = Math.Round(Randomizer.Instance.NextDouble(0.01), 3);
+            var co2 = Randomizer.Instance.NextDecimal(0.01m);
             dust -= co2;
 
-            var nh3 = Math.Round(Randomizer.Instance.NextDouble(0.01), 3);
+            var nh3 = Randomizer.Instance.NextDecimal(0.01m);
             dust -= nh3;
 
-            var ch4 = Math.Round(Randomizer.Instance.NextDouble(0.01), 3);
+            var ch4 = Randomizer.Instance.NextDecimal(0.01m);
             dust -= ch4;
 
-            var h2s = Math.Round(Randomizer.Instance.NextDouble(0.01), 4);
+            var h2s = Randomizer.Instance.NextDecimal(0.01m);
             dust -= h2s;
 
-            var so2 = Math.Round(Randomizer.Instance.NextDouble(0.001), 4);
+            var so2 = Randomizer.Instance.NextDecimal(0.001m);
             dust -= so2;
 
-            _atmosphere = new Atmosphere(this,
-                new Composite(
-                    (Chemical.Water, Phase.Gas, water),
-                    (Chemical.Dust, Phase.Solid, dust),
-                    (Chemical.CarbonMonoxide, Phase.Gas, co),
-                    (Chemical.CarbonDioxide, Phase.Gas, co2),
-                    (Chemical.Ammonia, Phase.Gas, nh3),
-                    (Chemical.Methane, Phase.Gas, ch4),
-                    (Chemical.HydrogenSulfide, Phase.Gas, h2s),
-                    (Chemical.SulphurDioxide, Phase.Gas, so2)),
-                1e-8);
+            _atmosphere = new Atmosphere(
+                this,
+                1e-8,
+                (Substances.GetChemicalReference(Substances.Chemicals.Water), water),
+                (Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust),
+                (Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co),
+                (Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2),
+                (Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3),
+                (Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4),
+                (Substances.GetChemicalReference(Substances.Chemicals.HydrogenSulfide), h2s),
+                (Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2));
         }
 
-        private protected override IComposition GetComposition(double mass, IShape shape)
+        private protected override double GetDensity() => Randomizer.Instance.NextDouble(300, 700);
+
+        private protected override (double density, Number mass, IShape shape) GetMatter()
         {
-            var dust = 1.0;
-
-            var water = Randomizer.Instance.NextDouble(0.35, 0.45);
-            dust -= water;
-
-            var co = Randomizer.Instance.NextDouble(0.04, 0.1);
-            dust -= co;
-
-            if (dust >= 0.5)
-            {
-                water -= 0.08;
-                dust += 0.08;
-            }
-
-            var co2 = Randomizer.Instance.NextDouble(0.01);
-            dust -= co2;
-
-            var nh3 = Randomizer.Instance.NextDouble(0.01);
-            dust -= nh3;
-
-            var ch4 = Randomizer.Instance.NextDouble(0.01);
-            dust -= ch4;
-
-            var rock = Randomizer.Instance.NextDouble(0.05);
-            dust -= rock;
-
-            return new Composite(
-                (Chemical.Water, Phase.Solid, water),
-                (Chemical.Dust, Phase.Solid, dust),
-                (Chemical.CarbonMonoxide, Phase.Solid, co),
-                (Chemical.CarbonDioxide, Phase.Solid, co2),
-                (Chemical.Ammonia, Phase.Solid, nh3),
-                (Chemical.Methane, Phase.Solid, ch4));
-        }
-
-        private protected override double? GetDensity() => Math.Round(Randomizer.Instance.NextDouble(300, 700));
-
-        private protected override double GetMass(IShape? shape = null) => (shape?.Volume ?? 0) * Density;
-
-        private protected override (double, IShape) GetMassAndShape()
-        {
+            var density = GetDensity();
             var shape = GetShape();
-            return (GetMass(shape), shape);
+            return (density, shape.Volume * density, shape);
         }
+
+        private protected override ISubstanceReference? GetSubstance() => CelestialSubstances.CometNucleus;
     }
 }

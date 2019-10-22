@@ -1,16 +1,19 @@
-﻿using MathAndScience;
-using Substances;
+﻿using NeverFoundry.MathAndScience;
 using System;
 using System.Linq;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.Climate;
+using NeverFoundry.MathAndScience.Numerics;
 
 namespace WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A collection of weather maps providing yearlong climate data.
     /// </summary>
-    public struct WeatherMaps
+    [Serializable]
+    public struct WeatherMaps : ISerializable
     {
         /// <summary>
         /// The overall <see cref="BiomeType"/> of the area.
@@ -304,7 +307,7 @@ namespace WorldFoundry.SurfaceMapping
             TotalPrecipitationMap = totalPrecipitation;
 
             MaxSnowfall = maxPrecipitation * Atmosphere.SnowToRainRatio;
-            Seasons = precipitationMaps?.Length ?? 0;
+            Seasons = precipitationMaps.Length;
 
             if (TemperatureRangeMap == null)
             {
@@ -384,15 +387,15 @@ namespace WorldFoundry.SurfaceMapping
             Planetoid planet,
             int xLength,
             int yLength,
-            float[,] elevationMap,
+            double[,] elevationMap,
             PrecipitationMaps[] precipitationMaps,
             FloatRange[,] temperatureRanges,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
-            float? averageElevation = null)
+            double? averageElevation = null)
         {
             if (elevationMap.GetLength(0) != xLength)
             {
@@ -449,26 +452,19 @@ namespace WorldFoundry.SurfaceMapping
             MaxSnowfall = MaxPrecipitation * Atmosphere.SnowToRainRatio;
             Seasons = precipitationMaps?.Length ?? 0;
 
-            if (temperatureRanges == null)
+            var min = 2f;
+            var max = -2f;
+            var avgSum = 0f;
+            for (var x = 0; x < xLength; x++)
             {
-                TemperatureRange = FloatRange.Zero;
-            }
-            else
-            {
-                var min = 2f;
-                var max = -2f;
-                var avgSum = 0f;
-                for (var x = 0; x < xLength; x++)
+                for (var y = 0; y < yLength; y++)
                 {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        min = Math.Min(min, temperatureRanges[x, y].Min);
-                        max = Math.Max(max, temperatureRanges[x, y].Max);
-                        avgSum += temperatureRanges[x, y].Average;
-                    }
+                    min = Math.Min(min, temperatureRanges[x, y].Min);
+                    max = Math.Max(max, temperatureRanges[x, y].Max);
+                    avgSum += temperatureRanges[x, y].Average;
                 }
-                TemperatureRange = new FloatRange(min, avgSum / (xLength * yLength), max);
             }
+            TemperatureRange = new FloatRange(min, avgSum / (xLength * yLength), max);
 
             BiomeMap = new BiomeType[xLength, yLength];
             ClimateMap = new ClimateType[xLength, yLength];
@@ -539,22 +535,22 @@ namespace WorldFoundry.SurfaceMapping
                     SeaIceRangeMap = SurfaceMap.GetSurfaceMap(
                         (lat, _, x, y) =>
                         {
-                            if (elevationMap[x, y] > 0 || temperatureRanges[x, y].Min > Chemical.Water_Salt.MeltingPoint)
+                            if (elevationMap[x, y] > 0 || temperatureRanges[x, y].Min > CelestialSubstances.SeawaterMeltingPoint)
                             {
                                 return FloatRange.Zero;
                             }
-                            if (temperatureRanges[x, y].Max < Chemical.Water_Salt.MeltingPoint)
+                            if (temperatureRanges[x, y].Max < CelestialSubstances.SeawaterMeltingPoint)
                             {
                                 return FloatRange.ZeroToOne;
                             }
 
-                            var freezeProportion = MathUtility.InverseLerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, Chemical.Water_Salt.MeltingPoint);
-                            if (double.IsNaN(freezeProportion))
+                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)CelestialSubstances.SeawaterMeltingPoint);
+                            if (float.IsNaN(freezeProportion))
                             {
                                 return FloatRange.Zero;
                             }
                             // Freezes more than melts; never fully melts.
-                            if (freezeProportion >= 0.5)
+                            if (freezeProportion >= 0.5f)
                             {
                                 return FloatRange.ZeroToOne;
                             }
@@ -565,21 +561,21 @@ namespace WorldFoundry.SurfaceMapping
                             var freezeStart = 1 - (freezeProportion / 2);
                             if (lat < 0)
                             {
-                                iceMeltFinish += 0.5;
+                                iceMeltFinish += 0.5f;
                                 if (iceMeltFinish > 1)
                                 {
                                     iceMeltFinish--;
                                 }
 
-                                snowMeltFinish += 0.5;
+                                snowMeltFinish += 0.5f;
                                 if (snowMeltFinish > 1)
                                 {
                                     snowMeltFinish--;
                                 }
 
-                                freezeStart -= 0.5;
+                                freezeStart -= 0.5f;
                             }
-                            return new FloatRange((float)freezeStart, (float)iceMeltFinish);
+                            return new FloatRange(freezeStart, iceMeltFinish);
                         },
                         resolution,
                         centralMeridian,
@@ -591,22 +587,22 @@ namespace WorldFoundry.SurfaceMapping
                         {
                             if (elevationMap[x, y] <= 0
                                 || humidityMap[x, y] <= HumidityType.Perarid
-                                || temperatureRanges[x, y].Min > Chemical.Water_Salt.MeltingPoint)
+                                || temperatureRanges[x, y].Min > CelestialSubstances.SeawaterMeltingPoint)
                             {
                                 return FloatRange.Zero;
                             }
-                            if (temperatureRanges[x, y].Max < Chemical.Water_Salt.MeltingPoint)
+                            if (temperatureRanges[x, y].Max < CelestialSubstances.SeawaterMeltingPoint)
                             {
                                 return FloatRange.ZeroToOne;
                             }
 
-                            var freezeProportion = MathUtility.InverseLerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, Chemical.Water_Salt.MeltingPoint);
-                            if (double.IsNaN(freezeProportion))
+                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)CelestialSubstances.SeawaterMeltingPoint);
+                            if (float.IsNaN(freezeProportion))
                             {
                                 return FloatRange.Zero;
                             }
                             // Freezes more than melts; never fully melts.
-                            if (freezeProportion >= 0.5)
+                            if (freezeProportion >= 0.5f)
                             {
                                 return FloatRange.ZeroToOne;
                             }
@@ -617,21 +613,21 @@ namespace WorldFoundry.SurfaceMapping
                             var freezeStart = 1 - (freezeProportion / 2);
                             if (lat < 0)
                             {
-                                iceMeltFinish += 0.5;
+                                iceMeltFinish += 0.5f;
                                 if (iceMeltFinish > 1)
                                 {
                                     iceMeltFinish--;
                                 }
 
-                                snowMeltFinish += 0.5;
+                                snowMeltFinish += 0.5f;
                                 if (snowMeltFinish > 1)
                                 {
                                     snowMeltFinish--;
                                 }
 
-                                freezeStart -= 0.5;
+                                freezeStart -= 0.5f;
                             }
-                            return new FloatRange((float)freezeStart, (float)snowMeltFinish);
+                            return new FloatRange(freezeStart, snowMeltFinish);
                         },
                         resolution,
                         centralMeridian,
@@ -641,6 +637,55 @@ namespace WorldFoundry.SurfaceMapping
                 }
             }
             HumidityMap = humidityMap;
+        }
+
+        private WeatherMaps(SerializationInfo info, StreamingContext context) : this(
+            (int)info.GetValue(nameof(XLength), typeof(int)),
+            (int)info.GetValue(nameof(YLength), typeof(int)),
+            (BiomeType)info.GetValue(nameof(Biome), typeof(BiomeType)),
+            (BiomeType[,])info.GetValue(nameof(BiomeMap), typeof(BiomeType[,])),
+            (ClimateType)info.GetValue(nameof(Climate), typeof(ClimateType)),
+            (ClimateType[,])info.GetValue(nameof(ClimateMap), typeof(ClimateType[,])),
+            (EcologyType)info.GetValue(nameof(Ecology), typeof(EcologyType)),
+            (EcologyType[,])info.GetValue(nameof(EcologyMap), typeof(EcologyType[,])),
+            (HumidityType)info.GetValue(nameof(Humidity), typeof(HumidityType)),
+            (HumidityType[,])info.GetValue(nameof(HumidityMap), typeof(HumidityType[,])),
+            (double)info.GetValue(nameof(MaxPrecipitation), typeof(double)),
+            (double)info.GetValue(nameof(MaxTemperature), typeof(double)),
+            (FloatRange[,])info.GetValue(nameof(SeaIceRangeMap), typeof(FloatRange[,])),
+            (FloatRange[,])info.GetValue(nameof(SnowCoverRangeMap), typeof(FloatRange[,])),
+            (PrecipitationMaps[])info.GetValue(nameof(PrecipitationMaps), typeof(PrecipitationMaps[])),
+            (FloatRange[,])info.GetValue(nameof(TemperatureRangeMap), typeof(FloatRange[,])),
+            (float[,])info.GetValue(nameof(TotalPrecipitationMap), typeof(float[,]))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(XLength), XLength);
+            info.AddValue(nameof(YLength), YLength);
+            info.AddValue(nameof(Biome), Biome);
+            info.AddValue(nameof(BiomeMap), BiomeMap);
+            info.AddValue(nameof(Climate), Climate);
+            info.AddValue(nameof(ClimateMap), ClimateMap);
+            info.AddValue(nameof(Ecology), Ecology);
+            info.AddValue(nameof(EcologyMap), EcologyMap);
+            info.AddValue(nameof(Humidity), Humidity);
+            info.AddValue(nameof(HumidityMap), HumidityMap);
+            info.AddValue(nameof(MaxPrecipitation), MaxPrecipitation);
+            info.AddValue(nameof(MaxTemperature), MaxTemperature);
+            info.AddValue(nameof(SeaIceRangeMap), SeaIceRangeMap);
+            info.AddValue(nameof(SnowCoverRangeMap), SnowCoverRangeMap);
+            info.AddValue(nameof(PrecipitationMaps), PrecipitationMaps);
+            info.AddValue(nameof(TemperatureRangeMap), TemperatureRangeMap);
+            info.AddValue(nameof(TotalPrecipitationMap), TotalPrecipitationMap);
         }
     }
 }

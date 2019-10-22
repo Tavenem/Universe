@@ -1,14 +1,15 @@
-﻿using ExtensionFoundry;
-using MathAndScience;
-using MathAndScience.Numerics;
-using SixLabors.ImageSharp;
+﻿using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UniversalTime;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.Place;
+using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Constants.Numbers;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Time;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -26,11 +27,11 @@ namespace WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns>The specific value from a range which varies over the course of a
         /// year.</returns>
-        public static double GetAnnualRangeValue(
+        public static float GetAnnualRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time)
-            => MathUtility.Lerp(range.Min, range.Max, planet.GetProportionOfYearAtTime(time));
+            => range.Min.Lerp(range.Max, (float)planet.GetProportionOfYearAtTime(time));
 
         /// <summary>
         /// Determines whether the given <paramref name="time"/> falls within the range indicated.
@@ -45,7 +46,7 @@ namespace WorldFoundry.SurfaceMapping
             FloatRange range,
             Duration time)
         {
-            var proportionOfYear = planet.GetProportionOfYearAtTime(time);
+            var proportionOfYear = (float)planet.GetProportionOfYearAtTime(time);
             return !range.IsZero
             && (range.Min > range.Max
                 ? proportionOfYear >= range.Min || proportionOfYear <= range.Max
@@ -62,8 +63,9 @@ namespace WorldFoundry.SurfaceMapping
         /// name="region"/>.</param>
         /// <param name="ranges">A set of ranges.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns></returns>
-        public static double GetAnnualValueFromLocalPosition(
+        /// <returns>The value for a <paramref name="position"/> in a <paramref name="region"/> at a
+        /// given <paramref name="time"/> from a set of ranges.</returns>
+        public static float GetAnnualValueFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -90,7 +92,9 @@ namespace WorldFoundry.SurfaceMapping
         /// name="region"/>.</param>
         /// <param name="ranges">A set of ranges.</param>
         /// <param name="time">The time at which the determination is to be performed.</param>
-        /// <returns></returns>
+        /// <returns><see langword="true"/> if the given <paramref name="time"/> falls within the
+        /// range indicated for a <paramref name="position"/> in a <paramref name="region"/>;
+        /// otherwise <see langword="false"/>.</returns>
         public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
@@ -132,16 +136,16 @@ namespace WorldFoundry.SurfaceMapping
         /// provided, or if equal to zero or greater than π, indicates that the entire globe is
         /// shown.</param>
         /// <returns>The area of the given point, in m².</returns>
-        public static double GetAreaOfPoint(
-            double radius,
+        public static Number GetAreaOfPoint(
+            Number radius,
             int x, int y,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
             => GetAreaOfPointFromRadiusSquared(
-                radius * radius,
+                radius.Square(),
                 x, y,
                 resolution,
                 centralMeridian,
@@ -163,7 +167,7 @@ namespace WorldFoundry.SurfaceMapping
         /// as the northernmost point.</param>
         /// <param name="resolution">The vertical resolution of the projection.</param>
         /// <returns>The area of the given point, in m².</returns>
-        public static double GetAreaOfLocalPoint(
+        public static Number GetAreaOfLocalPoint(
             this Planetoid planet,
             SurfaceRegion region,
             int x, int y,
@@ -175,7 +179,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
 
         /// <summary>
         /// Produces an equirectangular projection of an elevation map of the specified region.
@@ -204,15 +208,15 @@ namespace WorldFoundry.SurfaceMapping
         /// <see cref="Planetoid"/>.
         /// <seealso cref="Planetoid.MaxElevation"/>
         /// </returns>
-        public static float[,] GetElevationMap(
+        public static double[,] GetElevationMap(
             this Planetoid planet,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
             => GetSurfaceMap(
-                (lat, lon, _, __) => planet.GetNormalizedElevationAt(planet.LatitudeAndLongitudeToVector(lat, lon)),
+                (lat, lon, _, __) => planet.GetNormalizedElevationAt(planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
                 resolution,
                 centralMeridian,
                 centralParallel,
@@ -235,7 +239,7 @@ namespace WorldFoundry.SurfaceMapping
         /// planet.
         /// <seealso cref="Planetoid.MaxElevation"/>
         /// </returns>
-        public static float[,] GetElevationMap(
+        public static double[,] GetElevationMap(
             this Planetoid planet,
             SurfaceRegion region,
             int resolution)
@@ -244,13 +248,11 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
             if (region._elevationOverlay != null)
             {
-                using (var image = Image.LoadPixelData<Rgba32>(region._elevationOverlay, region._elevationOverlayWidth, region._elevationOverlayHeight))
-                {
-                    return SurfaceMapImage.GetCompositeSurfaceMap(elevationMap, image.ImageToSurfaceMap(resolution * 2, resolution, false), false);
-                }
+                using var image = Image.LoadPixelData<Rgba32>(region._elevationOverlay, region._elevationOverlayWidth, region._elevationOverlayHeight);
+                return SurfaceMapImage.GetCompositeSurfaceMap(elevationMap, image.ImageToSurfaceMap(resolution * 2, resolution, false), false);
             }
             else
             {
@@ -286,15 +288,15 @@ namespace WorldFoundry.SurfaceMapping
             double latitude,
             double longitude,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
             => GetEquirectangularProjectionFromLatLongWithScale(
                 latitude, longitude,
                 resolution,
-                range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
-                    ? MathConstants.PISquared / (resolution * range.Value)
+                range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
+                    ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                     : Math.PI / resolution,
                 centralMeridian,
                 centralParallel,
@@ -327,7 +329,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
         }
 
         /// <summary>
@@ -355,7 +357,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
 
         /// <summary>
         /// Calculates the latitude and longitude that correspond to a set of coordinates from an
@@ -385,15 +387,15 @@ namespace WorldFoundry.SurfaceMapping
         public static (double latitude, double longitude) GetLatLonOfEquirectangularProjection(
             int x, int y,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
             => GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
                 (long)x - resolution,
                 (long)y - (resolution / 2),
-                range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
-                    ? MathConstants.PISquared / (resolution * range.Value)
+                range.HasValue && range.Value < Math.PI && !range.Value.IsNearlyZero()
+                    ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                     : Math.PI / resolution,
                 centralMeridian,
                 centralParallel,
@@ -423,7 +425,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
 
         /// <summary>
         /// Calculates the position that corresponds to a set of coordinates from an equirectangular
@@ -450,7 +452,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
             return planet.LatitudeAndLongitudeToVector(lat, lon) - region.Position;
         }
 
@@ -504,13 +506,13 @@ namespace WorldFoundry.SurfaceMapping
         public static HydrologyMaps GetHydrologyMaps(
             this Planetoid planet,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
-            float[,]? elevationMap = null,
+            double[,]? elevationMap = null,
             float[,]? precipitationMap = null,
-            float? averageElevation = null)
+            double? averageElevation = null)
         {
             if (planet == null)
             {
@@ -646,7 +648,7 @@ namespace WorldFoundry.SurfaceMapping
                         }
                     }
                 }
-                lakeDepths.Add((xL, yL), lowX == -1 ? 0 : elevationMap[lowX, lowY] - elevationMap[xL, yL]);
+                lakeDepths.Add((xL, yL), lowX == -1 ? 0 : (float)(elevationMap[lowX, lowY] - elevationMap[xL, yL]));
             }
 
             var areaMap = new double[doubleResolution, resolution];
@@ -663,13 +665,13 @@ namespace WorldFoundry.SurfaceMapping
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    if (!precipitationMap[x, y].IsZero())
+                    if (!precipitationMap[x, y].IsNearlyZero())
                     {
                         if (areaMap[x, y] < 0)
                         {
-                            areaMap[x, y] = GetAreaOfPointFromRadiusSquared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
+                            areaMap[x, y] = (double)GetAreaOfPointFromRadiusSquared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
                         }
-                        var runoff = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (planet.Orbit?.Period ?? 31557600));
+                        var runoff = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (double)(planet.Orbit?.Period ?? 31557600));
                         if (drainage[x, y] != (x, y))
                         {
                             flows.Add((drainage[x, y].x, drainage[x, y].y, runoff));
@@ -711,7 +713,7 @@ namespace WorldFoundry.SurfaceMapping
             var depthMap = new float[doubleResolution, resolution];
             foreach (var ((xL, yL), points) in lakes)
             {
-                if (flowMap[xL, yL].IsZero())
+                if (flowMap[xL, yL].IsNearlyZero())
                 {
                     continue;
                 }
@@ -764,9 +766,9 @@ namespace WorldFoundry.SurfaceMapping
             this Planetoid planet,
             SurfaceRegion region,
             int resolution,
-            float[,]? elevationMap = null,
+            double[,]? elevationMap = null,
             float[,]? precipitationMap = null,
-            float? averageElevation = null)
+            double? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
             if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
@@ -781,7 +783,7 @@ namespace WorldFoundry.SurfaceMapping
                   resolution,
                   planet.VectorToLongitude(region.Position),
                   planet.VectorToLatitude(region.Position),
-                  range: region.Shape.ContainingRadius / planet.RadiusSquared,
+                  range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared),
                   elevationMap: elevationMap,
                   precipitationMap: precipitationMap,
                   averageElevation: averageElevation);
@@ -793,17 +795,13 @@ namespace WorldFoundry.SurfaceMapping
             var flow = hydrologyMaps.Flow;
             if (region._depthOverlay != null)
             {
-                using (var image = Image.LoadPixelData<Rgba32>(region._depthOverlay, region._depthOverlayWidth, region._depthOverlayHeight))
-                {
-                    depth = SurfaceMapImage.GetCompositeSurfaceMap(depth, image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                }
+                using var image = Image.LoadPixelData<Rgba32>(region._depthOverlay, region._depthOverlayWidth, region._depthOverlayHeight);
+                depth = SurfaceMapImage.GetCompositeSurfaceMap(depth, image.ImageToSurfaceMap(doubleResolution, resolution, false));
             }
             if (region._flowOverlay != null)
             {
-                using (var image = Image.LoadPixelData<Rgba32>(region._flowOverlay, region._flowOverlayWidth, region._flowOverlayHeight))
-                {
-                    flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                }
+                using var image = Image.LoadPixelData<Rgba32>(region._flowOverlay, region._flowOverlayWidth, region._flowOverlayHeight);
+                flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToSurfaceMap(doubleResolution, resolution, false));
             }
             return new HydrologyMaps(doubleResolution, resolution, depth, flow, hydrologyMaps.MaxFlow);
         }
@@ -826,7 +824,7 @@ namespace WorldFoundry.SurfaceMapping
             PrecipitationMaps[] maps,
             Duration time)
         {
-            if ((maps?.Length ?? 0) == 0)
+            if (maps.Length == 0)
             {
                 return 0;
             }
@@ -866,16 +864,16 @@ namespace WorldFoundry.SurfaceMapping
         /// provided, or if equal to zero or greater than π, indicates that the entire globe is
         /// shown.</param>
         /// <returns>The radius of the given point, in meters.</returns>
-        public static double GetSeparationOfPoint(
-            double radius,
+        public static Number GetSeparationOfPoint(
+            Number radius,
             int x, int y,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
             => GetSeparationOfPointFromRadiusSquared(
-                radius * radius,
+                radius.Square(),
                 x, y,
                 resolution,
                 centralMeridian,
@@ -897,7 +895,7 @@ namespace WorldFoundry.SurfaceMapping
         /// as the northernmost point.</param>
         /// <param name="resolution">The vertical resolution of the projection.</param>
         /// <returns>The area of the given point, in m².</returns>
-        public static double GetSeparationOfPoint(
+        public static Number GetSeparationOfPoint(
             this Planetoid planet,
             SurfaceRegion region,
             int x, int y,
@@ -909,7 +907,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: region.Shape.ContainingRadius / planet.RadiusSquared);
+                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
 
         /// <summary>
         /// Gets the snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
@@ -929,7 +927,7 @@ namespace WorldFoundry.SurfaceMapping
             PrecipitationMaps[] maps,
             Duration time)
         {
-            if ((maps?.Length ?? 0) == 0)
+            if (maps.Length == 0)
             {
                 return 0;
             }
@@ -950,9 +948,19 @@ namespace WorldFoundry.SurfaceMapping
         /// </para>
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
-        /// double, double, double?, double?)"/>, <see cref="GetWeatherMaps(Planetoid, int, double,
-        /// double, double?, double?, int, float[,], float?)"/>, and <see cref="GetHydrologyMaps(Planetoid,
-        /// int, double, double, double?, double?, float[,], float[,], float?)"/> separately.
+        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, <see cref="GetWeatherMaps(Planetoid,
+        /// int, NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?, int,
+        /// NeverFoundry.MathAndScience.Numerics.Number[,],
+        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, and <see
+        /// cref="GetHydrologyMaps(Planetoid, int, NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number?,
+        /// NeverFoundry.MathAndScience.Numerics.Number[,], float[,],
+        /// NeverFoundry.MathAndScience.Numerics.Number?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -990,8 +998,8 @@ namespace WorldFoundry.SurfaceMapping
         public static SurfaceMaps GetSurfaceMaps(
             this Planetoid planet,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
             int steps = 12)
@@ -1006,11 +1014,11 @@ namespace WorldFoundry.SurfaceMapping
                     totalElevation += elevationMap[x, y];
                 }
             }
-            var averageElevation = (float)(totalElevation / (resolution * 3));
+            var averageElevation = totalElevation / (doubleResolution * resolution);
 
             var weatherMapSet = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap, averageElevation);
             var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
-            return new SurfaceMaps(doubleResolution, resolution, elevationMap, averageElevation, weatherMapSet, hydrologyMaps);
+            return new SurfaceMaps(doubleResolution, resolution, CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -1021,8 +1029,11 @@ namespace WorldFoundry.SurfaceMapping
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid,
         /// SurfaceRegion, int)"/>, <see cref="GetWeatherMaps(Planetoid, SurfaceRegion, int, int,
-        /// float[,], float?)"/>, and <see cref="GetHydrologyMaps(Planetoid, SurfaceRegion, int, float[,],
-        /// float[,], float?)"/> separately.
+        /// NeverFoundry.MathAndScience.Numerics.Number[,],
+        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, and <see
+        /// cref="GetHydrologyMaps(Planetoid, SurfaceRegion, int,
+        /// NeverFoundry.MathAndScience.Numerics.Number[,], float[,],
+        /// NeverFoundry.MathAndScience.Numerics.Number?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -1061,11 +1072,11 @@ namespace WorldFoundry.SurfaceMapping
                     totalElevation += elevationMap[x, y];
                 }
             }
-            var averageElevation = (float)(totalElevation / (resolution * 3));
+            var averageElevation = totalElevation / (doubleResolution * resolution);
 
             var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap, averageElevation);
             var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
-            return new SurfaceMaps(doubleResolution, resolution, elevationMap, averageElevation, weatherMapSet, hydrologyMaps);
+            return new SurfaceMaps(doubleResolution, resolution, CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -1077,12 +1088,12 @@ namespace WorldFoundry.SurfaceMapping
         /// <param name="latitude">The latitude at which the calculation is being performed (used to
         /// determine hemisphere, and thus season).</param>
         /// <returns>The specific temperature value from a temperature range.</returns>
-        public static double GetTemperatureRangeValue(
+        public static float GetTemperatureRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time,
             double latitude)
-            => MathUtility.Lerp(range.Min, range.Max, planet.GetSeasonalProportionAtTime(time, latitude));
+            => range.Min.Lerp(range.Max, (float)planet.GetSeasonalProportionAtTime(time, latitude));
 
         /// <summary>
         /// Gets the temperature value for a <paramref name="position"/> in a <paramref
@@ -1097,7 +1108,7 @@ namespace WorldFoundry.SurfaceMapping
         /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
         /// name="region"/> at a given <paramref name="time"/> from a set of temperature
         /// ranges.</returns>
-        public static double GetTemperatureFromLocalPosition(
+        public static float GetTemperatureFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -1128,7 +1139,7 @@ namespace WorldFoundry.SurfaceMapping
             PrecipitationMaps[] maps,
             Duration time)
         {
-            if ((maps?.Length ?? 0) == 0)
+            if (maps.Length == 0)
             {
                 return FloatRange.Zero;
             }
@@ -1214,13 +1225,13 @@ namespace WorldFoundry.SurfaceMapping
         public static WeatherMaps GetWeatherMaps(
             this Planetoid planet,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
             int steps = 12,
-            float[,]? elevationMap = null,
-            float? averageElevation = null)
+            double[,]? elevationMap = null,
+            double? averageElevation = null)
         {
             if (planet == null)
             {
@@ -1239,7 +1250,7 @@ namespace WorldFoundry.SurfaceMapping
             var doubleResolution = resolution * 2;
             var total = doubleResolution * resolution;
 
-            if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
@@ -1250,9 +1261,9 @@ namespace WorldFoundry.SurfaceMapping
                     var winterLatitudes = new Dictionary<double, double>();
                     var summerLatitudes = new Dictionary<double, double>();
                     var latitudeTemperatures = new Dictionary<double, double>();
-                    var elevationTemperatures = new Dictionary<(double, double), double>();
+                    var elevationTemperatures = new Dictionary<(double, int), float>();
 
-                    var roundedElevation = Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
+                    var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
 
                     if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                     {
@@ -1266,7 +1277,7 @@ namespace WorldFoundry.SurfaceMapping
                     }
                     if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
                     {
-                        winterTempAtElevation = planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
+                        winterTempAtElevation = (float)planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
                         elevationTemperatures.Add((winterTemp, roundedElevation), winterTempAtElevation);
                     }
 
@@ -1282,11 +1293,11 @@ namespace WorldFoundry.SurfaceMapping
                     }
                     if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
                     {
-                        summerTempAtElevation = planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
+                        summerTempAtElevation = (float)planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
                         elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
                     }
 
-                    return new FloatRange((float)winterTempAtElevation, (float)summerTempAtElevation);
+                    return new FloatRange(winterTempAtElevation, summerTempAtElevation);
                 },
                 resolution,
                 centralMeridian,
@@ -1294,11 +1305,11 @@ namespace WorldFoundry.SurfaceMapping
                 standardParallels,
                 range);
 
-            var proportionOfYear = 1.0 / steps;
-            var proportionOfYearAtMidpoint = 0.0;
-            var proportionOfSummerAtMidpoint = 0.0;
+            var proportionOfYear = 1f / steps;
+            var proportionOfYearAtMidpoint = 0f;
+            var proportionOfSummerAtMidpoint = 0f;
             var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var trueAnomalyPerSeason = MathConstants.TwoPI / steps;
+            var trueAnomalyPerSeason = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
 
             var precipitationMaps = new PrecipitationMaps[steps];
             for (var i = 0; i < steps; i++)
@@ -1310,14 +1321,22 @@ namespace WorldFoundry.SurfaceMapping
                 var precipMap = GetSurfaceMap(
                     (lat, lon, x, y) =>
                     {
-                        var precipitation = planet.GetPrecipitation(
-                            planet.LatitudeAndLongitudeToVector(lat, lon),
-                            planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
-                            MathUtility.Lerp(temperatureRanges[x, y].Min, temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
-                            proportionOfYear,
-                            out var snow);
-                        snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
-                        return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
+                        if (planet.Atmosphere.MaxPrecipitation.IsNearlyZero())
+                        {
+                            snowfallMap[x, y] = 0;
+                            return 0;
+                        }
+                        else
+                        {
+                            var precipitation = planet.GetPrecipitation(
+                                planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
+                                planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
+                                temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
+                                proportionOfYear,
+                                out var snow);
+                            snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
+                            return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
+                        }
                     },
                     resolution,
                     centralMeridian,
@@ -1327,11 +1346,11 @@ namespace WorldFoundry.SurfaceMapping
                 precipitationMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipMap, snowfallMap);
 
                 proportionOfYearAtMidpoint += proportionOfYear;
-                proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5 - proportionOfYearAtMidpoint) / 0.5);
+                proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5f - proportionOfYearAtMidpoint) / 0.5f);
                 trueAnomaly += trueAnomalyPerSeason;
-                if (trueAnomaly >= MathConstants.TwoPI)
+                if (trueAnomaly >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
                 {
-                    trueAnomaly -= MathConstants.TwoPI;
+                    trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
                 }
             }
 
@@ -1391,8 +1410,8 @@ namespace WorldFoundry.SurfaceMapping
             SurfaceRegion region,
             int resolution,
             int steps = 12,
-            float[,]? elevationMap = null,
-            float? averageElevation = null)
+            double[,]? elevationMap = null,
+            double? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
             var longitude = planet.VectorToLongitude(region.Position);
@@ -1401,11 +1420,12 @@ namespace WorldFoundry.SurfaceMapping
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }
+            var range = (double)(region.Shape.ContainingRadius / planet.RadiusSquared);
             var weatherMaps = planet.GetWeatherMaps(
                 resolution,
                 longitude,
                 latitude,
-                range: region.Shape.ContainingRadius / planet.RadiusSquared,
+                range: range,
                 steps: steps,
                 elevationMap: elevationMap,
                 averageElevation: averageElevation);
@@ -1422,14 +1442,12 @@ namespace WorldFoundry.SurfaceMapping
                 var winter = region._temperatureOverlayWinter ?? region._temperatureOverlaySummer;
                 var height = region._temperatureOverlaySummer == null ? region._temperatureOverlayHeightWinter : region._temperatureOverlayHeightSummer;
                 var width = region._temperatureOverlaySummer == null ? region._temperatureOverlayWidthWinter : region._temperatureOverlayWidthSummer;
-                using (var imageSummer = Image.LoadPixelData<Rgba32>(summer, width, height))
-                using (var imageWinter = Image.LoadPixelData<Rgba32>(winter, width, height))
-                {
-                    tempRanges = SurfaceMapImage.GetCompositeSurfaceMap(
-                        tempRanges,
-                        imageWinter.ImageToSurfaceMap(doubleResolution, resolution, false),
-                        imageSummer.ImageToSurfaceMap(doubleResolution, resolution, false));
-                }
+                using var imageSummer = Image.LoadPixelData<Rgba32>(summer, width, height);
+                using var imageWinter = Image.LoadPixelData<Rgba32>(winter, width, height);
+                tempRanges = SurfaceMapImage.GetCompositeSurfaceMap(
+                    tempRanges,
+                    imageWinter.ImageToSurfaceMap(doubleResolution, resolution, false),
+                    imageSummer.ImageToSurfaceMap(doubleResolution, resolution, false));
             }
 
             var precipitationMaps = weatherMaps.PrecipitationMaps.Select(x => x.PrecipitationMap).ToArray();
@@ -1440,12 +1458,10 @@ namespace WorldFoundry.SurfaceMapping
                 for (var i = 0; i < precipitationMaps.Length; i++)
                 {
                     var nearestOverlay = region._precipitationOverlays[(int)Math.Floor(i * overlayRatio)];
-                    using (var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._precipitationOverlayWidth, region._precipitationOverlayHeight))
-                    {
-                        precipitationMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
-                            precipitationMaps[i],
-                            image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                    }
+                    using var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._precipitationOverlayWidth, region._precipitationOverlayHeight);
+                    precipitationMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
+                        precipitationMaps[i],
+                        image.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
             if (region._snowfallOverlays != null)
@@ -1454,12 +1470,10 @@ namespace WorldFoundry.SurfaceMapping
                 for (var i = 0; i < snowfallMaps.Length; i++)
                 {
                     var nearestOverlay = region._snowfallOverlays[(int)Math.Floor(i * overlayRatio)];
-                    using (var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._snowfallOverlayWidth, region._snowfallOverlayHeight))
-                    {
-                        snowfallMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
-                            snowfallMaps[i],
-                            image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                    }
+                    using var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._snowfallOverlayWidth, region._snowfallOverlayHeight);
+                    snowfallMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
+                        snowfallMaps[i],
+                        image.ImageToSurfaceMap(doubleResolution, resolution, false));
                 }
             }
             var precipMaps = new PrecipitationMaps[precipitationMaps.Length];
@@ -1478,7 +1492,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 longitude,
                 latitude,
-                range: region.Shape.ContainingRadius / planet.RadiusSquared,
+                range: range,
                 averageElevation: averageElevation);
         }
 
@@ -1499,36 +1513,32 @@ namespace WorldFoundry.SurfaceMapping
             double latitude, double longitude,
             int resolution,
             double scale,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null)
         {
-            var x = (((longitude - centralParallel) / scale) + resolution).RoundToInt();
-            if (x < 0)
-            {
-                x = 0;
-            }
-            if (x >= resolution * 2)
-            {
-                x = (resolution * 2) - 1;
-            }
-            var y = (((latitude - centralMeridian) * Math.Cos(standardParallels ?? centralParallel) / scale) + (resolution / 2)).RoundToInt();
-            if (y < 0)
-            {
-                y = 0;
-            }
-            if (y >= resolution)
-            {
-                y = resolution - 1;
-            }
+            var x = (int)Math.Round(((longitude - (centralParallel ?? 0)) / scale) + resolution)
+                .Clamp(0, (resolution * 2) - 1);
+            var y = (int)Math.Round(((latitude - (centralMeridian ?? 0)) * Math.Cos(standardParallels ?? centralParallel ?? 0) / scale) + (resolution / 2))
+                .Clamp(0, resolution - 1);
+            return (x, y);
+        }
+
+        internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
+            float latitude, float longitude,
+            int resolution,
+            double scale)
+        {
+            var x = (int)Math.Round((longitude / scale) + resolution).Clamp(0, (resolution * 2) - 1);
+            var y = (int)Math.Round((latitude / scale) + (resolution / 2)).Clamp(0, resolution - 1);
             return (x, y);
         }
 
         internal static T[,] GetSurfaceMap<T>(
             Func<double, double, long, long, T> func,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
         {
@@ -1537,8 +1547,8 @@ namespace WorldFoundry.SurfaceMapping
                 throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
             }
             var map = new T[resolution * 2, resolution];
-            var scale = range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
-                ? MathConstants.PISquared / (resolution * range.Value)
+            var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
+                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
             var halfResolution = resolution / 2;
             for (var x = -resolution; x < resolution; x++)
@@ -1552,18 +1562,32 @@ namespace WorldFoundry.SurfaceMapping
             return map;
         }
 
-        private static double GetAreaOfPointFromRadiusSquared(
-            double radiusSquared,
+        private static float[,] CastArray(double[,] array, int resolution)
+        {
+            var doubleResolution = resolution * 2;
+            var result = new float[doubleResolution, resolution];
+            for (var x = 0; x < doubleResolution; x++)
+            {
+                for (var y = 0; y < resolution; y++)
+                {
+                    result[x, y] = (float)array[x, y];
+                }
+            }
+            return result;
+        }
+
+        private static Number GetAreaOfPointFromRadiusSquared(
+            Number radiusSquared,
             int x, int y,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian = null,
+            double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
         {
             var halfResolution = resolution / 2;
-            var scale = range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
-                ? MathConstants.PISquared / (resolution * range.Value)
+            var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
+                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
 
             var centerX = (long)x - resolution;
@@ -1598,31 +1622,31 @@ namespace WorldFoundry.SurfaceMapping
             var latBottomBorder = (latDown + latCenter) / 2;
 
             return radiusSquared
-                * Math.Abs(Math.Sin(latBottomBorder) - Math.Sin(latTopBorder))
-                * Math.Abs(lonRightBorder - lonLeftBorder);
+                * (Math.Abs(Math.Sin(latBottomBorder) - Math.Sin(latTopBorder))
+                * Math.Abs(lonRightBorder - lonLeftBorder));
         }
 
         private static (double latitude, double longitude) GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
             long x, long y,
             double scale,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian,
+            double? centralParallel,
             double? standardParallels = null)
-            => ((y * scale) + centralParallel,
-            (x * scale / Math.Cos(standardParallels ?? centralParallel)) + centralMeridian);
+            => ((y * scale) + (centralParallel ?? 0),
+            (x * scale / Math.Cos(standardParallels ?? centralParallel ?? 0)) + (centralMeridian ?? 0));
 
-        private static double GetSeparationOfPointFromRadiusSquared(
-            double radiusSquared,
+        private static Number GetSeparationOfPointFromRadiusSquared(
+            Number radiusSquared,
             int x, int y,
             int resolution,
-            double centralMeridian = 0,
-            double centralParallel = 0,
+            double? centralMeridian,
+            double? centralParallel,
             double? standardParallels = null,
             double? range = null)
         {
             var halfResolution = resolution / 2;
-            var scale = range.HasValue && range.Value < Math.PI && !range.Value.IsZero()
-                ? MathConstants.PISquared / (resolution * range.Value)
+            var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
+                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
 
             var centerX = (long)x - resolution;
@@ -1660,33 +1684,32 @@ namespace WorldFoundry.SurfaceMapping
 
         private static float InterpolateAmongWeatherMaps(PrecipitationMaps[] maps, double proportionOfYear, Func<PrecipitationMaps, float> getValueFromMap)
         {
-            if ((maps?.Length ?? 0) == 0)
+            if (maps.Length == 0)
             {
                 return 0;
             }
             var proportionPerSeason = 1.0 / maps.Length;
             var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
             var nextSeasonIndex = seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1;
-            var weight = (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
-            return (float)MathUtility.Lerp(getValueFromMap.Invoke(maps[seasonIndex]), getValueFromMap.Invoke(maps[nextSeasonIndex]), weight);
+            var weight = (float)((proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason);
+            return getValueFromMap.Invoke(maps[seasonIndex]).Lerp(getValueFromMap.Invoke(maps[nextSeasonIndex]), weight);
         }
 
         private static FloatRange InterpolateAmongWeatherMaps(PrecipitationMaps[] maps, double proportionOfYear, Func<PrecipitationMaps, FloatRange> getValueFromMap)
         {
-            if ((maps?.Length ?? 0) == 0)
+            if (maps.Length == 0)
             {
                 return FloatRange.Zero;
             }
             var proportionPerSeason = 1.0 / maps.Length;
             var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
-            var nextSeasonIndex = seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1;
-            var weight = (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
+            var weight = (float)((proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason);
             var value1 = getValueFromMap.Invoke(maps[seasonIndex]);
-            var value2 = getValueFromMap.Invoke(maps[nextSeasonIndex]);
-            var min = (float)MathUtility.Lerp(value1.Min, value2.Min, weight);
-            var avg = (float)MathUtility.Lerp(value1.Average, value2.Average, weight);
-            var max = (float)MathUtility.Lerp(value1.Max, value2.Max, weight);
-            return new FloatRange(min, avg, max);
+            var value2 = getValueFromMap.Invoke(maps[seasonIndex == maps.Length - 1 ? 0 : seasonIndex + 1]);
+            return new FloatRange(
+                value1.Min.Lerp(value2.Min, weight),
+                value1.Average.Lerp(value2.Average, weight),
+                value1.Max.Lerp(value2.Max, weight));
         }
     }
 }

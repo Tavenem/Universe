@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using WorldFoundry.Climate;
 
 namespace WorldFoundry.SurfaceMapping
@@ -7,7 +9,8 @@ namespace WorldFoundry.SurfaceMapping
     /// A collection of surface and weather maps for a <see
     /// cref="CelestialBodies.Planetoids.Planets.TerrestrialPlanets.TerrestrialPlanet"/>.
     /// </summary>
-    public struct SurfaceMaps
+    [Serializable]
+    public struct SurfaceMaps : ISerializable
     {
         private readonly HydrologyMaps _hydrologyMaps;
         private readonly WeatherMaps _weatherMaps;
@@ -283,6 +286,33 @@ namespace WorldFoundry.SurfaceMapping
             Elevation = elevation;
             _weatherMaps = weatherMaps;
             _hydrologyMaps = hydrologyMaps;
+        }
+
+        private SurfaceMaps(SerializationInfo info, StreamingContext context) : this(
+            (int)info.GetValue(nameof(XLength), typeof(int)),
+            (int)info.GetValue(nameof(YLength), typeof(int)),
+            (float[,])info.GetValue(nameof(Elevation), typeof(float[,])),
+            (float)info.GetValue(nameof(AverageElevation), typeof(float)),
+            (WeatherMaps)info.GetValue(nameof(_weatherMaps), typeof(WeatherMaps)),
+            (HydrologyMaps)info.GetValue(nameof(_hydrologyMaps), typeof(HydrologyMaps))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(XLength), XLength);
+            info.AddValue(nameof(YLength), YLength);
+            info.AddValue(nameof(Elevation), Elevation);
+            info.AddValue(nameof(AverageElevation), AverageElevation);
+            info.AddValue(nameof(_weatherMaps), _weatherMaps);
+            info.AddValue(nameof(_hydrologyMaps), _hydrologyMaps);
         }
     }
 }

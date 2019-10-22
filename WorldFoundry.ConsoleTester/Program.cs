@@ -1,7 +1,7 @@
-﻿using MongoDB.Bson;
+﻿using Newtonsoft.Json;
 using System;
+using System.Text;
 using System.Threading.Tasks;
-using WorldFoundry.Bson;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.SurfaceMapping;
 
@@ -15,7 +15,6 @@ namespace WorldFoundry.ConsoleTester
         public static void Main(string[] _)
         {
             Console.WriteLine("Starting tests...");
-            BsonRegistration.Register();
             GeneratePlanets();
             Console.ReadLine();
         }
@@ -35,13 +34,15 @@ namespace WorldFoundry.ConsoleTester
                     {
                         Console.Write($"Generated planet {planet}.");
 
-                        var bson = planet.ToBson();
-                        Console.Write($" Saved planet size: {(bson.Length / 1000).ToString("N0")} KB.");
+                        var json = JsonConvert.SerializeObject(planet);
+                        var bytes = Encoding.UTF8.GetBytes(json);
+                        Console.Write($" Saved planet size: {(bytes.Length / 1000).ToString("N0")} KB.");
 
                         var maps = planet.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
-                        bson = maps.ToBson();
-                        Console.WriteLine($" Saved maps size: {(bson.Length / 1000000.0).ToString("N1")} MB.");
+                        json = JsonConvert.SerializeObject(maps);
+                        bytes = Encoding.UTF8.GetBytes(json);
+                        Console.WriteLine($" Saved maps size: {(bytes.Length / 1000000.0).ToString("N1")} MB.");
                     }
                 }
             });

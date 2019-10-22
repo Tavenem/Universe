@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -7,7 +9,8 @@ namespace WorldFoundry.SurfaceMapping
     /// of a terrestrial planet's surface, with information about the planet's weather during a
     /// particular portion of a year.
     /// </summary>
-    public struct PrecipitationMaps
+    [Serializable]
+    public struct PrecipitationMaps : ISerializable
     {
         /// <summary>
         /// A range giving the minimum, maximum, and average precipitation throughout the specified
@@ -132,6 +135,29 @@ namespace WorldFoundry.SurfaceMapping
                 }
                 Snowfall = new FloatRange(min, sum / (xLength * yLength), max);
             }
+        }
+
+        private PrecipitationMaps(SerializationInfo info, StreamingContext context) : this(
+            (int)info.GetValue(nameof(XLength), typeof(int)),
+            (int)info.GetValue(nameof(YLength), typeof(int)),
+            (float[,])info.GetValue(nameof(PrecipitationMap), typeof(float[,])),
+            (float[,])info.GetValue(nameof(SnowfallMap), typeof(float[,]))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(XLength), XLength);
+            info.AddValue(nameof(YLength), YLength);
+            info.AddValue(nameof(PrecipitationMap), PrecipitationMap);
+            info.AddValue(nameof(SnowfallMap), SnowfallMap);
         }
     }
 }

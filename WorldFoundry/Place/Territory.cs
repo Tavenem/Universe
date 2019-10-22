@@ -1,47 +1,48 @@
-﻿using MathAndScience.Shapes;
+﻿using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using MathAndScience.Numerics;
+using System.Runtime.Serialization;
 
 namespace WorldFoundry.Place
 {
     /// <summary>
-    /// A collection of regions which define a conceptually unified area (though they may not form a
-    /// contiguous region).
+    /// A collection of locations which define a conceptually unified area (though they may not form
+    /// a contiguous region).
     /// </summary>
-    public class Territory : Region
+    [Serializable]
+    public class Territory : Location
     {
-        private List<Region>? _regions;
         /// <summary>
-        /// The <see cref="Region"/> instances which make up this <see cref="Territory"/>.
+        /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
-        public IEnumerable<Region> Regions => _regions ?? Enumerable.Empty<Region>();
+        /// <param name="locations">The <see cref="Location"/> instances to include.</param>
+        public Territory(IEnumerable<Location> locations) : base(SinglePoint.Origin, locations?.ToList()) => CalculateShape();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
-        private protected Territory() { }
+        /// <param name="locations">One or more <see cref="Location"/> instances to include.</param>
+        public Territory(params Location[] locations) : base(SinglePoint.Origin, locations.ToList()) => CalculateShape();
+
+        private Territory(IShape shape, List<Location>? children = null) : base(shape, children) { }
+
+        private Territory(SerializationInfo info, StreamingContext context) : this(
+            (IShape)info.GetValue(nameof(Shape), typeof(IShape)),
+            (List<Location>?)info.GetValue(nameof(Children), typeof(List<Location>))) { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="Territory"/>.
+        /// Adds the given <paramref name="locations"/> to this instance.
         /// </summary>
-        /// <param name="regions">The <see cref="Region"/> instances to include.</param>
-        public Territory(IEnumerable<Region> regions) => AddRegions(regions);
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Territory"/>.
-        /// </summary>
-        /// <param name="regions">One or more <see cref="Region"/> instances to include.</param>
-        public Territory(params Region[] regions) => AddRegions(regions);
-
-        /// <summary>
-        /// Adds the given <paramref name="regions"/> to this instance.
-        /// </summary>
-        /// <param name="regions">The <see cref="Region"/> instances to add.</param>
+        /// <param name="locations">The <see cref="Location"/> instances to add.</param>
         /// <returns>This instance.</returns>
-        public Territory AddRegions(IEnumerable<Region> regions)
+        public Territory AddLocations(IEnumerable<Location> locations)
         {
-            (_regions ?? (_regions = new List<Region>())).AddRange(regions);
+            foreach (var location in locations)
+            {
+                AddChild(location);
+            }
             CalculateShape();
             return this;
         }
@@ -49,47 +50,77 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Adds the given <paramref name="regions"/> to this instance.
         /// </summary>
-        /// <param name="regions">One or more <see cref="Region"/> instances to add.</param>
+        /// <param name="regions">One or more <see cref="Location"/> instances to add.</param>
         /// <returns>This instance.</returns>
-        public Territory AddRegions(params Region[] regions)
-            => AddRegions(regions.AsEnumerable());
+        public Territory AddRegions(params Location[] regions)
+            => AddLocations(regions.AsEnumerable());
+
+        /// <summary>
+        /// Determines whether the specified <see cref="Location"/> is contained within the current
+        /// instance.
+        /// </summary>
+        /// <param name="other">The instance to compare with this one.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <see cref="Location"/> is contained within this
+        /// instance; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Contains(Location other)
+        {
+            if (GetCommonParent(other) != this)
+            {
+                return false;
+            }
+            return Children.Any(x => x.Contains(other));
+        }
+
+        /// <summary>
+        /// Determines whether the specified <paramref name="position"/> is contained within the
+        /// current instance.
+        /// </summary>
+        /// <param name="position">a <see cref="Vector3"/> to check for inclusion in this <see
+        /// cref="Location"/>.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified <paramref name="position"/> is contained within
+        /// this instance; otherwise, <see langword="false"/>.
+        /// </returns>
+        public override bool Contains(Vector3 position) => Children.Any(x => x.Shape.IsPointWithin(position));
 
         private void CalculateShape()
         {
-            if ((_regions?.Count ?? 0) == 0)
+            if (!Children.Any())
             {
                 return;
             }
 
-            var parent = _regions![0].ContainingRegion;
+            var parent = Children.First().Parent;
 
-            var regions = new List<(Vector3 position, double radius)>();
-            if (Regions.Any(x => x.ContainingRegion != _regions![0].ContainingRegion))
+            var locations = new List<(Vector3 position, Number radius)>();
+            if (Children.Any(x => x.Parent != parent))
             {
-                parent = Regions.Aggregate(
+                parent = Children.Aggregate(
                     parent,
-                    (p, x) => p?.GetCommonContainingRegion(x.ContainingRegion));
+                    (p, x) => p?.GetCommonParent(x.Parent));
                 if (parent == null)
                 {
                     return;
                 }
 
-                regions.AddRange(Regions.Select(x => (parent.GetLocalizedPosition(x), x.Shape.ContainingRadius)));
+                locations.AddRange(Children.Select(x => (parent.GetLocalizedPosition(x), x.Shape.ContainingRadius)));
             }
             else
             {
-                regions.AddRange(Regions.Select(x => (x.Position, x.Shape.ContainingRadius)));
+                locations.AddRange(Children.Select(x => (x.Position, x.Shape.ContainingRadius)));
             }
 
             var center = Vector3.Zero;
-            foreach (var (position, _) in regions)
+            foreach (var (position, _) in locations)
             {
                 center += position;
             }
-            center /= regions.Count;
+            center /= locations.Count;
 
-            SetNewContainingRegion(parent);
-            Shape = new Sphere(regions.Max(x => Vector3.Distance(x.position, center) + x.radius), center);
+            Parent = parent;
+            Shape = new Sphere(locations.Max(x => Vector3.Distance(x.position, center) + x.radius), center);
         }
     }
 }

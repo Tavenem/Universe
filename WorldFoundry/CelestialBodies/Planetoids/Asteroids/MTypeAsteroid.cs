@@ -1,14 +1,17 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
-using MathAndScience.Numerics;
-using WorldFoundry.Space;
-using MathAndScience.Shapes;
+using System.Collections.Generic;
+using WorldFoundry.Place;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// A metallic asteroid (mostly iron-nickel, with some rock and other heavy metals).
     /// </summary>
+    [Serializable]
     public class MTypeAsteroid : Asteroid
     {
         private protected override string BaseTypeName => "M-Type Asteroid";
@@ -26,52 +29,58 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="MTypeAsteroid"/>.</param>
-        internal MTypeAsteroid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal MTypeAsteroid(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="MTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="MTypeAsteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="MTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="MTypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="MTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        internal MTypeAsteroid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal MTypeAsteroid(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.1, 0.2);
 
-        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
         {
-            var satellite = new MTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
+            var satellite = new MTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
             return satellite;
         }
 
-        private protected override IComposition GetComposition(double mass, IShape shape)
+        private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {
-            var iron = 0.95;
+            var ironNickel = 0.95m;
 
-            var nickel = Math.Round(Randomizer.Instance.NextDouble(0.05, 0.25), 3);
-            iron -= nickel;
+            var rock = Randomizer.Instance.NextDecimal(0.2m);
+            ironNickel -= rock;
 
-            var rock = Math.Round(Randomizer.Instance.NextDouble(0.2), 3);
-            iron -= rock;
+            var gold = Randomizer.Instance.NextDecimal(0.05m);
 
-            var gold = Math.Round(Randomizer.Instance.NextDouble(0.05), 3);
+            var platinum = 0.05m - gold;
 
-            var platinum = 0.05 - gold;
+            var substances = new List<(ISubstanceReference, decimal)>();
+            foreach (var (material, proportion) in CelestialSubstances.ChondriticRockMixture_NoMetal)
+            {
+                substances.Add((material, proportion * rock));
+            }
+            substances.Add((Substances.GetSolutionReference(Substances.Solutions.IronNickelAlloy), ironNickel));
+            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Gold), gold));
+            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Platinum), platinum));
 
-            return new Composite(
-                (Chemical.Rock, Phase.Solid, rock),
-                (Chemical.Iron, Phase.Solid, iron),
-                (Chemical.Nickel, Phase.Solid, nickel),
-                (Chemical.Gold, Phase.Solid, gold),
-                (Chemical.Platinum, Phase.Solid, platinum));
+            return new Material(
+                substances,
+                density,
+                mass,
+                shape,
+                temperature);
         }
     }
 }

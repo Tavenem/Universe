@@ -1,21 +1,19 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
+using Newtonsoft.Json;
 using System;
-using WorldFoundry.Bson;
+using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.Test
 {
     [TestClass]
-    public class TerrestrialPlanet_BsonTests
+    public class TerrestrialPlanet_DataTests
     {
         private const int NumSeasons = 12;
         private const int SurfaceMapResolution = 90;
 
-        [ClassInitialize]
-        public static void Init(TestContext _) => BsonRegistration.Register();
+        private static readonly JsonSerializerSettings _JsonSerializerSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
 
         [TestMethod]
         public void TerrestrialPlanet_Save()
@@ -25,15 +23,15 @@ namespace WorldFoundry.Test
             var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
             Assert.IsNotNull(planet);
 
-            var bson = planet.ToBson();
-            Console.WriteLine($"Saved size: {bson.Length.ToString("N")} bytes");
+            var json = JsonConvert.SerializeObject(planet, _JsonSerializerSettings);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
             Console.WriteLine();
 
-            //var json = planet.ToJson();
             //Console.Write("JSON: ");
             //Console.WriteLine(json);
 
-            var result = BsonSerializer.Deserialize<TerrestrialPlanet>(bson);
+            var result = JsonConvert.DeserializeObject<TerrestrialPlanet>(json, _JsonSerializerSettings);
             Assert.AreEqual(planet!.Id, result.Id);
         }
 
@@ -47,15 +45,15 @@ namespace WorldFoundry.Test
 
             var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
-            var bson = maps.ToBson();
-            Console.WriteLine($"Saved size: {bson.Length.ToString("N")} bytes");
+            var json = JsonConvert.SerializeObject(maps);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
             Console.WriteLine();
 
-            //var json = maps.ToJson();
             //Console.Write("JSON: ");
             //Console.WriteLine(json);
 
-            var result = BsonSerializer.Deserialize<SurfaceMaps>(bson);
+            var result = JsonConvert.DeserializeObject<SurfaceMaps>(json);
             CollectionAssert.AreEqual(maps.BiomeMap, result.BiomeMap);
             CollectionAssert.AreEqual(maps.ClimateMap, result.ClimateMap);
             CollectionAssert.AreEqual(maps.Depth, result.Depth);

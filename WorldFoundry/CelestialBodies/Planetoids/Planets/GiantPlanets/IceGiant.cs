@@ -1,15 +1,18 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using MathAndScience.Numerics;
-using WorldFoundry.Space;
-using MathAndScience.Shapes;
+using WorldFoundry.Place;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
     /// <summary>
     /// An ice giant planet, such as Neptune or Uranus.
     /// </summary>
+    [Serializable]
     public class IceGiant : GiantPlanet
     {
         private protected override string BaseTypeName => "Ice Giant";
@@ -27,65 +30,115 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
-        internal IceGiant(CelestialRegion parent, Vector3 position) : base(parent, position) { }
+        internal IceGiant(Location parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="IceGiant"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="IceGiant"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="IceGiant"/> during random generation, in kg.
         /// </param>
-        internal IceGiant(CelestialRegion parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal IceGiant(Location parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
         // No "puffy" ice giants.
-        private protected override double? GetDensity() => Math.Round(Randomizer.Instance.NextDouble(MinDensity, MaxDensity));
+        private protected override double GetDensity() => Randomizer.Instance.NextDouble(MinDensity, MaxDensity);
 
-        private protected override IEnumerable<(IComposition, double)> GetMantle(IShape shape, double proportion)
+        private protected override IEnumerable<(IMaterial, decimal)> GetMantle(
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
         {
-            var diamond = 1.0;
-            var water = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
+
+            var innerTemp = coreTemp;
+
+            var innerBoundary = planetShape.ContainingRadius;
+            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
+
+            var mantleMass = planetMass * mantleProportion;
+
+            var diamond = 1m;
+            var water = Math.Max(0, Randomizer.Instance.NextDecimal(diamond));
             diamond -= water;
-            var nh4 = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
+            var nh4 = Math.Max(0, Randomizer.Instance.NextDecimal(diamond));
             diamond -= nh4;
-            var ch4 = Math.Max(0, Randomizer.Instance.NextDouble(diamond));
+            var ch4 = Math.Max(0, Randomizer.Instance.NextDecimal(diamond));
             diamond -= ch4;
 
             // Liquid diamond mantle
-            if (!Troschuetz.Random.TMath.IsZero(diamond))
+            if (diamond > 0)
             {
-                yield return (new Material(Chemical.Diamond, Phase.Liquid), diamond);
+                var diamondMass = mantleMass * (Number)diamond;
+
+                var diamondBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
+                var diamondShape = new HollowSphere(
+                    innerBoundary,
+                    diamondBoundary,
+                    planetShape.Position);
+                innerBoundary = diamondBoundary;
+
+                var diamondBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)diamond);
+                var diamondTemp = (diamondBoundaryTemp + innerTemp) / 2;
+                innerTemp = diamondTemp;
+
+                yield return (new Material(
+                    Substances.GetChemicalReference(Substances.Chemicals.Diamond),
+                    (double)(diamondMass / diamondShape.Volume),
+                    diamondMass,
+                    diamondShape,
+                    diamondTemp),
+                    diamond);
             }
 
             // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
-            IComposition upperLayer;
+            var upperLayerProportion = 1 - diamond;
+
+            var upperLayerMass = mantleMass * (Number)upperLayerProportion;
+
+            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
+            var upperLayerShape = new HollowSphere(
+                innerBoundary,
+                upperLayerBoundary,
+                planetShape.Position);
+
+            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
+
+            var components = new List<(ISubstanceReference, decimal)>();
             if (ch4 > 0 || nh4 > 0)
             {
-                var components = new Dictionary<Material, double>()
-                {
-                    { new Material(Chemical.Water, Phase.Liquid), water },
-                };
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), water));
                 if (ch4 > 0)
                 {
-                    components[new Material(Chemical.Methane, Phase.Liquid)] = ch4;
+                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
                 }
                 if (nh4 > 0)
                 {
-                    components[new Material(Chemical.Ammonia, Phase.Liquid)] = nh4;
+                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh4));
                 }
-                upperLayer = new Composite(components);
             }
             else
             {
-                upperLayer = new Material(Chemical.Water, Phase.Liquid);
+                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), 1));
             }
-            yield return (upperLayer.BalanceProportions(), 1 - diamond);
+
+            yield return (new Material(
+                (double)(upperLayerMass / upperLayerShape.Volume),
+                upperLayerMass,
+                upperLayerShape,
+                upperLayerTemp,
+                components.ToArray()),
+                upperLayerProportion);
         }
     }
 }

@@ -1,20 +1,24 @@
-﻿using MathAndScience.Numerics;
-using MathAndScience.Shapes;
+﻿using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
 using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.Place
 {
     /// <summary>
-    /// A <see cref="Region"/> on the surface of a <see cref="Planetoid"/>, which can override local
-    /// conditions with manually-specified maps.
+    /// A <see cref="Location"/> on the surface of a <see cref="Planetoid"/>, which can override
+    /// local conditions with manually-specified maps.
     /// </summary>
-    public class SurfaceRegion : Region
+    [Serializable]
+    public class SurfaceRegion : Location
     {
         internal byte[]? _depthOverlay;
         internal int _depthOverlayHeight;
@@ -41,28 +45,122 @@ namespace WorldFoundry.Place
         /// <summary>
         /// Initializes a new instance of <see cref="SurfaceRegion"/>.
         /// </summary>
-        private protected SurfaceRegion() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="SurfaceRegion"/>.
-        /// </summary>
-        /// <param name="shape">The shape of the region.</param>
-        public SurfaceRegion(IShape shape) : base(shape) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="SurfaceRegion"/>.
-        /// </summary>
-        /// <param name="containingRegion">The region in which this one is found.</param>
-        /// <param name="shape">The shape of the region.</param>
-        public SurfaceRegion(Region containingRegion, IShape shape) : base(containingRegion, shape) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="SurfaceRegion"/>.
-        /// </summary>
         /// <param name="planet">The planet on which this region is found.</param>
         /// <param name="position">The normalized position vector of this region.</param>
         /// <param name="radius">The radius of this region, in meters.</param>
-        public SurfaceRegion(Planetoid planet, Vector3 position, double radius) : base(new Sphere(radius, position * planet.Shape.ContainingRadius)) { }
+        public SurfaceRegion(Planetoid planet, Vector3 position, Number radius) : base(new Sphere(radius, position * planet.Shape.ContainingRadius)) { }
+
+        private SurfaceRegion(
+            string id,
+            IShape shape,
+            List<Location>? children,
+            byte[]? depthOverlay,
+            int depthOverlayHeight,
+            int depthOverlayWidth,
+            byte[]? elevationOverlay,
+            int elevationOverlayHeight,
+            int elevationOverlayWidth,
+            byte[]? flowOverlay,
+            int flowOverlayHeight,
+            int flowOverlayWidth,
+            byte[][]? precipitationOverlays,
+            int precipitationOverlayHeight,
+            int precipitationOverlayWidth,
+            byte[][]? snowfallOverlays,
+            int snowfallOverlayHeight,
+            int snowfallOverlayWidth,
+            byte[]? temperatureOverlaySummer,
+            int temperatureOverlayHeightSummer,
+            int temperatureOverlayWidthSummer,
+            byte[]? temperatureOverlayWinter,
+            int temperatureOverlayHeightWinter,
+            int temperatureOverlayWidthWinter) : base(id, shape, children)
+        {
+            _depthOverlay = depthOverlay;
+            _depthOverlayHeight = depthOverlayHeight;
+            _depthOverlayWidth = depthOverlayWidth;
+            _elevationOverlay = elevationOverlay;
+            _elevationOverlayHeight = elevationOverlayHeight;
+            _elevationOverlayWidth = elevationOverlayWidth;
+            _flowOverlay = flowOverlay;
+            _flowOverlayHeight = flowOverlayHeight;
+            _flowOverlayWidth = flowOverlayWidth;
+            _precipitationOverlays = precipitationOverlays;
+            _precipitationOverlayHeight = precipitationOverlayHeight;
+            _precipitationOverlayWidth = precipitationOverlayWidth;
+            _snowfallOverlays = snowfallOverlays;
+            _snowfallOverlayHeight = snowfallOverlayHeight;
+            _snowfallOverlayWidth = snowfallOverlayWidth;
+            _temperatureOverlaySummer = temperatureOverlaySummer;
+            _temperatureOverlayHeightSummer = temperatureOverlayHeightSummer;
+            _temperatureOverlayWidthSummer = temperatureOverlayWidthSummer;
+            _temperatureOverlayWinter = temperatureOverlayWinter;
+            _temperatureOverlayHeightWinter = temperatureOverlayHeightWinter;
+            _temperatureOverlayWidthWinter = temperatureOverlayWidthWinter;
+        }
+
+        private SurfaceRegion(SerializationInfo info, StreamingContext context) : this(
+            (string)info.GetValue(nameof(Id), typeof(string)),
+            (IShape)info.GetValue(nameof(Shape), typeof(IShape)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[]?)info.GetValue(nameof(_depthOverlay), typeof(byte[])),
+            (int)info.GetValue(nameof(_depthOverlayHeight), typeof(int)),
+            (int)info.GetValue(nameof(_depthOverlayWidth), typeof(int)),
+            (byte[]?)info.GetValue(nameof(_elevationOverlay), typeof(byte[])),
+            (int)info.GetValue(nameof(_elevationOverlayHeight), typeof(int)),
+            (int)info.GetValue(nameof(_elevationOverlayWidth), typeof(int)),
+            (byte[]?)info.GetValue(nameof(_flowOverlay), typeof(byte[])),
+            (int)info.GetValue(nameof(_flowOverlayHeight), typeof(int)),
+            (int)info.GetValue(nameof(_flowOverlayWidth), typeof(int)),
+            (byte[][]?)info.GetValue(nameof(_precipitationOverlays), typeof(byte[][])),
+            (int)info.GetValue(nameof(_precipitationOverlayHeight), typeof(int)),
+            (int)info.GetValue(nameof(_precipitationOverlayWidth), typeof(int)),
+            (byte[][]?)info.GetValue(nameof(_snowfallOverlays), typeof(byte[][])),
+            (int)info.GetValue(nameof(_snowfallOverlayHeight), typeof(int)),
+            (int)info.GetValue(nameof(_snowfallOverlayWidth), typeof(int)),
+            (byte[]?)info.GetValue(nameof(_temperatureOverlaySummer), typeof(byte[])),
+            (int)info.GetValue(nameof(_temperatureOverlayHeightSummer), typeof(int)),
+            (int)info.GetValue(nameof(_temperatureOverlayWidthSummer), typeof(int)),
+            (byte[]?)info.GetValue(nameof(_temperatureOverlayWinter), typeof(byte[])),
+            (int)info.GetValue(nameof(_temperatureOverlayHeightWinter), typeof(int)),
+            (int)info.GetValue(nameof(_temperatureOverlayWidthWinter), typeof(int))) { }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(Id), Id);
+            info.AddValue(nameof(Shape), Shape);
+            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_depthOverlay), _depthOverlay);
+            info.AddValue(nameof(_depthOverlayHeight), _depthOverlayHeight);
+            info.AddValue(nameof(_depthOverlayWidth), _depthOverlayWidth);
+            info.AddValue(nameof(_elevationOverlay), _elevationOverlay);
+            info.AddValue(nameof(_elevationOverlayHeight), _elevationOverlayHeight);
+            info.AddValue(nameof(_elevationOverlayWidth), _elevationOverlayWidth);
+            info.AddValue(nameof(_flowOverlay), _flowOverlay);
+            info.AddValue(nameof(_flowOverlayHeight), _flowOverlayHeight);
+            info.AddValue(nameof(_flowOverlayWidth), _flowOverlayWidth);
+            info.AddValue(nameof(_precipitationOverlays), _precipitationOverlays);
+            info.AddValue(nameof(_precipitationOverlayHeight), _precipitationOverlayHeight);
+            info.AddValue(nameof(_precipitationOverlayWidth), _precipitationOverlayWidth);
+            info.AddValue(nameof(_snowfallOverlays), _snowfallOverlays);
+            info.AddValue(nameof(_snowfallOverlayHeight), _snowfallOverlayHeight);
+            info.AddValue(nameof(_snowfallOverlayWidth), _snowfallOverlayWidth);
+            info.AddValue(nameof(_temperatureOverlaySummer), _temperatureOverlaySummer);
+            info.AddValue(nameof(_temperatureOverlayHeightSummer), _temperatureOverlayHeightSummer);
+            info.AddValue(nameof(_temperatureOverlayWidthSummer), _temperatureOverlayWidthSummer);
+            info.AddValue(nameof(_temperatureOverlayWinter), _temperatureOverlayWinter);
+            info.AddValue(nameof(_temperatureOverlayHeightWinter), _temperatureOverlayHeightWinter);
+            info.AddValue(nameof(_temperatureOverlayWidthWinter), _temperatureOverlayWidthWinter);
+        }
 
         /// <summary>
         /// Loads an image as the hydrology depth overlay for this region.

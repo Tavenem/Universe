@@ -1,26 +1,35 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
-using MathAndScience.Numerics;
-using MathAndScience;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using NeverFoundry.MathAndScience.Numerics;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// A resource which may be found on a <see cref="Planetoid"/>.
     /// </summary>
-    public struct Resource : IEquatable<Resource>
+    [Serializable]
+    public struct Resource : ISerializable, IEquatable<Resource>
     {
         private readonly bool _isVein, _isPerturbation;
 
         /// <summary>
-        /// The chemical found in the resource.
+        /// The substance found in the resource.
         /// </summary>
-        public Chemical Chemical { get; }
+        public ISubstanceReference Substance { get; }
 
         /// <summary>
-        /// The proportion of the resource over the <see cref="Planetoid"/>'s surface.
+        /// The proportion, adjusted to [-0.5, 0.5].
         /// </summary>
-        public double Proportion { get; }
+        private readonly decimal _proportion;
+        /// <summary>
+        /// The proportion of the resource over the <see cref="Planetoid"/>'s surface, as a value
+        /// between 0 and 1.
+        /// </summary>
+        public decimal Proportion => _proportion + 0.5m;
 
         internal int Seed { get; }
 
@@ -53,26 +62,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initialize a new instance of <see cref="Resource"/>.
         /// </summary>
-        /// <param name="chemical">The chemical found in the resource.</param>
+        /// <param name="substance">The substance found in the resource.</param>
         /// <param name="proportion">The proportion of the resource present.</param>
         /// <param name="isVein">Whether the resource occurs in veins.</param>
         /// <param name="isPerturbation">Whether the resource is a perturbation of another.</param>
         /// <param name="seed">The random seed to use.</param>
-        public Resource(Chemical chemical, double proportion, bool isVein, bool isPerturbation = false, int? seed = null)
+        public Resource(ISubstanceReference substance, decimal proportion, bool isVein, bool isPerturbation = false, int? seed = null)
         {
-            Chemical = chemical;
-            Proportion = proportion;
-            Seed = seed ?? Randomizer.Instance.NextInclusiveMaxValue();
+            Substance = substance;
+            _proportion = proportion - 0.5m;
+            Seed = seed ?? Randomizer.Instance.NextInclusive();
             _isVein = isVein;
             _isPerturbation = isPerturbation;
             _noise = null;
         }
 
-        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
-        /// <param name="obj">The object to compare with the current instance.</param>
-        /// <returns><see langword="true"/> if <paramref name="obj"/> and this instance are the same
-        /// type and represent the same value; otherwise, <see langword="false"/>.</returns>
-        public override bool Equals(object obj) => obj is Resource other && Equals(other);
+        private Resource(SerializationInfo info, StreamingContext context) : this(
+            (ISubstanceReference)info.GetValue(nameof(Substance), typeof(ISubstanceReference)),
+            (decimal)info.GetValue(nameof(Proportion), typeof(decimal)),
+            (bool)info.GetValue(nameof(_isVein), typeof(bool)),
+            (bool)info.GetValue(nameof(_isPerturbation), typeof(bool)),
+            (int)info.GetValue(nameof(Seed), typeof(int))) { }
 
         /// <summary>Indicates whether this instance and a specified object are equal.</summary>
         /// <param name="other">The <see cref="Resource"/> instance to compare with the current
@@ -80,16 +90,47 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns><see langword="true"/> if <paramref name="other"/> and this instance represent
         /// the same value; otherwise, <see langword="false"/>.</returns>
         public bool Equals(Resource other)
-            => Chemical == other.Chemical
-            && Proportion == other.Proportion
-            && Seed == other.Seed;
+            => Substance == other.Substance
+            && _proportion == other._proportion
+            && Seed == other.Seed
+            && _isVein == other._isVein
+            && _isPerturbation == other._isPerturbation;
+
+        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
+        /// <param name="obj">The object to compare with the current instance.</param>
+        /// <returns><see langword="true"/> if <paramref name="obj"/> and this instance are the same
+        /// type and represent the same value; otherwise, <see langword="false"/>.</returns>
+        public override bool Equals(object obj) => obj is Resource other && Equals(other);
 
         /// <summary>Returns the hash code for this instance.</summary>
         /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
         public override int GetHashCode()
-            => Chemical.GetHashCode()
-            .CombineHash(Proportion.GetHashCode())
-            .CombineHash(Seed);
+        {
+            var hashCode = -246786518;
+            hashCode = (hashCode * -1521134295) + Substance.GetHashCode();
+            hashCode = (hashCode * -1521134295) + _proportion.GetHashCode();
+            hashCode = (hashCode * -1521134295) + Seed.GetHashCode();
+            hashCode = (hashCode * -1521134295) + _isVein.GetHashCode();
+            return (hashCode * -1521134295) + _isPerturbation.GetHashCode();
+        }
+
+        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
+        /// serialize the target object.</summary>
+        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
+        /// data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
+        /// serialization.</param>
+        /// <exception cref="System.Security.SecurityException">The caller does not have the
+        /// required permission.</exception>
+        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
+        public void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue(nameof(Substance), Substance);
+            info.AddValue(nameof(Proportion), Proportion);
+            info.AddValue(nameof(_isVein), _isVein);
+            info.AddValue(nameof(_isPerturbation), _isPerturbation);
+            info.AddValue(nameof(Seed), Seed);
+        }
 
         /// <summary>
         /// Gets the richness of this <see cref="Resource"/> at the given <paramref
@@ -101,10 +142,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// name="position"/>, as a value between 0 and 1.</returns>
         public double GetResourceRichnessAt(Vector3 position)
         {
-            var p = position;
-            var x = p.X;
-            var y = p.Y;
-            var z = p.Z;
+            var x = (double)position.X;
+            var y = (double)position.Y;
+            var z = (double)position.Z;
             if (_isPerturbation)
             {
                 Noise.GradientPerturbFractal(ref x, ref y, ref z);
@@ -114,8 +154,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 v = 1 - v;
             }
-            var modifier = Proportion - 0.5;
-            return Math.Max(0, (v + modifier) / (1 + modifier));
+            return Math.Max(0, (v + (double)_proportion) / (double)(1 + _proportion));
         }
     }
 }

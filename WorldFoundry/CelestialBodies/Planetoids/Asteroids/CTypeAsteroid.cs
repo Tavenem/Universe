@@ -1,14 +1,17 @@
-﻿using Substances;
+﻿using NeverFoundry.MathAndScience.Chemistry;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.MathAndScience.Randomization;
 using System;
-using MathAndScience.Numerics;
-using WorldFoundry.Space;
-using MathAndScience.Shapes;
+using System.Collections.Generic;
+using WorldFoundry.Place;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// A carbonaceous asteroid (mostly rock).
     /// </summary>
+    [Serializable]
     public class CTypeAsteroid : Asteroid
     {
         private protected override string BaseTypeName => "C-Type Asteroid";
@@ -26,46 +29,56 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CTypeAsteroid"/>.</param>
-        internal CTypeAsteroid(CelestialRegion? parent, Vector3 position) : base(parent, position) { }
+        internal CTypeAsteroid(Location? parent, Vector3 position) : base(parent, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CTypeAsteroid"/> with the given parameters.
         /// </summary>
         /// <param name="parent">
-        /// The containing <see cref="CelestialRegion"/> in which this <see cref="CTypeAsteroid"/> is located.
+        /// The containing <see cref="Location"/> in which this <see cref="CTypeAsteroid"/> is located.
         /// </param>
         /// <param name="position">The initial position of this <see cref="CTypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CTypeAsteroid"/> during random generation, in kg.
         /// </param>
-        internal CTypeAsteroid(CelestialRegion? parent, Vector3 position, double maxMass) : base(parent, position, maxMass) { }
+        internal CTypeAsteroid(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
 
         private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.03, 0.1);
 
-        private protected override Planetoid? GenerateSatellite(double periapsis, double eccentricity, double maxMass)
+        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
         {
-            var satellite = new CTypeAsteroid(ContainingCelestialRegion, Vector3.Zero, maxMass);
+            var satellite = new CTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
             SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
             return satellite;
         }
 
-        private protected override IComposition GetComposition(double mass, IShape shape)
+        private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {
-            var rock = 1.0;
+            var rock = 1m;
 
-            var clay = Math.Round(Randomizer.Instance.NextDouble(0.1, 0.2), 3);
+            var clay = Randomizer.Instance.NextDecimal(0.1m, 0.2m);
             rock -= clay;
 
-            var ice = Math.Round(Randomizer.Instance.NextDouble(0.22), 3);
+            var ice = Randomizer.Instance.NextDecimal(0.22m);
             rock -= ice;
 
-            return new Composite(
-                (Chemical.Rock, Phase.Solid, rock),
-                (Chemical.Clay, Phase.Solid, clay),
-                (Chemical.Water, Phase.Solid, ice));
+            var substances = new List<(ISubstanceReference, decimal)>();
+            foreach (var (material, proportion) in CelestialSubstances.ChondriticRockMixture)
+            {
+                substances.Add((material, proportion * rock));
+            }
+            substances.Add((Substances.GetMixtureReference(Substances.Mixtures.BallClay), clay));
+            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), ice));
+
+            return new Material(
+                substances,
+                density,
+                mass,
+                shape,
+                temperature);
         }
     }
 }

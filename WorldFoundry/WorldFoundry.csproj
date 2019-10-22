@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>Preview</LangVersion>
-    <NullableContextOptions>enable</NullableContextOptions>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>Latest</LangVersion>
+    <Nullable>enable</Nullable>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -15,19 +15,18 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <LangVersion>Preview</LangVersion>
-    <DocumentationFile>bin\Release\netstandard2.0\WorldFoundry.xml</DocumentationFile>
+    <LangVersion>Latest</LangVersion>
+    <DocumentationFile>bin\Release\netstandard2.1\WorldFoundry.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>Preview</LangVersion>
+    <LangVersion>Latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="NeverFoundry.Extensions" Version="0.1.16" />
+    <PackageReference Include="NeverFoundry.MathAndScience" Version="0.10.12" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0006" />
-    <PackageReference Include="Substance" Version="0.2.17" />
-    <PackageReference Include="Troschuetz.Random" Version="4.3.0" />
-    <PackageReference Include="UniversalTime" Version="0.2.7" />
   </ItemGroup>
 
 </Project>
