@@ -42,11 +42,6 @@ namespace WorldFoundry.SurfaceMapping
         public float[,] Flow { get; }
 
         /// <summary>
-        /// The maximum flow rate of the map, in m³/s.
-        /// </summary>
-        public double MaxFlow { get; }
-
-        /// <summary>
         /// The length of the "X" (0-index) dimension of the maps.
         /// </summary>
         public int XLength { get; }
@@ -68,8 +63,7 @@ namespace WorldFoundry.SurfaceMapping
             int xLength,
             int yLength,
             float[,] depth,
-            float[,] flow,
-            double maxFlow)
+            float[,] flow)
         {
             if (depth.GetLength(0) != xLength)
             {
@@ -93,15 +87,13 @@ namespace WorldFoundry.SurfaceMapping
 
             Depth = depth;
             Flow = flow;
-            MaxFlow = maxFlow;
         }
 
         private HydrologyMaps(SerializationInfo info, StreamingContext context) : this(
             (int)info.GetValue(nameof(XLength), typeof(int)),
             (int)info.GetValue(nameof(YLength), typeof(int)),
             (float[,])info.GetValue(nameof(Depth), typeof(float[,])),
-            (float[,])info.GetValue(nameof(Flow), typeof(float[,])),
-            (double)info.GetValue(nameof(MaxFlow), typeof(double))) { }
+            (float[,])info.GetValue(nameof(Flow), typeof(float[,]))) { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -118,7 +110,6 @@ namespace WorldFoundry.SurfaceMapping
             info.AddValue(nameof(YLength), YLength);
             info.AddValue(nameof(Depth), Depth);
             info.AddValue(nameof(Flow), Flow);
-            info.AddValue(nameof(MaxFlow), MaxFlow);
         }
     }
 }

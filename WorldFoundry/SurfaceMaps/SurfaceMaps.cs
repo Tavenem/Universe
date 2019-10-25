@@ -116,32 +116,6 @@ namespace WorldFoundry.SurfaceMapping
         public HumidityType[,] HumidityMap => _weatherMaps.HumidityMap;
 
         /// <summary>
-        /// The maximum flow rate of the <see cref="Flow"/> map, in m³/s.
-        /// </summary>
-        public double MaxFlow => _hydrologyMaps.MaxFlow;
-
-        /// <summary>
-        /// The maximum annual precipitation expected to be produced by this atmosphere, in mm. Not
-        /// necessarily the actual maximum precipitation within the given region (use <c><see
-        /// cref="TotalPrecipitation"/>.Max</c> for that).
-        /// </summary>
-        public double MaxPrecipitation => _weatherMaps.MaxPrecipitation;
-
-        /// <summary>
-        /// The maximum annual snowfall expected to be produced by this atmosphere, in mm. Not
-        /// necessarily the actual maximum snowfall within the given region (use <c><see
-        /// cref="TotalSnowfall"/>.Max</c> for that).
-        /// </summary>
-        public double MaxSnowfall => _weatherMaps.MaxSnowfall;
-
-        /// <summary>
-        /// The approximate maximum surface temperature of the planet, in K. Not necessarily the
-        /// actual maximum temperature within the given region (use <c><see
-        /// cref="TemperatureRange"/>.Max</c> for that).
-        /// </summary>
-        public double MaxTemperature => _weatherMaps.MaxTemperature;
-
-        /// <summary>
         /// A collection of <see cref="PrecipitationMaps"/>.
         /// </summary>
         public PrecipitationMaps[] PrecipitationMaps => _weatherMaps.PrecipitationMaps;

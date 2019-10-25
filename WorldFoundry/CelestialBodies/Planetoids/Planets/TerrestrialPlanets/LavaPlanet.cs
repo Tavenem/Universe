@@ -78,7 +78,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IMaterial? material,
             IMaterial? hydrosphere,
             List<PlanetaryRing>? rings,
-            List<Location>? children)
+            List<Location>? children,
+            byte[]? depthMap,
+            byte[]? elevationMap,
+            byte[]? flowMap,
+            byte[][]? precipitationMaps,
+            byte[][]? snowfallMaps,
+            byte[]? temperatureMapSummer,
+            byte[]? temperatureMapWinter,
+            double? maxFlow)
             : base(
                 id,
                 name,
@@ -107,7 +115,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 material,
                 hydrosphere,
                 rings,
-                children) { }
+                children,
+                depthMap,
+                elevationMap,
+                flowMap,
+                precipitationMaps,
+                snowfallMaps,
+                temperatureMapSummer,
+                temperatureMapWinter,
+                maxFlow) { }
 
         private LavaPlanet(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -137,7 +153,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
             (IMaterial?)info.GetValue(nameof(Hydrosphere), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (byte[][])info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
+            (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
+            (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
         private protected override double GetInternalTemperature() => Randomizer.Instance.NextDouble(974, 1574);
     }

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Text;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using WorldFoundry.Space;
 using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.Test
@@ -73,6 +74,28 @@ namespace WorldFoundry.Test
                 CollectionAssert.AreEqual(maps.PrecipitationMaps[i].PrecipitationMap, result.PrecipitationMaps[i].PrecipitationMap);
                 CollectionAssert.AreEqual(maps.PrecipitationMaps[i].SnowfallMap, result.PrecipitationMaps[i].SnowfallMap);
             }
+        }
+
+        [TestMethod]
+        public void Universe_Save()
+        {
+            var planetParams = TerrestrialPlanetParams.FromDefaults();
+
+            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            Assert.IsNotNull(planet);
+            var universe = planet!.ContainingUniverse;
+            Assert.IsNotNull(universe);
+
+            var json = JsonConvert.SerializeObject(universe, _JsonSerializerSettings);
+            var bytes = Encoding.UTF8.GetBytes(json);
+            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
+            Console.WriteLine();
+
+            //Console.Write("JSON: ");
+            //Console.WriteLine(json);
+
+            var result = JsonConvert.DeserializeObject<Universe>(json, _JsonSerializerSettings);
+            Assert.AreEqual(universe!.Id, result.Id);
         }
     }
 }

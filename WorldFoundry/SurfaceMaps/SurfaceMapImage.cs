@@ -1,9 +1,7 @@
-﻿using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+﻿using NeverFoundry.MathAndScience;
 using System;
-using NeverFoundry.MathAndScience.Numerics;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -20,169 +18,338 @@ namespace WorldFoundry.SurfaceMapping
         /// <see langword="null"/> the source width will be retained.</param>
         /// <param name="destHeight">An optional height to which the image will be stretched. If
         /// left <see langword="null"/> the source height will be retained.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if the map's values range from 0 to 1
-        /// (the default, true for most maps); <see langword="false"/> of they range from -1 to 1
-        /// (the case for elevation maps, or overlays).</param>
         /// <returns>A surface map.</returns>
-        public static float[,] ImageToSurfaceMap(this Image<Rgba32> image, int? destWidth = null, int? destHeight = null, bool zeroNormal = true)
+        public static double[,] ImageToDoubleSurfaceMap(this Bitmap image, int? destWidth = null, int? destHeight = null)
         {
+            var img = image;
+            var resized = false;
             if (destWidth.HasValue || destHeight.HasValue)
             {
-                image = image.Clone(x => x.Resize(destWidth ?? image.Width, destHeight ?? image.Height));
+                img = image.Resize(destWidth ?? image.Width, destHeight ?? image.Height);
+                resized = true;
             }
-            var surfaceMap = new float[image.Width, image.Height];
-            for (var y = 0; y < image.Height; y++)
+            var surfaceMap = new double[img.Width, img.Height];
+
+            var data = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
+            var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
+            var length = data.Height * data.Stride;
+            var bytes = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
+
+            byte r, g, b;
+            for (var y = 0; y < img.Height; y++)
             {
-                var pixelRow = image.GetPixelRowSpan(y);
-                for (var x = 0; x < image.Width; x++)
+                for (var x = 0; x < img.Width; x++)
                 {
-                    surfaceMap[x, y] = Rgba32ToFloat(pixelRow[x], zeroNormal);
+                    var pos = (y * data.Stride) + (x * pixelSize);
+                    b = bytes[pos];
+                    g = bytes[pos + 1];
+                    r = bytes[pos + 2];
+                    surfaceMap[x, y] = RgbToDouble(r, g, b);
+                }
+            }
+
+            img.UnlockBits(data);
+            if (resized)
+            {
+                img.Dispose();
+            }
+
+            return surfaceMap;
+        }
+
+        /// <summary>
+        /// Converts an image to a surface map.
+        /// </summary>
+        /// <param name="image">The image to convert.</param>
+        /// <param name="destWidth">An optional width to which the image will be stretched. If left
+        /// <see langword="null"/> the source width will be retained.</param>
+        /// <param name="destHeight">An optional height to which the image will be stretched. If
+        /// left <see langword="null"/> the source height will be retained.</param>
+        /// <returns>A surface map.</returns>
+        public static float[,] ImageToFloatSurfaceMap(this Bitmap image, int? destWidth = null, int? destHeight = null)
+        {
+            var img = image;
+            var resized = false;
+            if (destWidth.HasValue || destHeight.HasValue)
+            {
+                img = image.Resize(destWidth ?? image.Width, destHeight ?? image.Height);
+                resized = true;
+            }
+            var surfaceMap = new float[img.Width, img.Height];
+
+            var data = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
+            var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
+            var length = data.Height * data.Stride;
+            var bytes = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
+
+            byte r, g, b;
+            for (var y = 0; y < img.Height; y++)
+            {
+                for (var x = 0; x < img.Width; x++)
+                {
+                    var pos = (y * data.Stride) + (x * pixelSize);
+                    b = bytes[pos];
+                    g = bytes[pos + 1];
+                    r = bytes[pos + 2];
+                    surfaceMap[x, y] = RgbToFloat(r, g, b);
+                }
+            }
+
+            img.UnlockBits(data);
+            if (resized)
+            {
+                img.Dispose();
+            }
+
+            return surfaceMap;
+        }
+
+        /// <summary>
+        /// Converts a pair of images to a surface map.
+        /// </summary>
+        /// <param name="imageMin">The image with the minimum values to convert.</param>
+        /// <param name="imageMax">The image with the maximum values to convert.</param>
+        /// <param name="destWidth">An optional width to which the image will be stretched. If left
+        /// <see langword="null"/> the source width will be retained.</param>
+        /// <param name="destHeight">An optional height to which the image will be stretched. If
+        /// left <see langword="null"/> the source height will be retained.</param>
+        /// <returns>A surface map.</returns>
+        public static FloatRange[,] ImagesToFloatRangeSurfaceMap(this Bitmap imageMin, Bitmap imageMax, int? destWidth = null, int? destHeight = null)
+        {
+            var imgMin = imageMin;
+            var imgMax = imageMax;
+            var minResized = false;
+            var maxResized = false;
+            if (destWidth.HasValue || destHeight.HasValue)
+            {
+                imgMin = imageMin.Resize(destWidth ?? imageMin.Width, destHeight ?? imageMin.Height);
+                imgMax = imageMax.Resize(destWidth ?? imageMax.Width, destHeight ?? imageMax.Height);
+                minResized = true;
+                maxResized = true;
+            }
+            else if (imageMax.Width != imageMin.Width || imageMax.Height != imageMin.Height)
+            {
+                imgMax = imageMax.Resize(imageMin.Width, imageMin.Height);
+                maxResized = true;
+            }
+
+            var xLength = imgMin.Width;
+            var yLength = imgMin.Height;
+            var minMap = new float[xLength, yLength];
+            var dataMin = imgMin.LockBits(new Rectangle(0, 0, xLength, yLength), ImageLockMode.ReadOnly, imgMin.PixelFormat);
+            var pixelSizeMin = Image.GetPixelFormatSize(dataMin.PixelFormat) / 8;
+            var lengthMin = dataMin.Height * dataMin.Stride;
+            var bytesMin = new byte[lengthMin];
+            System.Runtime.InteropServices.Marshal.Copy(dataMin.Scan0, bytesMin, 0, lengthMin);
+            byte r, g, b;
+            for (var y = 0; y < yLength; y++)
+            {
+                for (var x = 0; x < xLength; x++)
+                {
+                    var pos = (y * dataMin.Stride) + (x * pixelSizeMin);
+                    b = bytesMin[pos];
+                    g = bytesMin[pos + 1];
+                    r = bytesMin[pos + 2];
+                    minMap[x, y] = RgbToFloat(r, g, b);
+                }
+            }
+            imgMin.UnlockBits(dataMin);
+            if (minResized)
+            {
+                imgMin.Dispose();
+            }
+
+            var maxMap = new float[xLength, yLength];
+            var dataMax = imgMax.LockBits(new Rectangle(0, 0, xLength, yLength), ImageLockMode.ReadOnly, imgMax.PixelFormat);
+            var pixelSizeMax = Image.GetPixelFormatSize(dataMax.PixelFormat) / 8;
+            var lengthMax = dataMax.Height * dataMax.Stride;
+            var bytesMax = new byte[lengthMax];
+            System.Runtime.InteropServices.Marshal.Copy(dataMax.Scan0, bytesMax, 0, lengthMax);
+            for (var y = 0; y < yLength; y++)
+            {
+                for (var x = 0; x < xLength; x++)
+                {
+                    var pos = (y * dataMax.Stride) + (x * pixelSizeMax);
+                    b = bytesMax[pos];
+                    g = bytesMax[pos + 1];
+                    r = bytesMax[pos + 2];
+                    maxMap[x, y] = RgbToFloat(r, g, b);
+                }
+            }
+            imgMax.UnlockBits(dataMax);
+            if (maxResized)
+            {
+                imgMax.Dispose();
+            }
+
+            var surfaceMap = new FloatRange[xLength, yLength];
+            for (var y = 0; y < yLength; y++)
+            {
+                for (var x = 0; x < xLength; x++)
+                {
+                    surfaceMap[x, y] = new FloatRange(minMap[x, y], maxMap[x, y]);
                 }
             }
             return surfaceMap;
         }
 
         /// <summary>
-        /// Get a composite (flattened) surface map from a base map and an overlay.
+        /// Converts a surface map to a grayscale image.
         /// </summary>
-        /// <param name="baseMap">A surface map.</param>
-        /// <param name="overlay">A surface map overlay.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if <paramref name="baseMap"/>'s values
-        /// range from 0 to 1 (the default, true for most maps); <see langword="false"/> of they
-        /// range from -1 to 1 (the case for elevation maps).</param>
-        /// <returns>A composite (flattened) surface map.</returns>
-        /// <exception cref="ArgumentException">The maps must have the same dimensions.</exception>
-        public static float[,] GetCompositeSurfaceMap(float[,] baseMap, float[,] overlay, bool zeroNormal = true)
+        /// <param name="surfaceMap">The surface map to convert.</param>
+        /// <returns>A grayscale image.</returns>
+        public static Bitmap SurfaceMapToImage(this float[,] surfaceMap)
         {
-            var xLength = baseMap.GetLength(0);
-            var yLength = baseMap.GetLength(1);
-            if (overlay.GetLength(0) != xLength || overlay.GetLength(1) != yLength)
-            {
-                throw new ArgumentException($"{nameof(overlay)} must have the same dimensions as {nameof(baseMap)}.");
-            }
-            var final = new float[xLength, yLength];
-            for (var x = 0; x < xLength; x++)
-            {
-                for (var y = 0; y < yLength; y++)
-                {
-                    // Overlay value is doubled for a map with a -1 to 1 range, since it's modifying
-                    // a value whose range is twice that of a normal map. This allows, e.g.,
-                    // modifying a 1 all the way down to a -1.
-                    var mod = zeroNormal ? overlay[x, y] : overlay[x, y] * 2;
-                    final[x, y] = baseMap[x, y] + mod;
-                }
-            }
-            return final;
-        }
+            var xLength = surfaceMap.GetLength(0);
+            var yLength = surfaceMap.GetLength(1);
+            var image = new Bitmap(xLength, yLength);
+            var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
+            var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
+            var length = data.Height * data.Stride;
+            var bytes = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
 
-        /// <summary>
-        /// Get a composite (flattened) surface map from a base map and an overlay.
-        /// </summary>
-        /// <param name="baseMap">A surface map.</param>
-        /// <param name="overlay">A surface map overlay.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if <paramref name="baseMap"/>'s values
-        /// range from 0 to 1 (the default, true for most maps); <see langword="false"/> of they
-        /// range from -1 to 1 (the case for elevation maps).</param>
-        /// <returns>A composite (flattened) surface map.</returns>
-        /// <exception cref="ArgumentException">The maps must have the same dimensions.</exception>
-        public static double[,] GetCompositeSurfaceMap(double[,] baseMap, float[,] overlay, bool zeroNormal = true)
-        {
-            var xLength = baseMap.GetLength(0);
-            var yLength = baseMap.GetLength(1);
-            if (overlay.GetLength(0) != xLength || overlay.GetLength(1) != yLength)
+            byte rgb;
+            for (var y = 0; y < image.Height; y++)
             {
-                throw new ArgumentException($"{nameof(overlay)} must have the same dimensions as {nameof(baseMap)}.");
-            }
-            var final = new double[xLength, yLength];
-            for (var x = 0; x < xLength; x++)
-            {
-                for (var y = 0; y < yLength; y++)
+                for (var x = 0; x < image.Width; x++)
                 {
-                    // Overlay value is doubled for a map with a -1 to 1 range, since it's modifying
-                    // a value whose range is twice that of a normal map. This allows, e.g.,
-                    // modifying a 1 all the way down to a -1.
-                    var mod = zeroNormal ? overlay[x, y] : overlay[x, y] * 2;
-                    final[x, y] = baseMap[x, y] + mod;
+                    var pos = (y * data.Stride) + (x * pixelSize);
+                    rgb = FloatToRgb(surfaceMap[x, y]);
+                    bytes[pos] = rgb;
+                    bytes[pos + 1] = rgb;
+                    bytes[pos + 2] = rgb;
                 }
             }
-            return final;
-        }
 
-        /// <summary>
-        /// Get a composite (flattened) surface map from a base map and an overlay.
-        /// </summary>
-        /// <param name="baseMap">A surface map.</param>
-        /// <param name="overlayMin">A surface map overlay for the minimum values.</param>
-        /// <param name="overlayMax">A surface map overlay for the maximum values.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if <paramref name="baseMap"/>'s values
-        /// range from 0 to 1 (the default, true for most maps); <see langword="false"/> of they
-        /// range from -1 to 1 (the case for elevation maps).</param>
-        /// <returns>A composite (flattened) surface map.</returns>
-        /// <exception cref="ArgumentException">The maps must have the same dimensions.</exception>
-        public static FloatRange[,] GetCompositeSurfaceMap(FloatRange[,] baseMap, float[,] overlayMin, float[,] overlayMax, bool zeroNormal = true)
-        {
-            var xLength = baseMap.GetLength(0);
-            var yLength = baseMap.GetLength(1);
-            if (overlayMin.GetLength(0) != xLength || overlayMin.GetLength(1) != yLength
-                || overlayMax.GetLength(0) != xLength || overlayMax.GetLength(1) != yLength)
-            {
-                throw new ArgumentException($"{nameof(overlayMin)} and {nameof(overlayMax)} must have the same dimensions as {nameof(baseMap)}.");
-            }
-            var final = new FloatRange[xLength, yLength];
-            for (var x = 0; x < xLength; x++)
-            {
-                for (var y = 0; y < yLength; y++)
-                {
-                    // Overlay values are doubled for a map with a -1 to 1 range, since they're
-                    // modifying a value whose range is twice that of a normal map. This allows,
-                    // e.g., modifying a 1 all the way down to a -1.
-                    var modMin = zeroNormal ? overlayMin[x, y] : overlayMin[x, y] * 2;
-                    var modMax = zeroNormal ? overlayMax[x, y] : overlayMax[x, y] * 2;
-                    final[x, y] = new FloatRange(baseMap[x, y].Min + modMin, baseMap[x, y].Max + modMax);
-                }
-            }
-            return final;
+            System.Runtime.InteropServices.Marshal.Copy(bytes, 0, data.Scan0, length);
+            image.UnlockBits(data);
+            return image;
         }
 
         /// <summary>
         /// Converts a surface map to a grayscale image.
         /// </summary>
         /// <param name="surfaceMap">The surface map to convert.</param>
-        /// <param name="zeroNormal"><see langword="true"/> if the map's values range from 0 to 1
-        /// (the default, true for most maps); <see langword="false"/> of they range from -1 to 1
-        /// (the case for elevation maps).</param>
         /// <returns>A grayscale image.</returns>
-        public static Image<Rgba32> SurfaceMapToImage(this float[,] surfaceMap, bool zeroNormal = true)
+        public static Bitmap SurfaceMapToImage(this double[,] surfaceMap)
         {
             var xLength = surfaceMap.GetLength(0);
             var yLength = surfaceMap.GetLength(1);
-            using var image = new Image<Rgba32>(xLength, yLength);
-            for (var y = 0; y < xLength; y++)
+            var image = new Bitmap(xLength, yLength);
+            var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
+            var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
+            var length = data.Height * data.Stride;
+            var bytes = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
+
+            byte rgb;
+            for (var y = 0; y < image.Height; y++)
             {
-                var pixelRow = image.GetPixelRowSpan(y);
-                for (var x = 0; x < xLength; x++)
+                for (var x = 0; x < image.Width; x++)
                 {
-                    pixelRow[x] = FloatToRgba32(surfaceMap[x, y], zeroNormal);
+                    var pos = (y * data.Stride) + (x * pixelSize);
+                    rgb = DoubleToRgb(surfaceMap[x, y]);
+                    bytes[pos] = rgb;
+                    bytes[pos + 1] = rgb;
+                    bytes[pos + 2] = rgb;
                 }
             }
+
+            System.Runtime.InteropServices.Marshal.Copy(bytes, 0, data.Scan0, length);
+            image.UnlockBits(data);
             return image;
         }
 
-        private static Rgba32 FloatToRgba32(float value, bool zeroNormal = true)
+        /// <summary>
+        /// Converts a <see cref="FloatRange"/> surface map to a pair of grayscale images
+        /// representing the minimum and maximum values.
+        /// </summary>
+        /// <param name="surfaceMap">The surface map to convert.</param>
+        /// <returns>A pair of grayscale images representing the minimum and maximum
+        /// values.</returns>
+        public static (Bitmap min, Bitmap max) SurfaceMapToImages(this FloatRange[,] surfaceMap)
         {
-            var normalized = zeroNormal ? value : (value + 1) / 2;
-            return new Rgba32(normalized, normalized, normalized, 1);
+            var xLength = surfaceMap.GetLength(0);
+            var yLength = surfaceMap.GetLength(1);
+            var imageMin = new Bitmap(xLength, yLength);
+            var imageMax = new Bitmap(xLength, yLength);
+            var dataMin = imageMin.LockBits(new Rectangle(0, 0, imageMin.Width, imageMin.Height), ImageLockMode.ReadOnly, imageMin.PixelFormat);
+            var dataMax = imageMax.LockBits(new Rectangle(0, 0, imageMax.Width, imageMax.Height), ImageLockMode.ReadOnly, imageMax.PixelFormat);
+            var pixelSize = Image.GetPixelFormatSize(dataMin.PixelFormat) / 8;
+            var length = dataMin.Height * dataMin.Stride;
+            var bytesMin = new byte[length];
+            var bytesMax = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(dataMin.Scan0, bytesMin, 0, length);
+            System.Runtime.InteropServices.Marshal.Copy(dataMax.Scan0, bytesMax, 0, length);
+
+            byte rgb;
+            for (var y = 0; y < imageMin.Height; y++)
+            {
+                for (var x = 0; x < imageMin.Width; x++)
+                {
+                    var pos = (y * dataMin.Stride) + (x * pixelSize);
+
+                    rgb = FloatToRgb(surfaceMap[x, y].Min);
+                    bytesMin[pos] = rgb;
+                    bytesMin[pos + 1] = rgb;
+                    bytesMin[pos + 2] = rgb;
+
+                    rgb = FloatToRgb(surfaceMap[x, y].Max);
+                    bytesMax[pos] = rgb;
+                    bytesMax[pos + 1] = rgb;
+                    bytesMax[pos + 2] = rgb;
+                }
+            }
+
+            System.Runtime.InteropServices.Marshal.Copy(bytesMin, 0, dataMin.Scan0, length);
+            System.Runtime.InteropServices.Marshal.Copy(bytesMax, 0, dataMax.Scan0, length);
+            imageMin.UnlockBits(dataMin);
+            imageMax.UnlockBits(dataMax);
+            return (imageMin, imageMax);
         }
 
-        private static float Rgba32ToFloat(Rgba32 value, bool zeroNormal = true)
+        private static byte DoubleToRgb(double value)
         {
-            var avg = (value.R + value.G + value.B) / 3f;
-            var result = avg / 255;
-            if (!zeroNormal)
+            var normalized = (value + 1) / 2;
+            return (byte)Math.Round(normalized * 255).Clamp(0, 255);
+        }
+
+        private static byte FloatToRgb(float value) => (byte)Math.Round(value * 255).Clamp(0, 255);
+
+        private static Bitmap Resize(this Bitmap image, int width, int height)
+        {
+            var rectangle = new Rectangle(0, 0, width, height);
+            var resized = new Bitmap(width, height);
+            resized.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+            using (var g = Graphics.FromImage(resized))
             {
-                result = (result * 2) - 1;
+                g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                using var attr = new ImageAttributes();
+                attr.SetWrapMode(System.Drawing.Drawing2D.WrapMode.TileFlipXY);
+                g.DrawImage(image, rectangle, 0, 0, image.Width, image.Height, GraphicsUnit.Pixel, attr);
             }
-            return result;
+
+            return resized;
+        }
+
+        private static double RgbToDouble(byte r, byte g, byte b)
+        {
+            var result = (r + b + g) / 765.0f; // 3 * 255
+            result = (result * 2) - 1;
+            return result.Clamp(0, 1);
+        }
+
+        private static float RgbToFloat(byte r, byte g, byte b)
+        {
+            var result = (r + b + g) / 765.0f; // 3 * 255
+            return result.Clamp(0, 1);
         }
     }
 }

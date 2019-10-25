@@ -15,6 +15,9 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
+using System.Drawing;
+using System.IO;
+using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
@@ -44,12 +47,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private static readonly double _LowTemp = CelestialSubstances.WaterMeltingPoint - 16;
 
+        private protected byte[]? _depthMap;
+        private protected byte[]? _elevationMap;
+        private protected byte[]? _flowMap;
         private protected double _normalizedSeaLevel;
+        private protected byte[][]? _precipitationMaps;
+        private protected byte[][]? _snowfallMaps;
         private protected int _seed1;
         private protected int _seed2;
         private protected int _seed3;
         private protected int _seed4;
         private protected int _seed5;
+        private protected byte[]? _temperatureMapSummer;
+        private protected byte[]? _temperatureMapWinter;
 
         private protected double? _angleOfRotation;
         /// <summary>
@@ -223,6 +233,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         public double MaxElevation => _maxElevation ??= GetMaxElevation();
 
+        private protected double? _maxFlow;
+        /// <summary>
+        /// The maximum flow rate of waterways on this planetoid, in m³/s.
+        /// </summary>
+        public double MaxFlow
+        {
+            get => _maxFlow ?? 350000;
+            set => _maxFlow = value.IsNearlyEqualTo(350000) ? (double?)null : value;
+        }
+
         private double? _maxSurfaceTemperature;
         /// <summary>
         /// The approximate maximum surface temperature of this <see cref="Planetoid"/>, in K.
@@ -324,12 +344,42 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         public double SurfaceTemperature => _surfaceTemperature ??= GetCurrentSurfaceTemperature();
 
+        internal bool HasDepthMap => _depthMap != null;
+
+        internal bool HasElevationMap => _elevationMap != null;
+
+        internal bool HasFlowMap => _flowMap != null;
+
+        internal bool HasHydrologyMaps
+            => _depthMap != null
+            && _flowMap != null;
+
+        internal bool HasPrecipitationMap => _precipitationMaps != null;
+
+        internal bool HasSnowfallMap => _snowfallMaps != null;
+
+        internal bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
+
+        internal bool HasAllWeatherMaps
+            => _precipitationMaps != null
+            && _snowfallMaps != null
+            && _temperatureMapSummer != null
+            && _temperatureMapWinter != null;
+
+        internal bool HasAnyWeatherMaps
+            => _precipitationMaps != null
+            || _snowfallMaps != null
+            || _temperatureMapSummer != null
+            || _temperatureMapWinter != null;
+
         private double? _insolationFactor_Equatorial;
         internal double InsolationFactor_Equatorial
         {
             get => _insolationFactor_Equatorial ??= GetInsolationFactor();
             set => _insolationFactor_Equatorial = value;
         }
+
+        internal int MappedSeasons => _precipitationMaps?.Length ?? 0;
 
         private double? _summerSolsticeTrueAnomaly;
         internal double SummerSolsticeTrueAnomaly
@@ -467,7 +517,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             Number? maxMass,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            List<Location>? children,
+            byte[]? depthMap,
+            byte[]? elevationMap,
+            byte[]? flowMap,
+            byte[][]? precipitationMaps,
+            byte[][]? snowfallMaps,
+            byte[]? temperatureMapSummer,
+            byte[]? temperatureMapWinter,
+            double? maxFlow)
             : base(
                 id,
                 name,
@@ -495,6 +553,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _satelliteIDs = satelliteIds;
             _surfaceRegions = surfaceRegions;
             _maxMass = maxMass;
+            _depthMap = depthMap;
+            _elevationMap = elevationMap;
+            _flowMap = flowMap;
+            _precipitationMaps = precipitationMaps;
+            _snowfallMaps = snowfallMaps;
+            _temperatureMapSummer = temperatureMapSummer;
+            _temperatureMapWinter = temperatureMapWinter;
+            _maxFlow = maxFlow;
         }
 
         private Planetoid(SerializationInfo info, StreamingContext context) : this(
@@ -522,7 +588,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (byte[][])info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
+            (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
+            (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+
+        private static byte[] GetByteArray(Bitmap image)
+        {
+            using var stream = new MemoryStream();
+            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
+            return stream.ToArray();
+        }
 
         /// <summary>
         /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
@@ -542,11 +623,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="position">The normalized position vector of the center of the
         /// region.</param>
-        /// <param name="radius">The radius of the region, in meters.</param>
+        /// <param name="latitudeRange">
+        /// <para>
+        /// The range of latitudes encompassed by this region, as an angle (in radians).
+        /// </para>
+        /// <para>
+        /// Maximum value is π (a full hemisphere, which produces the full globe when combined with
+        /// the 2:1 aspect ratio of the equirectangular projection).
+        /// </para>
+        /// </param>
         /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(Vector3 position, Number radius)
+        public Planetoid AddSurfaceRegion(Vector3 position, Number latitudeRange)
         {
-            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(this, position, radius));
+            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(this, position, latitudeRange));
             return this;
         }
 
@@ -556,9 +645,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="latitude">The latitude of the center of the region.</param>
         /// <param name="longitude">The longitude of the center of the region.</param>
-        /// <param name="radius">The radius of the region, in meters.</param>
+        /// <param name="latitudeRange">
+        /// <para>
+        /// The range of latitudes encompassed by this region, as an angle (in radians).
+        /// </para>
+        /// <para>
+        /// Maximum value is π (a full hemisphere, which produces the full globe when combined with
+        /// the 2:1 aspect ratio of the equirectangular projection).
+        /// </para>
+        /// </param>
         /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(double latitude, double longitude, Number radius)
+        public Planetoid AddSurfaceRegion(double latitude, double longitude, Number latitudeRange)
         {
             var position = LatitudeAndLongitudeToVector(latitude, longitude);
             (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(
@@ -567,7 +664,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                     position.X,
                     position.Y,
                     position.Z),
-                radius));
+                latitudeRange));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
+        /// instance.
+        /// </summary>
+        /// <param name="latitude1">The latitude of the northwest corner of the region.</param>
+        /// <param name="longitude1">The longitude of the northwest corner of the region.</param>
+        /// <param name="latitude2">The latitude of the southeast corner of the region.</param>
+        /// <param name="longitude2">The longitude of the southeast corner of the region.</param>
+        /// <returns>This instance.</returns>
+        public Planetoid AddSurfaceRegion(double latitude1, double longitude1, double latitude2, double longitude2)
+        {
+            var latitudeRange = latitude1 - latitude2;
+            var centerLat = latitude1 + ((latitude1 - latitude2) / 2);
+            var centerLon = longitude1 + ((longitude1 - longitude2) / 2);
+            var position = LatitudeAndLongitudeToVector(centerLat, centerLon);
+            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(
+                this,
+                new Vector3(
+                    position.X,
+                    position.Y,
+                    position.Z),
+                Math.Abs(latitudeRange)));
             return this;
         }
 
@@ -662,6 +784,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             .ItemWithMin(x => x.Shape.ContainingRadius);
 
         /// <summary>
+        /// Gets the stored hydrology depth map image for this region, if any.
+        /// </summary>
+        /// <returns>The stored hydrology depth map image for this region, if any.</returns>
+        public Bitmap? GetDepthMap() => SurfaceRegion.GetMapImage(_depthMap);
+
+        /// <summary>
         /// Calculates the distance along the surface at sea level between the two points indicated
         /// by the given normalized position vectors.
         /// </summary>
@@ -710,6 +838,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// name="longitude"/>, in meters.</returns>
         public double GetElevationAt(double latitude, double longitude)
             => GetElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
+
+        /// <summary>
+        /// Gets the stored elevation map image for this region, if any.
+        /// </summary>
+        /// <returns>The stored elevation map image for this region, if any.</returns>
+        public Bitmap? GetElevationMap() => SurfaceRegion.GetMapImage(_elevationMap);
+
+        /// <summary>
+        /// Gets the stored hydrology flow map image for this region, if any.
+        /// </summary>
+        /// <returns>The stored hydrology flow map image for this region, if any.</returns>
+        public Bitmap? GetFlowMap() => SurfaceRegion.GetMapImage(_flowMap);
 
         /// <summary>
         /// Calculates the total illumination on the given position from nearby sources of light
@@ -1064,6 +1204,32 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(Material), _material);
             info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_depthMap), _depthMap);
+            info.AddValue(nameof(_elevationMap), _elevationMap);
+            info.AddValue(nameof(_flowMap), _flowMap);
+            info.AddValue(nameof(_precipitationMaps), _precipitationMaps);
+            info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
+            info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
+            info.AddValue(nameof(_temperatureMapWinter), _temperatureMapWinter);
+            info.AddValue(nameof(_maxFlow), _maxFlow);
+        }
+
+        /// <summary>
+        /// Gets the stored set of precipitation map images for this region, if any.
+        /// </summary>
+        /// <returns>The stored set of precipitation map images for this region, if any.</returns>
+        public Bitmap[] GetPrecipitationMaps()
+        {
+            if (_precipitationMaps is null)
+            {
+                return new Bitmap[0];
+            }
+            var maps = new Bitmap[_precipitationMaps.Length];
+            for (var i = 0; i < _precipitationMaps.Length; i++)
+            {
+                maps[i] = SurfaceRegion.GetMapImage(_precipitationMaps[i])!;
+            }
+            return maps;
         }
 
         /// <summary>
@@ -1223,6 +1389,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Gets the stored set of snowfall map images for this region, if any.
+        /// </summary>
+        /// <returns>The stored set of snowfall map images for this region, if any.</returns>
+        public Bitmap[] GetSnowfallMaps()
+        {
+            if (_snowfallMaps is null)
+            {
+                return new Bitmap[0];
+            }
+            var maps = new Bitmap[_snowfallMaps.Length];
+            for (var i = 0; i < _snowfallMaps.Length; i++)
+            {
+                maps[i] = SurfaceRegion.GetMapImage(_snowfallMaps[i])!;
+            }
+            return maps;
+        }
+
+        /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
         /// greenhouse effects, in K.
         /// </summary>
@@ -1307,6 +1491,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Gets the stored temperature map image for this region at the summer solstice, if any.
+        /// </summary>
+        /// <returns>The stored temperature map image for this region at the summer solstice, if
+        /// any.</returns>
+        public Bitmap? GetTemperatureMapSummer() => SurfaceRegion.GetMapImage(_temperatureMapSummer ?? _temperatureMapWinter);
+
+        /// <summary>
+        /// Gets the stored temperature map image for this region at the winter solstice, if any.
+        /// </summary>
+        /// <returns>The stored temperature map image for this region at the winter solstice, if
+        /// any.</returns>
+        public Bitmap? GetTemperatureMapWinter() => SurfaceRegion.GetMapImage(_temperatureMapWinter ?? _temperatureMapSummer);
+
+        /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
         /// </summary>
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
@@ -1325,6 +1523,123 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                         cosLat * Math.Cos(longitude)),
                     NeverFoundry.MathAndScience.Numerics.Doubles.Quaternion.Inverse(AxisRotation)));
             return new Vector3(v.X, v.Y, v.Z);
+        }
+
+        /// <summary>
+        /// Loads an image as the hydrology depth overlay for this region.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadDepthMap(Bitmap image)
+        {
+            if (image is null)
+            {
+                _depthMap = null;
+                return;
+            }
+            _depthMap = GetByteArray(image);
+        }
+
+        /// <summary>
+        /// Loads an image as the elevation overlay for this region.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadElevationMap(Bitmap image)
+        {
+            if (image is null)
+            {
+                _elevationMap = null;
+                return;
+            }
+            _elevationMap = GetByteArray(image);
+        }
+
+        /// <summary>
+        /// Loads an image as the hydrology flow overlay for this region.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadFlowMap(Bitmap image)
+        {
+            if (image is null)
+            {
+                _flowMap = null;
+                return;
+            }
+            _flowMap = GetByteArray(image);
+        }
+
+        /// <summary>
+        /// Loads a set of images as the precipitation overlays for this region.
+        /// </summary>
+        /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
+        /// course of a year.</param>
+        public void LoadPrecipitationMaps(IEnumerable<Bitmap> images)
+        {
+            if (images?.Any() != true)
+            {
+                _precipitationMaps = null;
+                return;
+            }
+            _precipitationMaps = images.Select(GetByteArray).ToArray();
+        }
+
+        /// <summary>
+        /// Loads a set of images as the snowfall overlays for this region.
+        /// </summary>
+        /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
+        /// course of a year.</param>
+        public void LoadSnowfallMaps(IEnumerable<Bitmap> images)
+        {
+            if (images?.Any() != true)
+            {
+                _snowfallMaps = null;
+                return;
+            }
+            _snowfallMaps = images.Select(GetByteArray).ToArray();
+        }
+
+        /// <summary>
+        /// Loads an image as the temperature overlay for this region, applying the same map to both
+        /// summer and winter.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadTemperatureMap(Bitmap image)
+        {
+            if (image is null)
+            {
+                _temperatureMapSummer = null;
+                _temperatureMapWinter = null;
+                return;
+            }
+            _temperatureMapSummer = GetByteArray(image);
+            _temperatureMapWinter = _temperatureMapSummer;
+        }
+
+        /// <summary>
+        /// Loads an image as the temperature overlay for this region at the summer solstice.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadTemperatureMapSummer(Bitmap image)
+        {
+            if (image is null)
+            {
+                _temperatureMapSummer = null;
+                return;
+            }
+            _temperatureMapSummer = GetByteArray(image);
+        }
+
+        /// <summary>
+        /// Loads an image as the temperature overlay for this region at the winter solstice.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        public void LoadTemperatureMapWinter(Bitmap image)
+        {
+            if (image is null)
+            {
+                _temperatureMapWinter = null;
+                return;
+            }
+            _temperatureMapWinter = GetByteArray(image);
         }
 
         /// <summary>
@@ -1408,6 +1723,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
+        internal float[,] GetDepthMap(int width, int height)
+            => SurfaceRegion.GetMapFromImage(_depthMap, width, height);
+
+        internal double[,] GetElevationMap(int width, int height)
+        {
+            using var image = SurfaceRegion.GetMapImage(_elevationMap);
+            if (image is null)
+            {
+                return new double[width, height];
+            }
+            return image.ImageToDoubleSurfaceMap(width, height);
+        }
+
         internal double GetElevationNoiseAt(double x, double y, double z)
         {
             if (MaxElevation.IsNearlyZero())
@@ -1439,6 +1767,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // The overall value is magnified to compensate for excessive normalization.
             return e * 2.71;
         }
+
+        internal float[,] GetFlowMap(int width, int height)
+            => SurfaceRegion.GetMapFromImage(_flowMap, width, height);
 
         internal double GetInsolationFactor(Number atmosphereMass, double atmosphericScaleHeight, bool polar = false)
             => (double)Number.Pow(1320000
@@ -1511,6 +1842,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return precipitation;
         }
 
+        internal float[][,] GetPrecipitationMaps(int width, int height)
+        {
+            var mapImages = GetPrecipitationMaps();
+            var maps = new float[mapImages.Length][,];
+            for (var i = 0; i < mapImages.Length; i++)
+            {
+                maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
+                mapImages[i].Dispose();
+            }
+            return maps;
+        }
+
         internal double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
         {
             var seasonalLatitude = latitude + (solarDeclination * 2 / 3);
@@ -1523,6 +1866,18 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return -seasonalLatitude - Math.PI;
             }
             return seasonalLatitude;
+        }
+
+        internal float[][,] GetSnowfallMaps(int width, int height)
+        {
+            var mapImages = GetSnowfallMaps();
+            var maps = new float[mapImages.Length][,];
+            for (var i = 0; i < mapImages.Length; i++)
+            {
+                maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
+                mapImages[i].Dispose();
+            }
+            return maps;
         }
 
         internal double GetSolarDeclination(double trueAnomaly)
@@ -1552,6 +1907,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </remarks>
         internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
             => (GetTemperatureAtTrueAnomaly(trueAnomaly) * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
+
+        internal FloatRange[,] GetTemperatureMap(int width, int height)
+        {
+            using var winter = GetTemperatureMapWinter();
+            using var summer = GetTemperatureMapSummer();
+            if (winter is null || summer is null)
+            {
+                return new FloatRange[width, height];
+            }
+            return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
+        }
 
         /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.

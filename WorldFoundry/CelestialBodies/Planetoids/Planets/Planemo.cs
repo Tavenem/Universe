@@ -122,7 +122,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             Orbit? orbit,
             IMaterial? material,
             List<PlanetaryRing>? rings,
-            List<Location>? children)
+            List<Location>? children,
+            byte[]? depthMap,
+            byte[]? elevationMap,
+            byte[]? flowMap,
+            byte[][]? precipitationMaps,
+            byte[][]? snowfallMaps,
+            byte[]? temperatureMapSummer,
+            byte[]? temperatureMapWinter,
+            double? maxFlow)
             : base(
                 id,
                 name,
@@ -148,7 +156,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 maxMass,
                 orbit,
                 material,
-                children) => _rings = rings;
+                children,
+                depthMap,
+                elevationMap,
+                flowMap,
+                precipitationMaps,
+                snowfallMaps,
+                temperatureMapSummer,
+                temperatureMapWinter,
+                maxFlow) => _rings = rings;
 
         private Planemo(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -176,7 +192,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (byte[][])info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
+            (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
+            (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -215,6 +239,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             info.AddValue(nameof(Material), _material);
             info.AddValue(nameof(Rings), _rings);
             info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_depthMap), _depthMap);
+            info.AddValue(nameof(_elevationMap), _elevationMap);
+            info.AddValue(nameof(_flowMap), _flowMap);
+            info.AddValue(nameof(_precipitationMaps), _precipitationMaps);
+            info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
+            info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
+            info.AddValue(nameof(_temperatureMapWinter), _temperatureMapWinter);
+            info.AddValue(nameof(_maxFlow), _maxFlow);
         }
 
         internal override void GenerateOrbit(CelestialLocation orbitedObject)

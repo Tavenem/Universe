@@ -8,7 +8,6 @@ using NeverFoundry.MathAndScience.Time;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.WebSockets;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
@@ -18,7 +17,6 @@ using WorldFoundry.Climate;
 using WorldFoundry.Place;
 using WorldFoundry.Space;
 using WorldFoundry.Space.Galaxies;
-using WorldFoundry.SurfaceMapping;
 using WorldFoundry.WorldGrids;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
@@ -170,7 +168,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IMaterial? material,
             IMaterial? hydrosphere,
             List<PlanetaryRing>? rings,
-            List<Location>? children)
+            List<Location>? children,
+            byte[]? depthMap,
+            byte[]? elevationMap,
+            byte[]? flowMap,
+            byte[][]? precipitationMaps,
+            byte[][]? snowfallMaps,
+            byte[]? temperatureMapSummer,
+            byte[]? temperatureMapWinter,
+            double? maxFlow)
             : base(
                 id,
                 name,
@@ -197,7 +203,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 orbit,
                 material,
                 rings,
-                children)
+                children,
+                depthMap,
+                elevationMap,
+                flowMap,
+                precipitationMaps,
+                snowfallMaps,
+                temperatureMapSummer,
+                temperatureMapWinter,
+                maxFlow)
         {
             _surfaceAlbedo = surfaceAlbedo;
             _hydrosphere = hydrosphere;
@@ -231,7 +245,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
             (IMaterial?)info.GetValue(nameof(Hydrosphere), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (byte[][])info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
+            (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
+            (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
         /// <summary>
         /// Given a star, generates a terrestrial planet with the given parameters, and puts the
@@ -415,6 +437,14 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             info.AddValue(nameof(Hydrosphere), _hydrosphere);
             info.AddValue(nameof(Rings), _rings);
             info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_depthMap), _depthMap);
+            info.AddValue(nameof(_elevationMap), _elevationMap);
+            info.AddValue(nameof(_flowMap), _flowMap);
+            info.AddValue(nameof(_precipitationMaps), _precipitationMaps);
+            info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
+            info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
+            info.AddValue(nameof(_temperatureMapWinter), _temperatureMapWinter);
+            info.AddValue(nameof(_maxFlow), _maxFlow);
         }
 
         /// <summary>

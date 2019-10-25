@@ -62,7 +62,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             Number? maxMass,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            List<Location>? children,
+            byte[]? depthMap,
+            byte[]? elevationMap,
+            byte[]? flowMap,
+            byte[][]? precipitationMaps,
+            byte[][]? snowfallMaps,
+            byte[]? temperatureMapSummer,
+            byte[]? temperatureMapWinter,
+            double? maxFlow)
             : base(
                 id,
                 name,
@@ -88,7 +96,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 maxMass,
                 orbit,
                 material,
-                children) { }
+                children,
+                depthMap,
+                elevationMap,
+                flowMap,
+                precipitationMaps,
+                snowfallMaps,
+                temperatureMapSummer,
+                temperatureMapWinter,
+                maxFlow) { }
 
         private Comet(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -115,7 +131,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (byte[][])info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
+            (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
+            (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
+            (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
         internal override void GenerateOrbit(CelestialLocation orbitedObject)
         {

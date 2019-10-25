@@ -1,15 +1,15 @@
-﻿using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Place;
-using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Time;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using WorldFoundry.CelestialBodies.Planetoids;
+using WorldFoundry.Place;
 
 namespace WorldFoundry.SurfaceMapping
 {
@@ -179,7 +179,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
 
         /// <summary>
         /// Produces an equirectangular projection of an elevation map of the specified region.
@@ -215,7 +215,9 @@ namespace WorldFoundry.SurfaceMapping
             double? centralParallel = null,
             double? standardParallels = null,
             double? range = null)
-            => GetSurfaceMap(
+            => planet.HasElevationMap
+            ? planet.GetElevationMap(resolution * 2, resolution)
+            : GetSurfaceMap(
                 (lat, lon, _, __) => planet.GetNormalizedElevationAt(planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
                 resolution,
                 centralMeridian,
@@ -243,22 +245,13 @@ namespace WorldFoundry.SurfaceMapping
             this Planetoid planet,
             SurfaceRegion region,
             int resolution)
-        {
-            var elevationMap = planet.GetElevationMap(
+            => region.HasElevationMap
+            ? region.GetElevationMap(resolution * 2, resolution)
+            : planet.GetElevationMap(
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
-            if (region._elevationOverlay != null)
-            {
-                using var image = Image.LoadPixelData<Rgba32>(region._elevationOverlay, region._elevationOverlayWidth, region._elevationOverlayHeight);
-                return SurfaceMapImage.GetCompositeSurfaceMap(elevationMap, image.ImageToSurfaceMap(resolution * 2, resolution, false), false);
-            }
-            else
-            {
-                return elevationMap;
-            }
-        }
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
 
         /// <summary>
         /// Calculates the x and y coordinates on an equirectangular projection that correspond to a
@@ -329,7 +322,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
         }
 
         /// <summary>
@@ -357,7 +350,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
 
         /// <summary>
         /// Calculates the latitude and longitude that correspond to a set of coordinates from an
@@ -425,7 +418,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
 
         /// <summary>
         /// Calculates the position that corresponds to a set of coordinates from an equirectangular
@@ -452,7 +445,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
             return planet.LatitudeAndLongitudeToVector(lat, lon) - region.Position;
         }
 
@@ -523,6 +516,14 @@ namespace WorldFoundry.SurfaceMapping
                 throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
             }
             var doubleResolution = resolution * 2;
+
+            float[,] depthMap, flowMap;
+            if (planet.HasHydrologyMaps)
+            {
+                depthMap = planet.GetDepthMap(doubleResolution, resolution);
+                flowMap = planet.GetFlowMap(doubleResolution, resolution);
+                return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap);
+            }
 
             if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
@@ -681,7 +682,7 @@ namespace WorldFoundry.SurfaceMapping
             }
 
             var maxFlow = 0.0;
-            var flowMap = new float[doubleResolution, resolution];
+            flowMap = new float[doubleResolution, resolution];
             while (flows.Count > 0)
             {
                 var newFlows = new List<(int, int, float)>();
@@ -710,7 +711,7 @@ namespace WorldFoundry.SurfaceMapping
             // subsurface water table until reaching a point where more extended flow begins. This
             // avoids single-point fills with no outflows that would otherwise fill every localized
             // low point.
-            var depthMap = new float[doubleResolution, resolution];
+            depthMap = new float[doubleResolution, resolution];
             foreach (var ((xL, yL), points) in lakes)
             {
                 if (flowMap[xL, yL].IsNearlyZero())
@@ -724,7 +725,12 @@ namespace WorldFoundry.SurfaceMapping
                 }
             }
 
-            return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap, maxFlow);
+            if (maxFlow > planet.MaxFlow)
+            {
+                planet.MaxFlow = maxFlow;
+            }
+
+            return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap);
         }
 
         /// <summary>
@@ -779,6 +785,14 @@ namespace WorldFoundry.SurfaceMapping
             {
                 precipitationMap = planet.GetWeatherMaps(region, resolution, 1, elevationMap, averageElevation).TotalPrecipitationMap;
             }
+            if (region.HasHydrologyMaps)
+            {
+                return new HydrologyMaps(
+                    doubleResolution,
+                    resolution,
+                    region.GetDepthMap(doubleResolution, resolution),
+                    region.GetFlowMap(doubleResolution, resolution));
+            }
             var hydrologyMaps = planet.GetHydrologyMaps(
                   resolution,
                   planet.VectorToLongitude(region.Position),
@@ -787,23 +801,13 @@ namespace WorldFoundry.SurfaceMapping
                   elevationMap: elevationMap,
                   precipitationMap: precipitationMap,
                   averageElevation: averageElevation);
-            if (region._depthOverlay == null && region._flowOverlay == null)
+            if (!region.HasDepthMap && !region.HasFlowMap)
             {
                 return hydrologyMaps;
             }
-            var depth = hydrologyMaps.Depth;
-            var flow = hydrologyMaps.Flow;
-            if (region._depthOverlay != null)
-            {
-                using var image = Image.LoadPixelData<Rgba32>(region._depthOverlay, region._depthOverlayWidth, region._depthOverlayHeight);
-                depth = SurfaceMapImage.GetCompositeSurfaceMap(depth, image.ImageToSurfaceMap(doubleResolution, resolution, false));
-            }
-            if (region._flowOverlay != null)
-            {
-                using var image = Image.LoadPixelData<Rgba32>(region._flowOverlay, region._flowOverlayWidth, region._flowOverlayHeight);
-                flow = SurfaceMapImage.GetCompositeSurfaceMap(flow, image.ImageToSurfaceMap(doubleResolution, resolution, false));
-            }
-            return new HydrologyMaps(doubleResolution, resolution, depth, flow, hydrologyMaps.MaxFlow);
+            var depth = region.HasDepthMap ? region.GetDepthMap(doubleResolution, resolution) : hydrologyMaps.Depth;
+            var flow = region.HasFlowMap ? region.GetFlowMap(doubleResolution, resolution) : hydrologyMaps.Flow;
+            return new HydrologyMaps(doubleResolution, resolution, depth, flow);
         }
 
         /// <summary>
@@ -907,7 +911,7 @@ namespace WorldFoundry.SurfaceMapping
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
-                range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared));
+                range: (double)((Frustum)region.Shape).FieldOfViewAngle);
 
         /// <summary>
         /// Gets the snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
@@ -1255,102 +1259,144 @@ namespace WorldFoundry.SurfaceMapping
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
 
-            var temperatureRanges = GetSurfaceMap(
-                (lat, _, x, y) =>
-                {
-                    var winterLatitudes = new Dictionary<double, double>();
-                    var summerLatitudes = new Dictionary<double, double>();
-                    var latitudeTemperatures = new Dictionary<double, double>();
-                    var elevationTemperatures = new Dictionary<(double, int), float>();
-
-                    var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
-
-                    if (!winterLatitudes.TryGetValue(lat, out var winterLat))
-                    {
-                        winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -planet.AxialTilt));
-                        winterLatitudes.Add(lat, winterLat);
-                    }
-                    if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
-                    {
-                        winterTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(planet.WinterSolsticeTrueAnomaly, winterLat);
-                        latitudeTemperatures.Add(winterLat, winterTemp);
-                    }
-                    if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
-                    {
-                        winterTempAtElevation = (float)planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
-                        elevationTemperatures.Add((winterTemp, roundedElevation), winterTempAtElevation);
-                    }
-
-                    if (!summerLatitudes.TryGetValue(lat, out var summerLat))
-                    {
-                        summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, planet.AxialTilt));
-                        summerLatitudes.Add(lat, summerLat);
-                    }
-                    if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
-                    {
-                        summerTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(planet.SummerSolsticeTrueAnomaly, summerLat);
-                        latitudeTemperatures.Add(summerLat, summerTemp);
-                    }
-                    if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
-                    {
-                        summerTempAtElevation = (float)planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
-                        elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
-                    }
-
-                    return new FloatRange(winterTempAtElevation, summerTempAtElevation);
-                },
-                resolution,
-                centralMeridian,
-                centralParallel,
-                standardParallels,
-                range);
-
-            var proportionOfYear = 1f / steps;
-            var proportionOfYearAtMidpoint = 0f;
-            var proportionOfSummerAtMidpoint = 0f;
-            var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var trueAnomalyPerSeason = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
-
-            var precipitationMaps = new PrecipitationMaps[steps];
-            for (var i = 0; i < steps; i++)
+            float[][,] precipitationMaps, snowfallMaps;
+            PrecipitationMaps[] precipMaps;
+            if (planet.HasAllWeatherMaps)
             {
-                var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
+                precipitationMaps = planet.GetPrecipitationMaps(doubleResolution, resolution);
+                snowfallMaps = planet.GetSnowfallMaps(doubleResolution, resolution);
+                precipMaps = new PrecipitationMaps[precipitationMaps.Length];
+                for (var i = 0; i < precipitationMaps.Length; i++)
+                {
+                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                }
+                return new WeatherMaps(
+                    planet,
+                    doubleResolution,
+                    resolution,
+                    elevationMap,
+                    precipMaps,
+                    planet.GetTemperatureMap(doubleResolution, resolution),
+                    resolution,
+                    centralMeridian,
+                    centralParallel,
+                    standardParallels,
+                    range,
+                    averageElevation);
+            }
 
-                // Precipitation & snowfall
-                var snowfallMap = new float[doubleResolution, resolution];
-                var precipMap = GetSurfaceMap(
-                    (lat, lon, x, y) =>
+            var temperatureRanges = planet.HasTemperatureMap
+                ? planet.GetTemperatureMap(doubleResolution, resolution)
+                : GetSurfaceMap(
+                    (lat, _, x, y) =>
                     {
-                        if (planet.Atmosphere.MaxPrecipitation.IsNearlyZero())
+                        var winterLatitudes = new Dictionary<double, double>();
+                        var summerLatitudes = new Dictionary<double, double>();
+                        var latitudeTemperatures = new Dictionary<double, double>();
+                        var elevationTemperatures = new Dictionary<(double, int), float>();
+
+                        var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
+
+                        if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                         {
-                            snowfallMap[x, y] = 0;
-                            return 0;
+                            winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -planet.AxialTilt));
+                            winterLatitudes.Add(lat, winterLat);
                         }
-                        else
+                        if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
                         {
-                            var precipitation = planet.GetPrecipitation(
-                                planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
-                                planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
-                                temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
-                                proportionOfYear,
-                                out var snow);
-                            snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
-                            return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
+                            winterTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(planet.WinterSolsticeTrueAnomaly, winterLat);
+                            latitudeTemperatures.Add(winterLat, winterTemp);
                         }
+                        if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
+                        {
+                            winterTempAtElevation = (float)planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
+                            elevationTemperatures.Add((winterTemp, roundedElevation), winterTempAtElevation);
+                        }
+
+                        if (!summerLatitudes.TryGetValue(lat, out var summerLat))
+                        {
+                            summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, planet.AxialTilt));
+                            summerLatitudes.Add(lat, summerLat);
+                        }
+                        if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
+                        {
+                            summerTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(planet.SummerSolsticeTrueAnomaly, summerLat);
+                            latitudeTemperatures.Add(summerLat, summerTemp);
+                        }
+                        if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
+                        {
+                            summerTempAtElevation = (float)planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
+                            elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
+                        }
+
+                        return new FloatRange(winterTempAtElevation, summerTempAtElevation);
                     },
                     resolution,
                     centralMeridian,
                     centralParallel,
                     standardParallels,
                     range);
-                precipitationMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipMap, snowfallMap);
 
-                proportionOfYearAtMidpoint += proportionOfYear;
-                proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5f - proportionOfYearAtMidpoint) / 0.5f);
-                trueAnomaly += trueAnomalyPerSeason;
-                if (trueAnomaly >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+            if (planet.HasPrecipitationMap && planet.HasSnowfallMap && planet.MappedSeasons >= steps)
+            {
+                precipitationMaps = planet.GetPrecipitationMaps(doubleResolution, resolution);
+                snowfallMaps = planet.GetSnowfallMaps(doubleResolution, resolution);
+                precipMaps = new PrecipitationMaps[precipitationMaps.Length];
+                var step = planet.MappedSeasons == steps ? 1 : Math.Max(1, (int)Math.Floor(planet.MappedSeasons / (double)steps));
+                for (var i = 0; i < precipitationMaps.Length; i += step)
                 {
-                    trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                }
+            }
+            else
+            {
+                var proportionOfYear = 1f / steps;
+                var proportionOfYearAtMidpoint = 0f;
+                var proportionOfSummerAtMidpoint = 0f;
+                var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
+                var trueAnomalyPerSeason = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
+
+                precipMaps = new PrecipitationMaps[steps];
+                for (var i = 0; i < steps; i++)
+                {
+                    var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
+
+                    // Precipitation & snowfall
+                    var snowfallMap = new float[doubleResolution, resolution];
+                    var precipMap = GetSurfaceMap(
+                        (lat, lon, x, y) =>
+                        {
+                            if (planet.Atmosphere.MaxPrecipitation.IsNearlyZero())
+                            {
+                                snowfallMap[x, y] = 0;
+                                return 0;
+                            }
+                            else
+                            {
+                                var precipitation = planet.GetPrecipitation(
+                                    planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
+                                    planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
+                                    temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
+                                    proportionOfYear,
+                                    out var snow);
+                                snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
+                                return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
+                            }
+                        },
+                        resolution,
+                        centralMeridian,
+                        centralParallel,
+                        standardParallels,
+                        range);
+                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipMap, snowfallMap);
+
+                    proportionOfYearAtMidpoint += proportionOfYear;
+                    proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5f - proportionOfYearAtMidpoint) / 0.5f);
+                    trueAnomaly += trueAnomalyPerSeason;
+                    if (trueAnomaly >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+                    {
+                        trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                    }
                 }
             }
 
@@ -1359,7 +1405,7 @@ namespace WorldFoundry.SurfaceMapping
                 doubleResolution,
                 resolution,
                 elevationMap,
-                precipitationMaps,
+                precipMaps,
                 temperatureRanges,
                 resolution,
                 centralMeridian,
@@ -1416,11 +1462,39 @@ namespace WorldFoundry.SurfaceMapping
             var doubleResolution = resolution * 2;
             var longitude = planet.VectorToLongitude(region.Position);
             var latitude = planet.VectorToLatitude(region.Position);
+            var range = (double)((Frustum)region.Shape).FieldOfViewAngle;
+
             if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }
-            var range = (double)(region.Shape.ContainingRadius / planet.RadiusSquared);
+
+            float[][,] precipitationMaps, snowfallMaps;
+            PrecipitationMaps[] precipMaps;
+
+            if (region.HasAllWeatherMaps)
+            {
+                precipitationMaps = region.GetPrecipitationMaps(doubleResolution, resolution);
+                snowfallMaps = region.GetSnowfallMaps(doubleResolution, resolution);
+                precipMaps = new PrecipitationMaps[precipitationMaps.Length];
+                for (var i = 0; i < precipitationMaps.Length; i++)
+                {
+                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                }
+                return new WeatherMaps(
+                    planet,
+                    doubleResolution,
+                    resolution,
+                    elevationMap,
+                    precipMaps,
+                    region.GetTemperatureMap(doubleResolution, resolution),
+                    resolution,
+                    longitude,
+                    latitude,
+                    range: range,
+                    averageElevation: averageElevation);
+            }
+
             var weatherMaps = planet.GetWeatherMaps(
                 resolution,
                 longitude,
@@ -1429,58 +1503,26 @@ namespace WorldFoundry.SurfaceMapping
                 steps: steps,
                 elevationMap: elevationMap,
                 averageElevation: averageElevation);
-            if (region._temperatureOverlaySummer == null && region._temperatureOverlayWinter == null
-                && region._precipitationOverlays == null && region._snowfallOverlays == null)
+            if (!region.HasAnyWeatherMaps)
             {
                 return weatherMaps;
             }
 
-            var tempRanges = weatherMaps.TemperatureRangeMap;
-            if (region._temperatureOverlaySummer != null || region._temperatureOverlayWinter != null)
-            {
-                var summer = region._temperatureOverlaySummer ?? region._temperatureOverlayWinter;
-                var winter = region._temperatureOverlayWinter ?? region._temperatureOverlaySummer;
-                var height = region._temperatureOverlaySummer == null ? region._temperatureOverlayHeightWinter : region._temperatureOverlayHeightSummer;
-                var width = region._temperatureOverlaySummer == null ? region._temperatureOverlayWidthWinter : region._temperatureOverlayWidthSummer;
-                using var imageSummer = Image.LoadPixelData<Rgba32>(summer, width, height);
-                using var imageWinter = Image.LoadPixelData<Rgba32>(winter, width, height);
-                tempRanges = SurfaceMapImage.GetCompositeSurfaceMap(
-                    tempRanges,
-                    imageWinter.ImageToSurfaceMap(doubleResolution, resolution, false),
-                    imageSummer.ImageToSurfaceMap(doubleResolution, resolution, false));
-            }
-
-            var precipitationMaps = weatherMaps.PrecipitationMaps.Select(x => x.PrecipitationMap).ToArray();
-            var snowfallMaps = weatherMaps.PrecipitationMaps.Select(x => x.SnowfallMap).ToArray();
-            if (region._precipitationOverlays != null)
-            {
-                var overlayRatio = (double)region._precipitationOverlays.Length / precipitationMaps.Length;
-                for (var i = 0; i < precipitationMaps.Length; i++)
-                {
-                    var nearestOverlay = region._precipitationOverlays[(int)Math.Floor(i * overlayRatio)];
-                    using var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._precipitationOverlayWidth, region._precipitationOverlayHeight);
-                    precipitationMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
-                        precipitationMaps[i],
-                        image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                }
-            }
-            if (region._snowfallOverlays != null)
-            {
-                var overlayRatio = (double)region._snowfallOverlays.Length / snowfallMaps.Length;
-                for (var i = 0; i < snowfallMaps.Length; i++)
-                {
-                    var nearestOverlay = region._snowfallOverlays[(int)Math.Floor(i * overlayRatio)];
-                    using var image = Image.LoadPixelData<Rgba32>(nearestOverlay, region._snowfallOverlayWidth, region._snowfallOverlayHeight);
-                    snowfallMaps[i] = SurfaceMapImage.GetCompositeSurfaceMap(
-                        snowfallMaps[i],
-                        image.ImageToSurfaceMap(doubleResolution, resolution, false));
-                }
-            }
-            var precipMaps = new PrecipitationMaps[precipitationMaps.Length];
+            precipitationMaps = region.HasPrecipitationMap
+                ? region.GetPrecipitationMaps(doubleResolution, resolution)
+                : weatherMaps.PrecipitationMaps.Select(x => x.PrecipitationMap).ToArray();
+            snowfallMaps = region.HasSnowfallMap
+                ? region.GetSnowfallMaps(doubleResolution, resolution)
+                : weatherMaps.PrecipitationMaps.Select(x => x.SnowfallMap).ToArray();
+            precipMaps = new PrecipitationMaps[precipitationMaps.Length];
             for (var i = 0; i < precipitationMaps.Length; i++)
             {
                 precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
             }
+
+            var tempRanges = region.HasTemperatureMap
+                ? region.GetTemperatureMap(doubleResolution, resolution)
+                : weatherMaps.TemperatureRangeMap;
 
             return new WeatherMaps(
                 planet,

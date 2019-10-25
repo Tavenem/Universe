@@ -28,7 +28,7 @@ namespace WorldFoundry.ConsoleTester
                     var planet = TerrestrialPlanet.GetPlanetForNewUniverse();
                     if (planet == null)
                     {
-                        Console.Write($"Failed to generate planet.");
+                        Console.Write("Failed to generate planet.");
                     }
                     else
                     {

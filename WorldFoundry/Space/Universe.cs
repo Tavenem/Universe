@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
+using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
 {
@@ -16,7 +17,7 @@ namespace WorldFoundry.Space
     [Serializable]
     public class Universe : CelestialLocation
     {
-        private static readonly List<ChildDefinition> BaseChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _BaseChildDefinitions = new List<ChildDefinition>
         {
             new ChildDefinition(typeof(GalaxySupercluster), GalaxySupercluster.Space, new Number(5.8, -26)),
         };
@@ -24,7 +25,7 @@ namespace WorldFoundry.Space
         private protected override string BaseTypeName => "Universe";
 
         private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(BaseChildDefinitions);
+            => base.ChildDefinitions.Concat(_BaseChildDefinitions);
 
         /// <summary>
         /// The <see cref="Space.Universe"/> which contains this <see cref="CelestialLocation"/>, if any.
@@ -60,17 +61,20 @@ namespace WorldFoundry.Space
                 : new Time();
         }
 
-        private Universe(string id, string name, Time time)
-        {
-            Id = id;
-            Name = name;
-            Time = time;
-        }
+        private Universe(
+            string id,
+            string? name,
+            IMaterial? material,
+            Time time,
+            List<Location>? children) : base(id, name, false, 0, Vector3.Zero, null, material, children)
+            => Time = time;
 
         private Universe(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string)info.GetValue(nameof(Name), typeof(string)),
-            (Time)info.GetValue(nameof(Time), typeof(Time))) { }
+            (IMaterial)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (Time)info.GetValue(nameof(Time), typeof(Time)),
+            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -85,7 +89,9 @@ namespace WorldFoundry.Space
         {
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
+            info.AddValue(nameof(Material), _material);
             info.AddValue(nameof(Time), Time);
+            info.AddValue(nameof(Children), Children.ToList());
         }
 
         private protected override Number GetMass() => Number.PositiveInfinity;
