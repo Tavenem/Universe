@@ -8,12 +8,12 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
+using NeverFoundry.WorldFoundry.Place;
 
-namespace WorldFoundry.Space.AsteroidFields
+namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
 {
     /// <summary>
     /// A region of space with a high concentration of asteroids.

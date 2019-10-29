@@ -12,16 +12,16 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
-using WorldFoundry.Space.Galaxies;
-using WorldFoundry.WorldGrids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Space.Galaxies;
+using NeverFoundry.WorldFoundry.WorldGrids;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
     /// A primarily rocky planet, relatively small in comparison to gas and ice giants.
@@ -297,6 +297,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// Given a star, generates a terrestrial planet with the given parameters, and puts the
         /// planet in orbit around the star.
         /// </summary>
+        /// <param name="system">
+        /// A star system in which the new planet will exist.
+        /// </param>
         /// <param name="star">
         /// A star which the new planet will orbit, at a distance suitable for habitability.
         /// </param>
@@ -577,14 +580,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// </summary>
         /// <param name="habitabilityRequirements">The collection of <see
         /// cref="HabitabilityRequirements"/>.</param>
-        /// <param name="reason">
-        /// Set to an <see cref="UninhabitabilityReason"/> indicating the reason(s) the planet is
-        /// uninhabitable.
-        /// </param>
         /// <returns>
-        /// <see langword="true"/> if this planet is habitable by a species with the given
-        /// requirements; <see langword="false"/>
-        /// otherwise.
+        /// The <see cref="UninhabitabilityReason"/> indicating the reason(s) the planet is
+        /// uninhabitable, if any.
         /// </returns>
         public async Task<UninhabitabilityReason> IsHabitableAsync(HabitabilityRequirements habitabilityRequirements)
         {
@@ -1684,12 +1682,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             Number? semiMajorAxis;
             if (planetParams?.RevolutionPeriod.HasValue == true)
             {
-                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
+                semiMajorAxis = NeverFoundry.WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
                 await GenerateOrbitAsync(orbitedObject, semiMajorAxis.Value, ta).ConfigureAwait(false);
             }
             else
             {
-                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                     this,
                     orbitedObject,
                     await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
@@ -1832,7 +1830,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 
         private async Task GenerateOrbitAsync(CelestialLocation orbitedObject, Number semiMajorAxis, double trueAnomaly)
         {
-            await WorldFoundry.Space.Orbit.SetOrbitAsync(
+            await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                   this,
                   orbitedObject,
                   (1 - Eccentricity) * semiMajorAxis,

@@ -7,12 +7,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
     /// <summary>
     /// A dwarf planet: a body large enough to form a roughly spherical shape under its own gravity,
@@ -168,7 +168,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
         internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
-            => await WorldFoundry.Space.Orbit.SetOrbitAsync(
+            => await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
                 await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),

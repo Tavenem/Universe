@@ -5,9 +5,9 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.BlackHoles;
+using NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles;
 
-namespace WorldFoundry.Space.Galaxies
+namespace NeverFoundry.WorldFoundry.Space.Galaxies
 {
     /// <summary>
     /// A small, gravitationally-bound collection of stars, gas, dust, and dark matter.

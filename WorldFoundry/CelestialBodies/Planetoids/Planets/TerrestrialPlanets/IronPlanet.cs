@@ -4,11 +4,11 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
     /// A relatively small terrestrial planet consisting of an unusually large iron-nickel core, and

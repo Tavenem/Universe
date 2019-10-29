@@ -9,7 +9,7 @@ using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// The Universe is the top-level celestial "object" in a hierarchy.

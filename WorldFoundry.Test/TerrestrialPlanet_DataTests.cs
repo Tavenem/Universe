@@ -3,11 +3,11 @@ using Newtonsoft.Json;
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.Space;
-using WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 
-namespace WorldFoundry.Test
+namespace NeverFoundry.WorldFoundry.Test
 {
     [TestClass]
     public class TerrestrialPlanet_DataTests

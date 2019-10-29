@@ -3,7 +3,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
 {
     /// <summary>
     /// Contains information about a planetary ring (usually one of a collection that makes up a ring system).

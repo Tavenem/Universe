@@ -1,4 +1,4 @@
-﻿namespace WorldFoundry.Climate
+﻿namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Static methods related to climate.

@@ -11,15 +11,15 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.CelestialBodies.Planetoids.Planets;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Place;
-using WorldFoundry.Space.AsteroidFields;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space.AsteroidFields;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A region of space containing a system of stars, and the bodies which orbit that system.
@@ -388,7 +388,7 @@ namespace WorldFoundry.Space
             {
                 await AddCompanionStarAsync(companions, orbited,
                     (Randomizer.Instance.LogNormalDistributionSample(0, 1) * new Number(1.5768, 9))
-                    + (WorldFoundry.Space.Orbit.GetHillSphereRadius(
+                    + (NeverFoundry.WorldFoundry.Space.Orbit.GetHillSphereRadius(
                         companion!.Value.star,
                         companion!.Value.orbited,
                         companion!.Value.semiMajorAxis,
@@ -875,7 +875,7 @@ namespace WorldFoundry.Space
 
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
-                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                     star,
                     orbited,
                     periapsis,

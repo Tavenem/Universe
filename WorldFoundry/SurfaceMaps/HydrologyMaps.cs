@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A set of two-dimensional arrays corresponding to points on an equirectangular projected map
@@ -58,7 +58,6 @@ namespace WorldFoundry.SurfaceMapping
         /// <param name="yLength">The length of the "Y" (1-index) dimension of the maps.</param>
         /// <param name="depth">A depth map.</param>
         /// <param name="flow">A flow map.</param>
-        /// <param name="maxFlow">The maximum flow rate of the map, in m³/s.</param>
         public HydrologyMaps(
             int xLength,
             int yLength,

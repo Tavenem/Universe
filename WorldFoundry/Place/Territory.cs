@@ -7,7 +7,7 @@ using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.Place
+namespace NeverFoundry.WorldFoundry.Place
 {
     /// <summary>
     /// A collection of locations which define a conceptually unified area (though they may not form

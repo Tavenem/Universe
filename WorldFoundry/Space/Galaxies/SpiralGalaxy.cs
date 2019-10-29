@@ -6,7 +6,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.Space.Galaxies
+namespace NeverFoundry.WorldFoundry.Space.Galaxies
 {
     /// <summary>
     /// A spiral-shaped, gravitationally-bound collection of stars, gas, dust, and dark matter.

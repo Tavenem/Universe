@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace WorldFoundry
+namespace NeverFoundry.WorldFoundry
 {
     /// <summary>
     /// Static methods for storing and retrieving <see cref="IdItem"/> instances.

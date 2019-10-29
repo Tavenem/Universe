@@ -3,7 +3,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 
-namespace WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// Static methods related to images with surface map data.

@@ -7,10 +7,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Place;
 
-namespace WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// Static methods to assist with producing equirectangular projections that map the surface of
@@ -955,19 +955,10 @@ namespace WorldFoundry.SurfaceMapping
         /// </para>
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
-        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, <see cref="GetWeatherMaps(Planetoid,
-        /// int, NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?, int,
-        /// NeverFoundry.MathAndScience.Numerics.Number[,],
-        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, and <see
-        /// cref="GetHydrologyMaps(Planetoid, int, NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?, NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number?,
-        /// NeverFoundry.MathAndScience.Numerics.Number[,], float[,],
-        /// NeverFoundry.MathAndScience.Numerics.Number?)"/> separately.
+        /// double?, double?, double?, double?)"/>, <see cref="GetWeatherMapsAsync(Planetoid, int,
+        /// double?, double?, double?, double?, int, double[,], double?)"/>, and <see
+        /// cref="GetHydrologyMapsAsync(Planetoid, int, double?, double?, double?, double?,
+        /// double[,], float[,], double?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -1035,12 +1026,9 @@ namespace WorldFoundry.SurfaceMapping
         /// </para>
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid,
-        /// SurfaceRegion, int)"/>, <see cref="GetWeatherMaps(Planetoid, SurfaceRegion, int, int,
-        /// NeverFoundry.MathAndScience.Numerics.Number[,],
-        /// NeverFoundry.MathAndScience.Numerics.Number?)"/>, and <see
-        /// cref="GetHydrologyMaps(Planetoid, SurfaceRegion, int,
-        /// NeverFoundry.MathAndScience.Numerics.Number[,], float[,],
-        /// NeverFoundry.MathAndScience.Numerics.Number?)"/> separately.
+        /// SurfaceRegion, int)"/>, <see cref="GetWeatherMapsAsync(Planetoid, SurfaceRegion, int,
+        /// int, double[,], double?)"/>, and <see cref="GetHydrologyMapsAsync(Planetoid,
+        /// SurfaceRegion, int, double[,], float[,], double?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>

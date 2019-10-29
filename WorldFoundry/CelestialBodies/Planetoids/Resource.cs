@@ -5,7 +5,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace WorldFoundry.CelestialBodies.Planetoids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// A resource which may be found on a <see cref="Planetoid"/>.

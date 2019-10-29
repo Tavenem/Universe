@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
-using WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 
-namespace WorldFoundry.WorldGrids
+namespace NeverFoundry.WorldFoundry.WorldGrids
 {
     /// <summary>
     /// A specialized data structure to describe the topography of the surface of a <see cref="Planetoid"/>.

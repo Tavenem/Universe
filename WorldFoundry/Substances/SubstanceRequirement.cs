@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace WorldFoundry
+namespace NeverFoundry.WorldFoundry
 {
     /// <summary>
     /// The requirements for a particular component in a mixture.

@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.Space.Galaxies;
+using NeverFoundry.WorldFoundry.Space.Galaxies;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A collection of gravitationally-bound galaxies, mostly small dwarfs orbiting a few large galaxies.

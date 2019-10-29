@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace WorldFoundry.WorldGrids
+namespace NeverFoundry.WorldFoundry.WorldGrids
 {
     /// <summary>
     /// Represents a corner between three tiles on an <see cref="WorldGrid"/>.

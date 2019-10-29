@@ -5,11 +5,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.Climate;
-using WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 
-namespace WorldFoundry.Test
+namespace NeverFoundry.WorldFoundry.Test
 {
     [TestClass]
     public class TerrestrialPlanet_Tests

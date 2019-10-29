@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.BlackHoles;
-using WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 
-namespace WorldFoundry.Space.Galaxies
+namespace NeverFoundry.WorldFoundry.Space.Galaxies
 {
     /// <summary>
     /// A small, dense collection of stars.

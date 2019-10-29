@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// A silicate asteroid (rocky with significant metal content).

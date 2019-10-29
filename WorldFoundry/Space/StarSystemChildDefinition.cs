@@ -3,10 +3,10 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Place;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// Defines a type of <see cref="StarSystem"/> child a <see cref="CelestialLocation"/> may have,
@@ -15,7 +15,8 @@ namespace WorldFoundry.Space
     public class StarSystemChildDefinition<T> : ChildDefinition<StarSystem>, IStarSystemChildDefinition where T : Star
     {
         /// <summary>
-        /// The <see cref="Stars.LuminosityClass"/> of the primary star of a star system child.
+        /// The <see cref="CelestialBodies.Stars.LuminosityClass"/> of the primary star of a star
+        /// system child.
         /// </summary>
         public LuminosityClass? LuminosityClass { get; }
 
@@ -25,24 +26,26 @@ namespace WorldFoundry.Space
         public bool PopulationII { get; }
 
         /// <summary>
-        /// The <see cref="Stars.SpectralClass"/> of the primary star of a star system child.
+        /// The <see cref="CelestialBodies.Stars.SpectralClass"/> of the primary star of a star
+        /// system child.
         /// </summary>
         public SpectralClass? SpectralClass { get; }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="ChildDefinition"/>.
+        /// Initializes a new instance of <see cref="StarSystemChildDefinition{T}"/>.
         /// </summary>
         /// <param name="density">The density of this type of child within the containing parent
         /// region.</param>
         public StarSystemChildDefinition(Number density) : base(StarSystem.Space, density) { }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="StarSystemChildDefinition{T, U}"/>.
+        /// Initializes a new instance of <see cref="StarSystemChildDefinition{T}"/>.
         /// </summary>
-        /// <param name="spectralClass">The <see cref="Stars.SpectralClass"/> of the primary star of
-        /// the star system.</param>
+        /// <param name="spectralClass">The <see cref="CelestialBodies.Stars.SpectralClass"/> of the
+        /// primary star of the star system.</param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of the primary star of the star system.
+        /// The <see cref="CelestialBodies.Stars.LuminosityClass"/> of the primary star of the star
+        /// system.
         /// </param>
         /// <param name="populationII">True if the primary star of the star system is to be a
         /// Population II star.</param>
@@ -57,14 +60,15 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Initializes a new instance of <see cref="StarSystemChildDefinition{T, U}"/>.
+        /// Initializes a new instance of <see cref="StarSystemChildDefinition{T}"/>.
         /// </summary>
         /// <param name="density">The density of this type of child within the containing parent
         /// region.</param>
-        /// <param name="spectralClass">The <see cref="Stars.SpectralClass"/> of the primary star of
-        /// the star system.</param>
+        /// <param name="spectralClass">The <see cref="CelestialBodies.Stars.SpectralClass"/> of the
+        /// primary star of the star system.</param>
         /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of the primary star of the star system.
+        /// The <see cref="CelestialBodies.Stars.LuminosityClass"/> of the primary star of the star
+        /// system.
         /// </param>
         /// <param name="populationII">True if the primary star of the star system is to be a
         /// Population II star.</param>
@@ -80,11 +84,12 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines whether this <see cref="ChildDefinition"/> instance's parameters are
-        /// satisfied by the given <paramref name="other"/> <see cref="ChildDefinition"/> instance's
-        /// parameters, discounting <see cref="Density"/> and <see cref="Space"/>.
+        /// Determines whether this <see cref="IChildDefinition"/> instance's parameters are
+        /// satisfied by the given <paramref name="other"/> <see cref="IChildDefinition"/>
+        /// instance's parameters, discounting <see cref="IChildDefinition.Density"/> and <see
+        /// cref="IChildDefinition.Space"/>.
         /// </summary>
-        /// <param name="other">A <see cref="ChildDefinition"/> to test against this
+        /// <param name="other">A <see cref="IChildDefinition"/> to test against this
         /// instance.</param>
         /// <returns><see langword="true"/> if this instance's parameters are satisfied by the
         /// <paramref name="other"/> instance's parameters; otherwise <see
@@ -121,9 +126,10 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines whether this <see cref="ChildDefinition"/> instance's parameters are
-        /// satisfied by the given <paramref name="location"/>, discounting <see cref="Density"/>
-        /// and <see cref="Space"/>.
+        /// Determines whether this <see cref="IChildDefinition"/> instance's parameters are
+        /// satisfied by the given <paramref name="location"/>, discounting <see
+        /// cref="IChildDefinition.Density"/>
+        /// and <see cref="IChildDefinition.Space"/>.
         /// </summary>
         /// <param name="location">A <see cref="Location"/> to test against this instance.</param>
         /// <returns><see langword="true"/> if this instance's parameters are satisfied by the given
@@ -162,13 +168,13 @@ namespace WorldFoundry.Space
 
         /// <summary>
         /// Gets a new <see cref="StarSystem"/> as defined by this <see
-        /// cref="StarSystemChildDefinition{T, U}"/>.
+        /// cref="StarSystemChildDefinition{T}"/>.
         /// </summary>
         /// <param name="parent">The location which contains the new one.</param>
         /// <param name="position">The position of the new location relative to the center of its
         /// <paramref name="parent"/>.</param>
         /// <returns>A new <see cref="StarSystem"/> as defined by this <see
-        /// cref="StarSystemChildDefinition{T, U}"/>.</returns>
+        /// cref="StarSystemChildDefinition{T}"/>.</returns>
         public Task<StarSystem?> GetStarSystemAsync(CelestialLocation parent, Vector3 position)
             => StarSystem.GetNewInstanceAsync<T>(
                 parent,

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Climate;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
     /// A collection of parameters for habitability by a given form of life which a <see

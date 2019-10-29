@@ -1,6 +1,6 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// The parameters which describe an orbit.

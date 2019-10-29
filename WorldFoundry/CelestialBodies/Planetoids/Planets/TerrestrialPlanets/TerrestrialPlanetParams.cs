@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Climate;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
     /// A set of parameters which constrains the random generation of a <see cref="TerrestrialPlanet"/>.

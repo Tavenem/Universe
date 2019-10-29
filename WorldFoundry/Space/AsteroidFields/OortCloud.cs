@@ -6,11 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using NeverFoundry.WorldFoundry.Place;
 
-namespace WorldFoundry.Space.AsteroidFields
+namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
 {
     /// <summary>
     /// A shell surrounding a star with a high concentration of cometary bodies.
@@ -83,8 +83,6 @@ namespace WorldFoundry.Space.AsteroidFields
         /// Gets a new <see cref="AsteroidField"/> instance.
         /// </summary>
         /// <param name="parent">The location which contains the new one.</param>
-        /// <param name="position">The position of the new location relative to the center of its
-        /// <paramref name="parent"/>.</param>
         /// <param name="starSystemRadius">
         /// The outer radius of the <see cref="StarSystem"/> in which this <see cref="OortCloud"/> is located.
         /// </param>

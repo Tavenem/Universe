@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A charged cloud of interstellar gas and dust.

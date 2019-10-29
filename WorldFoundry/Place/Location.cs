@@ -7,9 +7,9 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.Place
+namespace NeverFoundry.WorldFoundry.Place
 {
     /// <summary>
     /// A place in a universe, with a location that defines its position, and a shape that defines

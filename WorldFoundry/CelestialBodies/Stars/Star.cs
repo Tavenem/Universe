@@ -2,8 +2,8 @@
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
@@ -12,7 +12,7 @@ using NeverFoundry.MathAndScience.Randomization;
 using System.Threading.Tasks;
 using System.Reflection;
 
-namespace WorldFoundry.CelestialBodies.Stars
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 {
     /// <summary>
     /// A stellar body.

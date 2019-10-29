@@ -2,10 +2,10 @@
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 
-namespace WorldFoundry.ConsoleTester
+namespace NeverFoundry.WorldFoundry.ConsoleTester
 {
     public static class Program
     {

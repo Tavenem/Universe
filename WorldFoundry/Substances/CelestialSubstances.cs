@@ -2,7 +2,7 @@
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Chemistry.Elements;
 
-namespace WorldFoundry
+namespace NeverFoundry.WorldFoundry
 {
     internal static class CelestialSubstances
     {

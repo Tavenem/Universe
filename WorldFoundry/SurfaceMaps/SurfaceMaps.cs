@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Climate;
 
-namespace WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A collection of surface and weather maps for a <see

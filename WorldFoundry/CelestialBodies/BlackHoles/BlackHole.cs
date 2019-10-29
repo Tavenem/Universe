@@ -6,9 +6,9 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.BlackHoles
+namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
 {
     /// <summary>
     /// A gravitational singularity.

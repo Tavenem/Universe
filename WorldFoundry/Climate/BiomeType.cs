@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.Climate
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Describes the general biome of a location (a less specific grouping than a

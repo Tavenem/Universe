@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.CelestialBodies.Stars
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 {
     /// <summary>
     /// A blue giant star.

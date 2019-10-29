@@ -5,9 +5,9 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// The remnants of a red giant, which have left behind an ionized gas cloud surrounding a white

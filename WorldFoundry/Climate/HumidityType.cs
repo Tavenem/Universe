@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.Climate
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Indicates the relative level of humidity in a location. A <see cref="FlagsAttribute"/> <see

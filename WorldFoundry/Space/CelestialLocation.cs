@@ -4,8 +4,8 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
@@ -16,7 +16,7 @@ using NeverFoundry.MathAndScience.Time;
 using System.Threading.Tasks;
 using System.Reflection;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A place in a universe, with a location that defines its position, and a shape that defines
@@ -267,7 +267,7 @@ namespace WorldFoundry.Space
         /// <typeparam name="T">The type of <see cref="CelestialLocation"/> to generate.</typeparam>
         /// <param name="parentId">The id of the location which contains the new one.</param>
         /// <param name="position">The position of the new location relative to the center of its
-        /// <paramref name="parent"/>.</param>
+        /// parent.</param>
         /// <param name="orbit">The orbit to set for the new <see cref="CelestialLocation"/>, if
         /// any.</param>
         /// <returns>A new instance of the indicated <see cref="CelestialLocation"/> type, or <see
@@ -355,6 +355,7 @@ namespace WorldFoundry.Space
         /// restricts the number of iterations performed.
         /// </para>
         /// </summary>
+        /// <param name="location">The location within which children will be generated.</param>
         /// <remarks>
         /// <para>
         /// NOTE: Generated children are not automatically saved to the data source. This permits
@@ -412,7 +413,8 @@ namespace WorldFoundry.Space
         /// </para>
         /// </summary>
         /// <typeparam name="T">The type of children to generate.</typeparam>
-        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <param name="condition">An <see cref="IChildDefinition"/> the children must
+        /// match.</param>
         /// <remarks>
         /// <para>
         /// NOTE: Generated children are not automatically saved to the data source. This permits
@@ -431,10 +433,10 @@ namespace WorldFoundry.Space
         /// an attempt to enumerate more results than are possible.
         /// </para>
         /// <para>
-        /// See <see cref="GetRadiusWithChildren{T}(Number, Func{StarSystemChildDefinition, bool})"/> and <see
-        /// cref="GenerateChildrenAsync{T}(Location, Func{StarSystemChildDefinition, bool})"/>, which can be
-        /// used in combination to get children only in a sub-region of specific size, and
-        /// potentially avoid the possibility of dangerous enumerations.
+        /// See <see cref="GetRadiusWithChildren{T}(Number, IChildDefinition)"/> and <see
+        /// cref="GenerateChildrenAsync{T}(Location, IChildDefinition)"/>, which can be used in
+        /// combination to get children only in a sub-region of specific size, and potentially avoid
+        /// the possibility of dangerous enumerations.
         /// </para>
         /// </remarks>
         public async IAsyncEnumerable<T> GenerateChildrenAsync<T>(IChildDefinition? condition = null)
@@ -474,7 +476,9 @@ namespace WorldFoundry.Space
         /// </para>
         /// </summary>
         /// <typeparam name="T">The type of children to generate.</typeparam>
-        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <param name="location">The location within which children will be generated.</param>
+        /// <param name="condition">An <see cref="IChildDefinition"/> the children must
+        /// match.</param>
         /// <remarks>
         /// <para>
         /// NOTE: Generated children are not automatically saved to the data source. This permits
@@ -493,7 +497,7 @@ namespace WorldFoundry.Space
         /// an attempt to enumerate more results than are possible.
         /// </para>
         /// <para>
-        /// See <see cref="GetRadiusWithChildren{T}(Number, StarSystemChildDefinition)"/>, which can be used
+        /// See <see cref="GetRadiusWithChildren{T}(Number, IChildDefinition)"/>, which can be used
         /// in combination with this method to get children only in a sub-region of specific size,
         /// and potentially avoid the possibility of dangerous enumerations.
         /// </para>
@@ -537,8 +541,8 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
-        /// The average surface temperature of the <see cref="Planetoid"/> near its equator
-        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
+        /// The average surface temperature of the location near its equator throughout its orbit
+        /// (or at its current position, if it is not in orbit), in K.
         /// </summary>
         public virtual Task<double> GetAverageSurfaceTemperatureAsync() => GetAverageBlackbodyTemperatureAsync();
 
@@ -564,7 +568,7 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <typeparam name="T">The type of <see cref="CelestialLocation"/> child entity to
         /// get.</typeparam>
-        /// <param name="condition">A <see cref="ChildDefinition"/> the child must match.</param>
+        /// <param name="condition">A <see cref="IChildDefinition"/> the child must match.</param>
         /// <returns>A child of the given type, or <see langword="null"/> if no child of the given
         /// type could be retrieved. This might occur if no children of the given type occur in this
         /// location, or if insufficient free space remains to generate a new one.</returns>
@@ -616,7 +620,7 @@ namespace WorldFoundry.Space
         /// Calculates the total number of children in this region. The totals are approximate,
         /// based on the defined densities of the possible children it might have.
         /// </summary>
-        /// <returns>An <see cref="IEnumerable{T}"/> of <see cref="ChildDefinition"/> instances
+        /// <returns>An <see cref="IEnumerable{T}"/> of <see cref="IChildDefinition"/> instances
         /// along with the total number of children present in this region (as a <see
         /// cref="Number"/> due to the potentially vast numbers
         /// involved).</returns>
@@ -718,7 +722,7 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <typeparam name="T">The type of <see cref="CelestialLocation"/> child entity to
         /// generate.</typeparam>
-        /// <param name="condition">A <see cref="ChildDefinition"/> the child must match.</param>
+        /// <param name="condition">A <see cref="IChildDefinition"/> the child must match.</param>
         /// <returns>A randomly generated child of the given type, or <see langword="null"/> if no
         /// child of the given type could be generated. This might occur if no children of the given
         /// type occur in this location, or if insufficient free space remains.</returns>
@@ -831,7 +835,7 @@ namespace WorldFoundry.Space
         /// check.</typeparam>
         /// <param name="maxAmount">The maximum desired number of child entities of the given type
         /// in the region.</param>
-        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <param name="condition">A <see cref="IChildDefinition"/> the children must match.</param>
         /// <returns>The radius of a spherical region containing at most the given amount of
         /// children, in meters. May be zero, if this location does not contain children of the
         /// given type.</returns>

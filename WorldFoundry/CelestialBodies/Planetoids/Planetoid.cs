@@ -15,13 +15,13 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
-using WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 
-namespace WorldFoundry.CelestialBodies.Planetoids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// Any non-stellar celestial body, such as a planet or asteroid.
@@ -417,7 +417,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <typeparam name="T">The type of <see cref="Planetoid"/> to generate.</typeparam>
         /// <param name="parentId">The id of the location which contains the new one.</param>
         /// <param name="position">The position of the new location relative to the center of its
-        /// <paramref name="parent"/>.</param>
+        /// parent.</param>
         /// <param name="maxMass">The maximum mass allowed for the new <see
         /// cref="Planetoid"/>.</param>
         /// <param name="orbit">The orbit to set for the new <see cref="Planetoid"/>, if
@@ -476,7 +476,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <typeparam name="T">The type of <see cref="Planetoid"/> to generate.</typeparam>
         /// <param name="parentId">The id of the location which contains the new one.</param>
         /// <param name="position">The position of the new location relative to the center of its
-        /// <paramref name="parent"/>.</param>
+        /// parent.</param>
         /// <param name="star">The star the new <see cref="Planetoid"/> will orbit.</param>
         /// <returns>A new instance of the indicated <see cref="Planetoid"/> type, or <see
         /// langword="null"/> if no instance could be generated with the given parameters.</returns>
@@ -1041,9 +1041,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// one's compass heading during travel (unlike a rhumb line, which is not the shortest
         /// path, but requires no bearing adjustements).
         /// </para>
-        /// <seealso cref="GetLatLonAtDistanceOnRhumbLine(NeverFoundry.MathAndScience.Numerics.Number,
-        /// NeverFoundry.MathAndScience.Numerics.Number, NeverFoundry.MathAndScience.Numerics.Number,
-        /// NeverFoundry.MathAndScience.Numerics.Number)"/>
+        /// <seealso cref="GetLatLonAtDistanceOnRhumbLine(double, double, Number, double)"/>
         /// </remarks>
         public (double latitude, double longitude) GetLatLonAtDistanceOnGreatCircleArc(double latitude, double longitude, Number distance, double bearing)
         {
@@ -1078,10 +1076,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// on that line (a great circle arc is), but does not require recalculation of bearing
         /// during travel.
         /// </para>
-        /// <seealso
-        /// cref="GetLatLonAtDistanceOnGreatCircleArc(NeverFoundry.MathAndScience.Numerics.Number,
-        /// NeverFoundry.MathAndScience.Numerics.Number, NeverFoundry.MathAndScience.Numerics.Number,
-        /// NeverFoundry.MathAndScience.Numerics.Number)"/>
+        /// <seealso cref="GetLatLonAtDistanceOnGreatCircleArc(double, double, Number, double)"/>
         /// </remarks>
         public (double latitude, double longitude) GetLatLonAtDistanceOnRhumbLine(double latitude, double longitude, Number distance, double bearing)
         {

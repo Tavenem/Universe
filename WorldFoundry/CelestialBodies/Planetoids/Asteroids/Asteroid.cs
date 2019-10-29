@@ -1,5 +1,5 @@
-﻿using WorldFoundry.CelestialBodies.Planetoids.Planets;
-using WorldFoundry.Space;
+﻿using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets;
+using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
@@ -7,7 +7,7 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// Base class for all asteroids.
@@ -47,7 +47,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         internal Asteroid(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
-            => await WorldFoundry.Space.Orbit.SetOrbitAsync(
+            => await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
                 await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),

@@ -6,7 +6,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A cloud of interstellar gas and dust.

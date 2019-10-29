@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
     /// <summary>
     /// A metallic asteroid (mostly iron-nickel, with some rock and other heavy metals).

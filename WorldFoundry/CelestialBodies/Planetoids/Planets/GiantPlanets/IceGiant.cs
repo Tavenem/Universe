@@ -6,7 +6,7 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
     /// <summary>
     /// An ice giant planet, such as Neptune or Uranus.

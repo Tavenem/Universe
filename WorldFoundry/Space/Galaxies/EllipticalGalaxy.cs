@@ -7,12 +7,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.BlackHoles;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 
-namespace WorldFoundry.Space.Galaxies
+namespace NeverFoundry.WorldFoundry.Space.Galaxies
 {
     /// <summary>
     /// An elliptical, gravitationally-bound collection of stars, gas, dust, and dark matter.

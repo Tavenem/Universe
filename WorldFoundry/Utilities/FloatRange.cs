@@ -3,7 +3,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
-namespace WorldFoundry
+namespace NeverFoundry.WorldFoundry
 {
     /// <summary>
     /// A floating-point value which specifies an average, and optionally a range (minimum to maximum).

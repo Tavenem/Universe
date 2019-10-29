@@ -1,16 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System.Threading.Tasks;
 
-namespace WorldFoundry.CelestialBodies.Planetoids
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 {
     /// <summary>
     /// Mostly ice and dust, with a large but thin atmosphere.
@@ -149,7 +149,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 var eccentricity = Randomizer.Instance.NextDouble();
                 var periapsis = (1 - eccentricity) / (1 + eccentricity) * await GetDistanceToAsync(orbitedObject).ConfigureAwait(false);
 
-                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                     this,
                     orbitedObject,
                     periapsis,

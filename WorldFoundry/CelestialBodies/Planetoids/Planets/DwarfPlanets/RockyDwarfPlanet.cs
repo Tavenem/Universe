@@ -5,11 +5,11 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
     /// <summary>
     /// A rocky dwarf planet without the typical subsurface ice/water mantle.

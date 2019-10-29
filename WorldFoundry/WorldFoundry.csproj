@@ -4,23 +4,22 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>Latest</LangVersion>
     <Nullable>enable</Nullable>
-    <Authors>Wil Stead</Authors>
-    <Description>Universe sim</Description>
-    <Version>0.6.0</Version>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-  </PropertyGroup>
-
-  <PropertyGroup>
     <CodeAnalysisRuleSet>../RoslynatorRuleSet.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <LangVersion>Latest</LangVersion>
-    <DocumentationFile>bin\Release\netstandard2.1\WorldFoundry.xml</DocumentationFile>
+  <PropertyGroup>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>0.6.0</Version>
+    <Authors>Wil Stead</Authors>
+    <Description>Universe sim</Description>
+    <Copyright>Copyright (c) 2019 Wil Stead</Copyright>
+    <RootNamespace>NeverFoundry.WorldFoundry</RootNamespace>
+    <PackageId>NeverFoundry.WorldFoundry</PackageId>
+    <Product>NeverFoundry.WorldFoundry</Product>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>Latest</LangVersion>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DocumentationFile>bin\Release\netstandard2.1\WorldFoundry.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

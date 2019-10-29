@@ -1,8 +1,8 @@
 ﻿using NeverFoundry.MathAndScience.Numerics.Numbers;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// Defines a type of <see cref="StarSystem"/> child a <see cref="CelestialLocation"/> may have,
@@ -11,7 +11,8 @@ namespace WorldFoundry.Space
     public interface IStarSystemChildDefinition : IChildDefinition
     {
         /// <summary>
-        /// The <see cref="Stars.LuminosityClass"/> of the primary star of a star system child.
+        /// The <see cref="CelestialBodies.Stars.LuminosityClass"/> of the primary star of a star
+        /// system child.
         /// </summary>
         LuminosityClass? LuminosityClass { get; }
 
@@ -21,19 +22,20 @@ namespace WorldFoundry.Space
         bool PopulationII { get; }
 
         /// <summary>
-        /// The <see cref="Stars.SpectralClass"/> of the primary star of a star system child.
+        /// The <see cref="CelestialBodies.Stars.SpectralClass"/> of the primary star of a star
+        /// system child.
         /// </summary>
         SpectralClass? SpectralClass { get; }
 
         /// <summary>
         /// Gets a new <see cref="StarSystem"/> as defined by this <see
-        /// cref="StarSystemChildDefinition{T, U}"/>.
+        /// cref="StarSystemChildDefinition{T}"/>.
         /// </summary>
         /// <param name="parent">The location which contains the new one.</param>
         /// <param name="position">The position of the new location relative to the center of its
         /// <paramref name="parent"/>.</param>
         /// <returns>A new <see cref="StarSystem"/> as defined by this <see
-        /// cref="StarSystemChildDefinition{T, U}"/>.</returns>
+        /// cref="StarSystemChildDefinition{T}"/>.</returns>
         Task<StarSystem?> GetStarSystemAsync(CelestialLocation parent, Vector3 position);
     }
 }

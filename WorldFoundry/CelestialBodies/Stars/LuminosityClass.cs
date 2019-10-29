@@ -1,4 +1,4 @@
-﻿namespace WorldFoundry.CelestialBodies.Stars
+﻿namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 {
     /// <summary>
     /// The luminosity class of a star

@@ -9,9 +9,9 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 
-namespace WorldFoundry.Climate
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Represents a planetary atmosphere.
@@ -201,6 +201,8 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Calculates the atmospheric density for the given conditions, in kg/m³.
         /// </summary>
+        /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
+        /// made.</param>
         /// <param name="temperature">A temperature, in K.</param>
         /// <param name="elevation">
         /// An elevation above the reference elevation for standard atmospheric pressure (sea

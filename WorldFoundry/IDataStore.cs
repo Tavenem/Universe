@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace WorldFoundry
+namespace NeverFoundry.WorldFoundry
 {
     /// <summary>
     /// An interface which allows <see cref="IdItem"/> instances to be stored and retrieved.

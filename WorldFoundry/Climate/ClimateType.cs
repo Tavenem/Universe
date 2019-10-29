@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.Climate
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Indicates the climate of a location. Indicative of average temperature, not just latitude,

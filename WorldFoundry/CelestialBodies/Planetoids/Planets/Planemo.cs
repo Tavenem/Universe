@@ -10,11 +10,11 @@ using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
 {
     /// <summary>
     /// Any planetary-mass object (massive enough to be rounded under its own gravity), such as dwarf planets, some moons, and planets.

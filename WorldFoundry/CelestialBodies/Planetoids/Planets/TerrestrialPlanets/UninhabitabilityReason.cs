@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
     /// <summary>
     /// The reason(s) why a <see cref="TerrestrialPlanet"/> does not meet an inhabitability

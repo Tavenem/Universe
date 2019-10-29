@@ -7,14 +7,14 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
-using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 
-namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
+namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
     /// <summary>
     /// A gas giant planet (excluding ice giants, which have their own subclass).

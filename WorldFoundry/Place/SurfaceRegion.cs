@@ -8,10 +8,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 
-namespace WorldFoundry.Place
+namespace NeverFoundry.WorldFoundry.Place
 {
     /// <summary>
     /// A <see cref="Location"/> on the surface of a <see cref="Planetoid"/>, which can override

@@ -3,11 +3,11 @@ using System;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.CelestialBodies.Planetoids;
-using WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Climate;
 using NeverFoundry.MathAndScience.Numerics;
 
-namespace WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
     /// A collection of weather maps providing yearlong climate data.

@@ -8,9 +8,9 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using WorldFoundry.Space.Galaxies;
+using NeverFoundry.WorldFoundry.Space.Galaxies;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// A collection of dwarf galaxies and globular clusters orbiting a large main galaxy.
@@ -169,7 +169,7 @@ namespace WorldFoundry.Space
             if (!string.IsNullOrEmpty(_mainGalaxyId))
             {
                 var g = await GetMainGalaxyAsync().ConfigureAwait(false);
-                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
                       child,
                       g,
                       Randomizer.Instance.NextDouble(0.1)).ConfigureAwait(false);

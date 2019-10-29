@@ -2,9 +2,9 @@
 using System.Threading.Tasks;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Place;
 
-namespace WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Space
 {
     /// <summary>
     /// Defines a type of child a <see cref="CelestialLocation"/> may have, and how to generate a

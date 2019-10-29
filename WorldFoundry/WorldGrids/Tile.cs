@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Numerics;
 
-namespace WorldFoundry.WorldGrids
+namespace NeverFoundry.WorldFoundry.WorldGrids
 {
     /// <summary>
     /// Represents a tile on a <see cref="WorldGrid"/>.

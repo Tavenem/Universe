@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace WorldFoundry.Climate
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Describes the ecology of a location. A <see cref="FlagsAttribute"/> <see cref="Enum"/>.
