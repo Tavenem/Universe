@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace WorldFoundry
 {
@@ -16,6 +18,11 @@ namespace WorldFoundry
         /// Initializes a new instance of <see cref="IdItem"/>.
         /// </summary>
         protected IdItem() => Id = Guid.NewGuid().ToString();
+
+        /// <summary>
+        /// Removes this item from the data store.
+        /// </summary>
+        public virtual Task DeleteAsync() => DataStore.RemoveItemAsync(Id);
 
         /// <summary>
         /// Determines whether the specified <see cref="IdItem"/> instance is equal to this one.
@@ -40,8 +47,31 @@ namespace WorldFoundry
         /// <returns>The hash code for this instance.</returns>
         public override int GetHashCode() => Id.GetHashCode();
 
+        /// <summary>
+        /// Saves this item to the data store.
+        /// </summary>
+        public virtual Task SaveAsync() => DataStore.SetItemAsync(this);
+
         /// <summary>Returns a string equivalent of this instance.</summary>
         /// <returns>A string equivalent of this instance.</returns>
         public override string ToString() => Id;
+
+        /// <summary>
+        /// Indicates whether two <see cref="IdItem"/> instances are equal.
+        /// </summary>
+        /// <param name="left">The first instance.</param>
+        /// <param name="right">The second instance.</param>
+        /// <returns><see langword="true"/> if the instances are equal; otherwise, <see
+        /// langword="false"/>.</returns>
+        public static bool operator ==(IdItem? left, IdItem? right) => EqualityComparer<IdItem?>.Default.Equals(left, right);
+
+        /// <summary>
+        /// Indicates whether two <see cref="IdItem"/> instances are unequal.
+        /// </summary>
+        /// <param name="left">The first instance.</param>
+        /// <param name="right">The second instance.</param>
+        /// <returns><see langword="true"/> if the instances are unequal; otherwise, <see
+        /// langword="false"/>.</returns>
+        public static bool operator !=(IdItem? left, IdItem? right) => !(left == right);
     }
 }

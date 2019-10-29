@@ -146,7 +146,6 @@ namespace WorldFoundry.SurfaceMapping
         /// A range giving the minimum, maximum, and average temperature throughout the specified
         /// area over the entire period represented by all <see cref="PrecipitationMaps"/>, as a value
         /// between 0 and 1, with 1 indicating the maximum temperature of the planet.
-        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxSurfaceTemperature"/>
         /// </summary>
         public FloatRange TemperatureRange => _weatherMaps.TemperatureRange;
 
@@ -156,7 +155,6 @@ namespace WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent the temperature
         /// range. Values range from 0 to 1, with 1 indicating the maximum temperature of the
         /// planet.
-        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxSurfaceTemperature"/>
         /// </summary>
         public FloatRange[,] TemperatureRangeMap => _weatherMaps.TemperatureRangeMap;
 

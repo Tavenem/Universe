@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.Space
 {
@@ -18,19 +18,18 @@ namespace WorldFoundry.Space
     {
         internal static readonly Number Space = new Number(1.5, 24);
 
-        private static readonly List<ChildDefinition> _BaseChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _BaseChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, new Number(1.8, -70)),
+            new ChildDefinition<GalaxyGroup>(GalaxyGroup.Space, new Number(1.8, -70)),
         };
 
         private protected override string BaseTypeName => "Galaxy Cluster";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_BaseChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _BaseChildDefinitions;
 
         internal GalaxyCluster() { }
 
-        internal GalaxyCluster(Location parent, Vector3 position) : base(parent, position) { }
+        internal GalaxyCluster(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private GalaxyCluster(
             string id,
@@ -40,7 +39,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -49,7 +48,7 @@ namespace WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private GalaxyCluster(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -58,13 +57,15 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
         // General average; 1.0e15–1.0e16 solar masses
-        private protected override Number GetMass() => Randomizer.Instance.NextNumber(new Number(2, 45), new Number(2, 46));
+        private protected override ValueTask<Number> GetMassAsync()
+            => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(2, 45), new Number(2, 46)));
 
-        private protected override IShape GetShape() => new Sphere(Randomizer.Instance.NextNumber(new Number(3, 23), new Number(1.5, 24)), Position); // ~1–5 Mpc
+        private protected override ValueTask<IShape> GetShapeAsync()
+            => new ValueTask<IShape>(new Sphere(Randomizer.Instance.NextNumber(new Number(3, 23), new Number(1.5, 24)), Position)); // ~1–5 Mpc
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);

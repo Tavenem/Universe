@@ -3,9 +3,8 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -25,11 +24,9 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Initializes a new instance of <see cref="SpiralGalaxy"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="SpiralGalaxy"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="SpiralGalaxy"/>.</param>
-        internal SpiralGalaxy(Location parent, Vector3 position) : base(parent, position) { }
+        internal SpiralGalaxy(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private SpiralGalaxy(
             string id,
@@ -40,7 +37,7 @@ namespace WorldFoundry.Space.Galaxies
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -50,7 +47,7 @@ namespace WorldFoundry.Space.Galaxies
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private SpiralGalaxy(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -60,14 +57,14 @@ namespace WorldFoundry.Space.Galaxies
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             var radius = Randomizer.Instance.NextNumber(new Number(2.4, 20), new Number(2.5, 21)); // 25000–75000 ly
             var axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 0.001);
-            return new Ellipsoid(radius, axis, Position);
+            return new ValueTask<IShape>(new Ellipsoid(radius, axis, Position));
         }
     }
 }

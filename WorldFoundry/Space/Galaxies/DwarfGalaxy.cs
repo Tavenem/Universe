@@ -3,10 +3,9 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.BlackHoles;
-using WorldFoundry.Place;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -28,11 +27,9 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfGalaxy"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="DwarfGalaxy"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="DwarfGalaxy"/>.</param>
-        internal DwarfGalaxy(Location parent, Vector3 position) : base(parent, position) { }
+        internal DwarfGalaxy(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private DwarfGalaxy(
             string id,
@@ -43,7 +40,7 @@ namespace WorldFoundry.Space.Galaxies
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -53,7 +50,7 @@ namespace WorldFoundry.Space.Galaxies
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private DwarfGalaxy(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -63,8 +60,8 @@ namespace WorldFoundry.Space.Galaxies
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
@@ -72,14 +69,14 @@ namespace WorldFoundry.Space.Galaxies
         /// <remarks>
         /// The cores of dwarf galaxies are ordinary black holes, not super-massive.
         /// </remarks>
-        private protected override string GetGalacticCore()
-            => new BlackHole(this, Vector3.Zero).Id;
+        private protected override Task<BlackHole?> GenerateGalacticCoreAsync()
+            => GetNewInstanceAsync<BlackHole>(this, Vector3.Zero);
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             var radius = Randomizer.Instance.NextNumber(new Number(9.5, 18), new Number(2.5, 18)); // ~200–1800 ly
             var axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 1);
-            return new Ellipsoid(radius, axis, Position);
+            return new ValueTask<IShape>(new Ellipsoid(radius, axis, Position));
         }
     }
 }

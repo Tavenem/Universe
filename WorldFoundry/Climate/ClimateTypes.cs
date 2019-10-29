@@ -1,6 +1,4 @@
-﻿using NeverFoundry.MathAndScience.Numerics;
-
-namespace WorldFoundry.Climate
+﻿namespace WorldFoundry.Climate
 {
     /// <summary>
     /// Static methods related to climate.

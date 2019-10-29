@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -31,12 +30,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="BrownDwarf"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="BrownDwarf"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="BrownDwarf"/>.</param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="BrownDwarf"/>.</param>
-        internal BrownDwarf(Location parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
+        internal BrownDwarf(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected BrownDwarf(
             string id,
@@ -50,7 +46,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -63,7 +59,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private BrownDwarf(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -76,46 +72,46 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override double GetLuminosity(Number? temperature = null) => GetLuminosityFromRadius();
+        private protected override ValueTask<double> GetLuminosityAsync(Number? temperature = null) => GetLuminosityFromRadiusAsync();
 
-        private protected override Number GetMass() => Randomizer.Instance.NextNumber(new Number(2.468, 28), new Number(1.7088, 29));
+        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(2.468, 28), new Number(1.7088, 29)));
 
-        private protected override IMaterial GetMaterial()
+        private protected override async Task GenerateMaterialAsync()
         {
             var temperature = GetTemperature();
-            var shape = GetShape(temperature);
-            var mass = GetMass();
-            return GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+            var shape = await GetShapeAsync(temperature).ConfigureAwait(false);
+            var mass = await GetMassAsync().ConfigureAwait(false);
+            Material = GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
         }
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             var radius = (Number)Randomizer.Instance.NormalDistributionSample(69911000, 3495550);
             var flattening = Randomizer.Instance.NextNumber(Number.Deci);
-            return new Ellipsoid(radius, radius * (1 - flattening), Position);
+            return new ValueTask<IShape>(new Ellipsoid(radius, radius * (1 - flattening), Position));
         }
 
-        private protected override SpectralClass GetSpectralClass()
+        private protected override ValueTask<SpectralClass> GenerateSpectralClassAsync()
         {
             var chance = Randomizer.Instance.NextDouble();
             if (chance <= 0.29)
             {
-                return SpectralClass.M; // 29%
+                return new ValueTask<SpectralClass>(SpectralClass.M); // 29%
             }
             else if (chance <= 0.79)
             {
-                return SpectralClass.L; // 50%
+                return new ValueTask<SpectralClass>(SpectralClass.L); // 50%
             }
             else if (chance <= 0.99)
             {
-                return SpectralClass.T; // 20%
+                return new ValueTask<SpectralClass>(SpectralClass.T); // 20%
             }
             else
             {
-                return SpectralClass.Y; // 1%
+                return new ValueTask<SpectralClass>(SpectralClass.Y); // 1%
             }
         }
     }

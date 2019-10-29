@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
 
@@ -27,6 +27,7 @@
     <PackageReference Include="NeverFoundry.Extensions" Version="0.1.16" />
     <PackageReference Include="NeverFoundry.MathAndScience" Version="0.11.0" />
     <PackageReference Include="System.Drawing.Common" Version="4.6.0" />
+    <PackageReference Include="System.Linq.Async" Version="4.0.0" />
   </ItemGroup>
 
 </Project>

@@ -7,12 +7,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.BlackHoles;
-using WorldFoundry.CelestialBodies.Planetoids.Planets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Place;
 
 namespace WorldFoundry.Space.Galaxies
 {
@@ -32,84 +31,73 @@ namespace WorldFoundry.Space.Galaxies
         private static readonly Number _BlueGiantDensity = _ChildDensity * new Number(8, -4);
         private static readonly Number _YellowGiantDensity = _ChildDensity * new Number(4, -4);
 
-        private static readonly List<ChildDefinition> _ChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _ChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(GiantPlanet), GiantPlanet.Space, _RogueDensity * 5 / 12),
-            new ChildDefinition(typeof(IceGiant), GiantPlanet.Space, _RogueDensity * new Number(25, -2)),
-            new ChildDefinition(typeof(TerrestrialPlanet), TerrestrialPlanet.Space, _RogueDensity / 6),
-            new ChildDefinition(typeof(OceanPlanet), TerrestrialPlanet.Space, _RogueDensity / 24),
-            new ChildDefinition(typeof(IronPlanet), TerrestrialPlanet.Space, _RogueDensity / 24),
-            new ChildDefinition(typeof(CarbonPlanet), TerrestrialPlanet.Space, _RogueDensity / 12),
+            new ChildDefinition<GiantPlanet>(GiantPlanet.Space, _RogueDensity * 5 / 12),
+            new ChildDefinition<IceGiant>(GiantPlanet.Space, _RogueDensity * new Number(25, -2)),
+            new ChildDefinition<TerrestrialPlanet>(TerrestrialPlanet.Space, _RogueDensity / 6),
+            new ChildDefinition<OceanPlanet>(TerrestrialPlanet.Space, _RogueDensity / 24),
+            new ChildDefinition<IronPlanet>(TerrestrialPlanet.Space, _RogueDensity / 24),
+            new ChildDefinition<CarbonPlanet>(TerrestrialPlanet.Space, _RogueDensity / 12),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(19, -2), typeof(BrownDwarf)),
+            new StarSystemChildDefinition<BrownDwarf>(_ChildDensity * new Number(19, -2)),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedDensity * new Number(998, -3), typeof(Star), SpectralClass.M, LuminosityClass.V),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedDensity * new Number(2, -3), typeof(Star), SpectralClass.M, LuminosityClass.sd),
+            new StarSystemChildDefinition<Star>(_RedDensity * new Number(998, -3), SpectralClass.M, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_RedDensity * new Number(2, -3), SpectralClass.M, LuminosityClass.sd),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _KDensity * new Number(987, -3), typeof(Star), SpectralClass.K, LuminosityClass.V),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _KDensity * new Number(1, -2), typeof(Star), SpectralClass.K, LuminosityClass.IV),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _KDensity * new Number(3, -3), typeof(Star), SpectralClass.K, LuminosityClass.sd),
+            new StarSystemChildDefinition<Star>(_KDensity * new Number(987, -3), SpectralClass.K, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_KDensity * new Number(1, -2), SpectralClass.K, LuminosityClass.IV),
+            new StarSystemChildDefinition<Star>(_KDensity * new Number(3, -3), SpectralClass.K, LuminosityClass.sd),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(18, -3), typeof(WhiteDwarf)),
+            new StarSystemChildDefinition<WhiteDwarf>(_ChildDensity * new Number(18, -3)),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _GDensity * new Number(992, -3), typeof(Star), SpectralClass.G, LuminosityClass.V),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _GDensity * new Number(8, -3), typeof(Star), SpectralClass.G, LuminosityClass.IV),
+            new StarSystemChildDefinition<Star>(_GDensity * new Number(992, -3), SpectralClass.G, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_GDensity * new Number(8, -3), SpectralClass.G, LuminosityClass.IV),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _FDensity * new Number(982, -3), typeof(Star), SpectralClass.F, LuminosityClass.V),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _FDensity * new Number(18, -3), typeof(Star), SpectralClass.F, LuminosityClass.IV),
+            new StarSystemChildDefinition<Star>(_FDensity * new Number(982, -3), SpectralClass.F, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_FDensity * new Number(18, -3), SpectralClass.F, LuminosityClass.IV),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(14, -4), typeof(NeutronStar)),
+            new StarSystemChildDefinition<NeutronStar>(_ChildDensity * new Number(14, -4)),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(115, -5), typeof(Star), SpectralClass.A, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_ChildDensity * new Number(115, -5), SpectralClass.A, LuminosityClass.V),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedGiantDensity * new Number(96, -2), typeof(RedGiant)),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedGiantDensity * new Number(18, -3), typeof(RedGiant), null, LuminosityClass.II),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedGiantDensity * new Number(16, -3), typeof(RedGiant), null, LuminosityClass.Ib),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedGiantDensity * new Number(55, -4), typeof(RedGiant), null, LuminosityClass.Ia),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _RedGiantDensity * new Number(5, -4), typeof(RedGiant), null, LuminosityClass.Zero),
+            new StarSystemChildDefinition<RedGiant>(_RedGiantDensity * new Number(96, -2)),
+            new StarSystemChildDefinition<RedGiant>(_RedGiantDensity * new Number(18, -3), null, LuminosityClass.II),
+            new StarSystemChildDefinition<RedGiant>(_RedGiantDensity * new Number(16, -3), null, LuminosityClass.Ib),
+            new StarSystemChildDefinition<RedGiant>(_RedGiantDensity * new Number(55, -4), null, LuminosityClass.Ia),
+            new StarSystemChildDefinition<RedGiant>(_RedGiantDensity * new Number(5, -4), null, LuminosityClass.Zero),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _BlueGiantDensity * new Number(95, -2), typeof(BlueGiant)),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _BlueGiantDensity * new Number(25, -3), typeof(BlueGiant), null, LuminosityClass.II),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _BlueGiantDensity * new Number(2, -2), typeof(BlueGiant), null, LuminosityClass.Ib),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _BlueGiantDensity * new Number(45, -4), typeof(BlueGiant), null, LuminosityClass.Ia),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _BlueGiantDensity * new Number(5, -4), typeof(BlueGiant), null, LuminosityClass.Zero),
+            new StarSystemChildDefinition<BlueGiant>(_BlueGiantDensity * new Number(95, -2)),
+            new StarSystemChildDefinition<BlueGiant>(_BlueGiantDensity * new Number(25, -3), null, LuminosityClass.II),
+            new StarSystemChildDefinition<BlueGiant>(_BlueGiantDensity * new Number(2, -2), null, LuminosityClass.Ib),
+            new StarSystemChildDefinition<BlueGiant>(_BlueGiantDensity * new Number(45, -4), null, LuminosityClass.Ia),
+            new StarSystemChildDefinition<BlueGiant>(_BlueGiantDensity * new Number(5, -4), null, LuminosityClass.Zero),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _YellowGiantDensity * new Number(95, -2), typeof(YellowGiant)),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _YellowGiantDensity * new Number(2, -2), typeof(YellowGiant), null, LuminosityClass.II),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _YellowGiantDensity * new Number(23, -3), typeof(YellowGiant), null, LuminosityClass.Ib),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _YellowGiantDensity * new Number(6, -3), typeof(YellowGiant), null, LuminosityClass.Ia),
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _YellowGiantDensity * new Number(1, -3), typeof(YellowGiant), null, LuminosityClass.Zero),
+            new StarSystemChildDefinition<YellowGiant>(_YellowGiantDensity * new Number(95, -2)),
+            new StarSystemChildDefinition<YellowGiant>(_YellowGiantDensity * new Number(2, -2), null, LuminosityClass.II),
+            new StarSystemChildDefinition<YellowGiant>(_YellowGiantDensity * new Number(23, -3), null, LuminosityClass.Ib),
+            new StarSystemChildDefinition<YellowGiant>(_YellowGiantDensity * new Number(6, -3), null, LuminosityClass.Ia),
+            new StarSystemChildDefinition<YellowGiant>(_YellowGiantDensity * new Number(1, -3), null, LuminosityClass.Zero),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(25, -5), typeof(Star), SpectralClass.B, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_ChildDensity * new Number(25, -5), SpectralClass.B, LuminosityClass.V),
 
-            new ChildDefinition(typeof(BlackHole), BlackHole.Space, _ChildDensity * new Number(1, -4)),
+            new ChildDefinition<BlackHole>(BlackHole.Space, _ChildDensity * new Number(1, -4)),
 
-            new ChildDefinition(typeof(StarSystem), StarSystem.Space, _ChildDensity * new Number(7, -8), typeof(Star), SpectralClass.O, LuminosityClass.V),
+            new StarSystemChildDefinition<Star>(_ChildDensity * new Number(7, -8), SpectralClass.O, LuminosityClass.V),
 
-            new ChildDefinition(typeof(PlanetaryNebula), PlanetaryNebula.Space, _ChildDensity * new Number(3, -8)),
+            new ChildDefinition<PlanetaryNebula>(PlanetaryNebula.Space, _ChildDensity * new Number(3, -8)),
 
-            new ChildDefinition(typeof(Nebula), Nebula.Space, _ChildDensity * new Number(2, -10)),
+            new ChildDefinition<Nebula>(Nebula.Space, _ChildDensity * new Number(2, -10)),
 
-            new ChildDefinition(typeof(HIIRegion), Nebula.Space, _ChildDensity * new Number(2, -10)),
+            new ChildDefinition<HIIRegion>(Nebula.Space, _ChildDensity * new Number(2, -10)),
         };
 
         private protected string? _galacticCoreId;
-        /// <summary>
-        /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
-        /// </summary>
-        public BlackHole GalacticCore
-        {
-            get
-            {
-                _galacticCoreId ??= GetGalacticCore();
-                return CelestialChildren.OfType<BlackHole>().FirstOrDefault(x => x.Id == _galacticCoreId);
-            }
-        }
+        private protected BlackHole? _galacticCore;
 
         private protected override string BaseTypeName => "Galaxy";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_ChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _ChildDefinitions;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/>.
@@ -119,11 +107,9 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Initializes a new instance of <see cref="Galaxy"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Galaxy"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Galaxy"/>.</param>
-        internal Galaxy(Location parent, Vector3 position) : base(parent, position) { }
+        internal Galaxy(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected Galaxy(
             string id,
@@ -134,7 +120,7 @@ namespace WorldFoundry.Space.Galaxies
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -143,7 +129,7 @@ namespace WorldFoundry.Space.Galaxies
                 velocity,
                 orbit,
                 material,
-                children)
+                parentId)
             => _galacticCoreId = galacticCoreId;
 
         private Galaxy(SerializationInfo info, StreamingContext context) : this(
@@ -154,8 +140,36 @@ namespace WorldFoundry.Space.Galaxies
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+
+        /// <summary>
+        /// Gets the <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="BlackHole"/> which is at the center of this <see cref="Galaxy"/>.
+        /// </returns>
+        public async Task<BlackHole?> GetGalacticCoreAsync()
+        {
+            if (_galacticCore is null)
+            {
+                if (string.IsNullOrEmpty(_galacticCoreId))
+                {
+                    var core = await GenerateGalacticCoreAsync().ConfigureAwait(false);
+                    if (core != null)
+                    {
+                        await core.SaveAsync().ConfigureAwait(false);
+                    }
+                    _galacticCoreId = core?.Id;
+                    _galacticCore = core;
+                }
+                else
+                {
+                    _galacticCore = await DataStore.GetItemAsync<BlackHole>(_galacticCoreId).ConfigureAwait(false);
+                }
+            }
+            return _galacticCore;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -175,30 +189,8 @@ namespace WorldFoundry.Space.Galaxies
             info.AddValue(nameof(Albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), Material);
-            info.AddValue(nameof(Children), Children.ToList());
-        }
-
-        internal override CelestialLocation? GenerateChild(ChildDefinition definition)
-        {
-            var child = base.GenerateChild(definition);
-            if (child == null)
-            {
-                return null;
-            }
-
-            Space.Orbit.SetOrbit(
-                child,
-                GalacticCore,
-                Randomizer.Instance.NextDouble(0.1));
-
-            // Small chance of satellites for rogue planets.
-            if (child is Planemo planemo && Randomizer.Instance.NextDouble() <= 0.2)
-            {
-                planemo.GenerateSatellites();
-            }
-
-            return child;
+            info.AddValue(nameof(_material), Material);
+            info.AddValue(nameof(ParentId), ParentId);
         }
 
         /// <summary>
@@ -214,24 +206,43 @@ namespace WorldFoundry.Space.Galaxies
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.
         /// </summary>
-        private protected virtual string GetGalacticCore()
-            => new SupermassiveBlackHole(this, Vector3.Zero).Id;
+        private protected virtual async Task<BlackHole?> GenerateGalacticCoreAsync()
+            => await GetNewInstanceAsync<SupermassiveBlackHole>(this, Vector3.Zero).ConfigureAwait(false);
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
-            var shape = GetShape();
-            var mass = ((shape.Volume * _ChildDensity * new Number(1, 30)) + GalacticCore.Mass) * GenerateDarkMatterMultiplier();
+            var shape = await GetShapeAsync().ConfigureAwait(false);
+            var core = await GetGalacticCoreAsync().ConfigureAwait(false);
+            var mass = ((shape.Volume * _ChildDensity * new Number(1, 30)) + (core?.Mass ?? 0)) * GenerateDarkMatterMultiplier();
             return ((double)(mass / shape.Volume), mass, shape);
         }
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             var radius = Randomizer.Instance.NextNumber(new Number(1.55, 19), new Number(1.55, 21)); // ~1600–160000 ly
             var axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 0.001);
-            return new Ellipsoid(radius, axis, Position);
+            return new ValueTask<IShape>(new Ellipsoid(radius, axis, Position));
         }
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetMixtureReference(Substances.Mixtures.InterstellarMedium);
+
+        private protected override async Task InitializeAsync()
+        {
+            await GetGalacticCoreAsync().ConfigureAwait(false);
+            await base.InitializeAsync().ConfigureAwait(false);
+        }
+
+        private protected override async Task InitializeChildAsync(CelestialLocation child)
+        {
+            if (!string.IsNullOrEmpty(_galacticCoreId))
+            {
+                var core = await GetGalacticCoreAsync().ConfigureAwait(false);
+                await Space.Orbit.SetOrbitAsync(
+                      child,
+                      core,
+                      Randomizer.Instance.NextDouble(0.1)).ConfigureAwait(false);
+            }
+        }
     }
 }

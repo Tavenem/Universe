@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.Space
 {
@@ -20,20 +20,19 @@ namespace WorldFoundry.Space
 
         private static readonly Number _ChildDensity = new Number(1, -73);
 
-        private static readonly List<ChildDefinition> _BaseChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _BaseChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(GalaxyCluster), GalaxyCluster.Space, _ChildDensity / 3),
-            new ChildDefinition(typeof(GalaxyGroup), GalaxyGroup.Space, _ChildDensity * 2 / 3),
+            new ChildDefinition<GalaxyCluster>(GalaxyCluster.Space, _ChildDensity / 3),
+            new ChildDefinition<GalaxyGroup>(GalaxyGroup.Space, _ChildDensity * 2 / 3),
         };
 
         private protected override string BaseTypeName => "Galaxy Supercluster";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_BaseChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _BaseChildDefinitions;
 
         internal GalaxySupercluster() { }
 
-        internal GalaxySupercluster(Location parent, Vector3 position) : base(parent, position) { }
+        internal GalaxySupercluster(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private GalaxySupercluster(
             string id,
@@ -43,7 +42,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -52,7 +51,7 @@ namespace WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private GalaxySupercluster(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -61,13 +60,13 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
 
         // General average; 1.0e16–1.0e17 solar masses
-        private protected override Number GetMass() => Randomizer.Instance.NextNumber(new Number(2, 46), new Number(2, 47));
+        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(2, 46), new Number(2, 47)));
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             // May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
             var majorAxis = Randomizer.Instance.NextNumber(new Number(9.4607, 23), new Number(9.4607, 25));
@@ -84,27 +83,27 @@ namespace WorldFoundry.Space
             var chance = Randomizer.Instance.Next(6);
             if (chance == 0)
             {
-                return new Ellipsoid(majorAxis, minorAxis1, minorAxis2, Position);
+                return new ValueTask<IShape>(new Ellipsoid(majorAxis, minorAxis1, minorAxis2, Position));
             }
             else if (chance == 1)
             {
-                return new Ellipsoid(majorAxis, minorAxis2, minorAxis1, Position);
+                return new ValueTask<IShape>(new Ellipsoid(majorAxis, minorAxis2, minorAxis1, Position));
             }
             else if (chance == 2)
             {
-                return new Ellipsoid(minorAxis1, majorAxis, minorAxis2, Position);
+                return new ValueTask<IShape>(new Ellipsoid(minorAxis1, majorAxis, minorAxis2, Position));
             }
             else if (chance == 3)
             {
-                return new Ellipsoid(minorAxis2, majorAxis, minorAxis1, Position);
+                return new ValueTask<IShape>(new Ellipsoid(minorAxis2, majorAxis, minorAxis1, Position));
             }
             else if (chance == 4)
             {
-                return new Ellipsoid(minorAxis1, minorAxis2, majorAxis, Position);
+                return new ValueTask<IShape>(new Ellipsoid(minorAxis1, minorAxis2, majorAxis, Position));
             }
             else
             {
-                return new Ellipsoid(minorAxis2, minorAxis1, majorAxis, Position);
+                return new ValueTask<IShape>(new Ellipsoid(minorAxis2, minorAxis1, majorAxis, Position));
             }
         }
 

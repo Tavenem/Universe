@@ -76,14 +76,14 @@ namespace WorldFoundry.Place
         private SurfaceRegion(
             string id,
             IShape shape,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
             byte[][]? precipitationMaps,
             byte[][]? snowfallMaps,
             byte[]? temperatureMapSummer,
-            byte[]? temperatureMapWinter) : base(id, shape, children)
+            byte[]? temperatureMapWinter) : base(id, shape, parentId)
         {
             _depthMap = depthMap;
             _elevationMap = elevationMap;
@@ -97,7 +97,7 @@ namespace WorldFoundry.Place
         private SurfaceRegion(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (IShape)info.GetValue(nameof(Shape), typeof(IShape)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[]?)info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -119,7 +119,7 @@ namespace WorldFoundry.Place
         {
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Shape), Shape);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(_depthMap), _depthMap);
             info.AddValue(nameof(_elevationMap), _elevationMap);
             info.AddValue(nameof(_flowMap), _flowMap);

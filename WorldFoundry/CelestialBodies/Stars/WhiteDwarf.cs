@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -33,12 +32,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="WhiteDwarf"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="WhiteDwarf"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="WhiteDwarf"/>.</param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="WhiteDwarf"/>.</param>
-        internal WhiteDwarf(Location parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
+        internal WhiteDwarf(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected WhiteDwarf(
             string id,
@@ -52,7 +48,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -65,7 +61,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private WhiteDwarf(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -78,28 +74,29 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override double GetLuminosity(Number? temperature = null) => GetLuminosityFromRadius();
+        private protected override ValueTask<double> GetLuminosityAsync(Number? temperature = null)=> GetLuminosityFromRadiusAsync();
 
         private protected override LuminosityClass GetLuminosityClass() => LuminosityClass.D;
 
-        private protected override Number GetMass()
-            => Randomizer.Instance.NormalDistributionSample(1.194e30, 9.95e28);
+        private protected override ValueTask<Number> GetMassAsync()
+            => new ValueTask<Number>(Randomizer.Instance.NormalDistributionSample(1.194e30, 9.95e28));
 
-        private protected override IMaterial GetMaterial()
+        private protected override async Task GenerateMaterialAsync()
         {
-            var mass = GetMass();
+            var mass = await GetMassAsync().ConfigureAwait(false);
 
             var radius = (new Number(1.8986, 27) / mass).CubeRoot() * 69911000;
             var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
             var shape = new Ellipsoid(radius, radius * (1 - flattening), Position);
 
-            return GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+            Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
         }
 
-        private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
+        private protected override async ValueTask<SpectralClass> GenerateSpectralClassAsync()
+            => GetSpectralClassFromTemperature(await GetTemperatureAsync().ConfigureAwait(false) ?? 0);
 
         private protected override ISubstanceReference? GetSubstance() => CelestialSubstances.StellarMaterialWhiteDwarf;
 

@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
@@ -11,6 +9,8 @@ using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
+using System.Reflection;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -24,8 +24,10 @@ namespace WorldFoundry.CelestialBodies.Stars
 
         private static readonly Number _SolarMass = new Number(6.955, 8);
 
+        private SpectralClass? _spectralClass;
+
         // True for most stars.
-        internal override bool IsHospitable => true;
+        internal virtual bool IsHospitable => true;
 
         private double? _luminosity;
         /// <summary>
@@ -33,7 +35,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public double Luminosity
         {
-            get => _luminosity ??= GetLuminosity();
+            get => _luminosity ?? 0;
             set => _luminosity = value;
         }
 
@@ -52,13 +54,12 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// </summary>
         public bool IsPopulationII { get; internal set; }
 
-        private SpectralClass? _spectralClass;
         /// <summary>
         /// The <see cref="Stars.SpectralClass"/> of this <see cref="Star"/>.
         /// </summary>
         public SpectralClass SpectralClass
         {
-            get => _spectralClass ??= GetSpectralClass();
+            get => _spectralClass ?? SpectralClass.None;
             set => _spectralClass = value;
         }
 
@@ -80,34 +81,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="Star"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Star"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Star"/>.</param>
-        /// <param name="spectralClass">The <see cref="Stars.SpectralClass"/> of this <see cref="Star"/>.</param>
-        /// <param name="luminosityClass">
-        /// The <see cref="Stars.LuminosityClass"/> of this <see cref="Star"/>.
-        /// </param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="Star"/>.</param>
-        internal Star(
-            Location parent,
-            Vector3 position,
-            SpectralClass? spectralClass = null,
-            LuminosityClass? luminosityClass = null,
-            bool populationII = false) : base(parent, position)
-        {
-            if (spectralClass.HasValue)
-            {
-                SpectralClass = spectralClass.Value;
-            }
-
-            if (luminosityClass.HasValue)
-            {
-                LuminosityClass = luminosityClass.Value;
-            }
-
-            IsPopulationII = populationII;
-        }
+        internal Star(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected Star(
             string id,
@@ -121,7 +97,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -130,7 +106,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children)
+                parentId)
         {
             _luminosity = luminosity;
             _luminosityClass = luminosityClass;
@@ -149,8 +125,56 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="Star"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="Star"/> to generate.</typeparam>
+        /// <param name="parent">The location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="spectralClass">The <see cref="Stars.SpectralClass"/> of this <see
+        /// cref="Star"/>.</param>
+        /// <param name="luminosityClass">
+        /// The <see cref="Stars.LuminosityClass"/> of this <see cref="Star"/>.
+        /// </param>
+        /// <param name="populationII">Set to true if this is to be a Population II <see
+        /// cref="Star"/>.</param>
+        /// <returns>A new instance of the indicated <see cref="Star"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(
+            Location? parent,
+            Vector3 position,
+            SpectralClass? spectralClass = null,
+            LuminosityClass? luminosityClass = null,
+            bool populationII = false) where T : Star
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parent?.Id, position }) as T;
+            if (instance != null)
+            {
+                if (spectralClass.HasValue)
+                {
+                    instance.SpectralClass = spectralClass.Value;
+                }
+
+                if (luminosityClass.HasValue)
+                {
+                    instance.LuminosityClass = luminosityClass.Value;
+                }
+
+                instance.IsPopulationII = populationII;
+
+                await instance.InitializeBaseAsync(parent).ConfigureAwait(false);
+            }
+            return instance;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -173,8 +197,32 @@ namespace WorldFoundry.CelestialBodies.Stars
             info.AddValue(nameof(Albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), Material);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_material), Material);
+            info.AddValue(nameof(ParentId), ParentId);
+        }
+
+        /// <summary>
+        /// Sets this location's name.
+        /// </summary>
+        /// <param name="value">The name. May be <see langword="null"/>.</param>
+        /// <remarks>
+        /// <para>
+        /// If the name is set to <see langword="null"/>, a generic designation will be used.
+        /// </para>
+        /// <para>
+        /// NOTE: Setting a star's name sets is containing system's name also, if the system doesn't
+        /// already have a name.
+        /// </para>
+        /// </remarks>
+        public override async Task SetNameAsync(string? value)
+        {
+            Name = value;
+            var parent = await GetParentAsync().ConfigureAwait(false);
+            if (parent is StarSystem system
+                && string.IsNullOrEmpty(system.Name))
+            {
+                await system.SetNameAsync(value).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -246,7 +294,7 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <param name="distance">The desired distance, in meters.</param>
         /// <param name="albedo">The albedo of the target body. Defaults to zero.</param>
         internal void SetTempForTargetPlanetTemp(double temperature, Number distance, double? albedo = null)
-            => Temperature = temperature / (double)(Number.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - (albedo ?? 0), 0.25));
+            => SetTemperature(temperature / (double)(Number.Sqrt(Shape.ContainingRadius / (2 * distance)) * Math.Pow(1 - (albedo ?? 0), 0.25)));
 
         private string GetDesignatorPrefix()
         {
@@ -280,7 +328,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             return sb.ToString();
         }
 
-        private protected virtual double GetLuminosity(Number? temperature = null)
+        private protected virtual ValueTask<double> GetLuminosityAsync(Number? temperature = null)
         {
             // Luminosity scales with temperature for main-sequence stars.
             var luminosity = Math.Pow((double)(temperature ?? Number.Zero) / 5778, 5.6) * 3.846e26;
@@ -289,80 +337,83 @@ namespace WorldFoundry.CelestialBodies.Stars
             if (LuminosityClass == LuminosityClass.sd)
             {
                 // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
-                return luminosity / Randomizer.Instance.NextDouble(55, 100);
+                return new ValueTask<double>(luminosity / Randomizer.Instance.NextDouble(55, 100));
             }
             else if (LuminosityClass == LuminosityClass.IV)
             {
                 // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
-                return luminosity * Randomizer.Instance.NextDouble(55, 100);
+                return new ValueTask<double>(luminosity * Randomizer.Instance.NextDouble(55, 100));
             }
             else
             {
-                return luminosity;
+                return new ValueTask<double>(luminosity);
             }
         }
 
         private protected virtual LuminosityClass GetLuminosityClass() => LuminosityClass.V;
 
-        private protected double GetLuminosityFromRadius()
-            => NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * (double)RadiusSquared * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.sigma * Math.Pow(Temperature ?? 0, 4);
+        private protected async ValueTask<double> GetLuminosityFromRadiusAsync()
+        {
+            var temp = await GetTemperatureAsync().ConfigureAwait(false);
+            return NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * (double)RadiusSquared * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.sigma * Math.Pow(temp ?? 0, 4);
+        }
 
-        private protected override IMaterial GetMaterial()
+        private protected override async Task GenerateMaterialAsync()
         {
             var temperature = GetTemperature();
 
-            var shape = GetShape(temperature);
+            var shape = await GetShapeAsync(temperature).ConfigureAwait(false);
 
             // Mass scales with radius for main-sequence stars, with the scale changing at around 1
             // solar mass/radius.
             var mass = Number.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new Number(125, -2) : new Number(175, -2)) * new Number(1.99, 30);
 
-            return GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+            Material = GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+        }
+
+        private protected virtual ValueTask<SpectralClass> GenerateSpectralClassAsync()
+        {
+            var chance = Randomizer.Instance.NextDouble();
+            if (chance <= 0.0000003)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.O); // 0.00003%
+            }
+            else if (chance <= 0.0013)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.B); // ~0.13%
+            }
+            else if (chance <= 0.0073)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.A); // ~0.6%
+            }
+            else if (chance <= 0.0373)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.F); // ~3%
+            }
+            else if (chance <= 0.1133)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.G); // ~7.6%
+            }
+            else if (chance <= 0.2343)
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.K); // ~12.1%
+            }
+            else
+            {
+                return new ValueTask<SpectralClass>(SpectralClass.M); // ~76.45%
+            }
         }
 
         /// <summary>
         /// A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
         /// </summary>
-        private protected IShape GetShape(Number? temperature)
+        private protected async Task<IShape> GetShapeAsync(Number? temperature)
         {
             var d = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * 5.67e-8 * Math.Pow((double)(temperature ?? Number.Zero), 4);
-            _luminosity = GetLuminosity(temperature);
+            _luminosity = await GetLuminosityAsync(temperature).ConfigureAwait(false);
             var radius = d.IsNearlyZero() ? Number.Zero : Math.Sqrt(Luminosity / d);
             var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
             return new Ellipsoid(radius, radius * (1 - flattening), Position);
-        }
-
-        private protected virtual SpectralClass GetSpectralClass()
-        {
-            var chance = Randomizer.Instance.NextDouble();
-            if (chance <= 0.0000003)
-            {
-                return SpectralClass.O; // 0.00003%
-            }
-            else if (chance <= 0.0013)
-            {
-                return SpectralClass.B; // ~0.13%
-            }
-            else if (chance <= 0.0073)
-            {
-                return SpectralClass.A; // ~0.6%
-            }
-            else if (chance <= 0.0373)
-            {
-                return SpectralClass.F; // ~3%
-            }
-            else if (chance <= 0.1133)
-            {
-                return SpectralClass.G; // ~7.6%
-            }
-            else if (chance <= 0.2343)
-            {
-                return SpectralClass.K; // ~12.1%
-            }
-            else
-            {
-                return SpectralClass.M; // ~76.45%
-            }
         }
 
         private protected SpectralClass GetSpectralClassFromTemperature(Number temperature)
@@ -573,6 +624,13 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
 
             return true;
+        }
+
+        private protected override async Task InitializeAsync()
+        {
+            await base.InitializeAsync().ConfigureAwait(false);
+            _spectralClass ??= await GenerateSpectralClassAsync().ConfigureAwait(false);
+            _luminosity ??= await GetLuminosityAsync().ConfigureAwait(false);
         }
     }
 }

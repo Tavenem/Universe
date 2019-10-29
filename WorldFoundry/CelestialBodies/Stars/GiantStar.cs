@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -24,19 +23,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="GiantStar"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="GiantStar"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="GiantStar"/>.</param>
-        /// <param name="luminosityClass">
-        /// The <see cref="LuminosityClass"/> of this <see cref="GiantStar"/>.
-        /// </param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="GiantStar"/>.</param>
-        internal GiantStar(
-            Location parent,
-            Vector3 position,
-            LuminosityClass? luminosityClass = null,
-            bool populationII = false) : base(parent, position, null, luminosityClass, populationII) { }
+        internal GiantStar(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected GiantStar(
             string id,
@@ -50,7 +39,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -63,7 +52,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private GiantStar(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -76,17 +65,17 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override double GetLuminosity(Number? temperature = null) => LuminosityClass switch
+        private protected override ValueTask<double> GetLuminosityAsync(Number? temperature = null) => LuminosityClass switch
         {
-            LuminosityClass.Zero => 3.846e31 + Randomizer.Instance.PositiveNormalDistributionSample(0, 3.0768e32),
-            LuminosityClass.Ia => Randomizer.Instance.NormalDistributionSample(1.923e31, 3.846e29),
-            LuminosityClass.Ib => Randomizer.Instance.NormalDistributionSample(3.846e30, 3.846e29),
-            LuminosityClass.II => Randomizer.Instance.NormalDistributionSample(3.846e29, 2.3076e29),
-            LuminosityClass.III => Randomizer.Instance.NormalDistributionSample(1.5384e29, 4.9998e28),
-            _ => 0,
+            LuminosityClass.Zero => new ValueTask<double>(3.846e31 + Randomizer.Instance.PositiveNormalDistributionSample(0, 3.0768e32)),
+            LuminosityClass.Ia => new ValueTask<double>(Randomizer.Instance.NormalDistributionSample(1.923e31, 3.846e29)),
+            LuminosityClass.Ib => new ValueTask<double>(Randomizer.Instance.NormalDistributionSample(3.846e30, 3.846e29)),
+            LuminosityClass.II => new ValueTask<double>(Randomizer.Instance.NormalDistributionSample(3.846e29, 2.3076e29)),
+            LuminosityClass.III => new ValueTask<double>(Randomizer.Instance.NormalDistributionSample(1.5384e29, 4.9998e28)),
+            _ => new ValueTask<double>(0),
         };
 
         private protected override LuminosityClass GetLuminosityClass()
@@ -117,13 +106,13 @@ namespace WorldFoundry.CelestialBodies.Stars
             }
         }
 
-        private protected override IMaterial GetMaterial()
+        private protected override async Task GenerateMaterialAsync()
         {
             var temperature = GetTemperature();
-            var shape = GetShape(temperature);
-            var mass = GetMass();
+            var shape = await GetShapeAsync(temperature).ConfigureAwait(false);
+            var mass = await GetMassAsync().ConfigureAwait(false);
 
-            return GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+            Material = GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
         }
     }
 }

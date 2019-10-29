@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.Space
 {
@@ -17,20 +17,14 @@ namespace WorldFoundry.Space
     [Serializable]
     public class Universe : CelestialLocation
     {
-        private static readonly List<ChildDefinition> _BaseChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _BaseChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(GalaxySupercluster), GalaxySupercluster.Space, new Number(5.8, -26)),
+            new ChildDefinition<GalaxySupercluster>(GalaxySupercluster.Space, new Number(5.8, -26)),
         };
 
         private protected override string BaseTypeName => "Universe";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_BaseChildDefinitions);
-
-        /// <summary>
-        /// The <see cref="Space.Universe"/> which contains this <see cref="CelestialLocation"/>, if any.
-        /// </summary>
-        public override Universe? ContainingUniverse => this;
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _BaseChildDefinitions;
 
         /// <summary>
         /// The time in this universe.
@@ -65,16 +59,34 @@ namespace WorldFoundry.Space
             string id,
             string? name,
             IMaterial? material,
-            Time time,
-            List<Location>? children) : base(id, name, false, 0, Vector3.Zero, null, material, children)
+            Time time) : base(id, name, false, 0, Vector3.Zero, null, material, null)
             => Time = time;
 
         private Universe(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string)info.GetValue(nameof(Name), typeof(string)),
-            (IMaterial)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (Time)info.GetValue(nameof(Time), typeof(Time)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (Time)info.GetValue(nameof(Time), typeof(Time))) { }
+
+        /// <summary>
+        /// Gets a new <see cref="CelestialLocation"/> instance.
+        /// </summary>
+        /// <returns>A new instance of the indicated <see cref="CelestialLocation"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<Universe?> GetNewInstanceAsync()
+        {
+            var instance = new Universe();
+            await instance.InitializeBaseAsync((string?)null).ConfigureAwait(false);
+            return instance;
+        }
+
+        /// <summary>
+        /// Gets the <see cref="Universe"/> which contains this <see cref="CelestialLocation"/>, if
+        /// any.
+        /// </summary>
+        /// <returns>The <see cref="Universe"/> which contains this <see cref="CelestialLocation"/>,
+        /// or <see langword="null"/> if this location is not contained within a universe.</returns>
+        public override Task<Universe?> GetContainingUniverseAsync() => Task.FromResult<Universe?>(this);
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -89,12 +101,11 @@ namespace WorldFoundry.Space
         {
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
-            info.AddValue(nameof(Material), _material);
+            info.AddValue(nameof(_material), _material);
             info.AddValue(nameof(Time), Time);
-            info.AddValue(nameof(Children), Children.ToList());
         }
 
-        private protected override Number GetMass() => Number.PositiveInfinity;
+        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Number.PositiveInfinity);
 
         // A universe is modeled as a sphere with vast a radius, roughly 4 million times the size of
         // the real observable universe.
@@ -102,7 +113,7 @@ namespace WorldFoundry.Space
         // Approximately 4e18 superclusters might be found in the modeled universe, by volume
         // (although this would require exhaustive "exploration" to populate so much space). This
         // makes the universe effectively infinite in scope, if not in linear dimensions.
-        private protected override IShape GetShape() => new Sphere(new Number(1.89214, 33));
+        private protected override ValueTask<IShape> GetShapeAsync() => new ValueTask<IShape>(new Sphere(new Number(1.89214, 33)));
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetMixtureReference(Substances.Mixtures.WarmHotIntergalacticMedium);

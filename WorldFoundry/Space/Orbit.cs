@@ -6,7 +6,7 @@ using NeverFoundry.MathAndScience.Time;
 using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.Space
 {
@@ -57,9 +57,9 @@ namespace WorldFoundry.Space
         public Number MeanMotion { get; }
 
         /// <summary>
-        /// The entity which is being orbited.
+        /// The id of the entity which is being orbited.
         /// </summary>
-        public CelestialLocation OrbitedObject { get; }
+        public string OrbitedObjectId { get; }
 
         /// <summary>
         /// The periapsis of this orbit, in meters.
@@ -104,8 +104,7 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Orbit"/>.
         /// </summary>
-        /// <param name="orbitedObject">The <see cref="CelestialLocation"/> which will be
-        /// orbited.</param>
+        /// <param name="orbitedObjectId">The id of the location which will be orbited.</param>
         /// <param name="alpha">Derived value equal to the standard gravitational parameter divided
         /// by the semi-major axis.</param>
         /// <param name="eccentricity">The eccentricity of this orbit.</param>
@@ -127,7 +126,7 @@ namespace WorldFoundry.Space
         /// <param name="epoch">The time at which the state of this orbit is defined, which
         /// coincides with a time of pericenter passage.</param>
         public Orbit(
-            CelestialLocation orbitedObject,
+            string orbitedObjectId,
             Number alpha,
             double eccentricity,
             double inclination,
@@ -143,7 +142,7 @@ namespace WorldFoundry.Space
             Number period,
             Duration epoch)
         {
-            OrbitedObject = orbitedObject;
+            OrbitedObjectId = orbitedObjectId;
             _alpha = alpha;
             Eccentricity = eccentricity;
             Inclination = inclination;
@@ -165,7 +164,7 @@ namespace WorldFoundry.Space
         }
 
         private Orbit(SerializationInfo info, StreamingContext context) : this(
-            (CelestialLocation)info.GetValue(nameof(OrbitedObject), typeof(CelestialLocation)),
+            (string)info.GetValue(nameof(OrbitedObjectId), typeof(string)),
             (Number)info.GetValue(nameof(_alpha), typeof(Number)),
             (double)info.GetValue(nameof(Eccentricity), typeof(double)),
             (double)info.GetValue(nameof(Inclination), typeof(double)),
@@ -188,10 +187,10 @@ namespace WorldFoundry.Space
         /// <param name="orbitingObject">An orbiting object.</param>
         /// <param name="orbitedObject">An orbited entity.</param>
         /// <returns>A change of velocity vector.</returns>
-        public static Vector3 GetDeltaVForCircularOrbit(CelestialLocation orbitingObject, CelestialLocation orbitedObject)
+        public static async Task<Vector3> GetDeltaVForCircularOrbitAsync(CelestialLocation orbitingObject, CelestialLocation orbitedObject)
         {
-            var r0 = orbitedObject.CelestialParent != orbitingObject.CelestialParent
-                ? orbitingObject.GetLocalizedPosition(orbitedObject, orbitedObject.Position)
+            var r0 = orbitedObject.ParentId != orbitingObject.ParentId
+                ? await orbitingObject.GetLocalizedPositionAsync(orbitedObject, orbitedObject.Position).ConfigureAwait(false)
                 : orbitingObject.Position - orbitedObject.Position;
 
             var h = Vector3.Cross(r0, orbitingObject.Velocity);
@@ -226,7 +225,7 @@ namespace WorldFoundry.Space
         [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue(nameof(OrbitedObject), OrbitedObject);
+            info.AddValue(nameof(OrbitedObjectId), OrbitedObjectId);
             info.AddValue(nameof(_alpha), _alpha);
             info.AddValue(nameof(Eccentricity), Eccentricity);
             info.AddValue(nameof(Inclination), Inclination);
@@ -254,8 +253,14 @@ namespace WorldFoundry.Space
         /// inclination will be calculated from the current position, and presumed to be the maximum
         /// inclination.
         /// </remarks>
-        public static void SetCircularOrbit(CelestialLocation orbitingObject, CelestialLocation orbitedObject)
+        public static async Task SetCircularOrbitAsync(CelestialLocation orbitingObject, CelestialLocation? orbitedObject)
         {
+            if (orbitedObject is null)
+            {
+                await orbitingObject.SetOrbitAsync(null).ConfigureAwait(false);
+                return;
+            }
+
             var standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass);
 
             var r0 = orbitingObject.Position - orbitedObject.Position;
@@ -301,8 +306,9 @@ namespace WorldFoundry.Space
 
             var period = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
 
-            orbitingObject.Orbit = new Orbit(
-                orbitedObject,
+            var universe = await orbitingObject.GetContainingUniverseAsync().ConfigureAwait(false);
+            await orbitingObject.SetOrbitAsync(new Orbit(
+                orbitedObject.Id,
                 alpha,
                 0,
                 (double)inclination,
@@ -316,7 +322,7 @@ namespace WorldFoundry.Space
                 0,
                 orbitingObject.Velocity,
                 period,
-                orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero);
+                universe?.Time.Now ?? Duration.Zero)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -332,9 +338,9 @@ namespace WorldFoundry.Space
         /// inclination will be calculated from the current position, and presumed to be the maximum
         /// inclination.
         /// </remarks>
-        public static void SetOrbit(
+        public static async Task SetOrbitAsync(
             CelestialLocation orbitingObject,
-            CelestialLocation orbitedObject,
+            CelestialLocation? orbitedObject,
             double eccentricity)
         {
             if (orbitingObject is null)
@@ -343,15 +349,16 @@ namespace WorldFoundry.Space
             }
             if (orbitedObject is null)
             {
-                throw new ArgumentNullException(nameof(orbitedObject), $"{nameof(orbitedObject)} cannot be null");
+                await orbitingObject.SetOrbitAsync(null).ConfigureAwait(false);
+                return;
             }
             eccentricity = Math.Abs(eccentricity);
 
             var standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass);
 
-            var r0 = orbitedObject.CelestialParent == orbitingObject.CelestialParent
+            var r0 = orbitedObject.ParentId == orbitingObject.ParentId
                 ? orbitingObject.Position - orbitingObject.Position
-                : orbitingObject.GetLocalizedPosition(orbitedObject, orbitedObject.Position);
+                : await orbitingObject.GetLocalizedPositionAsync(orbitedObject, orbitedObject.Position).ConfigureAwait(false);
 
             var radius = r0.Length();
 
@@ -378,9 +385,10 @@ namespace WorldFoundry.Space
                 semiMajorAxis = periapsis;
             }
             var period = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
+            var universe = await orbitingObject.GetContainingUniverseAsync().ConfigureAwait(false);
             // If at periapsis now, this is the epoch;
             // if not, the epoch is half the period away.
-            var epoch = orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero;
+            var epoch = universe?.Time.Now ?? Duration.Zero;
             if (radius > semiMajorAxis)
             {
                 var epochOffset = Duration.FromSeconds(period / 2);
@@ -421,8 +429,8 @@ namespace WorldFoundry.Space
             orbitingObject.Velocity = Number.Sqrt(standardGravitationalParameter / semiLatusRectum)
                 * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
-            orbitingObject.Orbit = new Orbit(
-                orbitedObject,
+            await orbitingObject.SetOrbitAsync(new Orbit(
+                orbitedObject.Id,
                 alpha,
                 eccentricity,
                 (double)inclination,
@@ -436,7 +444,7 @@ namespace WorldFoundry.Space
                 trueAnomaly,
                 orbitingObject.Velocity,
                 period,
-                epoch);
+                epoch)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -467,9 +475,9 @@ namespace WorldFoundry.Space
         /// The angle between periapsis and the current position of this object, from the center of
         /// the object orbited, in radians. Values will be normalized between zero and 2π
         /// </param>
-        public static void SetOrbit(
+        public static async Task SetOrbitAsync(
             CelestialLocation orbitingObject,
-            CelestialLocation orbitedObject,
+            CelestialLocation? orbitedObject,
             Number periapsis,
             double eccentricity,
             double inclination,
@@ -481,9 +489,10 @@ namespace WorldFoundry.Space
             {
                 throw new ArgumentNullException(nameof(orbitingObject), $"{nameof(orbitingObject)} cannot be null");
             }
-            if (orbitedObject == null)
+            if (orbitedObject is null)
             {
-                throw new ArgumentNullException(nameof(orbitedObject), $"{nameof(orbitedObject)} cannot be null");
+                await orbitingObject.SetOrbitAsync(null).ConfigureAwait(false);
+                return;
             }
 
             eccentricity = Math.Abs(eccentricity);
@@ -566,9 +575,9 @@ namespace WorldFoundry.Space
             var meanLongitude = angleAscending + argPeriapsis;
 
             var r0 = (radius * cosineTrueAnomalyNumber * perifocalP) + (radius * sineTrueAnomalyNumber * perifocalQ);
-            if (orbitingObject.CelestialParent != orbitedObject.CelestialParent)
+            if (orbitingObject.ParentId != orbitedObject.ParentId)
             {
-                orbitingObject.Position += orbitingObject.GetLocalizedPosition(orbitedObject, r0);
+                orbitingObject.Position += await orbitingObject.GetLocalizedPositionAsync(orbitedObject, r0).ConfigureAwait(false);
             }
             else
             {
@@ -580,17 +589,22 @@ namespace WorldFoundry.Space
 
             var eccentricAnomaly = Math.Atan2(eccentricity + cosineTrueAnomaly, Math.Sqrt(1 - eccentricitySquared) * sineTrueAnomaly);
             var meanAnomaly = (Number)(eccentricAnomaly - (eccentricity * Math.Sin(eccentricAnomaly)));
+            while (meanAnomaly < 0)
+            {
+                meanAnomaly += MathConstants.TwoPI;
+            }
             var period = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
-            var meanMotion = MathConstants.TwoPI / period;
-            var time = orbitingObject.ContainingUniverse?.Time.Now ?? Duration.Zero;
-            var epochOffsetSeconds = meanAnomaly / meanMotion;
+            var meanMotion = period.IsZero ? Number.Zero : MathConstants.TwoPI / period;
+            var universe = await orbitingObject.GetContainingUniverseAsync().ConfigureAwait(false);
+            var time = universe?.Time.Now ?? Duration.Zero;
+            var epochOffsetSeconds = meanMotion.IsZero ? Number.Zero : meanAnomaly / meanMotion;
             var epochOffset = Duration.FromSeconds(epochOffsetSeconds);
             var epoch = time > epochOffset
                 ? time - epochOffset
                 : time + Duration.FromSeconds(period - epochOffsetSeconds);
 
-            orbitingObject.Orbit = new Orbit(
-                orbitedObject,
+            await orbitingObject.SetOrbitAsync(new Orbit(
+                orbitedObject.Id,
                 alpha,
                 eccentricity,
                 inclination,
@@ -604,7 +618,35 @@ namespace WorldFoundry.Space
                 trueAnomaly,
                 orbitingObject.Velocity,
                 period,
-                epoch);
+                epoch)).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sets the orbit of the given <see cref="CelestialLocation"/> according to the given
+        /// orbital parameters, and adjusts its position and velocity as necessary.
+        /// </summary>
+        /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+        /// <param name="orbitalParameters">The parameters which describe the orbit.</param>
+        internal static async Task SetOrbitAsync(
+            CelestialLocation orbitingObject,
+            OrbitalParameters orbitalParameters)
+        {
+            if (orbitalParameters.Circular)
+            {
+                await SetCircularOrbitAsync(orbitingObject, orbitalParameters.OrbitedObject).ConfigureAwait(false);
+            }
+            else
+            {
+                await SetOrbitAsync(
+                    orbitingObject,
+                    orbitalParameters.OrbitedObject,
+                    orbitalParameters.Periapsis,
+                    orbitalParameters.Eccentricity,
+                    orbitalParameters.Inclination,
+                    orbitalParameters.AngleAscending,
+                    orbitalParameters.ArgumentOfPeriapsis,
+                    orbitalParameters.TrueAnomaly).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -643,6 +685,12 @@ namespace WorldFoundry.Space
             }
             return GetMeanLongitudeAndAnomalyAtTime(t);
         }
+
+        /// <summary>
+        /// Gets the entity which is being orbited.
+        /// </summary>
+        /// <returns>The entity which is being orbited. May be <see langword="null"/>.</returns>
+        public Task<CelestialLocation?> GetOrbitedObjectAsync() => DataStore.GetItemAsync<CelestialLocation>(OrbitedObjectId);
 
         /// <summary>
         /// Gets orbital state vectors at a given time.
@@ -742,8 +790,13 @@ namespace WorldFoundry.Space
         internal static Number GetSemiMajorAxisForPeriod(CelestialLocation orbitingObject, CelestialLocation orbitedObject, Number period)
             => (ScienceConstants.G * (orbitingObject.Mass + orbitedObject.Mass) * period * period / (MathConstants.FourPI * MathConstants.PI)).CubeRoot();
 
-        internal Number GetHillSphereRadius(CelestialLocation orbitingObject)
-            => GetHillSphereRadius(orbitingObject, OrbitedObject, SemiMajorAxis, Eccentricity);
+        internal async Task<Number> GetHillSphereRadiusAsync(CelestialLocation orbitingObject)
+        {
+            var orbited = await GetOrbitedObjectAsync().ConfigureAwait(false);
+            return orbited is null
+                ? Number.Zero
+                : GetHillSphereRadius(orbitingObject, orbited, SemiMajorAxis, Eccentricity);
+        }
 
         /// <summary>
         /// Approximates the radius of the orbiting body's mutual Hill sphere with another
@@ -759,11 +812,21 @@ namespace WorldFoundry.Space
         /// The mass of another celestial body presumed to be orbiting the same primary as this one.
         /// </param>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
-        internal Number GetMutualHillSphereRadius(CelestialLocation orbitingObject, Number otherMass)
-            => ((orbitingObject.Mass + otherMass) / (3 * OrbitedObject.Mass)).CubeRoot() * SemiMajorAxis;
+        internal async Task<Number> GetMutualHillSphereRadiusAsync(CelestialLocation orbitingObject, Number otherMass)
+        {
+            var orbited = await GetOrbitedObjectAsync().ConfigureAwait(false);
+            return orbited is null
+                ? Number.Zero
+                : ((orbitingObject.Mass + otherMass) / (3 * orbited.Mass)).CubeRoot() * SemiMajorAxis;
+        }
 
-        internal Number GetSphereOfInfluenceRadius(CelestialLocation orbitingObject)
-            => SemiMajorAxis * Number.Pow(orbitingObject.Mass / OrbitedObject.Mass, new Number(2) / new Number(5));
+        internal async Task<Number> GetSphereOfInfluenceRadiusAsync(CelestialLocation orbitingObject)
+        {
+            var orbited = await GetOrbitedObjectAsync().ConfigureAwait(false);
+            return orbited is null
+                ? Number.Zero
+                : SemiMajorAxis * Number.Pow(orbitingObject.Mass / orbited.Mass, new Number(2) / new Number(5));
+        }
 
         private Number GetUniversalVariableFormulaRatio(Number x, Number t, Number sqrtSGP, Number accel, Number f)
         {

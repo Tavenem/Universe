@@ -4,9 +4,8 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 using WorldFoundry.Space;
 
 namespace WorldFoundry.CelestialBodies.BlackHoles
@@ -29,11 +28,9 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="BlackHole"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="BlackHole"/>.</param>
-        internal BlackHole(Location parent, Vector3 position) : base(parent, position) { }
+        internal BlackHole(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected BlackHole(
             string id,
@@ -43,7 +40,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -52,7 +49,7 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private BlackHole(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -61,14 +58,15 @@ namespace WorldFoundry.CelestialBodies.BlackHoles
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override Number GetMass() => Randomizer.Instance.NextNumber(new Number(6, 30), new Number(4, 31)); // ~3–20 solar masses
+        private protected override ValueTask<Number> GetMassAsync()
+            => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(6, 30), new Number(4, 31))); // ~3–20 solar masses
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
-            var mass = GetMass();
+            var mass = await GetMassAsync().ConfigureAwait(false);
 
             // The shape given is presumed to refer to the shape of the event horizon.
             var shape = new Sphere(ScienceConstants.TwoG * mass / ScienceConstants.SpeedOfLightSquared, Position);

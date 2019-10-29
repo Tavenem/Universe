@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System;
 using System.Text;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Space;
 using WorldFoundry.SurfaceMapping;
@@ -17,11 +18,11 @@ namespace WorldFoundry.Test
         private static readonly JsonSerializerSettings _JsonSerializerSettings = new JsonSerializerSettings { TypeNameHandling = TypeNameHandling.Auto };
 
         [TestMethod]
-        public void TerrestrialPlanet_Save()
+        public async Task TerrestrialPlanet_SaveAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
             var json = JsonConvert.SerializeObject(planet, _JsonSerializerSettings);
@@ -37,14 +38,14 @@ namespace WorldFoundry.Test
         }
 
         [TestMethod]
-        public void TerrestrialPlanet_Save_SurfaceMaps()
+        public async Task TerrestrialPlanet_Save_SurfaceMapsAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
-            var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            var maps = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
 
             var json = JsonConvert.SerializeObject(maps);
             var bytes = Encoding.UTF8.GetBytes(json);
@@ -77,13 +78,13 @@ namespace WorldFoundry.Test
         }
 
         [TestMethod]
-        public void Universe_Save()
+        public async Task Universe_SaveAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
-            var universe = planet!.ContainingUniverse;
+            var universe = await planet!.GetContainingUniverseAsync().ConfigureAwait(false);
             Assert.IsNotNull(universe);
 
             var json = JsonConvert.SerializeObject(universe, _JsonSerializerSettings);

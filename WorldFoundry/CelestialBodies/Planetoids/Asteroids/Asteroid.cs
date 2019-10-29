@@ -1,11 +1,11 @@
 ﻿using WorldFoundry.CelestialBodies.Planetoids.Planets;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -16,12 +16,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
     public class Asteroid : Planetoid
     {
         internal static readonly Number Space = new Number(400000);
-
-        /// <summary>
-        /// The name for this type of <see cref="CelestialLocation"/>.
-        /// </summary>
-        public override string TypeName
-            => Orbit?.OrbitedObject is Planemo ? $"{BaseTypeName} Moon" : BaseTypeName;
 
         // Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
         // rather than an asteroid.
@@ -38,46 +32,45 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Asteroid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
-        internal Asteroid(Location? parent, Vector3 position) : base(parent, position) { }
+        internal Asteroid(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Asteroid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Asteroid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Asteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Asteroid"/> during random generation, in kg.
         /// </param>
-        internal Asteroid(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal Asteroid(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
-        internal override void GenerateOrbit(CelestialLocation orbitedObject)
-        {
-            if (orbitedObject == null)
-            {
-                return;
-            }
-
-            WorldFoundry.Space.Orbit.SetOrbit(
+        internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
+            => await WorldFoundry.Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
-                GetDistanceTo(orbitedObject),
+                await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
                 Randomizer.Instance.NextDouble(0.4),
                 Randomizer.Instance.NextDouble(0.5),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                0);
-        }
+                0).ConfigureAwait(false);
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
+        private protected OrbitalParameters GetAsteroidSatelliteOrbit(Number periapsis, double eccentricity)
+            => new OrbitalParameters(
+                this,
+                periapsis,
+                eccentricity,
+                Randomizer.Instance.NextDouble(0.5),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
             var density = GetDensity();
-            var mass = GetMass();
+            var mass = await GetMassAsync().ConfigureAwait(false);
             return (density, mass, GetShape(density, mass));
         }
 
@@ -89,16 +82,5 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
             var irregularity = Randomizer.Instance.NextNumber(Number.Half, Number.One);
             return new Ellipsoid(axis, axis * irregularity, axis / irregularity, Position);
         }
-
-        private protected void SetAsteroidSatelliteOrbit(CelestialLocation satellite, Number periapsis, double eccentricity)
-            => WorldFoundry.Space.Orbit.SetOrbit(
-                satellite,
-                this,
-                periapsis,
-                eccentricity,
-                Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
     }
 }

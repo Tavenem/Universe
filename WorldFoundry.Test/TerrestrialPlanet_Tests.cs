@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using WorldFoundry.Climate;
 using WorldFoundry.SurfaceMapping;
@@ -17,35 +18,35 @@ namespace WorldFoundry.Test
         private const int SurfaceMapResolution = 90;
 
         [TestMethod]
-        public void TerrestrialPlanet_Generate()
+        public async Task TerrestrialPlanet_GenerateAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Radius: {(planet!.Shape.ContainingRadius / 1000).ToString("N0")} km");
-            Console.WriteLine($"Surface area: {(planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000).ToString("N0")} km²");
+            Console.WriteLine($"Radius: {(planet!.Shape.ContainingRadius / 1000).ToString()} km");
+            Console.WriteLine($"Surface area: {(planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000).ToString()} km²");
         }
 
         [TestMethod]
-        public void TerrestrialPlanet_Generate_NoOutput()
+        public async Task TerrestrialPlanet_Generate_NoOutputAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
         }
 
         [TestMethod]
-        public void TerrestrialPlanet_Generate_WithSeasons()
+        public async Task TerrestrialPlanet_Generate_WithSeasonsAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
-            var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            var maps = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
 
             var sb = new StringBuilder();
 
@@ -61,14 +62,14 @@ namespace WorldFoundry.Test
         }
 
         [TestMethod]
-        public void TerrestrialPlanet_Generate_WithSeasons_NoOutput()
+        public async Task TerrestrialPlanet_Generate_WithSeasons_NoOutputAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
 
-            var planet = TerrestrialPlanet.GetPlanetForNewUniverse(planetParams);
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
-            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            _ = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
         }
 
         private static void AddClimateString(StringBuilder sb, TerrestrialPlanet planet, SurfaceMaps maps)

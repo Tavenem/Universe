@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.Climate;
 using WorldFoundry.Place;
@@ -45,23 +46,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="DwarfPlanet"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="DwarfPlanet"/>.</param>
-        internal DwarfPlanet(Location? parent, Vector3 position) : base(parent, position) { }
+        internal DwarfPlanet(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="DwarfPlanet"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="DwarfPlanet"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="DwarfPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="DwarfPlanet"/> during random generation, in kg.
         /// </param>
-        internal DwarfPlanet(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal DwarfPlanet(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         private protected DwarfPlanet(
             string id,
@@ -89,7 +86,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             Orbit? orbit,
             IMaterial? material,
             List<PlanetaryRing>? rings,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
@@ -124,7 +121,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 orbit,
                 material,
                 rings,
-                children,
+                parentId,
                 depthMap,
                 elevationMap,
                 flowMap,
@@ -146,21 +143,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             (int)info.GetValue(nameof(_seed3), typeof(int)),
             (int)info.GetValue(nameof(_seed4), typeof(int)),
             (int)info.GetValue(nameof(_seed5), typeof(int)),
-            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (double?)info.GetValue(nameof(_angleOfRotation), typeof(double?)),
             (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
-            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (double?)info.GetValue(nameof(_axialPrecession), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
             (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
             (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
             (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
             (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
-            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
             (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -170,25 +167,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
-        internal override void GenerateOrbit(CelestialLocation orbitedObject)
-        {
-            if (orbitedObject is null)
-            {
-                return;
-            }
-
-            WorldFoundry.Space.Orbit.SetOrbit(
+        internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
+            => await WorldFoundry.Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
-                GetDistanceTo(orbitedObject),
+                await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
                 Eccentricity,
                 Randomizer.Instance.NextDouble(0.9),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-        }
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI))
+            .ConfigureAwait(false);
 
-        private protected override void GenerateAlbedo()
+        private protected override async Task GenerateAlbedoAsync()
         {
             var ice = 0.0;
             if (!(_atmosphere is null))
@@ -203,10 +194,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             }
 
             var albedo = Randomizer.Instance.NextDouble(0.1, 0.6);
-            Albedo = (albedo * (1 - ice)) + (0.9 * ice);
+            await SetAlbedoAsync((albedo * (1 - ice)) + (0.9 * ice)).ConfigureAwait(false);
         }
 
-        private protected override void GenerateAtmosphere()
+        private protected override async Task GenerateAtmosphereAsync()
         {
             // Atmosphere is based solely on the volatile ices present.
 
@@ -260,38 +251,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
             {
                 components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3));
             }
-            _atmosphere = new Atmosphere(this, Randomizer.Instance.NextDouble(2.5), components.ToArray());
+            _atmosphere = await Atmosphere.GetNewInstanceAsync(this, Randomizer.Instance.NextDouble(2.5), components.ToArray()).ConfigureAwait(false);
         }
 
-        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
+        private protected override async Task<Planetoid?> GenerateSatelliteAsync(Number periapsis, double eccentricity, Number maxMass)
         {
-            Planetoid satellite;
-
-            // If the mass limit allows, there is an even chance that the satellite is a smaller dwarf planet.
-            if (maxMass > MinMass && Randomizer.Instance.NextBool())
-            {
-                satellite = new DwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
-            }
-            else
-            {
-                // Otherwise, it is an asteroid, selected from the standard distribution of types.
-                var chance = Randomizer.Instance.NextDouble();
-                if (chance <= 0.75)
-                {
-                    satellite = new CTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
-                }
-                else if (chance <= 0.9)
-                {
-                    satellite = new STypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
-                }
-                else
-                {
-                    satellite = new MTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
-                }
-            }
-
-            WorldFoundry.Space.Orbit.SetOrbit(
-                satellite,
+            var orbit = new OrbitalParameters(
                 this,
                 periapsis,
                 eccentricity,
@@ -300,7 +265,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
 
-            return satellite;
+            // If the mass limit allows, there is an even chance that the satellite is a smaller dwarf planet.
+            if (maxMass > MinMass && Randomizer.Instance.NextBool())
+            {
+                return await GetNewInstanceAsync<DwarfPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
+            }
+            else
+            {
+                // Otherwise, it is an asteroid, selected from the standard distribution of types.
+                var chance = Randomizer.Instance.NextDouble();
+                if (chance <= 0.75)
+                {
+                    return await GetNewInstanceAsync<CTypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
+                }
+                else if (chance <= 0.9)
+                {
+                    return await GetNewInstanceAsync<STypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
+                }
+                else
+                {
+                    return await GetNewInstanceAsync<MTypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
+                }
+            }
         }
 
         private protected override Number GetCoreProportion() => Randomizer.Instance.NextNumber(new Number(2, -1), new Number(55, -2));

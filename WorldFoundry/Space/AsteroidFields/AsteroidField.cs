@@ -7,10 +7,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
-using WorldFoundry.CelestialBodies.Stars;
 using WorldFoundry.Place;
 
 namespace WorldFoundry.Space.AsteroidFields
@@ -33,33 +33,26 @@ namespace WorldFoundry.Space.AsteroidFields
 
         private static readonly Number _ChildDensity = new Number(5.8, -26);
 
-        private static readonly List<ChildDefinition> _ChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _ChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(CTypeAsteroid), Asteroid.Space, _ChildDensity * new Number(74, -2)),
-            new ChildDefinition(typeof(STypeAsteroid), Asteroid.Space, _ChildDensity * new Number(14, -2)),
-            new ChildDefinition(typeof(MTypeAsteroid), Asteroid.Space, _ChildDensity * Number.Deci),
-            new ChildDefinition(typeof(Comet), Comet.Space, _ChildDensity * new Number(2, -2)),
-            new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, _ChildDensity * new Number(3, -10)),
-            new ChildDefinition(typeof(DwarfPlanet), DwarfPlanet.Space, _ChildDensity * new Number(1, -10)),
+            new ChildDefinition<CTypeAsteroid>(Asteroid.Space, _ChildDensity * new Number(74, -2)),
+            new ChildDefinition<STypeAsteroid>(Asteroid.Space, _ChildDensity * new Number(14, -2)),
+            new ChildDefinition<MTypeAsteroid>(Asteroid.Space, _ChildDensity * Number.Deci),
+            new ChildDefinition<Comet>(Comet.Space, _ChildDensity * new Number(2, -2)),
+            new ChildDefinition<DwarfPlanet>(DwarfPlanet.Space, _ChildDensity * new Number(3, -10)),
+            new ChildDefinition<DwarfPlanet>(DwarfPlanet.Space, _ChildDensity * new Number(1, -10)),
         };
 
         private protected Number? _majorRadius, _minorRadius;
 
         private protected string? _starId;
-        /// <summary>
-        /// The star around which this <see cref="AsteroidField"/> orbits, if any.
-        /// </summary>
-        public Star? Star => string.IsNullOrEmpty(_starId)
-            ? null
-            : CelestialParent?.CelestialChildren.OfType<Star>().FirstOrDefault(x => x.Id == _starId);
 
         /// <summary>
         /// The name for this type of <see cref="CelestialLocation"/>.
         /// </summary>
-        public override string TypeName => Star == null ? BaseTypeName : AsteroidBeltTypeName;
+        public override string TypeName => Orbit?.OrbitedObjectId is null ? BaseTypeName : AsteroidBeltTypeName;
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_ChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _ChildDefinitions;
 
         private protected override string BaseTypeName => "Asteroid Field";
 
@@ -71,39 +64,13 @@ namespace WorldFoundry.Space.AsteroidFields
         /// <summary>
         /// Initializes a new instance of <see cref="AsteroidField"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="AsteroidField"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="AsteroidField"/>.</param>
-        internal AsteroidField(Location parent, Vector3 position) : base(parent, position) { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="AsteroidField"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="AsteroidField"/> is located.
-        /// </param>
-        /// <param name="position">The initial position of this <see cref="AsteroidField"/>.</param>
-        /// <param name="star">
-        /// The star around which this <see cref="AsteroidField"/> orbits, if any.
-        /// </param>
-        /// <param name="majorRadius">
-        /// The length of the major radius of this <see cref="AsteroidField"/>, in meters.
-        /// </param>
-        /// <param name="minorRadius">
-        /// The length of the minor radius of this <see cref="AsteroidField"/>, in meters.
-        /// </param>
-        public AsteroidField(Location parent, Vector3 position, Star star, Number majorRadius, Number? minorRadius = null) : base(parent, position)
-        {
-            _starId = star.Id;
-            _majorRadius = majorRadius;
-            _minorRadius = minorRadius;
-        }
+        internal AsteroidField(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected AsteroidField(
             string id,
             string? name,
-            string starId,
             bool isPrepopulated,
             double? albedo,
             Vector3 velocity,
@@ -111,7 +78,7 @@ namespace WorldFoundry.Space.AsteroidFields
             IMaterial? material,
             Number? majorRadius,
             Number? minorRadius,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -120,9 +87,8 @@ namespace WorldFoundry.Space.AsteroidFields
                 velocity,
                 orbit,
                 material,
-                children)
+                parentId)
         {
-            _starId = starId;
             _majorRadius = majorRadius;
             _minorRadius = minorRadius;
         }
@@ -130,15 +96,51 @@ namespace WorldFoundry.Space.AsteroidFields
         private AsteroidField(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
-            (string)info.GetValue(nameof(_starId), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
             (Number?)info.GetValue(nameof(_majorRadius), typeof(Number?)),
             (Number?)info.GetValue(nameof(_minorRadius), typeof(Number?)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+
+        /// <summary>
+        /// Gets a new <see cref="AsteroidField"/> instance.
+        /// </summary>
+        /// <param name="parent">The location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="majorRadius">
+        /// The length of the major radius of this <see cref="AsteroidField"/>, in meters.
+        /// </param>
+        /// <param name="minorRadius">
+        /// The length of the minor radius of this <see cref="AsteroidField"/>, in meters.
+        /// </param>
+        /// <param name="orbit">The orbit to set for the new <see cref="AsteroidField"/>, if
+        /// any.</param>
+        /// <returns>A new <see cref="AsteroidField"/> instance, or <see langword="null"/> if no
+        /// instance could be generated with the given parameters.</returns>
+        public static async Task<AsteroidField?> GetNewInstanceAsync(
+            Location? parent,
+            Vector3 position,
+            Number majorRadius,
+            Number? minorRadius = null,
+            OrbitalParameters? orbit = null)
+        {
+            var instance = new AsteroidField(parent?.Id, position);
+            if (instance != null)
+            {
+                instance._majorRadius = majorRadius;
+                instance._minorRadius = minorRadius;
+                if (orbit.HasValue)
+                {
+                    await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
+                }
+                await instance.InitializeBaseAsync(parent).ConfigureAwait(false);
+            }
+            return instance;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -153,55 +155,29 @@ namespace WorldFoundry.Space.AsteroidFields
         {
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
-            info.AddValue(nameof(_starId), _starId);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
             info.AddValue(nameof(Albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), Material);
+            info.AddValue(nameof(_material), Material);
             info.AddValue(nameof(_majorRadius), _majorRadius);
             info.AddValue(nameof(_minorRadius), _minorRadius);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(ParentId), ParentId);
         }
 
-        internal override CelestialLocation? GenerateChild(ChildDefinition definition)
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
-            var child = base.GenerateChild(definition);
-            if (child is null)
-            {
-                return child;
-            }
-
-            if (Orbit.HasValue)
-            {
-                child.GenerateOrbit(Orbit.Value.OrbitedObject);
-            }
-            else if (Star != null)
-            {
-                child.GenerateOrbit(Star);
-            }
-
-            if (child is Planetoid p)
-            {
-                p.GenerateSatellites();
-            }
-
-            return child;
-        }
-
-        private protected override (double density, Number mass, IShape shape) GetMatter()
-        {
-            var shape = GetShape();
+            var shape = await GetShapeAsync().ConfigureAwait(false);
             var mass = shape.Volume * new Number(7, -8);
             return ((double)(mass / shape.Volume), mass, shape);
         }
 
-        private protected override IShape GetShape() => GetShape(null, null);
+        private protected override ValueTask<IShape> GetShapeAsync() => GetShapeAsync(_majorRadius, _minorRadius);
 
-        private protected IShape GetShape(Number? majorRadius, Number? minorRadius)
+        private protected async ValueTask<IShape> GetShapeAsync(Number? majorRadius, Number? minorRadius)
         {
             IShape shape;
-            if (!(CelestialParent is StarSystem) || Position != Vector3.Zero)
+            if (Position != Vector3.Zero || !((await GetParentAsync().ConfigureAwait(false)) is StarSystem))
             {
                 var axis = majorRadius ?? Randomizer.Instance.NextNumber(new Number(1.5, 11), new Number(3.15, 12));
                 shape = new Ellipsoid(axis, Randomizer.Instance.NextNumber(Number.Half, new Number(15, -1)) * axis, Randomizer.Instance.NextNumber(Number.Half, new Number(15, -1)) * axis, Position);
@@ -217,5 +193,17 @@ namespace WorldFoundry.Space.AsteroidFields
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetMixtureReference(Substances.Mixtures.InterplanetaryMedium);
+
+        private protected override async Task InitializeChildAsync(CelestialLocation child)
+        {
+            if (Orbit.HasValue)
+            {
+                var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (orbited != null)
+                {
+                    await child.GenerateOrbitAsync(orbited).ConfigureAwait(false);
+                }
+            }
+        }
     }
 }

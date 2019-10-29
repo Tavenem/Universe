@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -26,19 +25,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="RedGiant"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="RedGiant"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="RedGiant"/>.</param>
-        /// <param name="luminosityClass">
-        /// The <see cref="LuminosityClass"/> of this <see cref="RedGiant"/>.
-        /// </param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="RedGiant"/>.</param>
-        internal RedGiant(
-            Location parent,
-            Vector3 position,
-            LuminosityClass? luminosityClass = null,
-            bool populationII = false) : base(parent, position, luminosityClass, populationII) { }
+        internal RedGiant(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected RedGiant(
             string id,
@@ -52,7 +41,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -65,7 +54,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private RedGiant(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -78,24 +67,25 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override Number GetMass()
+        private protected override ValueTask<Number> GetMassAsync()
         {
             if (LuminosityClass == LuminosityClass.Zero
                 || LuminosityClass == LuminosityClass.Ia
                 || LuminosityClass == LuminosityClass.Ib)
             {
-                return Randomizer.Instance.NextNumber(new Number(1.592, 31), new Number(4.975, 31)); // Super/hypergiants
+                return new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(1.592, 31), new Number(4.975, 31))); // Super/hypergiants
             }
             else
             {
-                return Randomizer.Instance.NextNumber(new Number(5.97, 29), new Number(1.592, 31)); // (Bright)giants
+                return new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(5.97, 29), new Number(1.592, 31))); // (Bright)giants
             }
         }
 
-        private protected override SpectralClass GetSpectralClass() => GetSpectralClassFromTemperature(Temperature ?? 0);
+        private protected override async ValueTask<SpectralClass> GenerateSpectralClassAsync()
+            => GetSpectralClassFromTemperature(await GetTemperatureAsync().ConfigureAwait(false) ?? 0);
 
         private protected override double? GetTemperature()
             => Randomizer.Instance.NormalDistributionSample(3800, 466);

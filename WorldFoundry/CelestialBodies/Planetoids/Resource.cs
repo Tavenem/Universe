@@ -4,7 +4,6 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.MathAndScience.Numerics;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {

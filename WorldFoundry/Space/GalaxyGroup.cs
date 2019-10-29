@@ -6,7 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 using WorldFoundry.Space.Galaxies;
 
 namespace WorldFoundry.Space
@@ -19,19 +19,18 @@ namespace WorldFoundry.Space
     {
         internal static readonly Number Space = new Number(3, 23);
 
-        private static readonly List<ChildDefinition> _ChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _ChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, new Number(1.5, -70)),
+            new ChildDefinition<DwarfGalaxy>(DwarfGalaxy.Space, new Number(1.5, -70)),
         };
 
         private protected override string BaseTypeName => "Galaxy Group";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_ChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _ChildDefinitions;
 
         internal GalaxyGroup() { }
 
-        internal GalaxyGroup(Location parent, Vector3 position) : base(parent, position) { }
+        internal GalaxyGroup(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private GalaxyGroup(
             string id,
@@ -41,7 +40,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -50,7 +49,7 @@ namespace WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private GalaxyGroup(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -59,40 +58,43 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        internal override void PrepopulateRegion()
+        // General average; 1.0e14 solar masses
+        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(new Number(2, 44));
+
+        private protected override ValueTask<IShape> GetShapeAsync()
+            => new ValueTask<IShape>(new Sphere(Randomizer.Instance.NextNumber(new Number(1.5, 23), new Number(3, 23)), Position)); // ~500–1000 kpc
+
+        private protected override ISubstanceReference? GetSubstance()
+            => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
+
+        private protected override async Task PrepopulateRegionAsync()
         {
             if (_isPrepopulated)
             {
                 return;
             }
-            base.PrepopulateRegion();
+            _isPrepopulated = true;
 
             var amount = Randomizer.Instance.Next(1, 6);
-            Vector3 position;
             for (var i = 0; i < amount; i++)
             {
-                if (TryGetOpenSpace(GalaxySubgroup.Space, out var location))
+                var location = await GetOpenSpaceAsync(GalaxySubgroup.Space).ConfigureAwait(false);
+                if (location.HasValue)
                 {
-                    position = location;
+                    var subgroup = await GetNewInstanceAsync<GalaxySubgroup>(this, location.Value).ConfigureAwait(false);
+                    if (subgroup != null)
+                    {
+                        await subgroup.SaveAsync().ConfigureAwait(false);
+                    }
                 }
                 else
                 {
                     break;
                 }
-
-                _ = new GalaxySubgroup(this, position);
             }
         }
-
-        // General average; 1.0e14 solar masses
-        private protected override Number GetMass() => new Number(2, 44);
-
-        private protected override IShape GetShape() => new Sphere(Randomizer.Instance.NextNumber(new Number(1.5, 23), new Number(3, 23)), Position); // ~500–1000 kpc
-
-        private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
     }
 }

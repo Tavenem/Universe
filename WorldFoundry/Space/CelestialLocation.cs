@@ -13,6 +13,8 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
+using System.Threading.Tasks;
+using System.Reflection;
 
 namespace WorldFoundry.Space
 {
@@ -29,7 +31,12 @@ namespace WorldFoundry.Space
     [Serializable]
     public class CelestialLocation : Location
     {
+        private double? _averageBlackbodyTemperature;
+        private double? _blackbodyTemperature;
         private protected bool _isPrepopulated;
+        private protected IMaterial? _material;
+        private double? _surfaceTemperatureAtApoapsis;
+        private double? _surfaceTemperatureAtPeriapsis;
 
         private protected double? _albedo;
         /// <summary>
@@ -45,53 +52,11 @@ namespace WorldFoundry.Space
             {
                 if (!_albedo.HasValue)
                 {
-                    GenerateAlbedo();
+                    GenerateAlbedoAsync();
                 }
                 return _albedo ?? 0;
             }
-            set
-            {
-                _albedo = value;
-                ResetCachedTemperatures();
-            }
         }
-
-        /// <summary>
-        /// The total temperature of this body averaged over its orbit (if any).
-        /// </summary>
-        public virtual double AverageSurfaceTemperature => AverageBlackbodyTemperature;
-
-        private double? _averageBlackbodyTemperature;
-        /// <summary>
-        /// The total temperature of this body averaged over its orbit (if any).
-        /// </summary>
-        public double AverageBlackbodyTemperature
-            => _averageBlackbodyTemperature ??= GetAverageBlackbodyTemperature();
-
-        private double? _blackbodyTemperature;
-        /// <summary>
-        /// The total temperature of this body.
-        /// </summary>
-        public double BlackbodyTemperature
-            => _blackbodyTemperature ?? (_blackbodyTemperature = GetTemperatureAtPosition(Position)).Value;
-
-        /// <summary>
-        /// The <see cref="CelestialLocation"/> children contained within this instance.
-        /// </summary>
-        public IEnumerable<CelestialLocation> CelestialChildren => Children.OfType<CelestialLocation>();
-
-        /// <summary>
-        /// The <see cref="CelestialLocation"/> which directly contains this instance.
-        /// </summary>
-        public CelestialLocation? CelestialParent => Parent as CelestialLocation;
-
-        /// <summary>
-        /// The <see cref="ContainingUniverse"/> which contains this <see cref="CelestialLocation"/>, if any.
-        /// </summary>
-        public virtual Universe? ContainingUniverse
-            => Parent is Universe universe
-            ? universe
-            : (Parent as CelestialLocation)?.ContainingUniverse;
 
         /// <summary>
         /// <para>
@@ -135,13 +100,12 @@ namespace WorldFoundry.Space
             }
         }
 
-        private protected IMaterial? _material;
         /// <summary>
         /// The physical material which comprises this location.
         /// </summary>
         public virtual IMaterial Material
         {
-            get => _material ??= GetMaterial();
+            get => _material ??= new Material(0, SinglePoint.Origin);
             set => _material = value;
         }
 
@@ -152,26 +116,17 @@ namespace WorldFoundry.Space
         /// Not every <see cref="CelestialLocation"/> must have a name. They may be uniquely identified
         /// by their <see cref="Designation"/>, instead.
         /// </remarks>
-        public virtual string? Name { get; set; }
+        public virtual string? Name { get; private protected set; }
 
         private protected Orbit? _orbit;
         /// <summary>
         /// The orbit occupied by this <see cref="CelestialLocation"/> (may be null).
         /// </summary>
-        public virtual Orbit? Orbit
-        {
-            get => _orbit;
-            set
-            {
-                _orbit = value;
-                ResetCachedTemperatures();
-            }
-        }
+        public virtual Orbit? Orbit => _orbit;
 
         private Vector3 _position;
         /// <summary>
-        /// The position of this location relative to the center of its <see
-        /// cref="Location.Parent"/>.
+        /// The position of this location relative to the center of its parent.
         /// </summary>
         public override Vector3 Position
         {
@@ -208,19 +163,6 @@ namespace WorldFoundry.Space
         public Number SurfaceGravity => _surfaceGravity ??= Material.GetSurfaceGravity();
 
         /// <summary>
-        /// The average temperature of this material, in K. May be <see langword="null"/>,
-        /// indicating that it is at the ambient temperature of its environment.
-        /// </summary>
-        /// <remarks>
-        /// No less than the ambient temperature of its <see cref="CelestialParent"/>, if any.
-        /// </remarks>
-        public double? Temperature
-        {
-            get => Math.Max(Material.Temperature ?? 0, CelestialParent?.Temperature ?? 0);
-            set => Material.Temperature = value;
-        }
-
-        /// <summary>
         /// The <see cref="CelestialLocation"/>'s <see cref="Name"/>, if it has one; otherwise its
         /// <see cref="Designation"/>.
         /// </summary>
@@ -236,26 +178,12 @@ namespace WorldFoundry.Space
         /// </summary>
         public virtual Vector3 Velocity { get; set; }
 
-        internal virtual bool IsHospitable => CelestialParent?.IsHospitable ?? true;
-
         private Number? _radiusSquared;
         internal Number RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
 
-        private double? _surfaceTemperatureAtApoapsis;
-        /// <summary>
-        /// The total temperature of this body when at the apoapsis of its orbit (if any).
-        /// </summary>
-        internal double SurfaceTemperatureAtApoapsis => _surfaceTemperatureAtApoapsis ??= GetTemperatureAtApoapsis();
-
-        private double? _surfaceTemperatureAtPeriapsis;
-        /// <summary>
-        /// The total temperature of this body when at the periapsis of its orbit (if any).
-        /// </summary>
-        internal double SurfaceTemperatureAtPeriapsis => _surfaceTemperatureAtPeriapsis ??= GetTemperatureAtPeriapsis();
-
         private protected virtual string BaseTypeName => "Celestial Location";
 
-        private protected virtual IEnumerable<ChildDefinition> ChildDefinitions => Enumerable.Empty<ChildDefinition>();
+        private protected virtual IEnumerable<IChildDefinition> ChildDefinitions => Enumerable.Empty<IChildDefinition>();
 
         private protected virtual string DesignatorPrefix => string.Empty;
 
@@ -269,10 +197,10 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="CelestialLocation"/>.
         /// </summary>
-        /// <param name="parent">The location which contains this one.</param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The position of the location relative to the center of its
-        /// <paramref name="parent"/>.</param>
-        public CelestialLocation(Location? parent, Vector3 position) : base(parent) => Position = position;
+        /// parent.</param>
+        public CelestialLocation(string? parentId, Vector3 position) : base(parentId) => Position = position;
 
         private protected CelestialLocation(
             string id,
@@ -282,7 +210,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children) : base(id, children)
+            string? parentId) : base(id, parentId)
         {
             Id = id;
             Name = name;
@@ -300,8 +228,389 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="CelestialLocation"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="CelestialLocation"/> to generate.</typeparam>
+        /// <param name="parent">The location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="orbit">The orbit to set for the new <see cref="CelestialLocation"/>, if
+        /// any.</param>
+        /// <returns>A new instance of the indicated <see cref="CelestialLocation"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(Location? parent, Vector3 position, OrbitalParameters? orbit = null) where T : CelestialLocation
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parent?.Id, position }) as T;
+            if (instance != null)
+            {
+                if (orbit.HasValue)
+                {
+                    await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
+                }
+                await instance.InitializeBaseAsync(parent).ConfigureAwait(false);
+            }
+            return instance;
+        }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="CelestialLocation"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="CelestialLocation"/> to generate.</typeparam>
+        /// <param name="parentId">The id of the location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="orbit">The orbit to set for the new <see cref="CelestialLocation"/>, if
+        /// any.</param>
+        /// <returns>A new instance of the indicated <see cref="CelestialLocation"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(string? parentId, Vector3 position, OrbitalParameters? orbit = null) where T : CelestialLocation
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parentId, position }) as T;
+            if (instance != null)
+            {
+                if (orbit.HasValue)
+                {
+                    await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
+                }
+                await instance.InitializeBaseAsync(parentId).ConfigureAwait(false);
+            }
+            return instance;
+        }
+
+        /// <summary>
+        /// <para>
+        /// Generates and returns new child entities within this <see cref="CelestialLocation"/>.
+        /// </para>
+        /// <para>
+        /// CAUTION: this enumeration may not terminate on its own. Large, dense regions may
+        /// potentially contains billions or trillions of children. Take care that calling code
+        /// restricts the number of iterations performed.
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// NOTE: Generated children are not automatically saved to the data source. This permits
+        /// calling code to optionally save or discard individual results.
+        /// </para>
+        /// <para>
+        /// If the region is small and the density of a given child is low enough that the number
+        /// indicated to be present is less than one, that value is taken as the probability that
+        /// one will be found instead.
+        /// </para>
+        /// <para>
+        /// If the region is large and the density of children is high, there is a real possibility
+        /// that the number of children enumerated can result in overflows or other errors. Calling
+        /// code should ensure that only a restricted number of iterations are performed, and avoid
+        /// methods such as <c>Last</c> or <c>Count</c> which would result in an attempt to
+        /// enumerate more results than are possible.
+        /// </para>
+        /// <para>
+        /// See <see cref="GetRadiusWithChildren(Number)"/> and <see
+        /// cref="GenerateChildrenAsync(Location)"/>, which can be used in combination to get
+        /// children only in a sub-region of specific size, and potentially avoid the possibility of
+        /// dangerous enumerations.
+        /// </para>
+        /// </remarks>
+        public async IAsyncEnumerable<CelestialLocation> GenerateChildrenAsync()
+        {
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            var childAmounts = new List<(IChildDefinition def, Number rem)>();
+            foreach (var (totalType, totalAmount) in GetChildTotals())
+            {
+                var count = await GetMatchingChildrenAsync(totalType).CountAsync().ConfigureAwait(false);
+                var rem = totalAmount - count;
+                childAmounts.Add((totalType, rem));
+            }
+            await foreach (var child in GenerateChildrenAsync(childAmounts))
+            {
+                yield return child;
+            }
+        }
+
+        /// <summary>
+        /// <para>
+        /// Generates and returns new child entities within this <see cref="CelestialLocation"/>,
+        /// inside the boundaries of the given <paramref name="location"/>.
+        /// </para>
+        /// <para>
+        /// CAUTION: this enumeration may not terminate on its own. Large, dense regions may
+        /// potentially contains billions or trillions of children. Take care that calling code
+        /// restricts the number of iterations performed.
+        /// </para>
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// NOTE: Generated children are not automatically saved to the data source. This permits
+        /// calling code to optionally save or discard individual results.
+        /// </para>
+        /// <para>
+        /// If the region is small and the density of a given child is low enough that the number
+        /// indicated to be present is less than one, that value is taken as the probability that
+        /// one will be found instead.
+        /// </para>
+        /// <para>
+        /// If the region is large and the density of children is high, there is a real possibility
+        /// that the number of children enumerated can result in overflows or other errors. Calling
+        /// code should ensure that only a restricted number of iterations are performed, and avoid
+        /// methods such as <c>Last</c> or <c>Count</c> which would result in an attempt to
+        /// enumerate more results than are possible.
+        /// </para>
+        /// <para>
+        /// See <see cref="GetRadiusWithChildren(Number)"/>, which can be used in combination with
+        /// this method to get children only in a sub-region of specific size, and potentially avoid
+        /// the possibility of dangerous enumerations.
+        /// </para>
+        /// </remarks>
+        public async IAsyncEnumerable<CelestialLocation> GenerateChildrenAsync(Location location)
+        {
+            if (await location.GetCommonParentAsync(this).ConfigureAwait(false) != this)
+            {
+                yield break;
+            }
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            var childAmounts = new List<(IChildDefinition def, Number rem)>();
+            foreach (var (totalType, totalAmount) in ChildDefinitions.Select(x => (x, Shape.Volume * x.Density)))
+            {
+                var rem = totalAmount - await GetMatchingChildrenAsync(totalType).CountAwaitAsync(x => location.ContainsAsync(x)).ConfigureAwait(false);
+                childAmounts.Add((totalType, rem));
+            }
+            await foreach (var child in GenerateChildrenAsync(childAmounts))
+            {
+                yield return child;
+            }
+        }
+
+        /// <summary>
+        /// <para>
+        /// Generates and returns new child entities of the given type within this <see
+        /// cref="CelestialLocation"/>.
+        /// </para>
+        /// <para>
+        /// CAUTION: this enumeration may not terminate on its own. Large, dense regions may
+        /// potentially contains billions or trillions of children. Take care that calling code
+        /// restricts the number of iterations performed.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="T">The type of children to generate.</typeparam>
+        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <remarks>
+        /// <para>
+        /// NOTE: Generated children are not automatically saved to the data source. This permits
+        /// calling code to optionally save or discard individual results.
+        /// </para>
+        /// <para>
+        /// If the region is small and the density of the given child type is low enough that the
+        /// number indicated to be present is less than one, that value is taken as the probability
+        /// that one will be found instead.
+        /// </para>
+        /// <para>
+        /// If the region is large and the density of the given child type is high, there is a real
+        /// possibility that the number of children enumerated can result in overflows or other
+        /// errors. Calling code should ensure that only a restricted number of iterations are
+        /// performed, and avoid methods such as <c>Last</c> or <c>Count</c> which would result in
+        /// an attempt to enumerate more results than are possible.
+        /// </para>
+        /// <para>
+        /// See <see cref="GetRadiusWithChildren{T}(Number, Func{StarSystemChildDefinition, bool})"/> and <see
+        /// cref="GenerateChildrenAsync{T}(Location, Func{StarSystemChildDefinition, bool})"/>, which can be
+        /// used in combination to get children only in a sub-region of specific size, and
+        /// potentially avoid the possibility of dangerous enumerations.
+        /// </para>
+        /// </remarks>
+        public async IAsyncEnumerable<T> GenerateChildrenAsync<T>(IChildDefinition? condition = null)
+        {
+            var definitions = ChildDefinitions.Where(x => x.IsSatisfiedBy(typeof(T)) && condition?.IsSatisfiedBy(x) != false).ToList();
+            if (definitions.Count == 0)
+            {
+                yield break;
+            }
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            var childAmounts = new List<(IChildDefinition def, Number rem)>();
+            foreach (var (totalType, totalAmount) in definitions.Select(x => (x, Shape.Volume * x.Density)))
+            {
+                var count = await GetMatchingChildrenAsync(totalType).CountAsync().ConfigureAwait(false);
+                var rem = totalAmount - count;
+                childAmounts.Add((totalType, rem));
+            }
+            await foreach (var child in GenerateChildrenAsync(childAmounts).OfType<T>())
+            {
+                yield return child;
+            }
+        }
+
+        /// <summary>
+        /// <para>
+        /// Generates and returns new child entities of the given type within this <see
+        /// cref="CelestialLocation"/>, inside the boundaries of the given <paramref
+        /// name="location"/>.
+        /// </para>
+        /// <para>
+        /// CAUTION: this enumeration may not terminate on its own. Large, dense regions may
+        /// potentially contains billions or trillions of children. Take care that calling code
+        /// restricts the number of iterations performed.
+        /// </para>
+        /// </summary>
+        /// <typeparam name="T">The type of children to generate.</typeparam>
+        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <remarks>
+        /// <para>
+        /// NOTE: Generated children are not automatically saved to the data source. This permits
+        /// calling code to optionally save or discard individual results.
+        /// </para>
+        /// <para>
+        /// If the region is small and the density of the given child type is low enough that the
+        /// number indicated to be present is less than one, that value is taken as the probability
+        /// that one will be found instead.
+        /// </para>
+        /// <para>
+        /// If the region is large and the density of the given child is high, there is a real
+        /// possibility that the number of children enumerated can result in overflows or other
+        /// errors. Calling code should ensure that only a restricted number of iterations are
+        /// performed, and avoid methods such as <c>Last</c> or <c>Count</c> which would result in
+        /// an attempt to enumerate more results than are possible.
+        /// </para>
+        /// <para>
+        /// See <see cref="GetRadiusWithChildren{T}(Number, StarSystemChildDefinition)"/>, which can be used
+        /// in combination with this method to get children only in a sub-region of specific size,
+        /// and potentially avoid the possibility of dangerous enumerations.
+        /// </para>
+        /// </remarks>
+        public async IAsyncEnumerable<T> GenerateChildrenAsync<T>(Location location, IChildDefinition? condition = null)
+        {
+            var definitions = ChildDefinitions.Where(x => x.IsSatisfiedBy(typeof(T)) && condition?.IsSatisfiedBy(x) != false);
+            if (!definitions.Any())
+            {
+                yield break;
+            }
+            if (await location.GetCommonParentAsync(this).ConfigureAwait(false) != this)
+            {
+                yield break;
+            }
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            var childAmounts = new List<(IChildDefinition def, Number rem)>();
+            foreach (var (totalType, totalAmount) in definitions.Select(x => (x, Shape.Volume * x.Density)))
+            {
+                var rem = totalAmount - await GetMatchingChildrenAsync(totalType).CountAwaitAsync(x => location.ContainsAsync(x)).ConfigureAwait(false);
+                childAmounts.Add((totalType, rem));
+            }
+            await foreach (var child in GenerateChildrenAsync(childAmounts).OfType<T>())
+            {
+                yield return child;
+            }
+        }
+
+        /// <summary>
+        /// Gets the total temperature of this location, averaged over its orbit, in K.
+        /// </summary>
+        public async Task<double> GetAverageBlackbodyTemperatureAsync()
+        {
+            _averageBlackbodyTemperature ??= Orbit.HasValue
+                ? ((await GetTemperatureAtPeriapsisAsync().ConfigureAwait(false) * (1 + Orbit.Value.Eccentricity)) + (await GetTemperatureAtApoapsisAsync().ConfigureAwait(false) * (1 - Orbit.Value.Eccentricity))) / 2
+                : await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+            return _averageBlackbodyTemperature.Value;
+        }
+
+        /// <summary>
+        /// The average surface temperature of the <see cref="Planetoid"/> near its equator
+        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
+        /// </summary>
+        public virtual Task<double> GetAverageSurfaceTemperatureAsync() => GetAverageBlackbodyTemperatureAsync();
+
+        /// <summary>
+        /// Gets the total temperature of this location.
+        /// </summary>
+        public async Task<double> GetBlackbodyTemperatureAsync()
+        {
+            _blackbodyTemperature ??= await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+            return _blackbodyTemperature.Value;
+        }
+
+        /// <summary>
+        /// Gets the parent <see cref="CelestialLocation"/> which contains this one, if any.
+        /// </summary>
+        /// <returns>The parent <see cref="CelestialLocation"/> which contains this one, if
+        /// any.</returns>
+        public Task<CelestialLocation?> GetCelestialParentAsync() => DataStore.GetItemAsync<CelestialLocation>(ParentId);
+
+        /// <summary>
+        /// Gets a random child of the specified type: either an existing child, or a newly
+        /// generated one if there are no current children which match the given criteria.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="CelestialLocation"/> child entity to
+        /// get.</typeparam>
+        /// <param name="condition">A <see cref="ChildDefinition"/> the child must match.</param>
+        /// <returns>A child of the given type, or <see langword="null"/> if no child of the given
+        /// type could be retrieved. This might occur if no children of the given type occur in this
+        /// location, or if insufficient free space remains to generate a new one.</returns>
+        /// <remarks>
+        /// Any newly generated child is not automatically saved to the data source. This permits
+        /// calling code to optionally save or discard the result.
+        /// </remarks>
+        public async Task<T?> GetChildAsync<T>(IChildDefinition? condition = null) where T : CelestialLocation
+        {
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            await foreach (var child in GetChildrenAsync()
+                .OfType<T>()
+                .Where(x => typeof(T).IsAssignableFrom(x.GetType())))
+            {
+                if (condition is null)
+                {
+                    return child;
+                }
+                var match = await condition.IsSatisfiedByAsync(child).ConfigureAwait(false);
+                if (match)
+                {
+                    return child;
+                }
+            }
+            return await GenerateChildrenAsync<T>(condition).FirstOrDefaultAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Enumerates the children of this instance.
+        /// </summary>
+        /// <returns>An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of
+        /// this one.</returns>
+        public override async IAsyncEnumerable<Location> GetChildrenAsync()
+        {
+            if (!_isPrepopulated)
+            {
+                await PrepopulateRegionAsync().ConfigureAwait(false);
+            }
+            await foreach (var child in base.GetChildrenAsync())
+            {
+                yield return child;
+            }
+        }
 
         /// <summary>
         /// Calculates the total number of children in this region. The totals are approximate,
@@ -309,10 +618,30 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <returns>An <see cref="IEnumerable{T}"/> of <see cref="ChildDefinition"/> instances
         /// along with the total number of children present in this region (as a <see
-        /// cref="NeverFoundry.MathAndScience.Numerics.Number"/> due to the potentially vast numbers
+        /// cref="Number"/> due to the potentially vast numbers
         /// involved).</returns>
-        public IEnumerable<(ChildDefinition type, Number total)> GetChildTotals()
+        public IEnumerable<(IChildDefinition type, Number total)> GetChildTotals()
             => ChildDefinitions.Select(x => (x, Shape.Volume * x.Density));
+
+        /// <summary>
+        /// Gets the <see cref="Universe"/> which contains this <see cref="CelestialLocation"/>, if
+        /// any.
+        /// </summary>
+        /// <returns>The <see cref="Universe"/> which contains this <see cref="CelestialLocation"/>,
+        /// or <see langword="null"/> if this location is not contained within a universe.</returns>
+        public virtual async Task<Universe?> GetContainingUniverseAsync()
+        {
+            var parent = await GetParentAsync().ConfigureAwait(false);
+            if (parent is Universe u)
+            {
+                return u;
+            }
+            if (parent is CelestialLocation cl)
+            {
+                return await cl.GetContainingUniverseAsync().ConfigureAwait(false);
+            }
+            return null;
+        }
 
         /// <summary>
         /// Calculates the escape velocity from this location, in m/s.
@@ -341,14 +670,14 @@ namespace WorldFoundry.Space
         /// expected to make use of this library. If you are an astronomer performing scientifically
         /// rigorous calculations or simulations, this is not the library for you ;)
         /// </remarks>
-        public Vector3 GetGravityFromObject(CelestialLocation other)
+        public async Task<Vector3> GetGravityFromObjectAsync(CelestialLocation? other)
         {
-            if (other == null)
+            if (other is null)
             {
                 return Vector3.Zero;
             }
 
-            var distance = GetDistanceTo(other);
+            var distance = await GetDistanceToAsync(other).ConfigureAwait(false);
 
             if (distance.IsFinite)
             {
@@ -372,9 +701,33 @@ namespace WorldFoundry.Space
         /// A conversion of 0.0079 W/m² per lumen is used, which is roughly accurate for the sun,
         /// but may not be as precise for other stellar bodies.
         /// </remarks>
-        public double GetLuminousFlux()
-            => CelestialParent?.GetAllChildren<Star>()
-            .Sum(x => (double)(x.Luminosity / (MathConstants.FourPI * GetDistanceSquaredTo(x))) / 0.0079) ?? 0;
+        public async Task<double> GetLuminousFluxAsync()
+        {
+            var parent = await GetCelestialParentAsync().ConfigureAwait(false);
+            if (parent is null)
+            {
+                return 0;
+            }
+            return await parent.GetAllChildrenAsync<Star>()
+                .SumAwaitAsync(async x => (double)(x.Luminosity / (MathConstants.FourPI * await GetDistanceSquaredToAsync(x).ConfigureAwait(false))) / 0.0079)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Generates a random child of the specified type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="CelestialLocation"/> child entity to
+        /// generate.</typeparam>
+        /// <param name="condition">A <see cref="ChildDefinition"/> the child must match.</param>
+        /// <returns>A randomly generated child of the given type, or <see langword="null"/> if no
+        /// child of the given type could be generated. This might occur if no children of the given
+        /// type occur in this location, or if insufficient free space remains.</returns>
+        /// <remarks>
+        /// The generated child is not automatically saved to the data source. This permits calling
+        /// code to optionally save or discard the result.
+        /// </remarks>
+        public async Task<T?> GetNewChildAsync<T>(IChildDefinition? condition = null) where T : CelestialLocation
+            => await GenerateChildrenAsync<T>(condition).FirstOrDefaultAsync().ConfigureAwait(false);
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -393,8 +746,7 @@ namespace WorldFoundry.Space
             info.AddValue(nameof(Albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), _material);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_material), _material);
         }
 
         /// <summary>
@@ -405,22 +757,36 @@ namespace WorldFoundry.Space
         /// </summary>
         /// <param name="time">The time at which to get a position.</param>
         /// <returns>A <see cref="Vector3"/> representing position relative to the center of the
-        /// <see cref="CelestialParent"/>.</returns>
-        public Vector3 GetPositionAtTime(Duration time)
+        /// parent.</returns>
+        public async ValueTask<Vector3> GetPositionAtTimeAsync(Duration time)
         {
             if (Orbit.HasValue)
             {
                 var (position, _) = Orbit.Value.GetStateVectorsAtTime(time);
 
-                if (Orbit.Value.OrbitedObject.CelestialParent != CelestialParent)
+                var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (orbited?.ParentId != ParentId)
                 {
-                    return Parent == null
-                        ? position
-                        : Parent.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
+                    if (string.IsNullOrEmpty(ParentId))
+                    {
+                        return position;
+                    }
+                    else
+                    {
+                        var parent = await GetParentAsync().ConfigureAwait(false);
+                        if (parent is null || orbited is null)
+                        {
+                            return position;
+                        }
+                        else
+                        {
+                            return await parent.GetLocalizedPositionAsync(orbited).ConfigureAwait(false) + position;
+                        }
+                    }
                 }
                 else
                 {
-                    return Orbit.Value.OrbitedObject.Position + position;
+                    return (orbited?.Position ?? Vector3.Zero) + position;
                 }
             }
             else
@@ -457,6 +823,72 @@ namespace WorldFoundry.Space
         }
 
         /// <summary>
+        /// Calculates the radius of a spherical region which contains at most the given amount of
+        /// child entities of the given type, given the densities of the child definitions for this
+        /// region.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="CelestialLocation"/> child entities to
+        /// check.</typeparam>
+        /// <param name="maxAmount">The maximum desired number of child entities of the given type
+        /// in the region.</param>
+        /// <param name="condition">A <see cref="ChildDefinition"/> the children must match.</param>
+        /// <returns>The radius of a spherical region containing at most the given amount of
+        /// children, in meters. May be zero, if this location does not contain children of the
+        /// given type.</returns>
+        public Number GetRadiusWithChildren<T>(Number maxAmount, IChildDefinition? condition = null) where T : CelestialLocation
+        {
+            if (maxAmount.IsZero)
+            {
+                return 0;
+            }
+            var numInM3 = ChildDefinitions
+                .Where(x => x.IsSatisfiedBy(typeof(T)) && condition?.IsSatisfiedBy(x) != false)
+                .Sum(x => x.Density);
+            var v = maxAmount / numInM3;
+            // The number in a single m³ may be so small that this goes to infinity; if so, perform
+            // the calculation in reverse.
+            if (v.IsInfinite)
+            {
+                var total = Shape.Volume * numInM3;
+                var ratio = maxAmount / total;
+                v = Shape.Volume * ratio;
+            }
+            return (3 * v / MathConstants.FourPI).CubeRoot();
+        }
+
+        /// <summary>
+        /// Gets the average temperature of this material, in K. May be <see langword="null"/>,
+        /// indicating that it is at the ambient temperature of its environment.
+        /// </summary>
+        /// <returns>
+        /// The average temperature of this material, in K; or <see langword="null"/>, indicating
+        /// that it is at the ambient temperature of its environment.
+        /// </returns>
+        /// <remarks>
+        /// No less than the ambient temperature of its parent, if any.
+        /// </remarks>
+        public async Task<double?> GetTemperatureAsync()
+        {
+            if (!(await GetParentAsync().ConfigureAwait(false) is CelestialLocation parent))
+            {
+                return Material.Temperature;
+            }
+            var parentTemp = await parent.GetTemperatureAsync().ConfigureAwait(false);
+            if (parentTemp.HasValue)
+            {
+                if (Material.Temperature.HasValue)
+                {
+                    return Math.Max(Material.Temperature.Value, parentTemp.Value);
+                }
+                else
+                {
+                    return parentTemp;
+                }
+            }
+            return Material.Temperature;
+        }
+
+        /// <summary>
         /// Calculates the total force of gravity on this <see cref="CelestialLocation"/>, in N, as
         /// a vector. Note that results may be highly inaccurate if the parent region has not been
         /// populated thoroughly enough in the vicinity of this entity (with the scale of "vicinity"
@@ -474,170 +906,93 @@ namespace WorldFoundry.Space
         /// moves within the gravity of the Milky Way, but when determining its movement within the
         /// solar system, the effects of the greater galaxy are not relevant).
         /// </remarks>
-        public Vector3 GetTotalLocalGravity()
+        public async Task<Vector3> GetTotalLocalGravityAsync()
         {
             var totalGravity = Vector3.Zero;
 
+            var parent = await GetCelestialParentAsync().ConfigureAwait(false);
             // No gravity for a parent-less object
-            if (CelestialParent is null)
+            if (parent is null)
             {
                 return totalGravity;
             }
 
-            foreach (var sibling in CelestialParent.GetAllChildren<CelestialLocation>())
+            await foreach (var sibling in parent.GetAllChildrenAsync<CelestialLocation>())
             {
-                totalGravity += GetGravityFromObject(sibling);
+                totalGravity += await GetGravityFromObjectAsync(sibling).ConfigureAwait(false);
             }
 
             return totalGravity;
         }
 
         /// <summary>
-        /// Generates an appropriate population of child entities in the given <paramref
-        /// name="location"/>.
+        /// Sets the average albedo of this celestial entity (a value between 0 and 1).
         /// </summary>
-        /// <param name="location">A <see cref="Location"/> representing an area of local
-        /// space.</param>
-        /// <remarks>
-        /// <para>
-        /// If the given <paramref name="location"/> is not within this instance's local space,
-        /// nothing happens.
-        /// </para>
-        /// <para>
-        /// If the region is small and the density of a given child is low enough that the number
-        /// indicated to be present is less than one, that value is taken as the probability that
-        /// one will be found instead.
-        /// </para>
-        /// <para>
-        /// If the region is large and the density of a given child is high enough that the number
-        /// of children indicated exceeds the number of actual child instances a region can maintain
-        /// (<see cref="int.MaxValue"/> for all child instances), the number will be truncated at
-        /// the maximum allowable value. To avoid memory issues, even this outcome should be avoided
-        /// by putting constraints on calling code to ensure that regions to be populated are not so
-        /// large that the number of children is excessive (<see
-        /// cref="GetRadiusWithChildren(NeverFoundry.MathAndScience.Numerics.Number)"/> can be used to
-        /// determine an appropriate region size).
-        /// </para>
-        /// </remarks>
-        public virtual void PopulateRegion(Location location)
+        /// <param name="value">A value between 0 and 1.</param>
+        public async Task SetAlbedoAsync(double value)
         {
-            if (location.GetCommonParent(this) != this)
-            {
-                return;
-            }
-            if (!_isPrepopulated)
-            {
-                PrepopulateRegion();
-            }
-            foreach (var childLocation in location.Children)
-            {
-                PopulateRegion(childLocation);
-            }
-            foreach (var child in ChildDefinitions)
-            {
-                var number = Number.Min(location.Shape.Volume * child.Density, int.MaxValue - CelestialChildren.Count() - 1);
-                if (number < 1 && Randomizer.Instance.NextNumber() <= number)
-                {
-                    number = 1;
-                }
-                number -= GetAllChildren(child.Type).Count(x => location.Contains(x));
-                for (var i = 0; i < number; i++)
-                {
-                    GenerateChild(child);
-                }
-            }
+            _albedo = value.Clamp(0, 1);
+            await ResetCachedTemperaturesAsync().ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Generates an appropriate population of child entities in this <see
-        /// cref="CelestialLocation"/>.
+        /// Sets this location's name.
         /// </summary>
+        /// <param name="value">The name. May be <see langword="null"/>.</param>
         /// <remarks>
-        /// <para>
-        /// If the region is small and the density of a given child is low enough that the number
-        /// indicated to be present is less than one, that value is taken as the probability that
-        /// one will be found instead.
-        /// </para>
-        /// <para>
-        /// If the region is large and the density of a given child is high enough that the number
-        /// of children indicated exceeds the number of actual child instances a region can maintain
-        /// (<see cref="int.MaxValue"/> for all child instances), the number will be truncated at
-        /// the maximum allowable value. To avoid memory issues, even this outcome should be avoided
-        /// by putting constraints on calling code to ensure that regions to be populated are not so
-        /// large that the number of children is excessive (<see
-        /// cref="GetRadiusWithChildren(NeverFoundry.MathAndScience.Numerics.Number)"/> and <see
-        /// cref="PopulateRegion(Location)"/> can be used to populate only a sub-region of an
-        /// appropriate size).
-        /// </para>
+        /// If the name is set to <see langword="null"/>, a generic designation will be used.
         /// </remarks>
-        public virtual void PopulateRegion()
+        public virtual Task SetNameAsync(string? value)
         {
-            if (!_isPrepopulated)
-            {
-                PrepopulateRegion();
-            }
-            foreach (var child in ChildDefinitions)
-            {
-                var number = Number.Min(Shape.Volume * child.Density, int.MaxValue - CelestialChildren.Count() - 1);
-                if (number < 1 && Randomizer.Instance.NextDouble() <= number)
-                {
-                    number = 1;
-                }
-                number -= GetAllChildren(child.Type).Count();
-                for (var i = 0; i < number; i++)
-                {
-                    GenerateChild(child);
-                }
-            }
+            Name = value;
+            return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// Sets the occupied by this <see cref="CelestialLocation"/> (may be null).
+        /// </summary>
+        /// <param name="value">An <see cref="Orbit"/>.</param>
+        public async Task SetOrbitAsync(Orbit? value)
+        {
+            _orbit = value;
+            await ResetCachedTemperaturesAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sets the average temperature of this material, in K. May be set to <see
+        /// langword="null"/> to indicate that it is at the ambient temperature of its environment.
+        /// </summary>
+        /// <param name="value">A temperature in K; or <see langword="null"/> to indicate the
+        /// ambient temperature of its environment.</param>
+        public void SetTemperature(double? value) => Material.Temperature = value;
 
         /// <summary>
         /// Returns a string that represents the celestial object.
         /// </summary>
         /// <returns>A string that represents the celestial object.</returns>
-        public override string ToString()
-        {
-            var sb = new StringBuilder(TypeName)
-                .Append(" ")
-                .Append(Title);
-            if (Orbit?.OrbitedObject != null)
-            {
-                sb.Append(", orbiting ")
-                    .Append(Orbit.Value.OrbitedObject.TypeName)
-                    .Append(" ")
-                    .Append(Orbit.Value.OrbitedObject.Title);
-            }
-            return sb.ToString();
-        }
+        public override string ToString() => $"{TypeName} {Title}";
 
         /// <summary>
         /// Updates the position and velocity of this object to correspond with the state predicted
         /// by its <see cref="Orbit"/> at the current time of its containing <see
-        /// cref="Space.Universe"/>, assuming no influences on the body's motion have occurred aside
+        /// cref="Universe"/>, assuming no influences on the body's motion have occurred aside
         /// from its orbit. Has no effect if the body is not in orbit.
         /// </summary>
-        public void UpdateOrbit()
+        public async Task UpdateOrbitAsync()
         {
-            var universe = ContainingUniverse;
-            if (!Orbit.HasValue || universe == null)
+            if (!Orbit.HasValue)
+            {
+                return;
+            }
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            if (universe is null)
             {
                 return;
             }
 
             var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(universe.Time.Now);
 
-            if (Orbit.Value.OrbitedObject.CelestialParent != CelestialParent)
-            {
-                Position = Parent == null
-                    ? position
-                    : Parent.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
-            }
-            else
-            {
-                Position = Orbit.Value.OrbitedObject.Position + position;
-            }
-
-            Velocity = velocity;
+            await UpdateOrbitAsync(position, velocity).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -650,7 +1005,7 @@ namespace WorldFoundry.Space
         /// The number of seconds which have elapsed since the orbit's defining epoch (time of
         /// pericenter).
         /// </param>
-        public void UpdateOrbit(Number elapsedSeconds)
+        public async Task UpdateOrbitAsync(Number elapsedSeconds)
         {
             if (!Orbit.HasValue)
             {
@@ -659,36 +1014,24 @@ namespace WorldFoundry.Space
 
             var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(elapsedSeconds);
 
-            if (Orbit.Value.OrbitedObject.CelestialParent != CelestialParent)
-            {
-                Position = Parent == null
-                    ? position
-                    : Parent.GetLocalizedPosition(Orbit.Value.OrbitedObject) + position;
-            }
-            else
-            {
-                Position = Orbit.Value.OrbitedObject.Position + position;
-            }
-
-            Velocity = velocity;
+            await UpdateOrbitAsync(position, velocity).ConfigureAwait(false);
         }
 
-        internal virtual void PrepopulateRegion() => _isPrepopulated = true;
+        internal virtual Task GenerateOrbitAsync(CelestialLocation orbitedObject) => Space.Orbit.SetCircularOrbitAsync(this, orbitedObject);
 
-        internal virtual CelestialLocation? GenerateChild(ChildDefinition definition)
-            => definition.GenerateChild(this);
+        internal async Task<Number> GetHillSphereRadiusAsync() => Orbit.HasValue
+            ? await Orbit.Value.GetHillSphereRadiusAsync(this).ConfigureAwait(false)
+            : Number.Zero;
 
-        internal virtual void GenerateOrbit(CelestialLocation orbitedObject)
+        internal virtual async Task<bool> GetIsHospitableAsync()
         {
-            if (orbitedObject == null)
+            var parent = await GetCelestialParentAsync().ConfigureAwait(false);
+            if (parent != null)
             {
-                return;
+                return await parent.GetIsHospitableAsync().ConfigureAwait(false);
             }
-
-            Space.Orbit.SetCircularOrbit(this, orbitedObject);
+            return true;
         }
-
-        internal Number GetHillSphereRadius() => Orbit?.GetHillSphereRadius(this) ?? 0;
 
         /// <summary>
         /// Approximates the radius of the orbiting body's mutual Hill sphere with another orbiting
@@ -703,25 +1046,84 @@ namespace WorldFoundry.Space
         /// The mass of another celestial body presumed to be orbiting the same primary as this one.
         /// </param>
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
-        internal Number GetMutualHillSphereRadius(Number otherMass)
-            => Orbit?.GetMutualHillSphereRadius(this, otherMass) ?? 0;
+        internal async Task<Number> GetMutualHillSphereRadiusAsync(Number otherMass) => Orbit.HasValue
+            ? await Orbit.Value.GetMutualHillSphereRadiusAsync(this, otherMass).ConfigureAwait(false)
+            : Number.Zero;
 
         internal Number GetRocheLimit(Number orbitingDensity)
             => new Number(8947, -4) * (Mass / orbitingDensity).CubeRoot();
 
-        internal Number GetSphereOfInfluenceRadius()
-            => Orbit?.GetSphereOfInfluenceRadius(this) ?? 0;
+        internal async Task<Number> GetSphereOfInfluenceRadiusAsync() => Orbit.HasValue
+            ? await Orbit.Value.GetSphereOfInfluenceRadiusAsync(this).ConfigureAwait(false)
+            : Number.Zero;
 
-        private protected virtual void GenerateAlbedo() => Albedo = 0;
+        internal virtual Task ResetCachedTemperaturesAsync()
+        {
+            _averageBlackbodyTemperature = null;
+            _blackbodyTemperature = null;
+            _surfaceTemperatureAtApoapsis = null;
+            _surfaceTemperatureAtPeriapsis = null;
+            return Task.CompletedTask;
+        }
 
-        /// <summary>
-        /// Calculates the temperature of the location, averaged over its orbit,
-        /// in K.
-        /// </summary>
-        private double GetAverageBlackbodyTemperature()
-            => Orbit.HasValue
-                ? ((SurfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (SurfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
-                : GetTemperatureAtPosition(Position);
+        private protected virtual Task GenerateAlbedoAsync()
+        {
+            _albedo = 0;
+            return Task.CompletedTask;
+        }
+
+        private async Task<CelestialLocation?> GenerateChildAsync(IChildDefinition definition)
+        {
+            var position = await GetOpenSpaceAsync(definition.Space).ConfigureAwait(false);
+            if (!position.HasValue)
+            {
+                return null;
+            }
+            if (definition is IStarSystemChildDefinition sscd)
+            {
+                return await sscd.GetStarSystemAsync(this, position.Value).ConfigureAwait(false);
+            }
+            return await definition.GetChildAsync(this, position.Value).ConfigureAwait(false);
+        }
+
+        private async IAsyncEnumerable<CelestialLocation> GenerateChildrenAsync(List<(IChildDefinition def, Number rem)> childAmounts)
+        {
+            var total = childAmounts.Sum(x => x.rem);
+            var defs = childAmounts.Select(x => (x.def, ratio: x.rem / total, x.rem)).ToList();
+            var nullCount = 0;
+            while (!defs.Sum(x => x.ratio).IsZero)
+            {
+                var def = Randomizer.Instance.Next(defs, x => (double)x.ratio);
+
+                var child = await GenerateChildAsync(def.def).ConfigureAwait(false);
+                if (child != null)
+                {
+                    nullCount = 0;
+                    yield return child;
+                }
+                else
+                {
+                    nullCount++;
+                    if (nullCount >= 10)
+                    {
+                        break;
+                    }
+                }
+
+                def.rem = Number.Max(Number.Zero, def.rem - Number.One);
+                total--;
+                def.ratio = def.rem.IsZero ? 0 : (double)(def.rem / total);
+            }
+        }
+
+        private protected virtual async Task GenerateMaterialAsync()
+        {
+            if (_material is null)
+            {
+                var (density, mass, shape) = await GetMatterAsync().ConfigureAwait(false);
+                Material = GetComposition(density, mass, shape, GetTemperature());
+            }
+        }
 
         private protected virtual IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {
@@ -741,32 +1143,39 @@ namespace WorldFoundry.Space
         /// <returns>
         /// The heat added to this location by insolation at the given position, in K.
         /// </returns>
-        private protected virtual double GetInsolationHeat(Vector3 position)
+        private async Task<double> GetInsolationHeatAsync(Vector3 position)
         {
-            if (CelestialParent is null)
+            var parent = await GetCelestialParentAsync().ConfigureAwait(false);
+            if (parent is null)
             {
                 return 0;
             }
             else
             {
-                var relativePosition = GetLocalizedPosition(CelestialParent, position);
-                return Math.Pow(1 - Albedo, 0.25) * CelestialParent
-                  .GetAllChildren<Star>()
+                var relativePosition = await GetLocalizedPositionAsync(parent, position).ConfigureAwait(false);
+                return Math.Pow(1 - Albedo, 0.25) * (await parent
+                  .GetAllChildrenAsync<Star>()
                   .Where(x => x != this)
-                  .Sum(x => (x.Temperature ?? 0) * (double)Number.Sqrt(x.Shape.ContainingRadius / (2 * GetDistanceFromPositionTo(relativePosition, x))));
+                  .SumAwaitAsync(async x => (await x.GetTemperatureAsync().ConfigureAwait(false) ?? 0) * (double)Number.Sqrt(x.Shape.ContainingRadius / (2 * await GetDistanceFromPositionToAsync(relativePosition, x).ConfigureAwait(false))))
+                  .ConfigureAwait(false));
             }
         }
 
-        private protected virtual IMaterial GetMaterial()
+        private async IAsyncEnumerable<Location> GetMatchingChildrenAsync(IChildDefinition childDefinition)
         {
-            var (density, mass, shape) = GetMatter();
-            return GetComposition(density, mass, shape, GetTemperature());
+            await foreach (var child in GetChildrenAsync())
+            {
+                if (await childDefinition.IsSatisfiedByAsync(child).ConfigureAwait(false))
+                {
+                    yield return child;
+                }
+            }
         }
 
-        private protected virtual (double density, Number mass, IShape shape) GetMatter()
+        private protected virtual async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
-            var mass = GetMass();
-            var shape = GetShape();
+            var mass = await GetMassAsync().ConfigureAwait(false);
+            var shape = await GetShapeAsync().ConfigureAwait(false);
             return ((double)(mass / shape.Volume), mass, shape);
         }
 
@@ -777,10 +1186,30 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// Uses current position if this object is not in an orbit, or if its apoapsis is infinite.
         /// </remarks>
-        private double GetTemperatureAtApoapsis()
-            => GetTemperatureAtPosition(!Orbit.HasValue || Orbit.Value.Apoapsis.IsInfinite
-                ? Position
-                : Orbit.Value.OrbitedObject.Position + (Vector3.UnitX * Orbit.Value.Apoapsis)); // Actual position doesn't matter for temperature, only distance.
+        private protected async Task<double> GetTemperatureAtApoapsisAsync()
+        {
+            if (!_surfaceTemperatureAtApoapsis.HasValue)
+            {
+                // Actual position doesn't matter for temperature, only distance.
+                if (!Orbit.HasValue || Orbit.Value.Apoapsis.IsInfinite)
+                {
+                    _surfaceTemperatureAtApoapsis = await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+                }
+                else
+                {
+                    var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                    if (orbited is null)
+                    {
+                        _surfaceTemperatureAtApoapsis = await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _surfaceTemperatureAtApoapsis = await GetTemperatureAtPositionAsync(orbited.Position + (Vector3.UnitX * Orbit.Value.Apoapsis)).ConfigureAwait(false);
+                    }
+                }
+            }
+            return _surfaceTemperatureAtApoapsis.Value;
+        }
 
         /// <summary>
         /// Calculates the total average temperature of the location as if this object was at the
@@ -789,10 +1218,30 @@ namespace WorldFoundry.Space
         /// <remarks>
         /// Uses current position if this object is not in an orbit.
         /// </remarks>
-        private double GetTemperatureAtPeriapsis()
-            => GetTemperatureAtPosition(Orbit.HasValue
-                ? Orbit.Value.OrbitedObject.Position + (Vector3.UnitX * Orbit.Value.Periapsis) // Actual position doesn't matter for temperature, only distance.
-                : Position);
+        private protected async Task<double> GetTemperatureAtPeriapsisAsync()
+        {
+            if (!_surfaceTemperatureAtPeriapsis.HasValue)
+            {
+                // Actual position doesn't matter for temperature, only distance.
+                if (!Orbit.HasValue || Orbit.Value.Apoapsis.IsInfinite)
+                {
+                    _surfaceTemperatureAtPeriapsis = await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+                }
+                else
+                {
+                    var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                    if (orbited is null)
+                    {
+                        _surfaceTemperatureAtPeriapsis = await GetTemperatureAtPositionAsync(Position).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        _surfaceTemperatureAtPeriapsis = await GetTemperatureAtPositionAsync(orbited.Position + (Vector3.UnitX * Orbit.Value.Periapsis)).ConfigureAwait(false);
+                    }
+                }
+            }
+            return _surfaceTemperatureAtPeriapsis.Value;
+        }
 
         /// <summary>
         /// Calculates the total average temperature of the location as if this object was at the
@@ -805,8 +1254,8 @@ namespace WorldFoundry.Space
         /// <returns>
         /// The total average temperature of the location at the given position, in K.
         /// </returns>
-        private protected double GetTemperatureAtPosition(Vector3 position)
-            => (Temperature ?? 0) + GetInsolationHeat(position);
+        private protected async Task<double> GetTemperatureAtPositionAsync(Vector3 position)
+            => (await GetTemperatureAsync().ConfigureAwait(false) ?? 0) + (await GetInsolationHeatAsync(position).ConfigureAwait(false));
 
         /// <summary>
         /// Estimates the total average temperature of the location as if this object was at the
@@ -828,25 +1277,80 @@ namespace WorldFoundry.Space
         /// of the orbit, and much faster for successive calls than calculating the temperature at
         /// specific positions precisely.
         /// </remarks>
-        private protected double GetTemperatureAtTrueAnomaly(double trueAnomaly)
-            => SurfaceTemperatureAtPeriapsis.Lerp(SurfaceTemperatureAtApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI));
+        private protected async Task<double> GetTemperatureAtTrueAnomalyAsync(double trueAnomaly)
+        {
+            var tempApoapsis = await GetTemperatureAtApoapsisAsync().ConfigureAwait(false);
+            var tempPeriapsis = await GetTemperatureAtPeriapsisAsync().ConfigureAwait(false);
+            return tempPeriapsis.Lerp(tempApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI));
+        }
 
         private protected virtual double GetDensity() => 0;
 
-        private protected virtual Number GetMass() => Number.Zero;
+        private protected virtual ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Number.Zero);
 
-        private protected virtual IShape GetShape() => new SinglePoint(Position);
+        private protected virtual ValueTask<IShape> GetShapeAsync() => new ValueTask<IShape>(new SinglePoint(Position));
 
         private protected virtual ISubstanceReference? GetSubstance() => null;
 
         private protected virtual double? GetTemperature() => null;
 
-        private protected virtual void ResetCachedTemperatures()
+        private protected virtual Task InitializeAsync() => GenerateMaterialAsync();
+
+        private protected async Task InitializeBaseAsync(Location? parent)
         {
-            _averageBlackbodyTemperature = null;
-            _blackbodyTemperature = null;
-            _surfaceTemperatureAtApoapsis = null;
-            _surfaceTemperatureAtPeriapsis = null;
+            if (parent is CelestialLocation celestialParent)
+            {
+                await celestialParent.InitializeChildAsync(this).ConfigureAwait(false);
+            }
+            await InitializeAsync().ConfigureAwait(false);
+        }
+
+        private protected async Task InitializeBaseAsync(string? parentId)
+        {
+            var parent = await DataStore.GetItemAsync<Location>(parentId).ConfigureAwait(false);
+            await InitializeBaseAsync(parent).ConfigureAwait(false);
+        }
+
+        private protected virtual Task InitializeChildAsync(CelestialLocation child) => Task.CompletedTask;
+
+        private protected virtual Task PrepopulateRegionAsync()
+        {
+            _isPrepopulated = true;
+            return Task.CompletedTask;
+        }
+
+        private async Task UpdateOrbitAsync(Vector3 position, Vector3 velocity)
+        {
+            if (!Orbit.HasValue)
+            {
+                return;
+            }
+            var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+            if (orbited?.ParentId != ParentId)
+            {
+                if (string.IsNullOrEmpty(ParentId))
+                {
+                    Position = position;
+                }
+                else
+                {
+                    var parent = await GetParentAsync().ConfigureAwait(false);
+                    if (parent is null || orbited is null)
+                    {
+                        Position = position;
+                    }
+                    else
+                    {
+                        Position = await parent.GetLocalizedPositionAsync(orbited).ConfigureAwait(false) + position;
+                    }
+                }
+            }
+            else
+            {
+                Position = orbited!.Position + position;
+            }
+
+            Velocity = velocity;
         }
     }
 }

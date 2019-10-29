@@ -8,6 +8,7 @@ using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
 {
@@ -31,11 +32,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initializes a new instance of <see cref="Comet"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Comet"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Comet"/>.</param>
-        internal Comet(Location parent, Vector3 position) : base(parent, position) { }
+        internal Comet(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private Comet(
             string id,
@@ -62,7 +61,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             Number? maxMass,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
@@ -96,7 +95,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 maxMass,
                 orbit,
                 material,
-                children,
+                parentId,
                 depthMap,
                 elevationMap,
                 flowMap,
@@ -118,20 +117,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (int)info.GetValue(nameof(_seed3), typeof(int)),
             (int)info.GetValue(nameof(_seed4), typeof(int)),
             (int)info.GetValue(nameof(_seed5), typeof(int)),
-            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (double?)info.GetValue(nameof(_angleOfRotation), typeof(double?)),
             (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
-            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (double?)info.GetValue(nameof(_axialPrecession), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
             (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
             (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
             (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
             (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
-            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
             (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -141,33 +140,31 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
-        internal override void GenerateOrbit(CelestialLocation orbitedObject)
+        internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
         {
-            if (orbitedObject == null)
+            if (orbitedObject != null)
             {
-                return;
+                // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
+                // and have eccentricities which may either leave them there, or send them into the inner solar system.
+                var eccentricity = Randomizer.Instance.NextDouble();
+                var periapsis = (1 - eccentricity) / (1 + eccentricity) * await GetDistanceToAsync(orbitedObject).ConfigureAwait(false);
+
+                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                    this,
+                    orbitedObject,
+                    periapsis,
+                    eccentricity,
+                    Randomizer.Instance.NextDouble(Math.PI),
+                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Math.PI).ConfigureAwait(false);
             }
-
-            // Current distance is presumed to be apoapsis for comets, which are presumed to originate in an Oort cloud,
-            // and have eccentricities which may either leave them there, or send them into the inner solar system.
-            var eccentricity = Randomizer.Instance.NextDouble();
-            var periapsis = (1 - eccentricity) / (1 + eccentricity) * GetDistanceTo(orbitedObject);
-
-            WorldFoundry.Space.Orbit.SetOrbit(
-                this,
-                orbitedObject,
-                periapsis,
-                eccentricity,
-                Randomizer.Instance.NextDouble(Math.PI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Math.PI);
         }
 
-        private protected override void GenerateAlbedo()
-            => Albedo = Randomizer.Instance.NextDouble(0.025, 0.055);
+        private protected override async Task GenerateAlbedoAsync()
+            => await SetAlbedoAsync(Randomizer.Instance.NextDouble(0.025, 0.055)).ConfigureAwait(false);
 
-        private protected override void GenerateAtmosphere()
+        private protected override async Task GenerateAtmosphereAsync()
         {
             var dust = 1.0m;
 
@@ -198,7 +195,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var so2 = Randomizer.Instance.NextDecimal(0.001m);
             dust -= so2;
 
-            _atmosphere = new Atmosphere(
+            _atmosphere = await Atmosphere.GetNewInstanceAsync(
                 this,
                 1e-8,
                 (Substances.GetChemicalReference(Substances.Chemicals.Water), water),
@@ -208,15 +205,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 (Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3),
                 (Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4),
                 (Substances.GetChemicalReference(Substances.Chemicals.HydrogenSulfide), h2s),
-                (Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2));
+                (Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2))
+                .ConfigureAwait(false);
         }
 
         private protected override double GetDensity() => Randomizer.Instance.NextDouble(300, 700);
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
             var density = GetDensity();
-            var shape = GetShape();
+            var shape = await GetShapeAsync().ConfigureAwait(false);
             return (density, shape.Volume * density, shape);
         }
 

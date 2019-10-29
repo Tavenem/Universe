@@ -4,7 +4,7 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
 {
@@ -28,32 +28,24 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Asteroids
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="STypeAsteroid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="STypeAsteroid"/>.</param>
-        internal STypeAsteroid(Location? parent, Vector3 position) : base(parent, position) { }
+        internal STypeAsteroid(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="STypeAsteroid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="STypeAsteroid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="STypeAsteroid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="STypeAsteroid"/> during random generation, in kg.
         /// </param>
-        internal STypeAsteroid(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal STypeAsteroid(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
-        private protected override void GenerateAlbedo() => Albedo = Randomizer.Instance.NextDouble(0.1, 0.22);
+        private protected override async Task GenerateAlbedoAsync() => await SetAlbedoAsync(Randomizer.Instance.NextDouble(0.1, 0.22)).ConfigureAwait(false);
 
-        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
-        {
-            var satellite = new STypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
-            SetAsteroidSatelliteOrbit(satellite, periapsis, eccentricity);
-            return satellite;
-        }
+        private protected override async Task<Planetoid?> GenerateSatelliteAsync(Number periapsis, double eccentricity, Number maxMass)
+            => await GetNewInstanceAsync<STypeAsteroid>(ParentId, Vector3.Zero, maxMass, GetAsteroidSatelliteOrbit(periapsis, eccentricity)).ConfigureAwait(false);
 
         private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {

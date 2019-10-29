@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
-using WorldFoundry.Place;
 using WorldFoundry.Space;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using System.Threading.Tasks;
 
 namespace WorldFoundry.CelestialBodies.Stars
 {
@@ -32,12 +31,9 @@ namespace WorldFoundry.CelestialBodies.Stars
         /// <summary>
         /// Initializes a new instance of <see cref="NeutronStar"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="NeutronStar"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="NeutronStar"/>.</param>
-        /// <param name="populationII">Set to true if this is to be a Population II <see cref="NeutronStar"/>.</param>
-        internal NeutronStar(Location parent, Vector3 position, bool populationII = false) : base(parent, position, null, null, populationII) { }
+        internal NeutronStar(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private protected NeutronStar(
             string id,
@@ -51,7 +47,7 @@ namespace WorldFoundry.CelestialBodies.Stars
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -64,7 +60,7 @@ namespace WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private NeutronStar(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -77,31 +73,31 @@ namespace WorldFoundry.CelestialBodies.Stars
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        private protected override double GetLuminosity(Number? temperature = null) => GetLuminosityFromRadius();
+        private protected override ValueTask<double> GetLuminosityAsync(Number? temperature = null) => GetLuminosityFromRadiusAsync();
 
         private protected override LuminosityClass GetLuminosityClass() => LuminosityClass.Other;
 
-        private protected override Number GetMass()
-            => Randomizer.Instance.NormalDistributionSample(4.4178e30, 5.174e29); // between 1.44 and 3 times solar mass
+        private protected override ValueTask<Number> GetMassAsync()
+            => new ValueTask<Number>(Randomizer.Instance.NormalDistributionSample(4.4178e30, 5.174e29)); // between 1.44 and 3 times solar mass
 
-        private protected override IMaterial GetMaterial()
+        private protected override async Task GenerateMaterialAsync()
         {
-            var shape = GetShape();
-            var mass = GetMass();
-            return GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+            var shape = await GetShapeAsync().ConfigureAwait(false);
+            var mass = await GetMassAsync().ConfigureAwait(false);
+            Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
         }
 
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
         {
             var radius = Randomizer.Instance.NextNumber(1000, 2000);
             var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
-            return new Ellipsoid(radius, radius * (1 - flattening), Position);
+            return new ValueTask<IShape>(new Ellipsoid(radius, radius * (1 - flattening), Position));
         }
 
-        private protected override SpectralClass GetSpectralClass() => SpectralClass.Other;
+        private protected override ValueTask<SpectralClass> GenerateSpectralClassAsync() => new ValueTask<SpectralClass>(SpectralClass.Other);
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetHomogeneousSubstanceReference(Substances.HomogeneousSubstances.NeutronDegenerateMatter);

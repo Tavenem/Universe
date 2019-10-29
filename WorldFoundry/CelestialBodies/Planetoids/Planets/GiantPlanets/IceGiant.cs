@@ -5,7 +5,6 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using WorldFoundry.Place;
 
 namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
 {
@@ -29,23 +28,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="IceGiant"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
-        internal IceGiant(Location parent, Vector3 position) : base(parent, position) { }
+        internal IceGiant(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="IceGiant"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="IceGiant"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="IceGiant"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="IceGiant"/> during random generation, in kg.
         /// </param>
-        internal IceGiant(Location parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal IceGiant(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         // No "puffy" ice giants.
         private protected override double GetDensity() => Randomizer.Instance.NextDouble(MinDensity, MaxDensity);

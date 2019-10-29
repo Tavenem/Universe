@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids;
 
 namespace WorldFoundry.Climate
@@ -123,37 +124,11 @@ namespace WorldFoundry.Climate
         /// <summary>
         /// Initializes a new instance of <see cref="Atmosphere"/>.
         /// </summary>
-        /// <param name="planet">The <see cref="Planetoid"/> this <see cref="Atmosphere"/> surrounds.</param>
-        /// <param name="substance">The material composition of this <see cref="Atmosphere"/>.</param>
         /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
-        public Atmosphere(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents)
+        internal Atmosphere(double pressure)
         {
-            AtmosphericPressure = constituents.Length == 0 || constituents.All(x => x.substance?.Substance.IsEmpty != false) ? 0 : pressure;
-
-            SetAtmosphericScaleHeight(planet);
-
-            var mass = GetAtmosphericMass(planet, AtmosphericPressure);
-
-            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
-            var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
-            SetGreenhouseFactor(constituents);
-            planet._greenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
-            var temperature = tIF + planet.GreenhouseEffect;
-
-            SetAtmosphericHeight(planet, temperature);
-
-            var density = GetAtmosphericDensity(temperature, AtmosphericPressure);
-
-            var shape = GetShape(planet);
-
-            Material = new Material(
-                density,
-                mass,
-                shape,
-                temperature,
-                constituents);
-
-            SetPrecipitation(planet);
+            AtmosphericPressure = pressure;
+            Material = new Material(0, SinglePoint.Origin); // unused; set correctly during initialization
         }
 
         private Atmosphere(
@@ -179,6 +154,13 @@ namespace WorldFoundry.Climate
             (double)info.GetValue(nameof(AtmosphericPressure), typeof(double)),
             (double)info.GetValue(nameof(AtmosphericScaleHeight), typeof(double)),
             (double)info.GetValue(nameof(AveragePrecipitation), typeof(double))) { }
+
+        internal static async Task<Atmosphere> GetNewInstanceAsync(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents)
+        {
+            var instance = new Atmosphere(pressure);
+            await instance.InitializeAsync(planet, constituents).ConfigureAwait(false);
+            return instance;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -277,10 +259,10 @@ namespace WorldFoundry.Climate
         /// <param name="planet">The <see cref="Planetoid"/> which this atmosphere surrounds;
         /// required in order to correctly reset the properties dependent on pressure.</param>
         /// <param name="value">The new pressure, in kPa.</param>
-        public void SetAtmosphericPressure(Planetoid planet, double value)
+        public async Task SetAtmosphericPressureAsync(Planetoid planet, double value)
         {
             AtmosphericPressure = value;
-            ResetPressureDependentProperties(planet);
+            await ResetPressureDependentPropertiesAsync(planet).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -346,19 +328,54 @@ namespace WorldFoundry.Climate
             }
         }
 
-        internal void ResetGreenhouseFactor(Planetoid planet)
+        internal async Task InitializeAsync(Planetoid planet, (ISubstanceReference substance, decimal proportion)[] constituents)
         {
-            _greenhouseFactor = null;
-            planet.ResetGreenhouseEffect();
+            if ((constituents?.Length ?? 0) == 0)
+            {
+                AtmosphericPressure = 0;
+            }
+
+            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
+
+            var mass = GetAtmosphericMass(planet, AtmosphericPressure);
+
+            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
+            var tIF = await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false) * planet.InsolationFactor_Equatorial;
+            SetGreenhouseFactor();
+            planet._greenhouseEffect = (tIF * GreenhouseFactor) - await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+            var greenhouseEffect = await planet.GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var temperature = tIF + greenhouseEffect;
+
+            await SetAtmosphericHeightAsync(planet, temperature).ConfigureAwait(false);
+
+            var density = GetAtmosphericDensity(temperature, AtmosphericPressure);
+
+            var shape = GetShape(planet);
+
+            Material = new Material(
+                density,
+                mass,
+                shape,
+                temperature,
+                constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
+
+            SetPrecipitation(planet);
         }
 
-        internal void ResetPressureDependentProperties(Planetoid planet)
+        internal async Task ResetGreenhouseFactorAsync(Planetoid planet)
         {
-            SetAtmosphericScaleHeight(planet);
+            _greenhouseFactor = null;
+            await planet.ResetCachedTemperaturesAsync().ConfigureAwait(false);
+        }
+
+        internal async Task ResetPressureDependentPropertiesAsync(Planetoid planet)
+        {
+            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
             Material = Material.GetClone((decimal)(GetAtmosphericMass(planet, AtmosphericPressure) / Material.Mass));
-            SetAtmosphericHeight(planet);
+            await SetAtmosphericHeightAsync(planet).ConfigureAwait(false);
             Material.Shape = GetShape(planet);
-            Material.Density = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            var temp = await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            Material.Density = GetAtmosphericDensity(temp, AtmosphericPressure);
             if (Material is LayeredComposite lc)
             {
                 foreach (var (material, _) in lc.Layers)
@@ -369,12 +386,13 @@ namespace WorldFoundry.Climate
             SetPrecipitation(planet);
         }
 
-        internal void ResetTemperatureDependentProperties(Planetoid planet)
+        internal async Task ResetTemperatureDependentPropertiesAsync(Planetoid planet)
         {
-            SetAtmosphericScaleHeight(planet);
-            SetAtmosphericHeight(planet);
+            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
+            await SetAtmosphericHeightAsync(planet).ConfigureAwait(false);
             Material.Shape = GetShape(planet);
-            Material.Density = GetAtmosphericDensity(planet.AverageSurfaceTemperature, AtmosphericPressure);
+            var temp = await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            Material.Density = GetAtmosphericDensity(temp, AtmosphericPressure);
             if (Material is LayeredComposite lc)
             {
                 foreach (var (material, _) in lc.Layers)
@@ -444,11 +462,17 @@ namespace WorldFoundry.Climate
         /// Uses the molar mass of air on Earth, which is clearly not correct for other atmospheres,
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
-        private void SetAtmosphericHeight(Planetoid planet, double? temp = null)
-            => AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * (temp ?? planet.AverageSurfaceTemperature) / (-(double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir);
+        private async Task SetAtmosphericHeightAsync(Planetoid planet, double? temp = null)
+        {
+            temp ??= await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * temp.Value / (-(double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir);
+        }
 
-        private void SetAtmosphericScaleHeight(Planetoid planet)
-            => AtmosphericScaleHeight = AtmosphericPressure * 1000 / (double)planet.SurfaceGravity / GetAtmosphericDensity(planet.AverageBlackbodyTemperature, AtmosphericPressure);
+        private async Task SetAtmosphericScaleHeightAsync(Planetoid planet)
+        {
+            var avgBlackbodyTemp = await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+            AtmosphericScaleHeight = AtmosphericPressure * 1000 / (double)planet.SurfaceGravity / GetAtmosphericDensity(avgBlackbodyTemp, AtmosphericPressure);
+        }
 
         /// <summary>
         /// Calculates the total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.

@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using WorldFoundry.Place;
+using System.Threading.Tasks;
 using WorldFoundry.Space.Galaxies;
 
 namespace WorldFoundry.Space
@@ -22,30 +22,18 @@ namespace WorldFoundry.Space
 
         private static readonly Number _ChildDensity = new Number(1, -70);
 
-        private static readonly List<ChildDefinition> _ChildDefinitions = new List<ChildDefinition>
+        private static readonly List<IChildDefinition> _ChildDefinitions = new List<IChildDefinition>
         {
-            new ChildDefinition(typeof(DwarfGalaxy), DwarfGalaxy.Space, _ChildDensity * new Number(26, -2)),
-            new ChildDefinition(typeof(GlobularCluster), GlobularCluster.Space, _ChildDensity * new Number(74, -2)),
+            new ChildDefinition<DwarfGalaxy>(DwarfGalaxy.Space, _ChildDensity * new Number(26, -2)),
+            new ChildDefinition<GlobularCluster>(GlobularCluster.Space, _ChildDensity * new Number(74, -2)),
         };
 
         private string? _mainGalaxyId;
-        /// <summary>
-        /// The main <see cref="Galaxy"/> around which the other objects in this <see
-        /// cref="GalaxySubgroup"/> orbit.
-        /// </summary>
-        public Galaxy MainGalaxy
-        {
-            get
-            {
-                _mainGalaxyId ??= GetMainGalaxy();
-                return CelestialChildren.OfType<Galaxy>().FirstOrDefault(x => x.Id == _mainGalaxyId);
-            }
-        }
+        private Galaxy? _mainGalaxy;
 
         private protected override string BaseTypeName => "Galaxy Subgroup";
 
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions
-            => base.ChildDefinitions.Concat(_ChildDefinitions);
+        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _ChildDefinitions;
 
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/>.
@@ -55,11 +43,9 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="GalaxySubgroup"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="GalaxySubgroup"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="GalaxySubgroup"/>.</param>
-        internal GalaxySubgroup(Location parent, Vector3 position) : base(parent, position) { }
+        internal GalaxySubgroup(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private GalaxySubgroup(
             string id,
@@ -70,7 +56,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children)
+            string? parentId)
             : base(
                 id,
                 name,
@@ -79,7 +65,7 @@ namespace WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                children) => _mainGalaxyId = mainGalaxyId;
+                parentId) => _mainGalaxyId = mainGalaxyId;
 
         private GalaxySubgroup(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -89,8 +75,38 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+
+        /// <summary>
+        /// Gets the main <see cref="Galaxy"/> around which the other objects in this <see
+        /// cref="GalaxySubgroup"/> orbit.
+        /// </summary>
+        /// <returns>
+        /// The main <see cref="Galaxy"/> around which the other objects in this <see
+        /// cref="GalaxySubgroup"/> orbit.
+        /// </returns>
+        public async Task<Galaxy?> GetMainGalaxyAsync()
+        {
+            if (_mainGalaxy is null)
+            {
+                if (string.IsNullOrEmpty(_mainGalaxyId))
+                {
+                    var core = await GenerateMainGalaxyAsync().ConfigureAwait(false);
+                    if (core != null)
+                    {
+                        await core.SaveAsync().ConfigureAwait(false);
+                    }
+                    _mainGalaxyId = core?.Id;
+                    _mainGalaxy = core;
+                }
+                else
+                {
+                    _mainGalaxy = await DataStore.GetItemAsync<Galaxy>(_mainGalaxyId).ConfigureAwait(false);
+                }
+            }
+            return _mainGalaxy;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -110,35 +126,8 @@ namespace WorldFoundry.Space
             info.AddValue(nameof(Albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), Material);
-            info.AddValue(nameof(Children), Children.ToList());
-        }
-
-        internal override CelestialLocation? GenerateChild(ChildDefinition definition)
-        {
-            var child = base.GenerateChild(definition);
-            if (child is null)
-            {
-                return null;
-            }
-
-            WorldFoundry.Space.Orbit.SetOrbit(
-                child,
-                MainGalaxy,
-                Randomizer.Instance.NextDouble(0.1));
-
-            return child;
-        }
-
-        internal override void PrepopulateRegion()
-        {
-            if (_isPrepopulated)
-            {
-                return;
-            }
-            base.PrepopulateRegion();
-
-            _mainGalaxyId ??= GetMainGalaxy();
+            info.AddValue(nameof(_material), Material);
+            info.AddValue(nameof(ParentId), ParentId);
         }
 
         /// <summary>
@@ -146,17 +135,45 @@ namespace WorldFoundry.Space
         /// which all other objects orbit.
         /// </summary>
         /// <remarks>70% of large galaxies are spirals.</remarks>
-        private string GetMainGalaxy()
-            => (Randomizer.Instance.NextDouble() <= 0.7
-                ? new SpiralGalaxy(this, Vector3.Zero)
-                : (Galaxy)new EllipticalGalaxy(this, Vector3.Zero)).Id;
+        private async Task<Galaxy?> GenerateMainGalaxyAsync()
+            => Randomizer.Instance.NextDouble() <= 0.7
+                ? await GetNewInstanceAsync<SpiralGalaxy>(this, Vector3.Zero).ConfigureAwait(false)
+                : (Galaxy?)await GetNewInstanceAsync<EllipticalGalaxy>(this, Vector3.Zero).ConfigureAwait(false);
 
         // The main galaxy is expected to comprise the bulk of the mass
-        private protected override Number GetMass() => MainGalaxy.Mass * new Number(125, -2);
+        private protected override async ValueTask<Number> GetMassAsync()
+        {
+            var g = await GetMainGalaxyAsync().ConfigureAwait(false);
+            return (g?.Mass ?? Number.Zero) * new Number(125, -2);
+        }
 
-        private protected override IShape GetShape() => new Sphere(MainGalaxy.Shape.ContainingRadius * 10, Position);
+        private protected override async ValueTask<IShape> GetShapeAsync()
+        {
+            var g = await GetMainGalaxyAsync().ConfigureAwait(false);
+            return g is null
+                ? new Sphere(Number.Zero, Position)
+                : new Sphere(g.Shape.ContainingRadius * 10, Position);
+        }
 
         private protected override ISubstanceReference? GetSubstance()
             => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
+
+        private protected override async Task InitializeAsync()
+        {
+            await GetMainGalaxyAsync().ConfigureAwait(false);
+            await base.InitializeAsync().ConfigureAwait(false);
+        }
+
+        private protected override async Task InitializeChildAsync(CelestialLocation child)
+        {
+            if (!string.IsNullOrEmpty(_mainGalaxyId))
+            {
+                var g = await GetMainGalaxyAsync().ConfigureAwait(false);
+                await WorldFoundry.Space.Orbit.SetOrbitAsync(
+                      child,
+                      g,
+                      Randomizer.Instance.NextDouble(0.1)).ConfigureAwait(false);
+            }
+        }
     }
 }

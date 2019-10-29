@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
-using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Climate;
-using WorldFoundry.Place;
-using WorldFoundry.Space;
-using NeverFoundry;
+﻿using NeverFoundry;
 using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
@@ -15,8 +6,19 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Threading.Tasks;
+using WorldFoundry.CelestialBodies.Stars;
+using WorldFoundry.Climate;
+using WorldFoundry.Place;
+using WorldFoundry.Space;
 using WorldFoundry.SurfaceMapping;
 
 namespace WorldFoundry.CelestialBodies.Planetoids
@@ -47,42 +49,35 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private static readonly double _LowTemp = CelestialSubstances.WaterMeltingPoint - 16;
 
+        internal double? _greenhouseEffect;
+
+        private protected double? _angleOfRotation;
+        private protected Atmosphere? _atmosphere;
+        private double? _averagePolarSurfaceTemperature;
+        private double? _averageSurfaceTemperature;
+        private protected double? _axialPrecession;
+        private System.Numerics.Vector3? _axis;
+        private System.Numerics.Quaternion? _axisRotation;
         private protected byte[]? _depthMap;
+        private double? _diurnalTemperatureVariation;
         private protected byte[]? _elevationMap;
         private protected byte[]? _flowMap;
+        private double? _maxSurfaceTemperature;
+        private double? _minSurfaceTemperature;
         private protected double _normalizedSeaLevel;
         private protected byte[][]? _precipitationMaps;
+        private protected List<string>? _satelliteIDs;
         private protected byte[][]? _snowfallMaps;
         private protected int _seed1;
         private protected int _seed2;
         private protected int _seed3;
         private protected int _seed4;
         private protected int _seed5;
+        private double? _summerSolsticeTrueAnomaly;
+        private double? _surfaceTemperature;
         private protected byte[]? _temperatureMapSummer;
         private protected byte[]? _temperatureMapWinter;
-
-        private protected double? _angleOfRotation;
-        /// <summary>
-        /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
-        /// Values greater than half Pi indicate clockwise rotation. Read-only; set via <see
-        /// cref="AxialTilt"/>.
-        /// </summary>
-        /// <remarks>
-        /// Note that this is not the same as <see cref="AxialTilt"/> if the <see cref="Planetoid"/>
-        /// is in orbit; in that case <see cref="AxialTilt"/> is relative to the normal of the
-        /// orbital plane of the <see cref="Planetoid"/>, not the Y-axis.
-        /// </remarks>
-        public double AngleOfRotation
-        {
-            get
-            {
-                if (!_angleOfRotation.HasValue)
-                {
-                    GenerateAngleOfRotation();
-                }
-                return _angleOfRotation ?? 0;
-            }
-        }
+        private double? _winterSolsticeTrueAnomaly;
 
         private Number? _angularVelocity;
         /// <summary>
@@ -92,109 +87,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public Number AngularVelocity
             => _angularVelocity ??= RotationalPeriod.IsZero ? Number.Zero : MathConstants.TwoPI / RotationalPeriod;
 
-        private protected Atmosphere? _atmosphere;
         /// <summary>
         /// The atmosphere possessed by this <see cref="Planetoid"/>.
         /// </summary>
-        public Atmosphere Atmosphere
-        {
-            get
-            {
-                if (_atmosphere is null)
-                {
-                    GenerateAtmosphere();
-                    if (_atmosphere is null)
-                    {
-                        _atmosphere = new Atmosphere(this, 0);
-                    }
-                }
-                return _atmosphere;
-            }
-        }
-
-        private double? _averagePolarSurfaceTemperature;
-        /// <summary>
-        /// The average surface temperature of this <see cref="Planetoid"/> near its poles
-        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
-        /// </summary>
-        public double AveragePolarSurfaceTemperature
-            => _averagePolarSurfaceTemperature ?? (_averagePolarSurfaceTemperature = GetAverageTemperature(true)).Value;
-
-        private double? _averageSurfaceTemperature;
-        /// <summary>
-        /// The average surface temperature of the <see cref="Planetoid"/> at its equator throughout
-        /// its orbit (or at its current position, if it is not in orbit), in K.
-        /// </summary>
-        public override double AverageSurfaceTemperature
-            => _averageSurfaceTemperature ??= GetAverageTemperature();
-
-        private protected double? _axialPrecession;
-        /// <summary>
-        /// The angle between the X-axis and the orbital vector at which the first equinox occurs.
-        /// </summary>
-        public double AxialPrecession
-        {
-            get
-            {
-                if (!_axialPrecession.HasValue)
-                {
-                    GenerateAngleOfRotation();
-                }
-                return _axialPrecession ?? 0;
-            }
-            internal set
-            {
-                var angle = value;
-                while (angle > Math.PI)
-                {
-                    angle -= Math.PI;
-                }
-                while (angle < 0)
-                {
-                    angle += Math.PI;
-                }
-                _axialPrecession = angle;
-                SetAxis();
-            }
-        }
-
-        /// <summary>
-        /// The axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in radians.
-        /// Values greater than half Pi indicate clockwise rotation.
-        /// </summary>
-        /// <remarks>
-        /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as <see
-        /// cref="AngleOfRotation"/>.
-        /// </remarks>
-        public double AxialTilt
-        {
-            get => Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
-            set => SetAngleOfRotation(Orbit.HasValue ? value + Orbit.Value.Inclination : value);
-        }
-
-        private System.Numerics.Vector3? _axis;
-        /// <summary>
-        /// A <see cref="Vector3"/> which represents the axis of this <see cref="Planetoid"/>.
-        /// Read-only. To set, specify <see cref="AxialPrecession"/> and/or <see cref="AngleOfRotation"/>.
-        /// </summary>
-        public System.Numerics.Vector3 Axis
-        {
-            get
-            {
-                if (!_axis.HasValue)
-                {
-                    SetAxis();
-                }
-                return _axis ?? System.Numerics.Vector3.Zero;
-            }
-        }
-
-        private double? _diurnalTemperatureVariation;
-        /// <summary>
-        /// The diurnal temperature variation for this body, in K.
-        /// </summary>
-        public double DiurnalTemperatureVariation
-            => _diurnalTemperatureVariation ??= GetDiurnalTemperatureVariation();
+        public Atmosphere Atmosphere => _atmosphere ??= new Atmosphere(0);
 
         private protected bool? _hasMagnetosphere;
         /// <summary>
@@ -205,13 +101,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             get => _hasMagnetosphere ??= GetHasMagnetosphere();
             set => _hasMagnetosphere = value;
         }
-
-        internal double? _greenhouseEffect;
-        /// <summary>
-        /// The total greenhouse effect on this <see cref="Planetoid"/>, in K. Read-only; determined
-        /// by the properties of the <see cref="Atmosphere"/>.
-        /// </summary>
-        public double GreenhouseEffect => _greenhouseEffect ??= GetGreenhouseEffect();
 
         private protected double? _maxElevation;
         /// <summary>
@@ -243,24 +132,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             set => _maxFlow = value.IsNearlyEqualTo(350000) ? (double?)null : value;
         }
 
-        private double? _maxSurfaceTemperature;
-        /// <summary>
-        /// The approximate maximum surface temperature of this <see cref="Planetoid"/>, in K.
-        /// </summary>
-        /// <remarks>
-        /// Gets the equatorial temperature at periapsis, or at the current position if not in orbit.
-        /// </remarks>
-        public double MaxSurfaceTemperature => _maxSurfaceTemperature ??= GetMaxSurfaceTemperature();
-
-        private double? _minSurfaceTemperature;
-        /// <summary>
-        /// The approximate minimum surface temperature of this <see cref="Planetoid"/>, in K.
-        /// </summary>
-        /// <remarks>
-        /// Gets the polar temperature at apoapsis, or at the current position if not in orbit.
-        /// </remarks>
-        public double MinSurfaceTemperature => _minSurfaceTemperature ??= GetMinSurfaceTemperature();
-
         private protected Number? _rotationalOffset;
         /// <summary>
         /// The amount of seconds after the beginning of time of the orbited body's transit at the
@@ -273,16 +144,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis, in seconds.
         /// </summary>
-        public Number RotationalPeriod
-        {
-            get => _rotationalPeriod ??= GetRotationalPeriod();
-            set
-            {
-                _rotationalPeriod = value;
-                _angularVelocity = null;
-                ResetCachedTemperatures();
-            }
-        }
+        public Number RotationalPeriod => _rotationalPeriod ??= Number.Zero;
 
         private protected List<Resource>? _resources;
         /// <summary>
@@ -300,20 +162,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 return _resources;
             }
         }
-
-        private protected List<string>? _satelliteIDs;
-        /// <summary>
-        /// The collection of natural satellites around this <see cref="Planetoid"/>.
-        /// </summary>
-        /// <remarks>
-        /// Unlike <see cref="Location.Children"/>, natural satellites are actually siblings
-        /// in the local <see cref="Location"/> hierarchy, which merely share an orbital relationship.
-        /// </remarks>
-        public IEnumerable<Planetoid> Satellites
-            => CelestialParent is null || _satelliteIDs is null
-            ? Enumerable.Empty<Planetoid>()
-            : CelestialParent.GetAllChildren<Planetoid>()
-                .Where(x => _satelliteIDs!.Contains(x.Id));
 
         private double? _seaLevel;
         /// <summary>
@@ -337,12 +185,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         public IEnumerable<SurfaceRegion> SurfaceRegions
             => _surfaceRegions ?? Enumerable.Empty<SurfaceRegion>();
-
-        private double? _surfaceTemperature;
-        /// <summary>
-        /// The current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
-        /// </summary>
-        public double SurfaceTemperature => _surfaceTemperature ??= GetCurrentSurfaceTemperature();
 
         internal bool HasDepthMap => _depthMap != null;
 
@@ -380,31 +222,6 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         internal int MappedSeasons => _precipitationMaps?.Length ?? 0;
-
-        private double? _summerSolsticeTrueAnomaly;
-        internal double SummerSolsticeTrueAnomaly
-            => _summerSolsticeTrueAnomaly ??= (AxialPrecession + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.HalfPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-
-        private double? _winterSolsticeTrueAnomaly;
-        internal double WinterSolsticeTrueAnomaly
-            => _winterSolsticeTrueAnomaly ??= (AxialPrecession + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-
-        private System.Numerics.Quaternion? _axisRotation;
-        /// <summary>
-        /// A <see cref="System.Numerics.Quaternion"/> representing the rotation of the <see
-        /// cref="Axis"/> of this <see cref="Planetoid"/>.
-        /// </summary>
-        private System.Numerics.Quaternion AxisRotation
-        {
-            get
-            {
-                if (!_axisRotation.HasValue)
-                {
-                    SetAxis();
-                }
-                return _axisRotation ?? System.Numerics.Quaternion.Identity;
-            }
-        }
 
         private protected virtual double DensityForType => 2000;
 
@@ -474,23 +291,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Planetoid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Planetoid"/>.</param>
-        internal Planetoid(Location? parent, Vector3 position) : base(parent, position) => Init();
+        internal Planetoid(string? parentId, Vector3 position) : base(parentId, position) => Init();
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Planetoid"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Planetoid"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planetoid"/> during random generation, in kg.
         /// </param>
-        internal Planetoid(Location? parent, Vector3 position, Number maxMass) : base(parent, position) => MaxMass = maxMass;
+        internal Planetoid(string? parentId, Vector3 position, Number maxMass) : base(parentId, position) => MaxMass = maxMass;
 
         private protected Planetoid(
             string id,
@@ -517,7 +330,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             Number? maxMass,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
@@ -534,7 +347,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 velocity,
                 orbit,
                 material,
-                children)
+                parentId)
         {
             _normalizedSeaLevel = normalizedSeaLevel;
             _seed1 = seed1;
@@ -575,20 +388,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (int)info.GetValue(nameof(_seed3), typeof(int)),
             (int)info.GetValue(nameof(_seed4), typeof(int)),
             (int)info.GetValue(nameof(_seed5), typeof(int)),
-            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (double?)info.GetValue(nameof(_angleOfRotation), typeof(double?)),
             (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
-            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (double?)info.GetValue(nameof(_axialPrecession), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
             (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
             (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
             (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
             (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
-            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
             (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -597,6 +410,91 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="Planetoid"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="Planetoid"/> to generate.</typeparam>
+        /// <param name="parentId">The id of the location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="maxMass">The maximum mass allowed for the new <see
+        /// cref="Planetoid"/>.</param>
+        /// <param name="orbit">The orbit to set for the new <see cref="Planetoid"/>, if
+        /// any.</param>
+        /// <returns>A new instance of the indicated <see cref="Planetoid"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(string? parentId, Vector3 position, Number maxMass, OrbitalParameters? orbit = null) where T : Planetoid
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parentId, position }) as T;
+            if (instance != null)
+            {
+                instance.MaxMass = maxMass;
+                if (orbit.HasValue)
+                {
+                    await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
+                }
+                await instance.InitializeBaseAsync(parentId).ConfigureAwait(false);
+            }
+            return instance;
+        }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="Planetoid"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="Planetoid"/> to generate.</typeparam>
+        /// <param name="parent">The location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="star">The star the new <see cref="Planetoid"/> will orbit.</param>
+        /// <returns>A new instance of the indicated <see cref="Planetoid"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(Location? parent, Vector3 position, Star star) where T : Planetoid
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parent?.Id, position }) as T;
+            if (instance != null)
+            {
+                await instance.GenerateOrbitAsync(star).ConfigureAwait(false);
+                await instance.InitializeBaseAsync(parent).ConfigureAwait(false);
+            }
+            return instance;
+        }
+
+        /// <summary>
+        /// Gets a new instance of the indicated <see cref="Planetoid"/> type.
+        /// </summary>
+        /// <typeparam name="T">The type of <see cref="Planetoid"/> to generate.</typeparam>
+        /// <param name="parentId">The id of the location which contains the new one.</param>
+        /// <param name="position">The position of the new location relative to the center of its
+        /// <paramref name="parent"/>.</param>
+        /// <param name="star">The star the new <see cref="Planetoid"/> will orbit.</param>
+        /// <returns>A new instance of the indicated <see cref="Planetoid"/> type, or <see
+        /// langword="null"/> if no instance could be generated with the given parameters.</returns>
+        public static async Task<T?> GetNewInstanceAsync<T>(string? parentId, Vector3 position, Star star) where T : Planetoid
+        {
+            var instance = typeof(T).InvokeMember(
+                null,
+                BindingFlags.CreateInstance | BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                null,
+                new object?[] { parentId, position }) as T;
+            if (instance != null)
+            {
+                await instance.GenerateOrbitAsync(star).ConfigureAwait(false);
+                await instance.InitializeBaseAsync(parentId).ConfigureAwait(false);
+            }
+            return instance;
+        }
 
         private static byte[] GetByteArray(Bitmap image)
         {
@@ -694,6 +592,41 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Removes this location and all contained children from the data store, as well as all
+        /// satellites.
+        /// </summary>
+        public override async Task DeleteAsync()
+        {
+            await foreach (var satellite in GetSatellitesAsync())
+            {
+                await satellite.DeleteAsync().ConfigureAwait(false);
+            }
+            await base.DeleteAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Gets the angle between the Y-axis and the axis of rotation of this <see
+        /// cref="Planetoid"/>. Values greater than half Pi indicate clockwise rotation. Read-only;
+        /// set via <see cref="SetAxialTiltAsync(double)"/>.
+        /// </summary>
+        /// <returns>The angle between the Y-axis and the axis of rotation of this <see
+        /// cref="Planetoid"/>. Values greater than half Pi indicate clockwise rotation. Read-only;
+        /// set via <see cref="SetAxialTiltAsync(double)"/>.</returns>
+        /// <remarks>
+        /// Note that this is not the same as axial tilt if the <see cref="Planetoid"/>
+        /// is in orbit; in that case axial tilt is relative to the normal of the orbital plane of
+        /// the <see cref="Planetoid"/>, not the Y-axis.
+        /// </remarks>
+        public async Task<double> GetAngleOfRotationAsync()
+        {
+            if (!_angleOfRotation.HasValue)
+            {
+                await GenerateAngleOfRotationAsync().ConfigureAwait(false);
+            }
+            return _angleOfRotation ?? 0;
+        }
+
+        /// <summary>
         /// Calculates the atmospheric density for the given conditions, in kg/m³.
         /// </summary>
         /// <param name="time">The time at which to make the calculation.</param>
@@ -701,8 +634,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="longitude">The longitude of the object.</param>
         /// <param name="altitude">The altitude of the object.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        public double GetAtmosphericDensity(Duration time, double latitude, double longitude, double altitude)
-            => Atmosphere.GetAtmosphericDensity(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(time, latitude, longitude), altitude), altitude);
+        public async Task<double> GetAtmosphericDensityAsync(Duration time, double latitude, double longitude, double altitude)
+        {
+            var surfaceTemp = await GetSurfaceTemperatureAtLatLonAsync(time, latitude, longitude).ConfigureAwait(false);
+            var tempAtElevation = await GetTemperatureAtElevationAsync(surfaceTemp, altitude).ConfigureAwait(false);
+            return Atmosphere.GetAtmosphericDensity(this, tempAtElevation, altitude);
+        }
 
         /// <summary>
         /// Calculates the atmospheric drag on a spherical object within the <see
@@ -720,8 +657,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// is accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public double GetAtmosphericDrag(Duration time, double latitude, double longitude, double altitude, double speed) =>
-            Atmosphere.GetAtmosphericDrag(this, GetTemperatureAtElevation(GetSurfaceTemperatureAt(time, latitude, longitude), altitude), altitude, speed);
+        public async Task<double> GetAtmosphericDragAsync(Duration time, double latitude, double longitude, double altitude, double speed)
+        {
+            var surfaceTemp = await GetSurfaceTemperatureAtLatLonAsync(time, latitude, longitude).ConfigureAwait(false);
+            var tempAtElevation = await GetTemperatureAtElevationAsync(surfaceTemp, altitude).ConfigureAwait(false);
+            return Atmosphere.GetAtmosphericDrag(this, tempAtElevation, altitude, speed);
+        }
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given <paramref name="latitude"/> and <paramref
@@ -740,15 +681,98 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// mass of air on Earth, which is clearly not correct for other atmospheres, but is
         /// considered "close enough" for the purposes of this library.
         /// </remarks>
-        public double GetAtmosphericPressure(Duration time, double latitude, double longitude)
+        public async Task<double> GetAtmosphericPressureAsync(Duration time, double latitude, double longitude)
         {
             var elevation = GetElevationAt(latitude, longitude);
             var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
-            return GetAtmosphericPressureFromTempAndElevation(
-                GetTemperatureAtElevation(
-                    (BlackbodyTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude, trueAnomaly))) + GreenhouseEffect,
-                    elevation),
-                elevation);
+            var blackbodyTemperature = await GetBlackbodyTemperatureAsync().ConfigureAwait(false);
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var lat = await GetSeasonalLatitudeAsync(latitude, trueAnomaly).ConfigureAwait(false);
+            var tempAtElevation = await GetTemperatureAtElevationAsync(
+                (blackbodyTemperature * GetInsolationFactor(lat)) + greenhouseEffect,
+                elevation).ConfigureAwait(false);
+            return GetAtmosphericPressureFromTempAndElevation(tempAtElevation, elevation);
+        }
+
+        /// <summary>
+        /// Get the average surface temperature of this <see cref="Planetoid"/> near its poles
+        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
+        /// </summary>
+        public async Task<double> GetAveragePolarSurfaceTemperatureAsync()
+        {
+            _averagePolarSurfaceTemperature ??= await GetAverageTemperatureAsync(true).ConfigureAwait(false);
+            return _averagePolarSurfaceTemperature.Value;
+        }
+
+        /// <summary>
+        /// The average surface temperature of the <see cref="Planetoid"/> near its equator
+        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
+        /// </summary>
+        public override async Task<double> GetAverageSurfaceTemperatureAsync()
+        {
+            _averageSurfaceTemperature ??= await GetAverageTemperatureAsync().ConfigureAwait(false);
+            return _averageSurfaceTemperature.Value;
+        }
+
+        /// <summary>
+        /// Gets the angle between the X-axis and the orbital vector at which the first equinox
+        /// occurs.
+        /// </summary>
+        /// <returns>The angle between the X-axis and the orbital vector at which the first equinox
+        /// occurs.</returns>
+        public async Task<double> GetAxialPrecessionAsync()
+        {
+            if (!_axialPrecession.HasValue)
+            {
+                await GenerateAngleOfRotationAsync().ConfigureAwait(false);
+            }
+            return _axialPrecession ?? 0;
+        }
+
+        /// <summary>
+        /// Gets the axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in
+        /// radians. Values greater than half Pi indicate clockwise rotation.
+        /// </summary>
+        /// <returns>The axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in
+        /// radians. Values greater than half Pi indicate clockwise rotation.</returns>
+        /// <remarks>
+        /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
+        /// rotation.
+        /// </remarks>
+        public async Task<double> GetAxialTiltAsync()
+        {
+            var angleOfRotation = await GetAngleOfRotationAsync().ConfigureAwait(false);
+            return Orbit.HasValue ? angleOfRotation - Orbit.Value.Inclination : angleOfRotation;
+        }
+
+        /// <summary>
+        /// Gets a <see cref="System.Numerics.Vector3"/> which represents the axis of this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        /// <returns>A <see cref="System.Numerics.Vector3"/> which represents the axis of this <see
+        /// cref="Planetoid"/>.</returns>
+        public async Task<System.Numerics.Vector3> GetAxisAsync()
+        {
+            if (!_axis.HasValue)
+            {
+                await SetAxisAsync().ConfigureAwait(false);
+            }
+            return _axis ?? System.Numerics.Vector3.UnitY;
+        }
+
+        /// <summary>
+        /// Gets a <see cref="System.Numerics.Quaternion"/> representing the rotation of the axis of
+        /// this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <returns>A <see cref="System.Numerics.Quaternion"/> representing the rotation of the
+        /// axis of this <see cref="Planetoid"/>.</returns>
+        public async Task<System.Numerics.Quaternion> GetAxisRotationAsync()
+        {
+            if (!_axisRotation.HasValue)
+            {
+                await SetAxisAsync().ConfigureAwait(false);
+            }
+            return _axisRotation ?? System.Numerics.Quaternion.Identity;
         }
 
         /// <summary>
@@ -852,6 +876,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         public Bitmap? GetFlowMap() => SurfaceRegion.GetMapImage(_flowMap);
 
         /// <summary>
+        /// Gets the greenhouse effect of this planet's atmosphere.
+        /// </summary>
+        /// <returns></returns>
+        public async Task<double> GetGreenhouseEffectAsync()
+        {
+            _greenhouseEffect ??= await GetGreenhouseEffectAsync(InsolationFactor_Equatorial, Atmosphere.GreenhouseFactor).ConfigureAwait(false);
+            return _greenhouseEffect.Value;
+        }
+
+        /// <summary>
         /// Calculates the total illumination on the given position from nearby sources of light
         /// (stars in the same system), as well as the light reflected from any natural satellites,
         /// modified according to the angle of incidence at the given time, in lux (lumens per m²).
@@ -880,20 +914,38 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// reasonable results.
         /// </para>
         /// </remarks>
-        public double GetIllumination(Duration time, double latitude, double longitude)
+        public async Task<double> GetIlluminationAsync(Duration time, double latitude, double longitude)
         {
-            var pos = GetPositionAtTime(time);
-            var stellarOrbiter = Orbit.HasValue
-                ? Orbit.Value.OrbitedObject is Star
-                    ? this
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid planet
-                        ? planet
-                        : null
-                : null;
+            var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
+            Planetoid? stellarOrbiter = null;
+            if (Orbit.HasValue)
+            {
+                var orbited = Orbit.HasValue ? await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false) : null;
+                if (orbited is Star)
+                {
+                    stellarOrbiter = this;
+                }
+                else if (orbited is Planetoid planet && planet.Orbit.HasValue)
+                {
+                    var otherOrbited = await planet.Orbit!.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                    if (otherOrbited is Star)
+                    {
+                        stellarOrbiter = planet;
+                    }
+                }
+            }
             var stellarOrbit = stellarOrbiter?.Orbit;
-            var starPos = stellarOrbit?.OrbitedObject.GetPositionAtTime(time) ?? Vector3.Zero;
+            var starPos = Vector3.Zero;
+            if (stellarOrbit.HasValue)
+            {
+                var stellarOrbited = await stellarOrbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (stellarOrbited != null)
+                {
+                    starPos = await stellarOrbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                }
+            }
 
-            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+            var (solarRightAscension, solarDeclination) = await GetRightAscensionAndDeclinationAsync(pos, starPos).ConfigureAwait(false);
             var longitudeOffset = longitude - solarRightAscension;
             if (longitudeOffset > Math.PI)
             {
@@ -903,17 +955,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude))
                 + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
             var solarElevation = Math.Asin(sinSolarElevation);
-            var lux = solarElevation <= 0 ? 0 : GetLuminousFlux() * sinSolarElevation;
+            var lux = solarElevation <= 0 ? 0 : (await GetLuminousFluxAsync().ConfigureAwait(false)) * sinSolarElevation;
 
             var starDist = Vector3.Distance(pos, starPos);
-            var (_, starLon) = GetEclipticLatLon(pos, starPos);
-            foreach (var satellite in Satellites)
+            var (_, starLon) = await GetEclipticLatLonAsync(pos, starPos).ConfigureAwait(false);
+            await foreach (var satellite in GetSatellitesAsync())
             {
-                var satPos = satellite.GetPositionAtTime(time);
+                var satPos = await satellite.GetPositionAtTimeAsync(time).ConfigureAwait(false);
                 var satDist2 = Vector3.DistanceSquared(pos, satPos);
                 var satDist = satDist2.Sqrt();
 
-                var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+                var (satLat, satLon) = await GetEclipticLatLonAsync(pos, satPos).ConfigureAwait(false);
 
                 // satellite-centered elongation of the planet from the star (ratio of illuminated
                 // surface area to total surface area)
@@ -925,7 +977,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 // Total light from the satellite is the flux incident on the satellite, reduced
                 // according to the proportion lit (vs. shadowed), further reduced according to the
                 // albedo, then the distance the light must travel after being reflected.
-                lux += satellite.GetLuminousFlux() * phase * satellite.Albedo / NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI / (double)satDist2;
+                lux += (await satellite.GetLuminousFluxAsync().ConfigureAwait(false))
+                    * phase
+                    * satellite.Albedo
+                    / NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI
+                    / (double)satDist2;
             }
 
             return lux;
@@ -1054,18 +1110,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// local day since midnight. If the sun does not rise and set on the given day (e.g. near
         /// the poles), then <see langword="null"/> will be returned for sunrise in the case of a
         /// polar night, and <see langword="null"/> for sunset in the case of a midnight sun.</returns>
-        public (RelativeDuration? sunrise, RelativeDuration? sunset) GetLocalSunriseAndSunset(Duration time, double latitude)
+        public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(Duration time, double latitude)
         {
-            var pos = GetPositionAtTime(time);
-            var starPos = Orbit.HasValue
-                ? Orbit.Value.OrbitedObject is Star
-                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
-                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                        : Vector3.Zero
-                : Vector3.Zero;
+            var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
+            var starPos = Vector3.Zero;
+            if (Orbit.HasValue)
+            {
+                var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (orbited is Star)
+                {
+                    starPos = await orbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                }
+                else if (orbited is Planetoid && orbited.Orbit.HasValue)
+                {
+                    var otherOrbited = await orbited.Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                    if (otherOrbited is Star)
+                    {
+                        starPos = await otherOrbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                    }
+                }
+            }
 
-            var (_, solarDeclination) = GetRightAscensionAndDeclination(pos, starPos);
+            var (_, solarDeclination) = await GetRightAscensionAndDeclinationAsync(pos, starPos).ConfigureAwait(false);
 
             var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
             if (d.IsNearlyZero())
@@ -1091,18 +1157,28 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="longitude">The longitude at which to make the calculation.</param>
         /// <returns>A <see cref="RelativeDuration"/> set to a proportion of a local day since
         /// midnight.</returns>
-        public RelativeDuration GetLocalTimeOfDay(Duration time, double longitude)
+        public async Task<RelativeDuration> GetLocalTimeOfDayAsync(Duration time, double longitude)
         {
-            var pos = GetPositionAtTime(time);
-            var starPos = Orbit.HasValue
-                ? Orbit.Value.OrbitedObject is Star
-                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
-                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                        : Vector3.Zero
-                : Vector3.Zero;
+            var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
+            var starPos = Vector3.Zero;
+            if (Orbit.HasValue)
+            {
+                var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (orbited is Star)
+                {
+                    starPos = await orbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                }
+                else if (orbited is Planetoid && orbited.Orbit.HasValue)
+                {
+                    var otherOrbited = await orbited.Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                    if (otherOrbited is Star)
+                    {
+                        starPos = await otherOrbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                    }
+                }
+            }
 
-            var (solarRightAscension, _) = GetRightAscensionAndDeclination(pos, starPos);
+            var (solarRightAscension, _) = await GetRightAscensionAndDeclinationAsync(pos, starPos).ConfigureAwait(false);
             var longitudeOffset = longitude - solarRightAscension;
             if (longitudeOffset > Math.PI)
             {
@@ -1125,6 +1201,41 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// west.</returns>
         public Number GetLocalTimeOffset(double longitude)
             => (longitude > Math.PI ? longitude - NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI : longitude) * RotationalPeriod / MathConstants.TwoPI;
+
+        /// <summary>
+        /// Gets the approximate maximum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// </summary>
+        /// <remarks>
+        /// Gets the equatorial temperature at periapsis, or at the current position if not in orbit.
+        /// </remarks>
+        public async Task<double> GetMaxSurfaceTemperatureAsync()
+        {
+            if (!_maxSurfaceTemperature.HasValue)
+            {
+                var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+                var temp = await GetTemperatureAtPeriapsisAsync().ConfigureAwait(false);
+                _maxSurfaceTemperature = (temp * InsolationFactor_Equatorial) + greenhouseEffect;
+            }
+            return _maxSurfaceTemperature.Value;
+        }
+
+        /// <summary>
+        /// Gets the approximate minimum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// </summary>
+        /// <remarks>
+        /// Gets the polar temperature at apoapsis, or at the current position if not in orbit.
+        /// </remarks>
+        public async Task<double> GetMinSurfaceTemperatureAsync()
+        {
+            if (!_minSurfaceTemperature.HasValue)
+            {
+                var variation = await GetDiurnalTemperatureVariationAsync().ConfigureAwait(false);
+                var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+                var temp = await GetTemperatureAtApoapsisAsync().ConfigureAwait(false);
+                _minSurfaceTemperature = (temp * InsolationFactor_Polar) + greenhouseEffect - variation;
+            }
+            return _minSurfaceTemperature.Value;
+        }
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
@@ -1190,20 +1301,20 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             info.AddValue(nameof(_seed3), _seed3);
             info.AddValue(nameof(_seed4), _seed4);
             info.AddValue(nameof(_seed5), _seed5);
-            info.AddValue(nameof(AngleOfRotation), _angleOfRotation);
+            info.AddValue(nameof(_angleOfRotation), _angleOfRotation);
             info.AddValue(nameof(Atmosphere), _atmosphere);
-            info.AddValue(nameof(AxialPrecession), _axialPrecession);
+            info.AddValue(nameof(_axialPrecession), _axialPrecession);
             info.AddValue(nameof(HasMagnetosphere), _hasMagnetosphere);
             info.AddValue(nameof(MaxElevation), _maxElevation);
             info.AddValue(nameof(RotationalOffset), _rotationalOffset);
             info.AddValue(nameof(RotationalPeriod), _rotationalPeriod);
             info.AddValue(nameof(Resources), _resources);
-            info.AddValue(nameof(Satellites), _satelliteIDs);
+            info.AddValue(nameof(_satelliteIDs), _satelliteIDs);
             info.AddValue(nameof(SurfaceRegions), _surfaceRegions);
             info.AddValue(nameof(MaxMass), _maxMass);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), _material);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(_material), _material);
+            info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(_depthMap), _depthMap);
             info.AddValue(nameof(_elevationMap), _elevationMap);
             info.AddValue(nameof(_flowMap), _flowMap);
@@ -1239,9 +1350,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the determination.</param>
         /// <returns>>The proportion of the current season, as a value between 0.0 and 1.0, at the
         /// given <paramref name="time"/>.</returns>
-        public double GetProportionOfSeasonAtTime(uint numSeasons, Duration time)
+        public async Task<double> GetProportionOfSeasonAtTimeAsync(uint numSeasons, Duration time)
         {
-            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionOfYear = await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             var proportionPerSeason = 1.0 / numSeasons;
             var seasonIndex = Math.Floor(proportionOfYear / proportionPerSeason);
             return (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
@@ -1254,8 +1365,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the calculation.</param>
         /// <returns>The proportion of the year, starting and ending with midwinter, at the given
         /// <paramref name="time"/>.</returns>
-        public double GetProportionOfYearAtTime(Duration time)
-            => ((Orbit?.GetTrueAnomalyAtTime(time) ?? 0) - WinterSolsticeTrueAnomaly + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+        public async Task<double> GetProportionOfYearAtTimeAsync(Duration time)
+        {
+            var trueAnomaly = await GetWinterSolsticeTrueAnomalyAsync().ConfigureAwait(false);
+            return ((Orbit?.GetTrueAnomalyAtTime(time) ?? 0) - trueAnomaly + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+        }
 
         /// <summary>
         /// Gets the richness of the resources at the given <paramref name="latitude"/> and
@@ -1300,29 +1414,43 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns>The proportion of the satellite which is currently illuminated, and a boolean
         /// value indicating whether the body is in the waxing half of its cycle (vs. the waning
         /// half).</returns>
-        public (Number phase, bool waxing) GetSatellitePhase(Duration time, Planetoid satellite)
+        public async Task<(Number phase, bool waxing)> GetSatellitePhaseAsync(Duration time, Planetoid satellite)
         {
-            if (!Satellites.Contains(satellite) || !satellite.Orbit.HasValue || satellite.Orbit.Value.OrbitedObject != this)
+            if (_satelliteIDs?.Contains(satellite.Id) != true || !satellite.Orbit.HasValue)
+            {
+                return (Number.Zero, false);
+            }
+            var satOrbited = await satellite.Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+            if (satOrbited != this)
             {
                 return (Number.Zero, false);
             }
 
-            var pos = GetPositionAtTime(time);
+            var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
 
-            var starPos = Orbit.HasValue
-                ? Orbit.Value.OrbitedObject is Star
-                    ? Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                    : Orbit.Value.OrbitedObject.Orbit?.OrbitedObject is Star && Orbit.Value.OrbitedObject is Planetoid
-                        ? Orbit.Value.OrbitedObject.Orbit.Value.OrbitedObject.GetPositionAtTime(time)
-                        : Vector3.Zero
-                : Vector3.Zero;
+            var starPos = Vector3.Zero;
+            var orbited = Orbit.HasValue
+                ? await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false)
+                : null;
+            if (orbited is Star)
+            {
+                starPos = await orbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+            }
+            else if (orbited is Planetoid && orbited.Orbit.HasValue)
+            {
+                var otherOrbited = await orbited.Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (otherOrbited is Star)
+                {
+                    starPos = await otherOrbited.GetPositionAtTimeAsync(time).ConfigureAwait(false);
+                }
+            }
             var starDist = Vector3.Distance(pos, starPos);
-            var (_, starLon) = GetEclipticLatLon(pos, starPos);
+            var (_, starLon) = await GetEclipticLatLonAsync(pos, starPos).ConfigureAwait(false);
 
-            var satellitePosition = satellite.GetPositionAtTime(time);
+            var satellitePosition = await satellite.GetPositionAtTimeAsync(time).ConfigureAwait(false);
             var satDist2 = Vector3.DistanceSquared(pos, satellitePosition);
             var satDist = satDist2.Sqrt();
-            var (satLat, satLon) = GetEclipticLatLon(pos, satellitePosition);
+            var (satLat, satLon) = await GetEclipticLatLonAsync(pos, satellitePosition).ConfigureAwait(false);
 
             // satellite-centered elongation of the planet from the star (ratio of illuminated
             // surface area to total surface area)
@@ -1331,11 +1459,27 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             // fraction of illuminated surface area
             var phase = (Number)((1 + Math.Cos(e)) / 2);
 
-            var (planetRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, pos);
-            var (starRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, Orbit?.OrbitedObject is Star star ? star.GetPositionAtTime(time) : Vector3.Zero);
+            var (planetRightAscension, _) = await satellite.GetRightAscensionAndDeclinationAsync(satellitePosition, pos).ConfigureAwait(false);
+            var (starRightAscension, _) = await satellite.GetRightAscensionAndDeclinationAsync(
+                satellitePosition,
+                orbited is Star star
+                    ? await star.GetPositionAtTimeAsync(time).ConfigureAwait(false)
+                    : Vector3.Zero)
+                .ConfigureAwait(false);
 
             return (phase, (starRightAscension - planetRightAscension + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI <= Math.PI);
         }
+
+        /// <summary>
+        /// Enumerates the natural satellites around this <see cref="Planetoid"/>.
+        /// </summary>
+        /// <remarks>
+        /// Unlike children, natural satellites are actually siblings in the local <see
+        /// cref="Location"/> hierarchy, which merely share an orbital relationship.
+        /// </remarks>
+        public IAsyncEnumerable<Planetoid> GetSatellitesAsync() => _satelliteIDs is null
+            ? AsyncEnumerable.Empty<Planetoid>()
+            : DataStore.GetItemsWhereAsync<Planetoid>(x => _satelliteIDs.Contains(x.Id));
 
         /// <summary>
         /// Determines the proportion of a year, with 0 indicating winter, and 1 indicating summer,
@@ -1345,9 +1489,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="latitude">Used to determine hemisphere.</param>
         /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
         /// at the given <paramref name="time"/>.</returns>
-        public double GetSeasonalProportionAtTime(Duration time, double latitude)
+        public async Task<double> GetSeasonalProportionAtTimeAsync(Duration time, double latitude)
         {
-            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionOfYear = await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             if (proportionOfYear > 0.5)
             {
                 proportionOfYear = 1 - proportionOfYear;
@@ -1367,9 +1511,9 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the determination.</param>
         /// <returns>The 0-based index of the current season at the given <paramref
         /// name="time"/>.</returns>
-        public uint GetSeasonAtTime(uint numSeasons, Duration time)
+        public async Task<uint> GetSeasonAtTimeAsync(uint numSeasons, Duration time)
         {
-            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionOfYear = await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             var proportionPerSeason = 1.0 / numSeasons;
             return (uint)Math.Floor(proportionOfYear / proportionPerSeason);
         }
@@ -1407,6 +1551,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         }
 
         /// <summary>
+        /// Gets the current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
+        /// </summary>
+        public async Task<double> GetSurfaceTemperatureAsync()
+        {
+            _surfaceTemperature ??= await GetCurrentSurfaceTemperatureAsync().ConfigureAwait(false);
+            return _surfaceTemperature.Value;
+        }
+
+        /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
         /// greenhouse effects, in K.
         /// </summary>
@@ -1418,10 +1571,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The longitude at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAt(Duration time, double latitude, double longitude)
-            => GetTemperatureAtElevation(
-                  (BlackbodyTemperature * GetInsolationFactor(GetSeasonalLatitude(latitude, Orbit?.GetTrueAnomalyAtTime(time) ?? 0))) + GreenhouseEffect,
-                  GetElevationAt(latitude, longitude));
+        public async Task<double> GetSurfaceTemperatureAtLatLonAsync(Duration time, double latitude, double longitude)
+        {
+            var blackbodyTemperature = await GetBlackbodyTemperatureAsync().ConfigureAwait(false);
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var lat = await GetSeasonalLatitudeAsync(latitude, Orbit?.GetTrueAnomalyAtTime(time) ?? 0).ConfigureAwait(false);
+            return await GetTemperatureAtElevationAsync(
+                (blackbodyTemperature * GetInsolationFactor(lat)) + greenhouseEffect,
+                GetElevationAt(latitude, longitude)).ConfigureAwait(false);
+        }
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -1432,8 +1590,8 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// The surface position at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAtSurfacePosition(Duration time, Vector3 position)
-            => GetSurfaceTemperatureAt(time, VectorToLatitude(position), VectorToLongitude(position));
+        public Task<double> GetSurfaceTemperatureAtSurfacePositionAsync(Duration time, Vector3 position)
+            => GetSurfaceTemperatureAtLatLonAsync(time, VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>
         /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
@@ -1446,16 +1604,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <returns>A <see cref="FloatRange"/> giving the range of temperatures at the given
         /// <paramref name="latitude"/> and <paramref name="elevation"/>, from winter to summer, in
         /// K.</returns>
-        public FloatRange GetSurfaceTemperatureRangeAt(double latitude, double elevation)
+        public async Task<FloatRange> GetSurfaceTemperatureRangeAtAsync(double latitude, double elevation)
         {
-            var axialTilt = AxialTilt;
-            return new FloatRange(
-                  (float)GetTemperatureAtElevation(
-                      GetSurfaceTemperatureAtTrueAnomaly(WinterSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, -axialTilt)),
-                      elevation),
-                  (float)GetTemperatureAtElevation(
-                      GetSurfaceTemperatureAtTrueAnomaly(SummerSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, axialTilt)),
-                      elevation));
+            var axialTilt = await GetAxialTiltAsync().ConfigureAwait(false);
+            var trueAnomaly = await GetWinterSolsticeTrueAnomalyAsync().ConfigureAwait(false);
+            var temp = await GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, -axialTilt)).ConfigureAwait(false);
+            var min = await GetTemperatureAtElevationAsync(temp, elevation).ConfigureAwait(false);
+            trueAnomaly = await GetSummerSolsticeTrueAnomalyAsync().ConfigureAwait(false);
+            temp = await GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, axialTilt)).ConfigureAwait(false);
+            var max = await GetTemperatureAtElevationAsync(temp, elevation).ConfigureAwait(false);
+            return new FloatRange((float)min, (float)max);
         }
 
         /// <summary>
@@ -1472,12 +1630,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// exoplanetary atmospheres, so a simplified formula is used, which should be "close enough"
         /// for low elevations.
         /// </remarks>
-        public double GetTemperatureAtElevation(double surfaceTemp, double elevation)
+        public async Task<double> GetTemperatureAtElevationAsync(double surfaceTemp, double elevation)
         {
             // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
             if (elevation >= Atmosphere.AtmosphericHeight)
             {
-                return AverageBlackbodyTemperature;
+                return await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
             }
 
             if (elevation <= 0)
@@ -1512,16 +1670,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// rotation.</param>
         /// <returns>A normalized <see cref="Vector3"/> representing a position on the surface of
         /// this <see cref="Planetoid"/>.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         public Vector3 LatitudeAndLongitudeToVector(double latitude, double longitude)
         {
             var cosLat = Math.Cos(latitude);
+            var rot = _axisRotation ?? System.Numerics.Quaternion.Identity;
             var v = NeverFoundry.MathAndScience.Numerics.Doubles.Vector3.Normalize(
                 NeverFoundry.MathAndScience.Numerics.Doubles.Vector3.Transform(
                     new NeverFoundry.MathAndScience.Numerics.Doubles.Vector3(
                         cosLat * Math.Sin(longitude),
                         Math.Sin(latitude),
                         cosLat * Math.Cos(longitude)),
-                    NeverFoundry.MathAndScience.Numerics.Doubles.Quaternion.Inverse(AxisRotation)));
+                    NeverFoundry.MathAndScience.Numerics.Doubles.Quaternion.Inverse(rot)));
             return new Vector3(v.X, v.Y, v.Z);
         }
 
@@ -1661,10 +1824,33 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// <remarks>
         /// Has no effect if this <see cref="Planetoid"/> has no atmosphere.
         /// </remarks>
-        public void SetAtmosphericPressure(double value)
+        public async Task SetAtmosphericPressureAsync(double value)
         {
             Atmosphere.SetAtmosphericPressure(value);
-            ResetPressureDependentProperties();
+            await ResetPressureDependentPropertiesAsync().ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Sets the axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in
+        /// radians. Values greater than half Pi indicate clockwise rotation.
+        /// </summary>
+        /// <param name="value">An angle, in radians.</param>
+        /// <remarks>
+        /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
+        /// rotation.
+        /// </remarks>
+        public Task SetAxialTiltAsync(double value) => SetAngleOfRotationAsync(Orbit.HasValue ? value + Orbit.Value.Inclination : value);
+
+        /// <summary>
+        /// Sets the length of time it takes for this <see cref="Planetoid"/> to rotate once about
+        /// its axis, in seconds.
+        /// </summary>
+        /// <param name="value">A <see cref="Number"/> value.</param>
+        public async Task SetRotationalPeriodAsync(Number value)
+        {
+            _rotationalPeriod = value;
+            _angularVelocity = null;
+            await ResetCachedTemperaturesAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1672,38 +1858,52 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
         /// <returns>A latitude, as an angle in radians from the equator.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         public double VectorToLatitude(Vector3 v)
-            => NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.HalfPI - (double)((Vector3)Axis).Angle(v);
+        {
+            var axis = _axis ?? Vector3.UnitY;
+            return NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.HalfPI - (double)axis.Angle(v);
+        }
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a longitude, in radians.
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
         /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         public double VectorToLongitude(Vector3 v)
         {
-            var u = Vector3.Transform(v, AxisRotation);
+            var rot = _axisRotation ?? System.Numerics.Quaternion.Identity;
+            var u = Vector3.Transform(v, rot);
             return u.X.IsZero && u.Z.IsZero
                 ? 0
                 : Math.Atan2((double)u.X, (double)u.Z);
         }
 
-        internal void GenerateSatellites()
+        internal async Task GenerateSatellitesAsync()
         {
-            if (MaxSatellites <= 0)
+            if (_satelliteIDs != null || MaxSatellites <= 0)
             {
                 return;
             }
 
             var minPeriapsis = MinSatellitePeriapsis;
-            var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3 : Shape.ContainingRadius * 100;
+            var maxApoapsis = Orbit.HasValue ? (await GetHillSphereRadiusAsync().ConfigureAwait(false)) / 3 : Shape.ContainingRadius * 100;
 
             while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < MaxSatellites)
             {
                 var periapsis = Randomizer.Instance.NextNumber(minPeriapsis, maxApoapsis);
 
                 var maxEccentricity = (double)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
-                var eccentricity = Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05, maximum: maxEccentricity);
+                var eccentricity = maxEccentricity < 0.01
+                    ? Randomizer.Instance.NextDouble(0, maxEccentricity)
+                    : Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05, maximum: maxEccentricity);
 
                 var semiLatusRectum = periapsis * (1 + eccentricity);
                 var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -1711,15 +1911,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
                 var maxMass = Number.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
 
-                var satellite = GenerateSatellite(periapsis, eccentricity, maxMass);
+                var satellite = await GenerateSatelliteAsync(periapsis, eccentricity, maxMass).ConfigureAwait(false);
                 if (satellite is null)
                 {
                     break;
                 }
+                await satellite.SaveAsync().ConfigureAwait(false);
 
                 (_satelliteIDs ??= new List<string>()).Add(satellite.Id);
 
-                minPeriapsis = (satellite.Orbit?.Apoapsis ?? 0) + satellite.GetSphereOfInfluenceRadius();
+                minPeriapsis = (satellite.Orbit?.Apoapsis ?? 0) + await satellite.GetSphereOfInfluenceRadiusAsync().ConfigureAwait(false);
             }
         }
 
@@ -1880,8 +2081,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return maps;
         }
 
-        internal double GetSolarDeclination(double trueAnomaly)
-            => Orbit.HasValue ? Math.Asin(Math.Sin(AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
+        internal async Task<double> GetSolarDeclinationAsync(double trueAnomaly)
+        {
+            var axialTilt = await GetAxialTiltAsync().ConfigureAwait(false);
+            return Orbit.HasValue ? Math.Asin(Math.Sin(axialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
+        }
+
+        internal async Task<double> GetSummerSolsticeTrueAnomalyAsync()
+        {
+            if (!_summerSolsticeTrueAnomaly.HasValue)
+            {
+                var precession = await GetAxialPrecessionAsync().ConfigureAwait(false);
+                _summerSolsticeTrueAnomaly = (precession + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.HalfPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            }
+            return _summerSolsticeTrueAnomaly.Value;
+        }
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -1905,8 +2119,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// faster for successive calls than calculating the temperature at specific positions
         /// precisely.
         /// </remarks>
-        internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
-            => (GetTemperatureAtTrueAnomaly(trueAnomaly) * GetInsolationFactor(seasonalLatitude)) + GreenhouseEffect;
+        internal async Task<double> GetSurfaceTemperatureAtTrueAnomalyAsync(double trueAnomaly, double seasonalLatitude)
+        {
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var temp = await GetTemperatureAtTrueAnomalyAsync(trueAnomaly).ConfigureAwait(false);
+            return (temp * GetInsolationFactor(seasonalLatitude)) + greenhouseEffect;
+        }
 
         internal FloatRange[,] GetTemperatureMap(int width, int height)
         {
@@ -1919,6 +2137,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
         }
 
+        internal async Task<double> GetWinterSolsticeTrueAnomalyAsync()
+        {
+            if (!_winterSolsticeTrueAnomaly.HasValue)
+            {
+                var precession = await GetAxialPrecessionAsync().ConfigureAwait(false);
+                _winterSolsticeTrueAnomaly = (precession + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            }
+            return _winterSolsticeTrueAnomaly.Value;
+        }
+
         /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
         /// </summary>
@@ -1927,34 +2155,55 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// rotation.</param>
         /// <returns>A normalized <see cref="Vector3"/> representing a position on the surface of
         /// this <see cref="Planetoid"/>.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         internal NeverFoundry.MathAndScience.Numerics.Doubles.Vector3 LatitudeAndLongitudeToDoubleVector(double latitude, double longitude)
         {
             var cosLat = Math.Cos(latitude);
+            var rot = _axisRotation ?? System.Numerics.Quaternion.Identity;
             return NeverFoundry.MathAndScience.Numerics.Doubles.Vector3.Normalize(
                 NeverFoundry.MathAndScience.Numerics.Doubles.Vector3.Transform(
                     new NeverFoundry.MathAndScience.Numerics.Doubles.Vector3(
                         cosLat * Math.Sin(longitude),
                         Math.Sin(latitude),
                         cosLat * Math.Cos(longitude)),
-                    NeverFoundry.MathAndScience.Numerics.Doubles.Quaternion.Inverse(AxisRotation)));
+                    NeverFoundry.MathAndScience.Numerics.Doubles.Quaternion.Inverse(rot)));
         }
 
-        internal void ResetGreenhouseEffect() => ResetCachedTemperatures();
+        internal override async Task ResetCachedTemperaturesAsync()
+        {
+            await base.ResetCachedTemperaturesAsync().ConfigureAwait(false);
+            _averagePolarSurfaceTemperature = null;
+            _averageSurfaceTemperature = null;
+            _greenhouseEffect = null;
+            _insolationFactor_Equatorial = null;
+            _insolationFactor_Polar = null;
+            _maxSurfaceTemperature = null;
+            _minSurfaceTemperature = null;
+            _surfaceTemperature = null;
+            if (_atmosphere != null)
+            {
+                await _atmosphere.ResetTemperatureDependentPropertiesAsync(this).ConfigureAwait(false);
+            }
+        }
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a latitude, in radians.
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
         /// <returns>A latitude, as an angle in radians from the equator.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         internal float VectorToFloatLatitude(System.Numerics.Vector3 v)
         {
-            if (!_axis.HasValue)
-            {
-                SetAxis();
-            }
+            var axis = _axis ?? System.Numerics.Vector3.UnitY;
             return (float)(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.HalfPI - Math.Atan2(
-                System.Numerics.Vector3.Cross(_axis!.Value, v).Length(),
-                System.Numerics.Vector3.Dot(_axis.Value, v)));
+                System.Numerics.Vector3.Cross(axis, v).Length(),
+                System.Numerics.Vector3.Dot(axis, v)));
         }
 
         /// <summary>
@@ -1962,13 +2211,13 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
         /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
         internal float VectorToFloatLongitude(System.Numerics.Vector3 v)
         {
-            if (!_axisRotation.HasValue)
-            {
-                SetAxis();
-            }
-            var u = System.Numerics.Vector3.Transform(v, _axisRotation!.Value);
+            var u = System.Numerics.Vector3.Transform(v, _axisRotation ?? System.Numerics.Quaternion.Identity);
             return u.X.IsNearlyZero() && u.Z.IsNearlyZero()
                 ? 0f
                 : (float)Math.Atan2(u.X, u.Z);
@@ -1989,7 +2238,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private protected virtual void GenerateAngleOfRotation()
+        private protected virtual async Task GenerateAngleOfRotationAsync()
         {
             _axialPrecession = Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             if (Randomizer.Instance.NextDouble() <= 0.2) // low chance of an extreme tilt
@@ -2000,10 +2249,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             {
                 _angleOfRotation = Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.QuarterPI);
             }
-            SetAxis();
+            await SetAxisAsync().ConfigureAwait(false);
         }
 
-        private protected virtual void GenerateAtmosphere() { }
+        private protected virtual Task GenerateAtmosphereAsync() => Task.CompletedTask;
 
         private protected virtual void GenerateResources()
         {
@@ -2034,7 +2283,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             }
         }
 
-        private protected virtual Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass) => null;
+        private protected virtual Task<Planetoid?> GenerateSatelliteAsync(Number periapsis, double eccentricity, Number maxMass) => Task.FromResult((Planetoid?)null);
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -2056,21 +2305,36 @@ namespace WorldFoundry.CelestialBodies.Planetoids
         private double GetAtmosphericPressureFromTempAndElevation(double temperature, double elevation)
             => Atmosphere.GetAtmosphericPressure(this, temperature, elevation);
 
-        private double GetAverageTemperature(bool polar = false)
-            => (AverageBlackbodyTemperature * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial)) + GreenhouseEffect;
+        private async Task<double> GetAverageTemperatureAsync(bool polar = false)
+        {
+            var avgBlackbodyTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            return (avgBlackbodyTemp * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial)) + greenhouseEffect;
+        }
 
-        private double GetCurrentSurfaceTemperature() => (BlackbodyTemperature * InsolationFactor_Equatorial) + GreenhouseEffect;
+        private async Task<double> GetCurrentSurfaceTemperatureAsync()
+        {
+            var blackbodyTemperature = await GetBlackbodyTemperatureAsync().ConfigureAwait(false);
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            return (blackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
+        }
 
         private protected override double GetDensity() => DensityForType;
 
-        private double GetDiurnalTemperatureVariation()
+        private async Task<double> GetDiurnalTemperatureVariationAsync()
         {
-            var temp = Temperature ?? 0;
-            var timeFactor = (double)(1 - ((RotationalPeriod - 2500) / 595000)).Clamp(0, 1);
-            var darkSurfaceTemp = (((AverageBlackbodyTemperature * InsolationFactor_Equatorial) - temp) * timeFactor)
-                + temp
-                + GreenhouseEffect;
-            return AverageSurfaceTemperature - darkSurfaceTemp;
+            if (!_diurnalTemperatureVariation.HasValue)
+            {
+                var temp = await GetTemperatureAsync().ConfigureAwait(false) ?? 0;
+                var timeFactor = (double)(1 - ((RotationalPeriod - 2500) / 595000)).Clamp(0, 1);
+                var blackbodyTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+                var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+                var darkSurfaceTemp = (((blackbodyTemp * InsolationFactor_Equatorial) - temp) * timeFactor)
+                    + temp
+                    + greenhouseEffect;
+                _diurnalTemperatureVariation = await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false) - darkSurfaceTemp;
+            }
+            return _diurnalTemperatureVariation.Value;
         }
 
         private double GetEccentricity()
@@ -2078,10 +2342,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             ? _orbit.Value.Eccentricity
             : Math.Abs(Randomizer.Instance.NormalDistributionSample(0, 0.05));
 
-        private (double latitude, double longitude) GetEclipticLatLon(Vector3 position, Vector3 otherPosition)
+        private async Task<(double latitude, double longitude)> GetEclipticLatLonAsync(Vector3 position, Vector3 otherPosition)
         {
-            var precession = Quaternion.CreateFromYawPitchRoll(AxialPrecession, 0, 0);
-            var p = Vector3.Transform(position - otherPosition, precession) * -1;
+            var precession = await GetAxialPrecessionAsync().ConfigureAwait(false);
+            var precessionQ = Quaternion.CreateFromYawPitchRoll(precession, 0, 0);
+            var p = Vector3.Transform(position - otherPosition, precessionQ) * -1;
             var r = p.Length();
             var lat = Math.Asin((double)(p.Z / r));
             if (lat >= Math.PI)
@@ -2096,11 +2361,11 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return (lat, lon);
         }
 
-        private protected double GetGreenhouseEffect(double insolationFactor, double greenhouseFactor)
-            => Math.Max(0, (AverageBlackbodyTemperature * insolationFactor * greenhouseFactor) - AverageBlackbodyTemperature);
-
-        private double GetGreenhouseEffect()
-            => GetGreenhouseEffect(InsolationFactor_Equatorial, Atmosphere.GreenhouseFactor);
+        private protected async Task<double> GetGreenhouseEffectAsync(double insolationFactor, double greenhouseFactor)
+        {
+            var avgBlackbodyTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+            return Math.Max(0, (avgBlackbodyTemp * insolationFactor * greenhouseFactor) - avgBlackbodyTemp);
+        }
 
         /// <summary>
         /// Determines whether this <see cref="Planetoid"/> has a strong magnetosphere.
@@ -2122,13 +2387,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids
 
         private protected virtual double GetInternalTemperature() => 0;
 
-        private bool GetIsTidallyLockedAfter(Number years)
-            => Orbit.HasValue
-            && Number.Pow(years / new Number(6, 11)
+        private async Task<bool> GetIsTidallyLockedAfterAsync(Number years)
+        {
+            var orbited = Orbit.HasValue
+                ? await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false)
+                : null;
+            return orbited is null
+                ? false
+                : Number.Pow(years / new Number(6, 11)
                 * Mass
-                * Orbit.Value.OrbitedObject.Mass.Square()
+                * orbited.Mass.Square()
                 / (Shape.ContainingRadius * Rigidity)
-                , Number.One / new Number(6)) >= Orbit.Value.SemiMajorAxis;
+                , Number.One / new Number(6)) >= Orbit!.Value.SemiMajorAxis;
+        }
 
         /// <summary>
         /// Calculates the adiabatic lapse rate for this <see cref="Planetoid"/>, after determining
@@ -2169,15 +2440,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return (double)SurfaceGravity * (numerator / denominator);
         }
 
-        private protected override Number GetMass()
+        private protected override ValueTask<Number> GetMassAsync()
         {
             var minMass = (double)MinMass;
             var maxMass = (double)MaxMass;
-            return Randomizer.Instance.PositiveNormalDistributionSample(minMass, (maxMass - minMass) / 3, maximum: maxMass);
+            return new ValueTask<Number>(Randomizer.Instance.PositiveNormalDistributionSample(minMass, (maxMass - minMass) / 3, maximum: maxMass));
         }
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
-            => (GetDensity(), GetMass(), GetShape());
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
+            => (GetDensity(), await GetMassAsync().ConfigureAwait(false), await GetShapeAsync().ConfigureAwait(false));
 
         private double GetMaxElevation()
         {
@@ -2189,15 +2460,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return 200000 / (double)SurfaceGravity;
         }
 
-        private protected double GetMaxPolarTemperature() => (SurfaceTemperatureAtPeriapsis * InsolationFactor_Polar) + GreenhouseEffect;
+        private protected async Task<double> GetMaxPolarTemperatureAsync()
+        {
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var temp = await GetTemperatureAtPeriapsisAsync().ConfigureAwait(false);
+            return (temp * InsolationFactor_Polar) + greenhouseEffect;
+        }
 
-        private double GetMaxSurfaceTemperature() => (SurfaceTemperatureAtPeriapsis * InsolationFactor_Equatorial) + GreenhouseEffect;
-
-        private protected double GetMinEquatorTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + GreenhouseEffect - DiurnalTemperatureVariation;
+        private protected async Task<double> GetMinEquatorTemperatureAsync()
+        {
+            var variation = await GetDiurnalTemperatureVariationAsync().ConfigureAwait(false);
+            var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+            var temp = await GetTemperatureAtApoapsisAsync().ConfigureAwait(false);
+            return (temp * InsolationFactor_Equatorial) + greenhouseEffect - variation;
+        }
 
         private protected virtual Number GetMinSatellitePeriapsis() => Number.Zero;
-
-        private double GetMinSurfaceTemperature() => (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + GreenhouseEffect - DiurnalTemperatureVariation;
 
         private double GetNormalizedElevationAt(double x, double y, double z)
         {
@@ -2236,9 +2514,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return Math.Sqrt((rCosLat * rCosLat) + (2 * r) + 1) - rCosLat;
         }
 
-        private (double rightAscension, double declination) GetRightAscensionAndDeclination(Vector3 position, Vector3 otherPosition)
+        private async Task<(double rightAscension, double declination)> GetRightAscensionAndDeclinationAsync(Vector3 position, Vector3 otherPosition)
         {
-            var equatorialPosition = Vector3.Transform(position - otherPosition, AxisRotation);
+            var rot = await GetAxisRotationAsync().ConfigureAwait(false);
+            var equatorialPosition = Vector3.Transform(position - otherPosition, rot);
             var r = equatorialPosition.Length();
             var mPos = !equatorialPosition.Y.IsZero
                 && equatorialPosition.Y.Sign() == r.Sign();
@@ -2263,37 +2542,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             return (rightAscension, declination);
         }
 
-        private protected virtual Number GetRotationalPeriod()
+        private protected async Task<double> GetSeasonalLatitudeAsync(double latitude, double trueAnomaly)
         {
-            // Check for tidal locking.
-            if (Orbit.HasValue)
-            {
-                // Invent an orbit age. Precision isn't important here, and some inaccuracy and
-                // inconsistency between satellites is desirable. The age of the Solar system is used
-                // as an arbitrary norm.
-                var years = Randomizer.Instance.LogisticDistributionSample(0, 1) * new Number(4.6, 9);
-                if (GetIsTidallyLockedAfter(years))
-                {
-                    return Orbit.Value.Period;
-                }
-            }
-
-            if (Randomizer.Instance.NextDouble() <= 0.05) // low chance of an extreme period
-            {
-                return Randomizer.Instance.NextNumber(MaxRotationalPeriod, ExtremeRotationalPeriod);
-            }
-            else
-            {
-                return Randomizer.Instance.NextNumber(MinRotationalPeriod, MaxRotationalPeriod);
-            }
+            var solarDec = await GetSolarDeclinationAsync(trueAnomaly).ConfigureAwait(false);
+            return GetSeasonalLatitudeFromDeclination(latitude, solarDec);
         }
 
-        private protected double GetSeasonalLatitude(double latitude, double trueAnomaly)
-            => GetSeasonalLatitudeFromDeclination(latitude, GetSolarDeclination(trueAnomaly));
-
-        private protected override IShape GetShape()
+        private protected override ValueTask<IShape> GetShapeAsync()
             // Gaussian distribution with most values between 1km and 19km.
-            => new Ellipsoid(Randomizer.Instance.NormalDistributionSample(10000, 4500, minimum: 0), Randomizer.Instance.NextNumber(Number.Half, 1), Position);
+            => new ValueTask<IShape>(new Ellipsoid(Randomizer.Instance.NormalDistributionSample(10000, 4500, minimum: 0), Randomizer.Instance.NextNumber(Number.Half, 1), Position));
 
         private double GetSlope(Vector3 position, double latitude, double longitude, double elevation)
         {
@@ -2343,31 +2600,45 @@ namespace WorldFoundry.CelestialBodies.Planetoids
             _seed5 = Randomizer.Instance.NextInclusive();
         }
 
-        private protected override void ResetCachedTemperatures()
+        private protected override async Task InitializeAsync()
         {
-            base.ResetCachedTemperatures();
+            await base.InitializeAsync().ConfigureAwait(false);
+            await SetRotationalPeriodAsync().ConfigureAwait(false);
+            await GenerateAtmosphereAsync().ConfigureAwait(false);
+            if (_atmosphere is null)
+            {
+                _atmosphere = await Atmosphere.GetNewInstanceAsync(this, 0).ConfigureAwait(false);
+            }
+
+            // Small chance of satellites for rogue planets.
+            if (Randomizer.Instance.NextDouble() <= 0.2)
+            {
+                await GenerateSatellitesAsync().ConfigureAwait(false);
+            }
+            else if (Orbit.HasValue)
+            {
+                var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
+                if (orbited is Star)
+                {
+                    await GenerateSatellitesAsync().ConfigureAwait(false);
+                }
+            }
+        }
+
+        private async Task ResetPressureDependentPropertiesAsync()
+        {
             _averagePolarSurfaceTemperature = null;
             _averageSurfaceTemperature = null;
             _greenhouseEffect = null;
             _insolationFactor_Equatorial = null;
             _insolationFactor_Polar = null;
-            _maxSurfaceTemperature = null;
-            _minSurfaceTemperature = null;
-            _surfaceTemperature = null;
-            _atmosphere?.ResetTemperatureDependentProperties(this);
+            if (_atmosphere != null)
+            {
+                await _atmosphere.ResetPressureDependentPropertiesAsync(this).ConfigureAwait(false);
+            }
         }
 
-        private void ResetPressureDependentProperties()
-        {
-            _averagePolarSurfaceTemperature = null;
-            _averageSurfaceTemperature = null;
-            _greenhouseEffect = null;
-            _insolationFactor_Equatorial = null;
-            _insolationFactor_Polar = null;
-            _atmosphere?.ResetPressureDependentProperties(this);
-        }
-
-        private protected void SetAngleOfRotation(double angle)
+        private protected async Task SetAngleOfRotationAsync(double angle)
         {
             while (angle > Math.PI)
             {
@@ -2378,18 +2649,51 @@ namespace WorldFoundry.CelestialBodies.Planetoids
                 angle += Math.PI;
             }
             _angleOfRotation = angle;
-            SetAxis();
+            await SetAxisAsync().ConfigureAwait(false);
         }
 
-        private void SetAxis()
+        private async Task SetAxisAsync()
         {
-            var precession = System.Numerics.Quaternion.CreateFromYawPitchRoll((float)AxialPrecession, 0, 0);
-            var precessionVector = System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitX, precession);
-            var q = System.Numerics.Quaternion.CreateFromAxisAngle(precessionVector, (float)AngleOfRotation);
+            var precession = await GetAxialPrecessionAsync().ConfigureAwait(false);
+            var precessionQ = System.Numerics.Quaternion.CreateFromYawPitchRoll((float)precession, 0, 0);
+            var precessionVector = System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitX, precessionQ);
+            var angleOfRotation = await GetAngleOfRotationAsync().ConfigureAwait(false);
+            var q = System.Numerics.Quaternion.CreateFromAxisAngle(precessionVector, (float)angleOfRotation);
             _axis = System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitY, q);
             _axisRotation = System.Numerics.Quaternion.Conjugate(q);
 
-            ResetCachedTemperatures();
+            await ResetCachedTemperaturesAsync().ConfigureAwait(false);
+        }
+
+        private protected async Task SetRotationalPeriodAsync()
+        {
+            if (_rotationalPeriod.HasValue)
+            {
+                return;
+            }
+
+            // Check for tidal locking.
+            if (Orbit.HasValue)
+            {
+                // Invent an orbit age. Precision isn't important here, and some inaccuracy and
+                // inconsistency between satellites is desirable. The age of the Solar system is used
+                // as an arbitrary norm.
+                var years = Randomizer.Instance.LogisticDistributionSample(0, 1) * new Number(4.6, 9);
+                if (await GetIsTidallyLockedAfterAsync(years).ConfigureAwait(false))
+                {
+                    _rotationalPeriod = Orbit.Value.Period;
+                    return;
+                }
+            }
+
+            if (Randomizer.Instance.NextDouble() <= 0.05) // low chance of an extreme period
+            {
+                _rotationalPeriod = Randomizer.Instance.NextNumber(MaxRotationalPeriod, ExtremeRotationalPeriod);
+            }
+            else
+            {
+                _rotationalPeriod = Randomizer.Instance.NextNumber(MinRotationalPeriod, MaxRotationalPeriod);
+            }
         }
     }
 }

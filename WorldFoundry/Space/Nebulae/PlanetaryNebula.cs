@@ -3,10 +3,9 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Stars;
-using WorldFoundry.Place;
 
 namespace WorldFoundry.Space
 {
@@ -31,11 +30,9 @@ namespace WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="PlanetaryNebula"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="PlanetaryNebula"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="PlanetaryNebula"/>.</param>
-        internal PlanetaryNebula(Location parent, Vector3 position) : base(parent, position) { }
+        internal PlanetaryNebula(string? parentId, Vector3 position) : base(parentId, position) { }
 
         private PlanetaryNebula(
             string id,
@@ -45,7 +42,7 @@ namespace WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit,
             IMaterial? material,
-            List<Location>? children = null)
+            string? parentId = null)
             : base(
                 id,
                 name,
@@ -54,7 +51,7 @@ namespace WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                children) { }
+                parentId) { }
 
         private PlanetaryNebula(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -63,28 +60,32 @@ namespace WorldFoundry.Space
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>))) { }
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
-        internal override void PrepopulateRegion()
+        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(1.99, 29), new Number(1.99, 30))); // ~0.1–1 solar mass.
+
+        // Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
+        // and not considered critical to model precisely, especially given their extremely
+        // attenuated nature. Instead, a ~1 ly sphere is used.
+        private protected override ValueTask<IShape> GetShapeAsync() => new ValueTask<IShape>(new Sphere(Space, Position));
+
+        private protected override ISubstanceReference? GetSubstance()
+            => Substances.GetMixtureReference(Substances.Mixtures.IonizedCloud);
+
+        private protected override async Task PrepopulateRegionAsync()
         {
             if (_isPrepopulated)
             {
                 return;
             }
-            base.PrepopulateRegion();
+            _isPrepopulated = true;
 
-            new StarSystem(this, Vector3.Zero, typeof(WhiteDwarf));
+            var star = await GetNewInstanceAsync<WhiteDwarf>(this, Vector3.Zero).ConfigureAwait(false);
+            if (star != null)
+            {
+                await star.SaveAsync().ConfigureAwait(false);
+            }
         }
-
-        private protected override Number GetMass() => Randomizer.Instance.NextNumber(new Number(1.99, 29), new Number(1.99, 30)); // ~0.1–1 solar mass.
-
-        // Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
-        // and not considered critical to model precisely, especially given their extremely
-        // attenuated nature. Instead, a ~1 ly sphere is used.
-        private protected override IShape GetShape() => new Sphere(Space, Position);
-
-        private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IonizedCloud);
     }
 }

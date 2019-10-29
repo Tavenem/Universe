@@ -21,11 +21,11 @@ namespace WorldFoundry.ConsoleTester
 
         private static void GeneratePlanets()
         {
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 while (true)
                 {
-                    var planet = TerrestrialPlanet.GetPlanetForNewUniverse();
+                    var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync().ConfigureAwait(false);
                     if (planet == null)
                     {
                         Console.Write("Failed to generate planet.");
@@ -38,7 +38,7 @@ namespace WorldFoundry.ConsoleTester
                         var bytes = Encoding.UTF8.GetBytes(json);
                         Console.Write($" Saved planet size: {(bytes.Length / 1000).ToString("N0")} KB.");
 
-                        var maps = planet.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+                        var maps = await planet.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
 
                         json = JsonConvert.SerializeObject(maps);
                         bytes = Encoding.UTF8.GetBytes(json);

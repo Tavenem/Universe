@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
+using System.Threading.Tasks;
 using WorldFoundry.Climate;
 using WorldFoundry.Place;
 using WorldFoundry.Space;
@@ -28,7 +29,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// The collection of rings around this <see cref="Planemo"/>.
         /// </summary>
-        public List<PlanetaryRing> Rings => _rings ??= GetRings();
+        public List<PlanetaryRing> Rings => _rings ??= new List<PlanetaryRing>();
 
         /// <summary>
         /// The name for this type of <see cref="CelestialLocation"/>.
@@ -43,19 +44,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                     sb.Append(PlanemoClassPrefix);
                     sb.Append(" ");
                 }
-                if (Orbit?.OrbitedObject is Planemo)
-                {
-                    sb.Append("Moon");
-                }
-                else if (CelestialParent is StarSystem)
-                {
-                    sb.Append(BaseTypeName);
-                }
-                else
-                {
-                    sb.Insert(0, "Rogue ");
-                    sb.Append(BaseTypeName);
-                }
+                sb.Append(BaseTypeName);
                 return sb.ToString();
             }
         }
@@ -78,23 +67,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Planemo"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
-        internal Planemo(Location? parent, Vector3 position) : base(parent, position) { }
+        internal Planemo(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Planemo"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="Planemo"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="Planemo"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="Planemo"/> during random generation, in kg.
         /// </param>
-        internal Planemo(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal Planemo(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         private protected Planemo(
             string id,
@@ -122,7 +107,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             Orbit? orbit,
             IMaterial? material,
             List<PlanetaryRing>? rings,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
@@ -156,7 +141,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
                 maxMass,
                 orbit,
                 material,
-                children,
+                parentId,
                 depthMap,
                 elevationMap,
                 flowMap,
@@ -178,21 +163,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             (int)info.GetValue(nameof(_seed3), typeof(int)),
             (int)info.GetValue(nameof(_seed4), typeof(int)),
             (int)info.GetValue(nameof(_seed5), typeof(int)),
-            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (double?)info.GetValue(nameof(_angleOfRotation), typeof(double?)),
             (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
-            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (double?)info.GetValue(nameof(_axialPrecession), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
             (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
             (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
             (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
             (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
-            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
             (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -224,21 +209,21 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             info.AddValue(nameof(_seed3), _seed3);
             info.AddValue(nameof(_seed4), _seed4);
             info.AddValue(nameof(_seed5), _seed5);
-            info.AddValue(nameof(AngleOfRotation), _angleOfRotation);
+            info.AddValue(nameof(_angleOfRotation), _angleOfRotation);
             info.AddValue(nameof(Atmosphere), _atmosphere);
-            info.AddValue(nameof(AxialPrecession), _axialPrecession);
+            info.AddValue(nameof(_axialPrecession), _axialPrecession);
             info.AddValue(nameof(HasMagnetosphere), _hasMagnetosphere);
             info.AddValue(nameof(MaxElevation), _maxElevation);
             info.AddValue(nameof(RotationalOffset), _rotationalOffset);
             info.AddValue(nameof(RotationalPeriod), _rotationalPeriod);
             info.AddValue(nameof(Resources), _resources);
-            info.AddValue(nameof(Satellites), _satelliteIDs);
+            info.AddValue(nameof(_satelliteIDs), _satelliteIDs);
             info.AddValue(nameof(SurfaceRegions), _surfaceRegions);
             info.AddValue(nameof(MaxMass), _maxMass);
             info.AddValue(nameof(Orbit), _orbit);
-            info.AddValue(nameof(Material), _material);
+            info.AddValue(nameof(_material), _material);
             info.AddValue(nameof(Rings), _rings);
-            info.AddValue(nameof(Children), Children.ToList());
+            info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(_depthMap), _depthMap);
             info.AddValue(nameof(_elevationMap), _elevationMap);
             info.AddValue(nameof(_flowMap), _flowMap);
@@ -249,23 +234,17 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             info.AddValue(nameof(_maxFlow), _maxFlow);
         }
 
-        internal override void GenerateOrbit(CelestialLocation orbitedObject)
-        {
-            if (orbitedObject is null)
-            {
-                return;
-            }
-
-            Space.Orbit.SetOrbit(
+        internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
+            => await Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
-                GetDistanceTo(orbitedObject),
+                await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
                 Eccentricity,
                 Randomizer.Instance.NextDouble(0.9),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-        }
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI))
+            .ConfigureAwait(false);
 
         private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {
@@ -461,12 +440,12 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         private protected virtual ISubstanceReference GetMantleSubstance()
             => Substances.GetChemicalReference(Substances.Chemicals.Water);
 
-        private protected override Number GetMass()
+        private protected override async ValueTask<Number> GetMassAsync()
         {
             var maxMass = MaxMass;
-            if (!(Parent is null))
+            if (!string.IsNullOrEmpty(ParentId))
             {
-                maxMass = Number.Min(maxMass, GetSternLevisonLambdaMass() / 100);
+                maxMass = Number.Min(maxMass, await GetSternLevisonLambdaMassAsync().ConfigureAwait(false) / 100);
                 if (maxMass < MinMass)
                 {
                     maxMass = MinMass; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
@@ -476,10 +455,10 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             return Randomizer.Instance.NextNumber(MinMass, maxMass);
         }
 
-        private protected override (double density, Number mass, IShape shape) GetMatter()
+        private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {
             var density = GetDensity();
-            var mass = GetMass();
+            var mass = await GetMassAsync().ConfigureAwait(false);
             return (density, mass, GetShape(density, mass));
         }
 
@@ -500,7 +479,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             * Shape.ContainingRadius
             * (Density / density).CubeRoot();
 
-        private List<PlanetaryRing> GetRings()
+        private async Task<List<PlanetaryRing>> GetRingsAsync()
         {
             var rings = new List<PlanetaryRing>();
 
@@ -509,7 +488,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Icy = GetRingDistance(_IcyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Icy = Number.Min(outerLimit_Icy, GetHillSphereRadius() / 3);
+                outerLimit_Icy = Number.Min(outerLimit_Icy, await GetHillSphereRadiusAsync().ConfigureAwait(false) / 3);
             }
             if (innerLimit >= outerLimit_Icy)
             {
@@ -519,7 +498,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
             var outerLimit_Rocky = GetRingDistance(_RockyRingDensity);
             if (Orbit != null)
             {
-                outerLimit_Rocky = Number.Min(outerLimit_Rocky, GetHillSphereRadius() / 3);
+                outerLimit_Rocky = Number.Min(outerLimit_Rocky, await GetHillSphereRadiusAsync().ConfigureAwait(false) / 3);
             }
 
             var _ringChance = RingChance;
@@ -579,27 +558,37 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets
         /// cref="Planemo"/> doesn't already have a defined orbit.
         /// </remarks>
         /// <exception cref="Exception">Cannot be called if this <see cref="Planemo"/> has no Orbit
-        /// or <see cref="Location.Parent"/>.</exception>
-        private protected Number GetSternLevisonLambdaMass()
+        /// or parent.</exception>
+        private protected async Task<Number> GetSternLevisonLambdaMassAsync()
         {
             Number semiMajorAxis;
             if (Orbit.HasValue)
             {
                 semiMajorAxis = Orbit.Value.SemiMajorAxis;
             }
-            else if (Parent is null)
-            {
-                throw new Exception($"{nameof(GetSternLevisonLambdaMass)} cannot be called on a {nameof(Planemo)} without either an {nameof(Orbit)} or a {nameof(Parent)}");
-            }
             else
             {
-                // Even if this planetoid is not yet in a defined orbit, some orbital
-                // characteristics must be determined early, in order to distinguish a dwarf planet
-                // from a planet, which depends partially on orbital distance.
-                semiMajorAxis = GetDistanceTo(Parent) * ((1 + Eccentricity) / (1 - Eccentricity));
+                var parent = await GetParentAsync().ConfigureAwait(false);
+                if (parent is null)
+                {
+                    semiMajorAxis = 0;
+                }
+                else
+                {
+                    // Even if this planetoid is not yet in a defined orbit, some orbital
+                    // characteristics must be determined early, in order to distinguish a dwarf planet
+                    // from a planet, which depends partially on orbital distance.
+                    semiMajorAxis = await GetDistanceToAsync(parent).ConfigureAwait(false) * ((1 + Eccentricity) / (1 - Eccentricity));
+                }
             }
 
             return (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
+        }
+
+        private protected override async Task InitializeAsync()
+        {
+            await base.InitializeAsync().ConfigureAwait(false);
+            await GetRingsAsync().ConfigureAwait(false);
         }
     }
 }

@@ -6,6 +6,7 @@ using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using WorldFoundry.Climate;
@@ -35,23 +36,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="CarbonPlanet"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
-        internal CarbonPlanet(Location? parent, Vector3 position) : base(parent, position) { }
+        internal CarbonPlanet(string? parentId, Vector3 position) : base(parentId, position) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="CarbonPlanet"/> with the given parameters.
         /// </summary>
-        /// <param name="parent">
-        /// The containing <see cref="Location"/> in which this <see cref="CarbonPlanet"/> is located.
-        /// </param>
+        /// <param name="parentId">The id of the location which contains this one.</param>
         /// <param name="position">The initial position of this <see cref="CarbonPlanet"/>.</param>
         /// <param name="maxMass">
         /// The maximum mass allowed for this <see cref="CarbonPlanet"/> during random generation, in kg.
         /// </param>
-        internal CarbonPlanet(Location? parent, Vector3 position, Number maxMass) : base(parent, position, maxMass) { }
+        internal CarbonPlanet(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         private CarbonPlanet(
             string id,
@@ -81,7 +78,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             IMaterial? material,
             IMaterial? hydrosphere,
             List<PlanetaryRing>? rings,
-            List<Location>? children,
+            string? parentId,
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
@@ -118,7 +115,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 material,
                 hydrosphere,
                 rings,
-                children,
+                parentId,
                 depthMap,
                 elevationMap,
                 flowMap,
@@ -133,7 +130,7 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
             (double?)info.GetValue(nameof(Albedo), typeof(double?)),
-            (double?)info.GetValue(nameof(SurfaceAlbedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_surfaceAlbedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
             (int)info.GetValue(nameof(_seed1), typeof(int)),
@@ -141,22 +138,22 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             (int)info.GetValue(nameof(_seed3), typeof(int)),
             (int)info.GetValue(nameof(_seed4), typeof(int)),
             (int)info.GetValue(nameof(_seed5), typeof(int)),
-            (double?)info.GetValue(nameof(AngleOfRotation), typeof(double?)),
+            (double?)info.GetValue(nameof(_angleOfRotation), typeof(double?)),
             (Atmosphere?)info.GetValue(nameof(Atmosphere), typeof(Atmosphere)),
-            (double?)info.GetValue(nameof(AxialPrecession), typeof(double?)),
+            (double?)info.GetValue(nameof(_axialPrecession), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
             (double?)info.GetValue(nameof(MaxElevation), typeof(double?)),
             (Number?)info.GetValue(nameof(RotationalOffset), typeof(Number?)),
             (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number?)),
             (List<Resource>?)info.GetValue(nameof(Resources), typeof(List<Resource>)),
-            (List<string>?)info.GetValue(nameof(Satellites), typeof(List<string>)),
+            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
             (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
             (Number?)info.GetValue(nameof(MaxMass), typeof(Number?)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (IMaterial?)info.GetValue(nameof(Hydrosphere), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
+            (IMaterial?)info.GetValue(nameof(_hydrosphere), typeof(IMaterial)),
             (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
-            (List<Location>)info.GetValue(nameof(Children), typeof(List<Location>)),
+            (string)info.GetValue(nameof(ParentId), typeof(string)),
             (byte[])info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[])info.GetValue(nameof(_flowMap), typeof(byte[])),
@@ -166,9 +163,16 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
 
-        private protected override Planetoid? GenerateSatellite(Number periapsis, double eccentricity, Number maxMass)
+        private protected override async Task<Planetoid?> GenerateSatelliteAsync(Number periapsis, double eccentricity, Number maxMass)
         {
-            Planetoid? satellite = null;
+            var orbit = new OrbitalParameters(
+                this,
+                periapsis,
+                eccentricity,
+                Randomizer.Instance.NextDouble(0.5),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
@@ -183,19 +187,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // be the actual Roche limit for the body which gets generated).
                 if (periapsis < GetRocheLimit(BaseMaxDensity) * new Number(105, -2) || chance <= 0.01)
                 {
-                    satellite = new LavaPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<LavaPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else if (chance <= 0.45) // Most will be standard terrestrial.
                 {
-                    satellite = new TerrestrialPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<TerrestrialPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else if (chance <= 0.77)
                 {
-                    satellite = new CarbonPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<CarbonPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else
                 {
-                    satellite = new OceanPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<OceanPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
             }
 
@@ -205,15 +209,15 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DwarfPlanet.BaseDensityForType) * new Number(105, -2) || chance <= 0.01)
                 {
-                    satellite = new LavaDwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<LavaDwarfPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    satellite = new DwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<DwarfPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else
                 {
-                    satellite = new RockyDwarfPlanet(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<RockyDwarfPlanet>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
             }
 
@@ -222,32 +226,19 @@ namespace WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
             {
                 if (chance <= 0.75)
                 {
-                    satellite = new CTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<CTypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else if (chance <= 0.9)
                 {
-                    satellite = new STypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<STypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
                 else
                 {
-                    satellite = new MTypeAsteroid(CelestialParent, Vector3.Zero, maxMass);
+                    return await GetNewInstanceAsync<MTypeAsteroid>(ParentId, Vector3.Zero, maxMass, orbit).ConfigureAwait(false);
                 }
             }
 
-            if (satellite != null)
-            {
-                WorldFoundry.Space.Orbit.SetOrbit(
-                    satellite,
-                    this,
-                    periapsis,
-                    eccentricity,
-                    Randomizer.Instance.NextDouble(0.5),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-            }
-
-            return satellite;
+            return null;
         }
 
         private protected override Number GetCoreProportion() => new Number(4, -1);
