@@ -144,8 +144,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
         /// <summary>
         /// A range giving the minimum, maximum, and average temperature throughout the specified
-        /// area over the entire period represented by all <see cref="PrecipitationMaps"/>, as a value
-        /// between 0 and 1, with 1 indicating the maximum temperature of the planet.
+        /// area over the entire period represented by all <see cref="PrecipitationMaps"/>.
         /// </summary>
         public FloatRange TemperatureRange => _weatherMaps.TemperatureRange;
 
@@ -153,8 +152,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent the temperature
-        /// range. Values range from 0 to 1, with 1 indicating the maximum temperature of the
-        /// planet.
+        /// range.
         /// </summary>
         public FloatRange[,] TemperatureRangeMap => _weatherMaps.TemperatureRangeMap;
 
