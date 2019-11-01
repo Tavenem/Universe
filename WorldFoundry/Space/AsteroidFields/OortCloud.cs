@@ -71,7 +71,7 @@ namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -100,6 +100,7 @@ namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
             {
                 instance._majorRadius = new Number(7.5, 15) + starSystemRadius;
                 instance._minorRadius = new Number(3, 15) + starSystemRadius;
+                await instance.GenerateMaterialAsync().ConfigureAwait(false);
                 if (orbit.HasValue)
                 {
                     await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);

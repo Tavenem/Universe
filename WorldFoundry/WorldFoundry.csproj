@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.6.0</Version>
+    <Version>0.6.1</Version>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
     <Copyright>Copyright (c) 2019 Wil Stead</Copyright>

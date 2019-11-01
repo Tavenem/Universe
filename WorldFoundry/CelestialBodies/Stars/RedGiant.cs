@@ -64,7 +64,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (LuminosityClass?)info.GetValue(nameof(LuminosityClass), typeof(LuminosityClass?)),
             (bool)info.GetValue(nameof(IsPopulationII), typeof(bool)),
             (SpectralClass?)info.GetValue(nameof(SpectralClass), typeof(SpectralClass?)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),

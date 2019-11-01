@@ -126,7 +126,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (double?)info.GetValue(nameof(_surfaceAlbedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),

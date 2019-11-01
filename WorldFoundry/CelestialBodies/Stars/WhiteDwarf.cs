@@ -71,7 +71,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (LuminosityClass?)info.GetValue(nameof(LuminosityClass), typeof(LuminosityClass?)),
             (bool)info.GetValue(nameof(IsPopulationII), typeof(bool)),
             (SpectralClass?)info.GetValue(nameof(SpectralClass), typeof(SpectralClass?)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -86,13 +86,16 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 
         private protected override async Task GenerateMaterialAsync()
         {
-            var mass = await GetMassAsync().ConfigureAwait(false);
+            if (_material is null)
+            {
+                var mass = await GetMassAsync().ConfigureAwait(false);
 
-            var radius = (new Number(1.8986, 27) / mass).CubeRoot() * 69911000;
-            var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
-            var shape = new Ellipsoid(radius, radius * (1 - flattening), Position);
+                var radius = (new Number(1.8986, 27) / mass).CubeRoot() * 69911000;
+                var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
+                var shape = new Ellipsoid(radius, radius * (1 - flattening), Position);
 
-            Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+                Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+            }
         }
 
         private protected override async ValueTask<SpectralClass> GenerateSpectralClassAsync()

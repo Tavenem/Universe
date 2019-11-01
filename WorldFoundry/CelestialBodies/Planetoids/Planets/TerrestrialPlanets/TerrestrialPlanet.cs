@@ -52,7 +52,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// cref="CelestialLocation.Material"/> for ease of reference to both the soliud surface
         /// layer, and the hydrosphere.
         /// </remarks>
-        public IMaterial Hydrosphere => _hydrosphere ?? NeverFoundry.MathAndScience.Chemistry.Material.Empty;
+        public IMaterial Hydrosphere => _hydrosphere ?? MathAndScience.Chemistry.Material.Empty;
 
         private protected virtual bool CanHaveOxygen => true;
 
@@ -189,7 +189,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (double?)info.GetValue(nameof(_surfaceAlbedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
@@ -475,7 +475,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(_surfaceAlbedo), _surfaceAlbedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(_normalizedSeaLevel), _normalizedSeaLevel);
@@ -534,7 +534,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         public async Task<(double precipitation, double snow)> GetPrecipitationAsync(Duration time, Vector3 position, float proportionOfYear)
         {
             var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
-            var seasonalLatitude = Math.Abs(await GetSeasonalLatitudeAsync(VectorToLatitude(position), trueAnomaly).ConfigureAwait(false));
+            var seasonalLatitude = Math.Abs(GetSeasonalLatitude(VectorToLatitude(position), trueAnomaly));
             var temp = await GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, seasonalLatitude).ConfigureAwait(false);
             temp = await GetTemperatureAtElevationAsync(temp, GetElevationAt(position)).ConfigureAwait(false);
             var precipitation = GetPrecipitation(
@@ -657,11 +657,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // orbital temperature (rather than the temperature at the current position).
             if (planetParams?.RevolutionPeriod.HasValue == true && semiMajorAxis.HasValue)
             {
-                star.SetTempForTargetPlanetTemp(targetTemp - (temp ?? 0), semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2)), Albedo);
+                var albedo = await GetAlbedoAsync().ConfigureAwait(false);
+                star.SetTempForTargetPlanetTemp(targetTemp - (temp ?? 0), semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2)), albedo);
             }
             else
             {
-                semiMajorAxis = GetDistanceForTemperature(star, targetTemp - (temp ?? 0)) / (1 + (Eccentricity * Eccentricity / 2));
+                semiMajorAxis = await GetDistanceForTemperatureAsync(star, targetTemp - (temp ?? 0)).ConfigureAwait(false) / (1 + (Eccentricity * Eccentricity / 2));
                 await GenerateOrbitAsync(star, semiMajorAxis.Value, trueAnomaly).ConfigureAwait(false);
             }
             await ResetCachedTemperaturesAsync().ConfigureAwait(false);
@@ -1043,7 +1044,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         private protected override async Task GenerateAlbedoAsync()
         {
             await SetAlbedoAsync(Randomizer.Instance.NextDouble(0.1, 0.6)).ConfigureAwait(false);
-            _surfaceAlbedo = Albedo;
+            _surfaceAlbedo = _albedo;
         }
 
         private protected override Task GenerateAngleOfRotationAsync() => GenerateAngleOfRotationAsync(null);
@@ -1056,7 +1057,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
             else
             {
-                _axialPrecession = Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI);
+                _axialPrecession = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
                 var axialTilt = planetParams!.Value.AxialTilt!.Value;
                 if (Orbit.HasValue)
                 {
@@ -1400,7 +1401,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
             total += o2;
 
-            var ratio = (1 - h - he) / total;
+            var ratio = total == 0 ? 0 : (1 - h - he) / total;
             ch4 *= ratio;
             co *= ratio;
             so2 *= ratio;
@@ -1533,7 +1534,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             if (!mass.IsPositive)
             {
-                _hydrosphere = NeverFoundry.MathAndScience.Chemistry.Material.Empty;
+                _hydrosphere = MathAndScience.Chemistry.Material.Empty;
                 return;
             }
 
@@ -1666,10 +1667,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             {
                 await SetRotationalPeriodAsync(Number.Max(0, planetParams!.Value.RotationalPeriod!.Value)).ConfigureAwait(false);
             }
-            await GenerateAngleOfRotationAsync(planetParams).ConfigureAwait(false);
-
-            if (orbitedObject == null)
+            if (orbitedObject is null)
             {
+                await GenerateAngleOfRotationAsync(planetParams).ConfigureAwait(false);
                 return;
             }
 
@@ -1678,27 +1678,28 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 Eccentricity = planetParams!.Value.Eccentricity!.Value;
             }
 
-            var ta = Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI);
+            var ta = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             Number? semiMajorAxis;
             if (planetParams?.RevolutionPeriod.HasValue == true)
             {
-                semiMajorAxis = NeverFoundry.WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
+                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
                 await GenerateOrbitAsync(orbitedObject, semiMajorAxis.Value, ta).ConfigureAwait(false);
             }
             else
             {
-                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await WorldFoundry.Space.Orbit.SetOrbitAsync(
                     this,
                     orbitedObject,
                     await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
                     Eccentricity,
                     Randomizer.Instance.NextDouble(0.9),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI))
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI))
                     .ConfigureAwait(false);
                 semiMajorAxis = Orbit?.SemiMajorAxis;
             }
+            await GenerateAngleOfRotationAsync(planetParams).ConfigureAwait(false);
 
             if (orbitedObject is Star star
                 && (planetParams?.SurfaceTemperature.HasValue == true
@@ -1830,14 +1831,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
         private async Task GenerateOrbitAsync(CelestialLocation orbitedObject, Number semiMajorAxis, double trueAnomaly)
         {
-            await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
+            await WorldFoundry.Space.Orbit.SetOrbitAsync(
                   this,
                   orbitedObject,
                   (1 - Eccentricity) * semiMajorAxis,
                   Eccentricity,
                   Randomizer.Instance.NextDouble(0.9),
-                  Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                  Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                  Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                  Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                   trueAnomaly).ConfigureAwait(false);
             await ResetCachedTemperaturesAsync().ConfigureAwait(false);
         }
@@ -1887,9 +1888,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 periapsis,
                 eccentricity,
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             var chance = Randomizer.Instance.NextDouble();
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
@@ -2090,7 +2091,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// </remarks>
         /// <param name="star">The <see cref="Star"/> for which the calculation is to be made.</param>
         /// <param name="temperature">The desired temperature, in K.</param>
-        private Number GetDistanceForTemperature(Star star, double temperature)
+        private async Task<Number> GetDistanceForTemperatureAsync(Star star, double temperature)
         {
             var areaRatio = 1;
             if (RotationalPeriod > 2500)
@@ -2109,7 +2110,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 }
             }
 
-            return Math.Sqrt(star.Luminosity * (1 - Albedo)) / (Math.Pow(temperature, 4) * NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.sigma * areaRatio);
+            var albedo = await GetAlbedoAsync().ConfigureAwait(false);
+            return Math.Sqrt(star.Luminosity * (1 - albedo)) / (Math.Pow(temperature, 4) * MathAndScience.Constants.Doubles.MathConstants.FourPI * MathAndScience.Constants.Doubles.ScienceConstants.sigma * areaRatio);
         }
 
         private decimal GetHydrosphereAtmosphereRatio() => Math.Min(1, (decimal)(Hydrosphere.Mass / Atmosphere.Material.Mass));
@@ -2152,7 +2154,13 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         private Number GetMassForSurfaceGravity(IShape? shape, double gravity)
             => shape is null ? Number.Zero : gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
 
-        private protected override async Task GenerateMaterialAsync() => Material = await GetMaterialAsync(null, null).ConfigureAwait(false);
+        private protected override async Task GenerateMaterialAsync()
+        {
+            if (_material is null)
+            {
+                Material = await GetMaterialAsync(null, null).ConfigureAwait(false);
+            }
+        }
 
         private protected async Task<IMaterial> GetMaterialAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
         {

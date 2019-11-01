@@ -301,7 +301,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between the given <paramref name="position"/> and the given <see
         /// cref="Location"/>, in meters; or <see
-        /// cref="NeverFoundry.MathAndScience.Numerics.Number.PositiveInfinity"/>, if they do not
+        /// cref="Number.PositiveInfinity"/>, if they do not
         /// share a common parent.</returns>
         public async Task<Number> GetDistanceFromPositionToAsync(Vector3 position, Location other)
         {
@@ -321,7 +321,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <param name="otherPosition">A <see cref="Vector3"/> representing a position relative to
         /// the center of the <paramref name="other"/> location.</param>
         /// <returns>The distance between the given positions, in meters; or <see
-        /// cref="NeverFoundry.MathAndScience.Numerics.Number.PositiveInfinity"/>, if they do not
+        /// cref="Number.PositiveInfinity"/>, if they do not
         /// share a common parent.</returns>
         public async Task<Number> GetDistanceFromPositionToAsync(Vector3 localPosition, Location other, Vector3 otherPosition)
         {
@@ -337,7 +337,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </summary>
         /// <param name="other">Another <see cref="Location"/>.</param>
         /// <returns>The distance between this instance and the given <see cref="Location"/>, in
-        /// meters; or <see cref="NeverFoundry.MathAndScience.Numerics.Number.PositiveInfinity"/>,
+        /// meters; or <see cref="Number.PositiveInfinity"/>,
         /// if they do not share a common parent.</returns>
         public async Task<Number> GetDistanceToAsync(Location other) => (await GetLocalizedPositionOrNullAsync(other).ConfigureAwait(false))?.Length() ?? Number.PositiveInfinity;
 

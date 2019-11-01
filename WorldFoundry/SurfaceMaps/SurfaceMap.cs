@@ -26,11 +26,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns>The specific value from a range which varies over the course of a
         /// year.</returns>
-        public static async Task<float> GetAnnualRangeValueAsync(
+        public static float GetAnnualRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time)
-            => range.Min.Lerp(range.Max, (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false));
+            => range.Min.Lerp(range.Max, (float)planet.GetProportionOfYearAtTime(time));
 
         /// <summary>
         /// Determines whether the given <paramref name="time"/> falls within the range indicated.
@@ -40,12 +40,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the determination is to be performed.</param>
         /// <returns><see langword="true"/> if the range indicates a positive result for the given
         /// <paramref name="time"/>; otherwise <see langword="false"/>.</returns>
-        public static async Task<bool> GetAnnualRangeIsPositiveAtTimeAsync(
+        public static bool GetAnnualRangeIsPositiveAtTime(
             this Planetoid planet,
             FloatRange range,
             Duration time)
         {
-            var proportionOfYear = (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
+            var proportionOfYear = (float)planet.GetProportionOfYearAtTime(time);
             return !range.IsZero
             && (range.Min > range.Max
                 ? proportionOfYear >= range.Min || proportionOfYear <= range.Max
@@ -64,7 +64,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns>The value for a <paramref name="position"/> in a <paramref name="region"/> at a
         /// given <paramref name="time"/> from a set of ranges.</returns>
-        public static async Task<float> GetAnnualValueFromLocalPositionAsync(
+        public static float GetAnnualValueFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -76,9 +76,9 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 ranges.GetLength(0));
-            return await planet.GetAnnualRangeValueAsync(
+            return planet.GetAnnualRangeValue(
                 ranges[x, y],
-                time).ConfigureAwait(false);
+                time);
         }
 
         /// <summary>
@@ -94,7 +94,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns><see langword="true"/> if the given <paramref name="time"/> falls within the
         /// range indicated for a <paramref name="position"/> in a <paramref name="region"/>;
         /// otherwise <see langword="false"/>.</returns>
-        public static async Task<bool> GetAnnualRangeIsPositiveAtTimeAndLocalPositionAsync(
+        public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -106,7 +106,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 ranges.GetLength(0));
-            return await planet.GetAnnualRangeIsPositiveAtTimeAsync(ranges[x, y], time).ConfigureAwait(false);
+            return planet.GetAnnualRangeIsPositiveAtTime(ranges[x, y], time);
         }
 
         /// <summary>
@@ -288,7 +288,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 latitude, longitude,
                 resolution,
                 range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                    ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                    ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                     : Math.PI / resolution,
                 centralMeridian,
                 centralParallel,
@@ -384,10 +384,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? standardParallels = null,
             double? range = null)
             => GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
-                (long)x - resolution,
-                (long)y - (resolution / 2),
+                x, y,
+                resolution,
                 range.HasValue && range.Value < Math.PI && !range.Value.IsNearlyZero()
-                    ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                    ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                     : Math.PI / resolution,
                 centralMeridian,
                 centralParallel,
@@ -824,7 +824,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns></returns>
-        public static async Task<double> GetPrecipitationFromLocalPositionAsync(
+        public static double GetPrecipitationFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -841,8 +841,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            var proportion = await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.PrecipitationMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.PrecipitationMap[x, y]);
         }
 
         /// <summary>
@@ -909,8 +908,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             int resolution)
             => GetSeparationOfPointFromRadiusSquared(
                 planet.RadiusSquared,
-                x,
-                y,
+                x, y,
                 resolution,
                 planet.VectorToLongitude(region.Position),
                 planet.VectorToLatitude(region.Position),
@@ -927,7 +925,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns></returns>
-        public static async Task<double> GetSnowfallFromLocalPositionAsync(
+        public static double GetSnowfallFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -944,8 +942,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            var proportion = await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.SnowfallMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.SnowfallMap[x, y]);
         }
 
         /// <summary>
@@ -1083,12 +1080,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="latitude">The latitude at which the calculation is being performed (used to
         /// determine hemisphere, and thus season).</param>
         /// <returns>The specific temperature value from a temperature range.</returns>
-        public static async Task<float> GetTemperatureRangeValueAsync(
+        public static float GetTemperatureRangeValue(
             this Planetoid planet,
             FloatRange range,
             Duration time,
             double latitude)
-            => range.Min.Lerp(range.Max, (float)await planet.GetSeasonalProportionAtTimeAsync(time, latitude).ConfigureAwait(false));
+            => range.Min.Lerp(range.Max, (float)planet.GetSeasonalProportionAtTime(time, latitude));
 
         /// <summary>
         /// Gets the temperature value for a <paramref name="position"/> in a <paramref
@@ -1103,7 +1100,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
         /// name="region"/> at a given <paramref name="time"/> from a set of temperature
         /// ranges.</returns>
-        public static async Task<float> GetTemperatureFromLocalPositionAsync(
+        public static float GetTemperatureFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
@@ -1115,10 +1112,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 temperatureRanges.GetLength(0));
-            return await planet.GetTemperatureRangeValueAsync(
+            return planet.GetTemperatureRangeValue(
                 temperatureRanges[x, y],
                 time,
-                planet.VectorToLatitude(region.Position + position)).ConfigureAwait(false);
+                planet.VectorToLatitude(region.Position + position));
         }
 
         /// <summary>
@@ -1129,7 +1126,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns></returns>
-        public static async Task<FloatRange> GetTotalPrecipitationAtTimeAsync(
+        public static FloatRange GetTotalPrecipitationAtTime(
             this Planetoid planet,
             PrecipitationMaps[] maps,
             Duration time)
@@ -1139,8 +1136,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 return FloatRange.Zero;
             }
 
-            var proportion = await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
-            return InterpolateAmongWeatherMaps(maps, proportion, map => map.Precipitation);
+            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.Precipitation);
         }
 
         /// <summary>
@@ -1276,28 +1272,33 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     averageElevation);
             }
 
-            var temperatureRanges = planet.HasTemperatureMap
-                ? planet.GetTemperatureMap(doubleResolution, resolution)
-                : await GetSurfaceMapAsync(
+            FloatRange[,] temperatureRanges;
+            if (planet.HasTemperatureMap)
+            {
+                temperatureRanges = planet.GetTemperatureMap(doubleResolution, resolution);
+            }
+            else
+            {
+                var tilt = planet.AxialTilt;
+                var winterTrueAnomaly = planet.WinterSolsticeTrueAnomaly;
+                var summerTrueAnomaly = planet.SummerSolsticeTrueAnomaly;
+                var winterLatitudes = new Dictionary<double, double>();
+                var summerLatitudes = new Dictionary<double, double>();
+                var latitudeTemperatures = new Dictionary<double, double>();
+                var elevationTemperatures = new Dictionary<(double, int), float>();
+                temperatureRanges = await GetSurfaceMapAsync(
                     async (lat, _, x, y) =>
                     {
-                        var winterLatitudes = new Dictionary<double, double>();
-                        var summerLatitudes = new Dictionary<double, double>();
-                        var latitudeTemperatures = new Dictionary<double, double>();
-                        var elevationTemperatures = new Dictionary<(double, int), float>();
-
-                        var tilt = await planet.GetAxialTiltAsync().ConfigureAwait(false);
                         var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
 
                         if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                         {
-                            winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -tilt));
+                            winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, tilt));
                             winterLatitudes.Add(lat, winterLat);
                         }
                         if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
                         {
-                            var trueAnomaly = await planet.GetWinterSolsticeTrueAnomalyAsync().ConfigureAwait(false);
-                            winterTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, winterLat).ConfigureAwait(false);
+                            winterTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(winterTrueAnomaly, winterLat).ConfigureAwait(false);
                             latitudeTemperatures.Add(winterLat, winterTemp);
                         }
                         if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
@@ -1308,13 +1309,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
                         if (!summerLatitudes.TryGetValue(lat, out var summerLat))
                         {
-                            summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, tilt));
+                            summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -tilt));
                             summerLatitudes.Add(lat, summerLat);
                         }
                         if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
                         {
-                            var trueAnomaly = await planet.GetSummerSolsticeTrueAnomalyAsync().ConfigureAwait(false);
-                            summerTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, summerLat).ConfigureAwait(false);
+                            summerTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(summerTrueAnomaly, summerLat).ConfigureAwait(false);
                             latitudeTemperatures.Add(summerLat, summerTemp);
                         }
                         if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
@@ -1323,13 +1323,16 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
                         }
 
-                        return new FloatRange(winterTempAtElevation, summerTempAtElevation);
+                        return winterTempAtElevation > summerTempAtElevation
+                            ? new FloatRange(summerTempAtElevation, winterTempAtElevation)
+                            : new FloatRange(winterTempAtElevation, summerTempAtElevation);
                     },
                     resolution,
                     centralMeridian,
                     centralParallel,
                     standardParallels,
                     range).ConfigureAwait(false);
+            }
 
             if (planet.HasPrecipitationMap && planet.HasSnowfallMap && planet.MappedSeasons >= steps)
             {
@@ -1347,13 +1350,13 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 var proportionOfYear = 1f / steps;
                 var proportionOfYearAtMidpoint = 0f;
                 var proportionOfSummerAtMidpoint = 0f;
-                var trueAnomaly = await planet.GetWinterSolsticeTrueAnomalyAsync().ConfigureAwait(false);
-                var trueAnomalyPerSeason = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
+                var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
+                var trueAnomalyPerSeason = MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
 
                 precipMaps = new PrecipitationMaps[steps];
                 for (var i = 0; i < steps; i++)
                 {
-                    var solarDeclination = await planet.GetSolarDeclinationAsync(trueAnomaly).ConfigureAwait(false);
+                    var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
 
                     // Precipitation & snowfall
                     var snowfallMap = new float[doubleResolution, resolution];
@@ -1370,7 +1373,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                                 var precipitation = planet.GetPrecipitation(
                                     planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
                                     planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
-                                    temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, proportionOfSummerAtMidpoint),
+                                    temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, lat < 0 ? 1 - proportionOfSummerAtMidpoint : proportionOfSummerAtMidpoint),
                                     proportionOfYear,
                                     out var snow);
                                 snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
@@ -1387,9 +1390,9 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     proportionOfYearAtMidpoint += proportionOfYear;
                     proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5f - proportionOfYearAtMidpoint) / 0.5f);
                     trueAnomaly += trueAnomalyPerSeason;
-                    if (trueAnomaly >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+                    if (trueAnomaly >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
                     {
-                        trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                        trueAnomaly -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
                     }
                 }
             }
@@ -1553,20 +1556,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? centralParallel = null,
             double? standardParallels = null)
         {
-            var x = (int)Math.Round(((longitude - (centralParallel ?? 0)) / scale) + resolution)
+            var x = (int)Math.Round(((longitude - (centralMeridian ?? 0)) * Math.Cos(standardParallels ?? centralParallel ?? 0) / scale) + resolution)
                 .Clamp(0, (resolution * 2) - 1);
-            var y = (int)Math.Round(((latitude - (centralMeridian ?? 0)) * Math.Cos(standardParallels ?? centralParallel ?? 0) / scale) + (resolution / 2))
+            var y = (int)Math.Round((resolution / 2) - ((latitude - (centralParallel ?? 0)) / scale))
                 .Clamp(0, resolution - 1);
-            return (x, y);
-        }
-
-        internal static (int x, int y) GetEquirectangularProjectionFromLatLongWithScale(
-            float latitude, float longitude,
-            int resolution,
-            double scale)
-        {
-            var x = (int)Math.Round((longitude / scale) + resolution).Clamp(0, (resolution * 2) - 1);
-            var y = (int)Math.Round((latitude / scale) + (resolution / 2)).Clamp(0, resolution - 1);
             return (x, y);
         }
 
@@ -1582,17 +1575,17 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
             }
-            var map = new T[resolution * 2, resolution];
+            var doubleResolution = resolution * 2;
+            var map = new T[doubleResolution, resolution];
             var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
-            var halfResolution = resolution / 2;
-            for (var x = -resolution; x < resolution; x++)
+            for (var x = 0; x < doubleResolution; x++)
             {
-                for (var y = -halfResolution; y < halfResolution; y++)
+                for (var y = 0; y < resolution; y++)
                 {
-                    var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
-                    map[x + resolution, y + halfResolution] = func(latitude, longitude, x + resolution, y + halfResolution);
+                    var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+                    map[x, y] = func(latitude, longitude, x, y);
                 }
             }
             return map;
@@ -1610,17 +1603,17 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
             }
-            var map = new T[resolution * 2, resolution];
+            var doubleResolution = resolution * 2;
+            var map = new T[doubleResolution, resolution];
             var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
-            var halfResolution = resolution / 2;
-            for (var x = -resolution; x < resolution; x++)
+            for (var x = 0; x < doubleResolution; x++)
             {
-                for (var y = -halfResolution; y < halfResolution; y++)
+                for (var y = 0; y < resolution; y++)
                 {
-                    var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
-                    map[x + resolution, y + halfResolution] = await func(latitude, longitude, x + resolution, y + halfResolution).ConfigureAwait(false);
+                    var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+                    map[x, y] = await func(latitude, longitude, x, y).ConfigureAwait(false);
                 }
             }
             return map;
@@ -1649,36 +1642,33 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? standardParallels = null,
             double? range = null)
         {
-            var halfResolution = resolution / 2;
+            var doubleResolution = resolution * 2;
             var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
-
-            var centerX = (long)x - resolution;
-            var centerY = (long)y - halfResolution;
 
             // left: x - 1, y
             var left = x == 0
-                ? resolution - 1
+                ? doubleResolution - 1
                 : x - 1;
             // up: x, y - 1
             var up = y == 0
-                ? halfResolution - 1
+                ? resolution - 1
                 : y - 1;
             // right: x + 1, y
-            var right = centerX == resolution - 1
-                ? -resolution
+            var right = x == resolution - 1
+                ? 0
                 : x + 1;
             // down: x, y + 1
-            var down = centerY == resolution - 1
-                ? -halfResolution
+            var down = y == resolution - 1
+                ? 0
                 : y + 1;
 
-            var (latCenter, lonCenter) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, scale, centralMeridian, centralParallel, standardParallels);
-            var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, scale, centralMeridian, centralParallel, standardParallels);
+            var (latCenter, lonCenter) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, resolution, scale, centralMeridian, centralParallel, standardParallels);
 
             var lonLeftBorder = (lonLeft + lonCenter) / 2;
             var lonRightBorder = (lonRight + lonCenter) / 2;
@@ -1692,12 +1682,13 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
         private static (double latitude, double longitude) GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(
             long x, long y,
+            int resolution,
             double scale,
             double? centralMeridian,
             double? centralParallel,
             double? standardParallels = null)
-            => ((y * scale) + (centralParallel ?? 0),
-            (x * scale / Math.Cos(standardParallels ?? centralParallel ?? 0)) + (centralMeridian ?? 0));
+            => ((((resolution / 2) - y) * scale) + (centralParallel ?? 0),
+            ((x - resolution) * scale / Math.Cos(standardParallels ?? centralParallel ?? 0)) + (centralMeridian ?? 0));
 
         private static Number GetSeparationOfPointFromRadiusSquared(
             Number radiusSquared,
@@ -1708,36 +1699,33 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? standardParallels = null,
             double? range = null)
         {
-            var halfResolution = resolution / 2;
+            var doubleResolution = resolution * 2;
             var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                ? NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
+                ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
-
-            var centerX = (long)x - resolution;
-            var centerY = (long)y - halfResolution;
 
             // left: x - 1, y
             var left = x == 0
-                ? resolution - 1
+                ? doubleResolution - 1
                 : x - 1;
             // up: x, y - 1
             var up = y == 0
-                ? halfResolution - 1
+                ? resolution - 1
                 : y - 1;
             // right: x + 1, y
-            var right = centerX == resolution - 1
-                ? -resolution
+            var right = x == doubleResolution - 1
+                ? 0
                 : x + 1;
             // down: x, y + 1
-            var down = centerY == resolution - 1
-                ? -halfResolution
+            var down = y == resolution - 1
+                ? 0
                 : y + 1;
 
-            var (latCenter, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, scale, centralMeridian, centralParallel, standardParallels);
-            var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, scale, centralMeridian, centralParallel, standardParallels);
-            var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, scale, centralMeridian, centralParallel, standardParallels);
+            var (latCenter, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonLeft) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(left, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (_, lonRight) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(right, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (latUp, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, up, resolution, scale, centralMeridian, centralParallel, standardParallels);
+            var (latDown, _) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, down, resolution, scale, centralMeridian, centralParallel, standardParallels);
 
             var latTopBorder = (latUp + latCenter) / 2;
             var latBottomBorder = (latDown + latCenter) / 2;

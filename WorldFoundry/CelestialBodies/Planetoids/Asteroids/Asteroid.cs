@@ -47,14 +47,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
         internal Asteroid(string? parentId, Vector3 position, Number maxMass) : base(parentId, position, maxMass) { }
 
         internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
-            => await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
+            => await WorldFoundry.Space.Orbit.SetOrbitAsync(
                 this,
                 orbitedObject,
                 await GetDistanceToAsync(orbitedObject).ConfigureAwait(false),
                 Randomizer.Instance.NextDouble(0.4),
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 0).ConfigureAwait(false);
 
         private protected OrbitalParameters GetAsteroidSatelliteOrbit(Number periapsis, double eccentricity)
@@ -63,9 +63,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
                 periapsis,
                 eccentricity,
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
 
         private protected override async ValueTask<(double density, Number mass, IShape shape)> GetMatterAsync()
         {

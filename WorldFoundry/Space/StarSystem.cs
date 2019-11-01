@@ -66,7 +66,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -142,7 +142,7 @@ namespace NeverFoundry.WorldFoundry.Space
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(_material), _material);
@@ -388,7 +388,7 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 await AddCompanionStarAsync(companions, orbited,
                     (Randomizer.Instance.LogNormalDistributionSample(0, 1) * new Number(1.5768, 9))
-                    + (NeverFoundry.WorldFoundry.Space.Orbit.GetHillSphereRadius(
+                    + (WorldFoundry.Space.Orbit.GetHillSphereRadius(
                         companion!.Value.star,
                         companion!.Value.orbited,
                         companion!.Value.semiMajorAxis,
@@ -875,15 +875,15 @@ namespace NeverFoundry.WorldFoundry.Space
 
             foreach (var (star, orbited, eccentricity, semiMajorAxis, periapsis, apoapsis) in companions)
             {
-                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await WorldFoundry.Space.Orbit.SetOrbitAsync(
                     star,
                     orbited,
                     periapsis,
                     eccentricity,
                     Randomizer.Instance.NextDouble(Math.PI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)).ConfigureAwait(false);
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI)).ConfigureAwait(false);
 
                 await star.SaveAsync().ConfigureAwait(false);
                 stars.Add(star);
@@ -951,18 +951,18 @@ namespace NeverFoundry.WorldFoundry.Space
         private async Task GenerateTrojansAsync(Star star, GiantPlanet planet, Number periapsis)
         {
             var doubleHillRadius = await planet.GetHillSphereRadiusAsync().ConfigureAwait(false) * 2;
-            var trueAnomaly = planet.Orbit!.Value.TrueAnomaly + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.ThirdPI; // +60°
+            var trueAnomaly = planet.Orbit!.Value.TrueAnomaly + MathAndScience.Constants.Doubles.MathConstants.ThirdPI; // +60°
             while (trueAnomaly > MathConstants.TwoPI)
             {
-                trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                trueAnomaly -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
             var orbit = new OrbitalParameters(
                 star,
                 periapsis,
                 planet.Orbit.Value.Eccentricity,
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 trueAnomaly);
             var field = await AsteroidField.GetNewInstanceAsync(this, -Vector3.UnitZ * periapsis, doubleHillRadius, orbit: orbit).ConfigureAwait(false);
             if (field != null)
@@ -970,18 +970,18 @@ namespace NeverFoundry.WorldFoundry.Space
                 await field.SaveAsync().ConfigureAwait(false);
             }
 
-            trueAnomaly = planet.Orbit.Value.TrueAnomaly - NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.ThirdPI; // -60°
+            trueAnomaly = planet.Orbit.Value.TrueAnomaly - MathAndScience.Constants.Doubles.MathConstants.ThirdPI; // -60°
             while (trueAnomaly < 0)
             {
-                trueAnomaly += NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                trueAnomaly += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
             orbit = new OrbitalParameters(
                 star,
                 periapsis,
                 planet.Orbit.Value.Eccentricity,
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 trueAnomaly);
             field = await AsteroidField.GetNewInstanceAsync(this, Vector3.UnitZ * periapsis, doubleHillRadius, orbit: orbit).ConfigureAwait(false);
             if (field != null)
@@ -1039,12 +1039,15 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private protected override Task GenerateMaterialAsync()
         {
-            // This should never be used, since Material is set when generating stars.
-            Material = new Material(
-                0,
-                0,
-                new Sphere(new Number(1.125, 16), Position),
-                GetTemperature());
+            if (_material is null)
+            {
+                // This should never be used, since Material is set when generating stars.
+                Material = new Material(
+                    0,
+                    0,
+                    new Sphere(new Number(1.125, 16), Position),
+                    GetTemperature());
+            }
             return Task.CompletedTask;
         }
 

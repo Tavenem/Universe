@@ -31,32 +31,12 @@ namespace NeverFoundry.WorldFoundry.Space
     [Serializable]
     public class CelestialLocation : Location
     {
+        private protected double? _albedo;
         private double? _averageBlackbodyTemperature;
         private double? _blackbodyTemperature;
         private protected bool _isPrepopulated;
-        private protected IMaterial? _material;
         private double? _surfaceTemperatureAtApoapsis;
         private double? _surfaceTemperatureAtPeriapsis;
-
-        private protected double? _albedo;
-        /// <summary>
-        /// The average albedo of this celestial entity (a value between 0 and 1).
-        /// </summary>
-        /// <remarks>
-        /// This refers to the total albedo of the body, including any atmosphere, not just the
-        /// surface albedo of the main body.
-        /// </remarks>
-        public double Albedo
-        {
-            get
-            {
-                if (!_albedo.HasValue)
-                {
-                    GenerateAlbedoAsync();
-                }
-                return _albedo ?? 0;
-            }
-        }
 
         /// <summary>
         /// <para>
@@ -100,6 +80,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
+        private protected IMaterial? _material;
         /// <summary>
         /// The physical material which comprises this location.
         /// </summary>
@@ -225,7 +206,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -252,6 +233,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 new object?[] { parent?.Id, position }) as T;
             if (instance != null)
             {
+                await instance.GenerateMaterialAsync().ConfigureAwait(false);
                 if (orbit.HasValue)
                 {
                     await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
@@ -282,6 +264,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 new object?[] { parentId, position }) as T;
             if (instance != null)
             {
+                await instance.GenerateMaterialAsync().ConfigureAwait(false);
                 if (orbit.HasValue)
                 {
                     await Space.Orbit.SetOrbitAsync(instance, orbit.Value).ConfigureAwait(false);
@@ -530,6 +513,25 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
+        /// Gets the average albedo of this celestial entity (a value between 0 and 1).
+        /// </summary>
+        /// <returns>
+        /// The average albedo of this celestial entity (a value between 0 and 1).
+        /// </returns>
+        /// <remarks>
+        /// This refers to the total albedo of the body, including any atmosphere, not just the
+        /// surface albedo of the main body.
+        /// </remarks>
+        public async Task<double> GetAlbedoAsync()
+        {
+            if (!_albedo.HasValue)
+            {
+                await GenerateAlbedoAsync().ConfigureAwait(false);
+            }
+            return _albedo ?? 0;
+        }
+
+        /// <summary>
         /// Gets the total temperature of this location, averaged over its orbit, in K.
         /// </summary>
         public async Task<double> GetAverageBlackbodyTemperatureAsync()
@@ -747,7 +749,7 @@ namespace NeverFoundry.WorldFoundry.Space
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Name), Name);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(_material), _material);
@@ -1157,7 +1159,8 @@ namespace NeverFoundry.WorldFoundry.Space
             else
             {
                 var relativePosition = await GetLocalizedPositionAsync(parent, position).ConfigureAwait(false);
-                return Math.Pow(1 - Albedo, 0.25) * (await parent
+                var albedo = await GetAlbedoAsync().ConfigureAwait(false);
+                return Math.Pow(1 - albedo, 0.25) * (await parent
                   .GetAllChildrenAsync<Star>()
                   .Where(x => x != this)
                   .SumAwaitAsync(async x => (await x.GetTemperatureAsync().ConfigureAwait(false) ?? 0) * (double)Number.Sqrt(x.Shape.ContainingRadius / (2 * await GetDistanceFromPositionToAsync(relativePosition, x).ConfigureAwait(false))))
@@ -1298,7 +1301,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private protected virtual double? GetTemperature() => null;
 
-        private protected virtual Task InitializeAsync() => GenerateMaterialAsync();
+        private protected virtual Task InitializeAsync() => Task.CompletedTask;
 
         private protected async Task InitializeBaseAsync(Location? parent)
         {

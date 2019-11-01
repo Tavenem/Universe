@@ -366,7 +366,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var inclination = Number.Acos(Number.Sqrt(xz.X.Square() + xz.Z.Square()) / radius);
             var angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
 
-            var trueAnomaly = Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI);
+            var trueAnomaly = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
 
             var semiLatusRectum = radius * (1 + (eccentricity * Math.Cos(trueAnomaly)));
             var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -506,31 +506,31 @@ namespace NeverFoundry.WorldFoundry.Space
                 inclination += Math.PI;
             }
 
-            while (angleAscending >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+            while (angleAscending >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
             {
-                angleAscending -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                angleAscending -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
             while (angleAscending < 0)
             {
-                angleAscending += NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                angleAscending += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
 
-            while (argPeriapsis >= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+            while (argPeriapsis >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
             {
-                argPeriapsis -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                argPeriapsis -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
             while (argPeriapsis < 0)
             {
-                argPeriapsis += NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                argPeriapsis += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
 
             while (trueAnomaly >= MathConstants.TwoPI)
             {
-                trueAnomaly -= NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                trueAnomaly -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
             while (trueAnomaly < 0)
             {
-                trueAnomaly += NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                trueAnomaly += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
 
             var standardGravitationalParameter = ScienceConstants.G * (orbitedObject.Mass + orbitingObject.Mass);
@@ -657,7 +657,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <returns>The ecliptic longitude of the orbited body from the perspective of the orbiting
         /// body, in radians (normalized to 0-2π).</returns>
         public double GetEclipticLongitudeAtTrueAnomaly(double t)
-            => (MeanLongitude + t + NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.PI) % NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            => (MeanLongitude + t + MathAndScience.Constants.Doubles.MathConstants.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         /// <summary>
         /// Gets orbital parameters at a given time.

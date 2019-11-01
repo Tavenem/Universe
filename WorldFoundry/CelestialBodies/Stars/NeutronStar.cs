@@ -70,7 +70,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (LuminosityClass?)info.GetValue(nameof(LuminosityClass), typeof(LuminosityClass?)),
             (bool)info.GetValue(nameof(IsPopulationII), typeof(bool)),
             (SpectralClass?)info.GetValue(nameof(SpectralClass), typeof(SpectralClass?)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -85,9 +85,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 
         private protected override async Task GenerateMaterialAsync()
         {
-            var shape = await GetShapeAsync().ConfigureAwait(false);
-            var mass = await GetMassAsync().ConfigureAwait(false);
-            Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+            if (_material is null)
+            {
+                var shape = await GetShapeAsync().ConfigureAwait(false);
+                var mass = await GetMassAsync().ConfigureAwait(false);
+                Material = GetComposition((double)(mass / shape.Volume), mass, shape, GetTemperature());
+            }
         }
 
         private protected override ValueTask<IShape> GetShapeAsync()

@@ -142,7 +142,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (double)info.GetValue(nameof(_normalizedSeaLevel), typeof(double)),
             (int)info.GetValue(nameof(_seed1), typeof(int)),
@@ -236,9 +236,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
                 periapsis,
                 eccentricity,
                 Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             double chance;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.

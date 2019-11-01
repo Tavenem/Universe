@@ -47,7 +47,7 @@ namespace NeverFoundry.WorldFoundry
         /// <returns>An <see cref="IAsyncEnumerable{T}"/> of items in the data store of the given
         /// type.</returns>
         public static IAsyncEnumerable<T> GetItemsWhereAsync<T>(Func<T, bool> condition) where T : IdItem
-            => Instance.GetItemsWhereAsync<T>(condition);
+            => Instance.GetItemsWhereAsync(condition);
 
         /// <summary>
         /// Removes the stored item with the given id.
@@ -62,6 +62,6 @@ namespace NeverFoundry.WorldFoundry
         /// </summary>
         /// <typeparam name="T">The type of <see cref="IdItem"/> to store.</typeparam>
         public static Task SetItemAsync<T>(T item) where T : IdItem
-            => Instance.SetItemAsync<T>(item);
+            => Instance.SetItemAsync(item);
     }
 }

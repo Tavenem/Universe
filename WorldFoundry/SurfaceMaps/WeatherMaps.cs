@@ -414,8 +414,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             Seasons = precipitationMaps?.Length ?? 0;
 
-            var min = 2f;
-            var max = -2f;
+            var min = float.MaxValue;
+            var max = float.MinValue;
             var avgSum = 0f;
             for (var x = 0; x < xLength; x++)
             {

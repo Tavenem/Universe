@@ -72,7 +72,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (string)info.GetValue(nameof(_mainGalaxyId), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -123,7 +123,7 @@ namespace NeverFoundry.WorldFoundry.Space
             info.AddValue(nameof(Name), Name);
             info.AddValue(nameof(_mainGalaxyId), _mainGalaxyId);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(_material), Material);
@@ -169,7 +169,7 @@ namespace NeverFoundry.WorldFoundry.Space
             if (!string.IsNullOrEmpty(_mainGalaxyId))
             {
                 var g = await GetMainGalaxyAsync().ConfigureAwait(false);
-                await NeverFoundry.WorldFoundry.Space.Orbit.SetOrbitAsync(
+                await WorldFoundry.Space.Orbit.SetOrbitAsync(
                       child,
                       g,
                       Randomizer.Instance.NextDouble(0.1)).ConfigureAwait(false);

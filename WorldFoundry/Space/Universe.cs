@@ -76,6 +76,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public static async Task<Universe?> GetNewInstanceAsync()
         {
             var instance = new Universe();
+            await instance.GenerateMaterialAsync().ConfigureAwait(false);
             await instance.InitializeBaseAsync((string?)null).ConfigureAwait(false);
             return instance;
         }

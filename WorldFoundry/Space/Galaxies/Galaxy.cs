@@ -137,7 +137,7 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
             (string?)info.GetValue(nameof(Name), typeof(string)),
             (string)info.GetValue(nameof(_galacticCoreId), typeof(string)),
             (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -186,7 +186,7 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
             info.AddValue(nameof(Name), Name);
             info.AddValue(nameof(_galacticCoreId), _galacticCoreId);
             info.AddValue(nameof(_isPrepopulated), _isPrepopulated);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(_material), Material);

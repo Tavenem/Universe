@@ -253,7 +253,7 @@ namespace NeverFoundry.WorldFoundry.Climate
         public double GetAtmosphericPressure(Planetoid planet, double temperature, double elevation)
             => elevation <= 0
             ? AtmosphericPressure
-            : AtmosphericPressure * Math.Exp((double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir * elevation / (NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * temperature));
+            : AtmosphericPressure * Math.Exp((double)planet.SurfaceGravity * MathAndScience.Constants.Doubles.ScienceConstants.MAir * elevation / (MathAndScience.Constants.Doubles.ScienceConstants.R * temperature));
 
         /// <summary>
         /// Sets the atmospheric pressure of this atmosphere to the given <paramref name="value"/>.
@@ -440,8 +440,8 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// </returns>
         private SubstanceRequirement ConvertRequirementForPressure(SubstanceRequirement requirement)
         {
-            var minActual = requirement.MinimumProportion * NeverFoundry.MathAndScience.Constants.Decimals.ScienceConstants.atm;
-            var maxActual = requirement.MaximumProportion.HasValue ? requirement.MaximumProportion * NeverFoundry.MathAndScience.Constants.Decimals.ScienceConstants.atm : null;
+            var minActual = requirement.MinimumProportion * MathAndScience.Constants.Decimals.ScienceConstants.atm;
+            var maxActual = requirement.MaximumProportion.HasValue ? requirement.MaximumProportion * MathAndScience.Constants.Decimals.ScienceConstants.atm : null;
             var atm = (decimal)AtmosphericPressure;
             return new SubstanceRequirement(
                 requirement.Substance,
@@ -467,7 +467,7 @@ namespace NeverFoundry.WorldFoundry.Climate
         private async Task SetAtmosphericHeightAsync(Planetoid planet, double? temp = null)
         {
             temp ??= await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
-            AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.R * temp.Value / (-(double)planet.SurfaceGravity * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.MAir);
+            AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * MathAndScience.Constants.Doubles.ScienceConstants.R * temp.Value / (-(double)planet.SurfaceGravity * MathAndScience.Constants.Doubles.ScienceConstants.MAir);
         }
 
         private async Task SetAtmosphericScaleHeightAsync(Planetoid planet)

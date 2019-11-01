@@ -122,7 +122,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (LuminosityClass?)info.GetValue(nameof(LuminosityClass), typeof(LuminosityClass?)),
             (bool)info.GetValue(nameof(IsPopulationII), typeof(bool)),
             (SpectralClass?)info.GetValue(nameof(SpectralClass), typeof(SpectralClass?)),
-            (double?)info.GetValue(nameof(Albedo), typeof(double?)),
+            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
@@ -171,6 +171,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 
                 instance.IsPopulationII = populationII;
 
+                await instance.GenerateMaterialAsync().ConfigureAwait(false);
                 await instance.InitializeBaseAsync(parent).ConfigureAwait(false);
             }
             return instance;
@@ -194,7 +195,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             info.AddValue(nameof(LuminosityClass), _luminosityClass);
             info.AddValue(nameof(IsPopulationII), IsPopulationII);
             info.AddValue(nameof(SpectralClass), _spectralClass);
-            info.AddValue(nameof(Albedo), _albedo);
+            info.AddValue(nameof(_albedo), _albedo);
             info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), _orbit);
             info.AddValue(nameof(_material), Material);
@@ -355,20 +356,23 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
         private protected async ValueTask<double> GetLuminosityFromRadiusAsync()
         {
             var temp = await GetTemperatureAsync().ConfigureAwait(false);
-            return NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * (double)RadiusSquared * NeverFoundry.MathAndScience.Constants.Doubles.ScienceConstants.sigma * Math.Pow(temp ?? 0, 4);
+            return MathAndScience.Constants.Doubles.MathConstants.FourPI * (double)RadiusSquared * MathAndScience.Constants.Doubles.ScienceConstants.sigma * Math.Pow(temp ?? 0, 4);
         }
 
         private protected override async Task GenerateMaterialAsync()
         {
-            var temperature = GetTemperature();
+            if (_material is null)
+            {
+                var temperature = GetTemperature();
 
-            var shape = await GetShapeAsync(temperature).ConfigureAwait(false);
+                var shape = await GetShapeAsync(temperature).ConfigureAwait(false);
 
-            // Mass scales with radius for main-sequence stars, with the scale changing at around 1
-            // solar mass/radius.
-            var mass = Number.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new Number(125, -2) : new Number(175, -2)) * new Number(1.99, 30);
+                // Mass scales with radius for main-sequence stars, with the scale changing at around 1
+                // solar mass/radius.
+                var mass = Number.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new Number(125, -2) : new Number(175, -2)) * new Number(1.99, 30);
 
-            Material = GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+                Material = GetComposition((double)(mass / shape.Volume), mass, shape, temperature);
+            }
         }
 
         private protected virtual ValueTask<SpectralClass> GenerateSpectralClassAsync()
@@ -409,7 +413,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
         /// </summary>
         private protected async Task<IShape> GetShapeAsync(Number? temperature)
         {
-            var d = NeverFoundry.MathAndScience.Constants.Doubles.MathConstants.FourPI * 5.67e-8 * Math.Pow((double)(temperature ?? Number.Zero), 4);
+            var d = MathAndScience.Constants.Doubles.MathConstants.FourPI * 5.67e-8 * Math.Pow((double)(temperature ?? Number.Zero), 4);
             _luminosity = await GetLuminosityAsync(temperature).ConfigureAwait(false);
             var radius = d.IsNearlyZero() ? Number.Zero : Math.Sqrt(Luminosity / d);
             var flattening = (Number)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
