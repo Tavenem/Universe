@@ -815,6 +815,26 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
             => GetDistance(LatitudeAndLongitudeToVector(latitude1, longitude1), LatitudeAndLongitudeToVector(latitude2, longitude2));
 
         /// <summary>
+        /// Get the diurnal temperature variation on this planet, in K.
+        /// </summary>
+        /// <returns>The diurnal temperature variation on this planet, in K.</returns>
+        public async Task<double> GetDiurnalTemperatureVariationAsync()
+        {
+            if (!_diurnalTemperatureVariation.HasValue)
+            {
+                var temp = await GetTemperatureAsync().ConfigureAwait(false) ?? 0;
+                var timeFactor = (double)(1 - ((RotationalPeriod - 2500) / 595000)).Clamp(0, 1);
+                var blackbodyTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+                var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
+                var darkSurfaceTemp = (((blackbodyTemp * InsolationFactor_Equatorial) - temp) * timeFactor)
+                    + temp
+                    + greenhouseEffect;
+                _diurnalTemperatureVariation = await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false) - darkSurfaceTemp;
+            }
+            return _diurnalTemperatureVariation.Value;
+        }
+
+        /// <summary>
         /// Gets the elevation at the given <paramref name="position"/>, in meters.
         /// </summary>
         /// <param name="position">The position at which to determine elevation.</param>
@@ -2259,22 +2279,6 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         }
 
         private protected override double GetDensity() => DensityForType;
-
-        private async Task<double> GetDiurnalTemperatureVariationAsync()
-        {
-            if (!_diurnalTemperatureVariation.HasValue)
-            {
-                var temp = await GetTemperatureAsync().ConfigureAwait(false) ?? 0;
-                var timeFactor = (double)(1 - ((RotationalPeriod - 2500) / 595000)).Clamp(0, 1);
-                var blackbodyTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
-                var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
-                var darkSurfaceTemp = (((blackbodyTemp * InsolationFactor_Equatorial) - temp) * timeFactor)
-                    + temp
-                    + greenhouseEffect;
-                _diurnalTemperatureVariation = await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false) - darkSurfaceTemp;
-            }
-            return _diurnalTemperatureVariation.Value;
-        }
 
         private double GetEccentricity()
             => _orbit.HasValue
