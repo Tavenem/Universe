@@ -1,13 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
@@ -103,7 +103,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
                 snowfallMaps,
                 temperatureMapSummer,
                 temperatureMapWinter,
-                maxFlow) { }
+                maxFlow)
+        { }
 
         private Comet(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -138,7 +139,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         internal override async Task GenerateOrbitAsync(CelestialLocation orbitedObject)
         {

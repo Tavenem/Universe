@@ -42,7 +42,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
         private PlanetaryRing(SerializationInfo info, StreamingContext context) : this(
             (bool)info.GetValue(nameof(Icy), typeof(bool)),
             (Number)info.GetValue(nameof(InnerRadius), typeof(Number)),
-            (Number)info.GetValue(nameof(OuterRadius), typeof(Number))) { }
+            (Number)info.GetValue(nameof(OuterRadius), typeof(Number)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

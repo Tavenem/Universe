@@ -1,9 +1,9 @@
-﻿using System;
+﻿using NeverFoundry.WorldFoundry.Climate;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.WorldFoundry.Climate;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -106,7 +106,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (double?)info.GetValue(nameof(MinimumPressure), typeof(double?)),
             (double?)info.GetValue(nameof(MaximumPressure), typeof(double?)),
             (double?)info.GetValue(nameof(MinimumGravity), typeof(double?)),
-            (double?)info.GetValue(nameof(MaximumGravity), typeof(double?))) { }
+            (double?)info.GetValue(nameof(MaximumGravity), typeof(double?)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

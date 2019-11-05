@@ -3,12 +3,12 @@ using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Time;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Place;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
-using NeverFoundry.WorldFoundry.Place;
 
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {

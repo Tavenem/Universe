@@ -1,9 +1,8 @@
-﻿using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.MathAndScience.Constants.Numbers;
+﻿using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Threading.Tasks;
 

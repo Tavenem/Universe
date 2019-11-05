@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
-using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Chemistry.Elements;
+using System.Collections.Generic;
 
 namespace NeverFoundry.WorldFoundry
 {

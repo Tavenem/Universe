@@ -5,13 +5,6 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets;
 using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
@@ -20,6 +13,13 @@ using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.Space.Galaxies;
 using NeverFoundry.WorldFoundry.WorldGrids;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -221,7 +221,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         /// <summary>
         /// Gets a new instance of the indicated <see cref="TerrestrialPlanet"/> type.

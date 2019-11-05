@@ -1,7 +1,7 @@
-﻿using System;
+﻿using NeverFoundry.WorldFoundry.Climate;
+using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.WorldFoundry.Climate;
 
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
@@ -264,7 +264,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             (float[,])info.GetValue(nameof(Elevation), typeof(float[,])),
             (float)info.GetValue(nameof(AverageElevation), typeof(float)),
             (WeatherMaps)info.GetValue(nameof(_weatherMaps), typeof(WeatherMaps)),
-            (HydrologyMaps)info.GetValue(nameof(_hydrologyMaps), typeof(HydrologyMaps))) { }
+            (HydrologyMaps)info.GetValue(nameof(_hydrologyMaps), typeof(HydrologyMaps)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

@@ -1,12 +1,12 @@
 ﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
 using NeverFoundry.WorldFoundry.Climate;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -122,7 +122,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 snowfallMaps,
                 temperatureMapSummer,
                 temperatureMapWinter,
-                maxFlow) { }
+                maxFlow)
+        { }
 
         private IronPlanet(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -160,7 +161,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         private protected override Number GetCoreProportion() => new Number(4, -1);
     }

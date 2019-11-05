@@ -45,7 +45,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
         private protected override async Task GenerateAlbedoAsync() => await SetAlbedoAsync(Randomizer.Instance.NextDouble(0.1, 0.2)).ConfigureAwait(false);
 
         private protected override async Task<Planetoid?> GenerateSatelliteAsync(Number periapsis, double eccentricity, Number maxMass)
-            => await GetNewInstanceAsync<MTypeAsteroid>(ParentId, Vector3.Zero, maxMass,  GetAsteroidSatelliteOrbit(periapsis, eccentricity)).ConfigureAwait(false);
+            => await GetNewInstanceAsync<MTypeAsteroid>(ParentId, Vector3.Zero, maxMass, GetAsteroidSatelliteOrbit(periapsis, eccentricity)).ConfigureAwait(false);
 
         private protected override IMaterial GetComposition(double density, Number mass, IShape shape, double? temperature)
         {

@@ -3,10 +3,10 @@ using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.Space;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
 {
@@ -23,7 +23,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/>.
         /// </summary>
-        internal BlackHole()  { }
+        internal BlackHole() { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/> with the given parameters.
@@ -49,7 +49,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private BlackHole(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -59,7 +60,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         private protected override ValueTask<Number> GetMassAsync()
             => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(6, 30), new Number(4, 31))); // ~3–20 solar masses

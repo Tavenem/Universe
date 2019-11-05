@@ -141,7 +141,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             (int)info.GetValue(nameof(XLength), typeof(int)),
             (int)info.GetValue(nameof(YLength), typeof(int)),
             (float[,])info.GetValue(nameof(PrecipitationMap), typeof(float[,])),
-            (float[,])info.GetValue(nameof(SnowfallMap), typeof(float[,]))) { }
+            (float[,])info.GetValue(nameof(SnowfallMap), typeof(float[,])))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

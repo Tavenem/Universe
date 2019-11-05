@@ -1,7 +1,7 @@
-﻿using System;
+﻿using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using System;
 using System.Collections.Generic;
 using System.Numerics;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 
 namespace NeverFoundry.WorldFoundry.WorldGrids
 {

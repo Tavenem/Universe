@@ -1,14 +1,13 @@
 ﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids;
 using NeverFoundry.WorldFoundry.Place;
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
 {
@@ -65,7 +64,8 @@ namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
                 material,
                 majorRadius,
                 minorRadius,
-                parentId) { }
+                parentId)
+        { }
 
         private OortCloud(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -77,7 +77,8 @@ namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
             (Number?)info.GetValue(nameof(_majorRadius), typeof(Number?)),
             (Number?)info.GetValue(nameof(_minorRadius), typeof(Number?)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Gets a new <see cref="AsteroidField"/> instance.

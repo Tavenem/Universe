@@ -47,7 +47,8 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private SpiralGalaxy(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -58,7 +59,8 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         private protected override ValueTask<IShape> GetShapeAsync()
         {

@@ -4,7 +4,6 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Time;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
@@ -66,7 +65,8 @@ namespace NeverFoundry.WorldFoundry.Space
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string)info.GetValue(nameof(Name), typeof(string)),
             (IMaterial)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (Time)info.GetValue(nameof(Time), typeof(Time))) { }
+            (Time)info.GetValue(nameof(Time), typeof(Time)))
+        { }
 
         /// <summary>
         /// Gets a new <see cref="CelestialLocation"/> instance.

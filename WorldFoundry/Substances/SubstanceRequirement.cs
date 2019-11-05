@@ -87,7 +87,8 @@ namespace NeverFoundry.WorldFoundry
             (IHomogeneousReference)info.GetValue(nameof(Substance), typeof(IHomogeneousReference)),
             (decimal)info.GetValue(nameof(MinimumProportion), typeof(decimal)),
             (decimal?)info.GetValue(nameof(MaximumProportion), typeof(decimal?)),
-            (PhaseType)info.GetValue(nameof(Phase), typeof(PhaseType))) { }
+            (PhaseType)info.GetValue(nameof(Phase), typeof(PhaseType)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

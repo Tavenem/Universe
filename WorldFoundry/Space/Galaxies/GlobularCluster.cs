@@ -2,13 +2,12 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles;
 using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space.Galaxies
 {
@@ -116,7 +115,8 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private GlobularCluster(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -127,7 +127,8 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Generates the central gravitational object of this <see cref="Galaxy"/>, which all others orbit.

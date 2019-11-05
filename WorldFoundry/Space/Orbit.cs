@@ -178,7 +178,8 @@ namespace NeverFoundry.WorldFoundry.Space
             (double)info.GetValue(nameof(TrueAnomaly), typeof(double)),
             (Vector3)info.GetValue(nameof(V0), typeof(Vector3)),
             (Number)info.GetValue(nameof(Period), typeof(Number)),
-            (Duration)info.GetValue(nameof(Epoch), typeof(Duration))) { }
+            (Duration)info.GetValue(nameof(Epoch), typeof(Duration)))
+        { }
 
         /// <summary>
         /// Calculates the change in velocity necessary for the given object to achieve a circular

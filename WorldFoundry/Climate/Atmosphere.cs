@@ -3,13 +3,13 @@ using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 
 namespace NeverFoundry.WorldFoundry.Climate
 {
@@ -153,7 +153,8 @@ namespace NeverFoundry.WorldFoundry.Climate
             (double)info.GetValue(nameof(AtmosphericHeight), typeof(double)),
             (double)info.GetValue(nameof(AtmosphericPressure), typeof(double)),
             (double)info.GetValue(nameof(AtmosphericScaleHeight), typeof(double)),
-            (double)info.GetValue(nameof(AveragePrecipitation), typeof(double))) { }
+            (double)info.GetValue(nameof(AveragePrecipitation), typeof(double)))
+        { }
 
         internal static async Task<Atmosphere> GetNewInstanceAsync(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents)
         {

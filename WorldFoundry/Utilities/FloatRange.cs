@@ -82,7 +82,8 @@ namespace NeverFoundry.WorldFoundry
         private FloatRange(SerializationInfo info, StreamingContext context) : this(
             (float)info.GetValue(nameof(Min), typeof(float)),
             (float)info.GetValue(nameof(Average), typeof(float)),
-            (float)info.GetValue(nameof(Max), typeof(float))) { }
+            (float)info.GetValue(nameof(Max), typeof(float)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

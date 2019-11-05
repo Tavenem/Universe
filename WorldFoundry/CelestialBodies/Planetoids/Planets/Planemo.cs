@@ -3,6 +3,9 @@ using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,9 +13,6 @@ using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
 {
@@ -185,7 +185,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

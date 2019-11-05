@@ -4,7 +4,6 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
@@ -51,7 +50,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private GalaxySupercluster(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -61,7 +61,8 @@ namespace NeverFoundry.WorldFoundry.Space
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string?)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         // General average; 1.0e16–1.0e17 solar masses
         private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(2, 46), new Number(2, 47)));

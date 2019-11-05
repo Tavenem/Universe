@@ -1,16 +1,16 @@
-﻿using System;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
-using System.Text;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using System.Threading.Tasks;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
+using System;
 using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
 {
@@ -126,7 +126,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Gets a new instance of the indicated <see cref="Star"/> type.

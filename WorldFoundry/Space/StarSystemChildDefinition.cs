@@ -1,10 +1,9 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 using NeverFoundry.WorldFoundry.Place;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {

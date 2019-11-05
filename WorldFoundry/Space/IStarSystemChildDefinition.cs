@@ -1,6 +1,6 @@
 ﻿using NeverFoundry.MathAndScience.Numerics.Numbers;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {

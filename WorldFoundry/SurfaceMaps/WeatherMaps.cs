@@ -1,11 +1,11 @@
 ﻿using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Climate;
 using System;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.MathAndScience.Numerics;
 
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
@@ -618,7 +618,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             (FloatRange[,])info.GetValue(nameof(SnowCoverRangeMap), typeof(FloatRange[,])),
             (PrecipitationMaps[])info.GetValue(nameof(PrecipitationMaps), typeof(PrecipitationMaps[])),
             (FloatRange[,])info.GetValue(nameof(TemperatureRangeMap), typeof(FloatRange[,])),
-            (float[,])info.GetValue(nameof(TotalPrecipitationMap), typeof(float[,]))) { }
+            (float[,])info.GetValue(nameof(TotalPrecipitationMap), typeof(float[,])))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

@@ -1,16 +1,8 @@
-﻿using NeverFoundry;
-using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlanets;
@@ -18,6 +10,13 @@ using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPl
 using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space.AsteroidFields;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -60,7 +59,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private StarSystem(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -70,7 +70,8 @@ namespace NeverFoundry.WorldFoundry.Space
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Gets a new <see cref="StarSystem"/> instance.

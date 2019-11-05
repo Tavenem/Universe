@@ -1,11 +1,11 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 using Newtonsoft.Json;
 using System;
 using System.Text;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 
 namespace NeverFoundry.WorldFoundry.Test
 {

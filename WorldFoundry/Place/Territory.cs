@@ -40,7 +40,8 @@ namespace NeverFoundry.WorldFoundry.Place
             (string)info.GetValue(nameof(Id), typeof(string)),
             (IShape)info.GetValue(nameof(Shape), typeof(IShape)),
             (List<string>?)info.GetValue(nameof(_childIds), typeof(List<string>)),
-            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string?)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Adds the given <paramref name="locations"/> to this instance.

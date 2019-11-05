@@ -1,20 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
-using System.Text;
-using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
-using System.Threading.Tasks;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Place;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Permissions;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -210,7 +209,8 @@ namespace NeverFoundry.WorldFoundry.Space
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Gets a new instance of the indicated <see cref="CelestialLocation"/> type.

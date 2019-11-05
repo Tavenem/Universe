@@ -7,7 +7,6 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.Space;
 
 namespace NeverFoundry.WorldFoundry.Place
 {
@@ -114,7 +113,8 @@ namespace NeverFoundry.WorldFoundry.Place
         private Location(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (IShape?)info.GetValue(nameof(Shape), typeof(IShape)),
-            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string?)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         /// <summary>
         /// Determines whether the specified <see cref="Location"/> is contained within the current

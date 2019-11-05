@@ -1,10 +1,10 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
+using NeverFoundry.WorldFoundry.Climate;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.WorldFoundry.Climate;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets
 {
@@ -189,7 +189,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (double?)info.GetValue(nameof(SurfaceGravity), typeof(double?)),
             (double?)info.GetValue(nameof(SurfaceTemperature), typeof(double?)),
             (decimal?)info.GetValue(nameof(WaterRatio), typeof(decimal?)),
-            (decimal?)info.GetValue(nameof(WaterVaporRatio), typeof(decimal?))) { }
+            (decimal?)info.GetValue(nameof(WaterVaporRatio), typeof(decimal?)))
+        { }
 
 #pragma warning disable IDE0060 // Remove unused parameter. Reason: bug causes null coalescing assignment to be considered usused.
         /// <summary>

@@ -9,7 +9,7 @@
 
   <PropertyGroup>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>0.6.7</Version>
+    <Version>0.6.9</Version>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
     <Copyright>Copyright (c) 2019 Wil Stead</Copyright>
@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="NeverFoundry.Extensions" Version="0.1.16" />
-    <PackageReference Include="NeverFoundry.MathAndScience" Version="0.11.3" />
+    <PackageReference Include="NeverFoundry.MathAndScience" Version="0.11.4" />
     <PackageReference Include="System.Drawing.Common" Version="4.6.0" />
     <PackageReference Include="System.Linq.Async" Version="4.0.0" />
   </ItemGroup>

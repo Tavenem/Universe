@@ -1,9 +1,8 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using System;
-using System.Reflection;
-using System.Threading.Tasks;
 using NeverFoundry.WorldFoundry.Place;
+using System;
+using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {

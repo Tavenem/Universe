@@ -1,10 +1,10 @@
-﻿using System;
-using System.Runtime.Serialization;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Space;
+using System;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
@@ -61,7 +61,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
                 velocity,
                 orbit,
                 material,
-                parentId) { }
+                parentId)
+        { }
 
         private BlueGiant(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -75,7 +76,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string)info.GetValue(nameof(ParentId), typeof(string)))
+        { }
 
         private protected override ValueTask<Number> GetMassAsync()
         {

@@ -2,12 +2,12 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
 using NeverFoundry.WorldFoundry.Climate;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
+using System;
+using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlanets
 {
@@ -112,7 +112,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
                 snowfallMaps,
                 temperatureMapSummer,
                 temperatureMapWinter,
-                maxFlow) { }
+                maxFlow)
+        { }
 
         private RockyDwarfPlanet(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
@@ -148,7 +149,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         private protected override IEnumerable<(IMaterial, decimal)> GetCrust(
             IShape planetShape,

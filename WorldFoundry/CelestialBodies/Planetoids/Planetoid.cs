@@ -1,11 +1,15 @@
-﻿using NeverFoundry;
-using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
+using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
+using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -15,11 +19,6 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using System.Threading.Tasks;
-using NeverFoundry.WorldFoundry.CelestialBodies.Stars;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 
 namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 {
@@ -459,7 +458,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
             (byte[][])info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[])info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
             (byte[])info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?))) { }
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+        { }
 
         /// <summary>
         /// Gets a new instance of the indicated <see cref="Planetoid"/> type.

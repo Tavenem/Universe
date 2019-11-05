@@ -1,6 +1,8 @@
 ﻿using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
+using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.SurfaceMapping;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,8 +10,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 
 namespace NeverFoundry.WorldFoundry.Place
 {
@@ -71,7 +71,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </para>
         /// </param>
         public SurfaceRegion(Planetoid planet, Vector3 position, Number latitudeRange)
-            : base(new Frustum(2, position * (planet.Shape.ContainingRadius + planet.Atmosphere.AtmosphericHeight), Number.Min(latitudeRange, MathConstants.PI), 0)) { }
+            : base(planet.Id, new Frustum(2, position * (planet.Shape.ContainingRadius + planet.Atmosphere.AtmosphericHeight), Number.Min(latitudeRange, MathConstants.PI), 0)) { }
 
         private SurfaceRegion(
             string id,
@@ -104,7 +104,8 @@ namespace NeverFoundry.WorldFoundry.Place
             (byte[][]?)info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
             (byte[][]?)info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[]?)info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
-            (byte[]?)info.GetValue(nameof(_temperatureMapWinter), typeof(byte[]))) { }
+            (byte[]?)info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])))
+        { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>

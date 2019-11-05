@@ -81,7 +81,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
             (decimal)info.GetValue(nameof(Proportion), typeof(decimal)),
             (bool)info.GetValue(nameof(_isVein), typeof(bool)),
             (bool)info.GetValue(nameof(_isPerturbation), typeof(bool)),
-            (int)info.GetValue(nameof(Seed), typeof(int))) { }
+            (int)info.GetValue(nameof(Seed), typeof(int)))
+        { }
 
         /// <summary>Indicates whether this instance and a specified object are equal.</summary>
         /// <param name="other">The <see cref="Resource"/> instance to compare with the current
