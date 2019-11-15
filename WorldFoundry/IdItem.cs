@@ -7,7 +7,7 @@ namespace NeverFoundry.WorldFoundry
     /// <summary>
     /// An item with an ID.
     /// </summary>
-    public abstract class IdItem : IEquatable<IdItem>
+    public abstract class IdItem : IIdItem, IEquatable<IdItem>
     {
         /// <summary>
         /// The ID of this item.

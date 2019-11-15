@@ -26,7 +26,7 @@ namespace NeverFoundry.WorldFoundry
         /// <param name="id">The unique id of the item to retrieve.</param>
         /// <returns>The item with the given id, or <see langword="null"/> if no item was found with
         /// that id.</returns>
-        public static async Task<T?> GetItemAsync<T>(string? id) where T : IdItem
+        public static async Task<T?> GetItemAsync<T>(string? id) where T : class, IIdItem
             => string.IsNullOrEmpty(id) ? null : await Instance.GetItemAsync<T>(id).ConfigureAwait(false);
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace NeverFoundry.WorldFoundry
         /// <typeparam name="T">The type of items to enumerate.</typeparam>
         /// <returns>An <see cref="IAsyncEnumerable{T}"/> of items in the data store of the given
         /// type.</returns>
-        public static IAsyncEnumerable<T> GetItemsAsync<T>() where T : IdItem
+        public static IAsyncEnumerable<T> GetItemsAsync<T>() where T : class, IIdItem
             => Instance.GetItemsAsync<T>();
 
         /// <summary>
@@ -46,8 +46,19 @@ namespace NeverFoundry.WorldFoundry
         /// <param name="condition">A condition which items must satisfy.</param>
         /// <returns>An <see cref="IAsyncEnumerable{T}"/> of items in the data store of the given
         /// type.</returns>
-        public static IAsyncEnumerable<T> GetItemsWhereAsync<T>(Func<T, bool> condition) where T : IdItem
+        public static IAsyncEnumerable<T> GetItemsWhereAsync<T>(Func<T, bool> condition) where T : class, IIdItem
             => Instance.GetItemsWhereAsync(condition);
+
+        /// <summary>
+        /// Enumerates all items in the data store of the given type which satisfy the given
+        /// condition.
+        /// </summary>
+        /// <typeparam name="T">The type of items to enumerate.</typeparam>
+        /// <param name="condition">A condition which items must satisfy.</param>
+        /// <returns>An <see cref="IAsyncEnumerable{T}"/> of items in the data store of the given
+        /// type.</returns>
+        public static IAsyncEnumerable<T> GetItemsWhereAwaitAsync<T>(Func<T, Task<bool>> condition) where T : class, IIdItem
+            => Instance.GetItemsWhereAwaitAsync(condition);
 
         /// <summary>
         /// Removes the stored item with the given id.
@@ -61,7 +72,7 @@ namespace NeverFoundry.WorldFoundry
         /// Stores the given <paramref name="item"/>.
         /// </summary>
         /// <typeparam name="T">The type of <see cref="IdItem"/> to store.</typeparam>
-        public static Task SetItemAsync<T>(T item) where T : IdItem
+        public static Task SetItemAsync<T>(T item) where T : class, IIdItem
             => Instance.SetItemAsync(item);
     }
 }
