@@ -34,7 +34,7 @@ namespace NeverFoundry.WorldFoundry.Test
             //Console.WriteLine(json);
 
             var result = JsonConvert.DeserializeObject<TerrestrialPlanet>(json, _JsonSerializerSettings);
-            Assert.AreEqual(planet!.Id, result.Id);
+            Assert.AreEqual(planet!.Id, result?.Id);
         }
 
         [TestMethod]
@@ -96,7 +96,7 @@ namespace NeverFoundry.WorldFoundry.Test
             //Console.WriteLine(json);
 
             var result = JsonConvert.DeserializeObject<Universe>(json, _JsonSerializerSettings);
-            Assert.AreEqual(universe!.Id, result.Id);
+            Assert.AreEqual(universe!.Id, result?.Id);
         }
     }
 }

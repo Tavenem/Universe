@@ -19,8 +19,8 @@ namespace NeverFoundry.WorldFoundry
         /// <param name="id">The unique id of the item to retrieve.</param>
         /// <returns>The item with the given id, or <see langword="null" /> if no item was found with
         /// that id.</returns>
-        public Task<T?> GetItemAsync<T>(string id) where T : class, IIdItem
-            => Task.FromResult(_data.TryGetValue(id, out var item) ? item as T : null);
+        public Task<T?> GetItemAsync<T>(string? id) where T : class, IIdItem
+            => Task.FromResult(string.IsNullOrEmpty(id) ? null : _data.TryGetValue(id, out var item) ? item as T : null);
 
         /// <summary>
         /// Enumerates all items in the data store of the given type.
@@ -58,7 +58,7 @@ namespace NeverFoundry.WorldFoundry
         /// </summary>
         /// <param name="id">The id of the item to remove.</param>
         /// <remarks>Has no effect if there is no stored item with the given id.</remarks>
-        public Task RemoveItemAsync(string id)
+        public Task RemoveItemAsync(string? id)
         {
             if (!string.IsNullOrEmpty(id))
             {
