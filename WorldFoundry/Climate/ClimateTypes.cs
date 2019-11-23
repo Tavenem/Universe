@@ -1,4 +1,6 @@
-﻿namespace NeverFoundry.WorldFoundry.Climate
+﻿using NeverFoundry.MathAndScience.Chemistry;
+
+namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
     /// Static methods related to climate.
@@ -118,31 +120,31 @@
         /// temperature.</returns>
         public static ClimateType GetClimateType(double temperature)
         {
-            if (temperature <= CelestialSubstances.WaterMeltingPoint + 1.5)
+            if (temperature <= Substances.All.Water.MeltingPoint + 1.5)
             {
                 return ClimateType.Polar;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 3)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 3)
             {
                 return ClimateType.Subpolar;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 6)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 6)
             {
                 return ClimateType.Boreal;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 12)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 12)
             {
                 return ClimateType.CoolTemperate;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 18)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 18)
             {
                 return ClimateType.WarmTemperate;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 24)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 24)
             {
                 return ClimateType.Subtropical;
             }
-            else if (temperature <= CelestialSubstances.WaterMeltingPoint + 68)
+            else if (temperature <= Substances.All.Water.MeltingPoint + 68)
             {
                 return ClimateType.Tropical;
             }

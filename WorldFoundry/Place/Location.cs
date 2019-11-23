@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience.Numerics;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
@@ -97,15 +98,10 @@ namespace NeverFoundry.WorldFoundry.Place
             ParentId = parentId;
         }
 
-        private protected Location(string id, string? parentId)
-        {
-            Id = id;
-            ParentId = parentId;
-        }
+        private protected Location(string id, string? parentId) : base(id) => ParentId = parentId;
 
-        private protected Location(string id, IShape? shape, string? parentId)
+        private protected Location(string id, IShape? shape, string? parentId) : base(id)
         {
-            Id = id;
             _shape = shape;
             ParentId = parentId;
         }
@@ -113,8 +109,7 @@ namespace NeverFoundry.WorldFoundry.Place
         private Location(SerializationInfo info, StreamingContext context) : this(
             (string)info.GetValue(nameof(Id), typeof(string)),
             (IShape?)info.GetValue(nameof(Shape), typeof(IShape)),
-            (string?)info.GetValue(nameof(ParentId), typeof(string)))
-        { }
+            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
 
         /// <summary>
         /// Determines whether the specified <see cref="Location"/> is contained within the current
@@ -149,13 +144,14 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// Removes this location and all contained children from the data store.
         /// </summary>
-        public override async Task DeleteAsync()
+        public override async Task<bool> DeleteAsync()
         {
+            var childrenSuccess = true;
             await foreach (var child in GetChildrenAsync())
             {
-                await child.DeleteAsync().ConfigureAwait(false);
+                childrenSuccess &= await child.DeleteAsync().ConfigureAwait(false);
             }
-            await base.DeleteAsync().ConfigureAwait(false);
+            return await base.DeleteAsync().ConfigureAwait(false) && childrenSuccess;
         }
 
         /// <summary>

@@ -32,16 +32,16 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// </summary>
         public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } = new SubstanceRequirement[]
         {
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Oxygen), 0.07m, 0.53m, PhaseType.Gas),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Ammonia), maximumProportion: 5e-5m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.AmmoniumHydrosulfide), maximumProportion: 1e-6m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), maximumProportion: 5e-5m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), maximumProportion: 0.005m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.HydrogenSulfide), maximumProportion: 0),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Methane), maximumProportion: 0.001m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Ozone), maximumProportion: 1e-7m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.Phosphine), maximumProportion: 3e-7m),
-            new SubstanceRequirement(Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), maximumProportion: 2e-6m),
+            new SubstanceRequirement(Substances.All.Oxygen.GetChemicalReference(), 0.07m, 0.53m, PhaseType.Gas),
+            new SubstanceRequirement(Substances.All.Ammonia.GetChemicalReference(), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetChemicalReference(), maximumProportion: 1e-6m),
+            new SubstanceRequirement(Substances.All.CarbonMonoxide.GetChemicalReference(), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.All.CarbonDioxide.GetChemicalReference(), maximumProportion: 0.005m),
+            new SubstanceRequirement(Substances.All.HydrogenSulfide.GetChemicalReference(), maximumProportion: 0),
+            new SubstanceRequirement(Substances.All.Methane.GetChemicalReference(), maximumProportion: 0.001m),
+            new SubstanceRequirement(Substances.All.Ozone.GetChemicalReference(), maximumProportion: 1e-7m),
+            new SubstanceRequirement(Substances.All.Phosphine.GetChemicalReference(), maximumProportion: 3e-7m),
+            new SubstanceRequirement(Substances.All.SulphurDioxide.GetChemicalReference(), maximumProportion: 2e-6m),
         };
 
         /// <summary>
@@ -309,7 +309,7 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// </returns>
         internal IEnumerable<SubstanceRequirement> ConvertRequirementsForPressure(IEnumerable<SubstanceRequirement>? requirements)
         {
-            if (requirements == null)
+            if (requirements is null)
             {
                 yield break;
             }

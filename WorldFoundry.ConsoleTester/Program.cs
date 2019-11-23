@@ -26,7 +26,7 @@ namespace NeverFoundry.WorldFoundry.ConsoleTester
                 while (true)
                 {
                     var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync().ConfigureAwait(false);
-                    if (planet == null)
+                    if (planet is null)
                     {
                         Console.Write("Failed to generate planet.");
                     }

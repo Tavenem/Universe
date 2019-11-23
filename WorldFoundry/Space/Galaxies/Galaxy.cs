@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
@@ -225,7 +226,7 @@ namespace NeverFoundry.WorldFoundry.Space.Galaxies
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.InterstellarMedium);
+            => Substances.All.InterstellarMedium.GetReference();
 
         private protected override async Task InitializeAsync()
         {

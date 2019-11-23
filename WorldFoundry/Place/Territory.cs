@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience.Numerics;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using System;
 using System.Collections.Generic;
@@ -69,13 +70,14 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// Removes this location and all contained children from the data store.
         /// </summary>
-        public override async Task DeleteAsync()
+        public override async Task<bool> DeleteAsync()
         {
-            await foreach (var child in base.GetChildrenAsync())
+            var childrenSuccess = true;
+            await foreach (var child in GetChildrenAsync())
             {
-                await child.DeleteAsync().ConfigureAwait(false);
+                childrenSuccess &= await child.DeleteAsync().ConfigureAwait(false);
             }
-            await base.DeleteAsync().ConfigureAwait(false);
+            return await base.DeleteAsync().ConfigureAwait(false) && childrenSuccess;
         }
 
         /// <summary>

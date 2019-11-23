@@ -1,4 +1,5 @@
 ﻿using NeverFoundry.MathAndScience;
+using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 using NeverFoundry.WorldFoundry.Climate;
@@ -285,14 +286,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             Seasons = precipitationMaps.Length;
 
-            if (TemperatureRangeMap == null)
+            if (TemperatureRangeMap is null)
             {
                 TemperatureRange = FloatRange.Zero;
             }
             else
             {
-                var min = 2f;
-                var max = -2f;
+                var min = float.MaxValue;
+                var max = float.MinValue;
                 var avgSum = 0f;
                 for (var x = 0; x < xLength; x++)
                 {
@@ -487,7 +488,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     (float)(precipitationMaps.Average(x => x.Snowfall.Average) * planet.Atmosphere.MaxSnowfall),
                     (float)(precipitationMaps.Max(x => x.Snowfall.Max) * planet.Atmosphere.MaxSnowfall));
 
-                if (temperatureRanges == null)
+                if (temperatureRanges is null)
                 {
                     SeaIceRangeMap = SurfaceMap.GetInitializedArray(xLength, yLength, FloatRange.Zero);
                     SnowCoverRangeMap = SurfaceMap.GetInitializedArray(xLength, yLength, FloatRange.Zero);
@@ -497,16 +498,16 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     SeaIceRangeMap = SurfaceMap.GetSurfaceMap(
                         (lat, _, x, y) =>
                         {
-                            if (elevationMap[x, y] > 0 || temperatureRanges[x, y].Min > CelestialSubstances.SeawaterMeltingPoint)
+                            if (elevationMap[x, y] > 0 || temperatureRanges[x, y].Min > Substances.All.Seawater.MeltingPoint)
                             {
                                 return FloatRange.Zero;
                             }
-                            if (temperatureRanges[x, y].Max < CelestialSubstances.SeawaterMeltingPoint)
+                            if (temperatureRanges[x, y].Max < Substances.All.Seawater.MeltingPoint)
                             {
                                 return FloatRange.ZeroToOne;
                             }
 
-                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)CelestialSubstances.SeawaterMeltingPoint);
+                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)(Substances.All.Seawater.MeltingPoint ?? 0));
                             if (float.IsNaN(freezeProportion))
                             {
                                 return FloatRange.Zero;
@@ -549,16 +550,16 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         {
                             if (elevationMap[x, y] <= 0
                                 || humidityMap[x, y] <= HumidityType.Perarid
-                                || temperatureRanges[x, y].Min > CelestialSubstances.SeawaterMeltingPoint)
+                                || temperatureRanges[x, y].Min > Substances.All.Seawater.MeltingPoint)
                             {
                                 return FloatRange.Zero;
                             }
-                            if (temperatureRanges[x, y].Max < CelestialSubstances.SeawaterMeltingPoint)
+                            if (temperatureRanges[x, y].Max < Substances.All.Seawater.MeltingPoint)
                             {
                                 return FloatRange.ZeroToOne;
                             }
 
-                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)CelestialSubstances.SeawaterMeltingPoint);
+                            var freezeProportion = temperatureRanges[x, y].Min.InverseLerp(temperatureRanges[x, y].Max, (float)(Substances.All.Seawater.MeltingPoint ?? 0));
                             if (float.IsNaN(freezeProportion))
                             {
                                 return FloatRange.Zero;

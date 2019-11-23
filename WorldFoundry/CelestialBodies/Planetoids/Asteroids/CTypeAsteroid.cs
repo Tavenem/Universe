@@ -62,8 +62,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
             {
                 substances.Add((material, proportion * rock));
             }
-            substances.Add((Substances.GetMixtureReference(Substances.Mixtures.BallClay), clay));
-            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), ice));
+            substances.Add((Substances.All.BallClay.GetReference(), clay));
+            substances.Add((Substances.All.Water.GetChemicalReference(), ice));
 
             return new Material(
                 substances,

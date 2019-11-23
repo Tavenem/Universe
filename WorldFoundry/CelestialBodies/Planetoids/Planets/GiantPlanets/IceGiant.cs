@@ -88,7 +88,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
                 innerTemp = diamondTemp;
 
                 yield return (new Material(
-                    Substances.GetChemicalReference(Substances.Chemicals.Diamond),
+                    Substances.All.Diamond.GetChemicalReference(),
                     (double)(diamondMass / diamondShape.Volume),
                     diamondMass,
                     diamondShape,
@@ -112,19 +112,19 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
             var components = new List<(ISubstanceReference, decimal)>();
             if (ch4 > 0 || nh4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), water));
+                components.Add((Substances.All.Water.GetChemicalReference(), water));
                 if (ch4 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                    components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
                 }
                 if (nh4 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh4));
+                    components.Add((Substances.All.Ammonia.GetChemicalReference(), nh4));
                 }
             }
             else
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), 1));
+                components.Add((Substances.All.Water.GetChemicalReference(), 1));
             }
 
             yield return (new Material(

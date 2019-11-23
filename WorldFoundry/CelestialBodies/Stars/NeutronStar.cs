@@ -105,7 +105,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Stars
         private protected override ValueTask<SpectralClass> GenerateSpectralClassAsync() => new ValueTask<SpectralClass>(SpectralClass.Other);
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetHomogeneousSubstanceReference(Substances.HomogeneousSubstances.NeutronDegenerateMatter);
+            => Substances.All.NeutronDegenerateMatter.GetHomogeneousReference();
 
         private protected override double? GetTemperature()
             => Randomizer.Instance.NormalDistributionSample(600000, 133333);

@@ -73,7 +73,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private protected override ValueTask<IShape> GetShapeAsync() => new ValueTask<IShape>(new Sphere(Space, Position));
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IonizedCloud);
+            => Substances.All.IonizedCloud.GetReference();
 
         private protected override async Task PrepopulateRegionAsync()
         {

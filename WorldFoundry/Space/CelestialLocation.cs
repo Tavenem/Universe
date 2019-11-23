@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
@@ -192,7 +193,6 @@ namespace NeverFoundry.WorldFoundry.Space
             IMaterial? material,
             string? parentId) : base(id, parentId)
         {
-            Id = id;
             Name = name;
             _isPrepopulated = isPrepopulated;
             _albedo = albedo;
@@ -209,8 +209,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string)))
-        { }
+            (string)info.GetValue(nameof(ParentId), typeof(string))) { }
 
         /// <summary>
         /// Gets a new instance of the indicated <see cref="CelestialLocation"/> type.

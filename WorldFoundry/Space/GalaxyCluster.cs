@@ -69,6 +69,6 @@ namespace NeverFoundry.WorldFoundry.Space
             => new ValueTask<IShape>(new Sphere(Randomizer.Instance.NextNumber(new Number(3, 23), new Number(1.5, 24)), Position)); // ~1–5 Mpc
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
+            => Substances.All.IntraclusterMedium.GetReference();
     }
 }

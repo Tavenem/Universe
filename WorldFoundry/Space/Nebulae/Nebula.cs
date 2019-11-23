@@ -82,6 +82,6 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.MolecularCloud);
+            => Substances.All.MolecularCloud.GetReference();
     }
 }

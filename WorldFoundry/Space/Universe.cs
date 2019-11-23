@@ -117,7 +117,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private protected override ValueTask<IShape> GetShapeAsync() => new ValueTask<IShape>(new Sphere(new Number(1.89214, 33)));
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.WarmHotIntergalacticMedium);
+            => Substances.All.WarmHotIntergalacticMedium.GetReference();
 
         private protected override double? GetTemperature() => 2.73;
     }

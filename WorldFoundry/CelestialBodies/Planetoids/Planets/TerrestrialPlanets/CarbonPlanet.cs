@@ -251,9 +251,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             var coreSteel = Randomizer.Instance.NextDecimal(0.945m);
             return new (ISubstanceReference, decimal)[]
             {
-                (Substances.GetChemicalReference(Substances.Chemicals.Iron), 0.945m - coreSteel),
-                (Substances.GetSolutionReference(Substances.Solutions.CarbonSteel), coreSteel),
-                (Substances.GetChemicalReference(Substances.Chemicals.Nickel), 0.055m),
+                (Substances.All.Iron.GetChemicalReference(), 0.945m - coreSteel),
+                (Substances.All.CarbonSteel.GetHomogeneousReference(), coreSteel),
+                (Substances.All.Nickel.GetChemicalReference(), 0.055m),
             };
         }
 
@@ -322,81 +322,81 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             var components = new List<(ISubstanceReference, decimal)>();
             if (graphite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.AmorphousCarbon), graphite));
+                components.Add((Substances.All.AmorphousCarbon.GetChemicalReference(), graphite));
             }
             if (coal > 0)
             {
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Anthracite), coal));
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.BituminousCoal), coal));
+                components.Add((Substances.All.Anthracite.GetReference(), coal));
+                components.Add((Substances.All.BituminousCoal.GetReference(), coal));
             }
             if (oil > 0)
             {
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Petroleum), oil));
+                components.Add((Substances.All.Petroleum.GetReference(), oil));
             }
             if (gas > 0)
             {
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.NaturalGas), gas));
+                components.Add((Substances.All.NaturalGas.GetReference(), gas));
             }
             if (diamond > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Diamond), diamond));
+                components.Add((Substances.All.Diamond.GetChemicalReference(), diamond));
             }
 
             if (chalcopyrite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chalcopyrite), chalcopyrite));
+                components.Add((Substances.All.Chalcopyrite.GetChemicalReference(), chalcopyrite));
             }
             if (chromite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chromite), chromite));
+                components.Add((Substances.All.Chromite.GetChemicalReference(), chromite));
             }
             if (sphalerite > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.Sphalerite), sphalerite));
+                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
             }
             if (galena > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Galena), galena));
+                components.Add((Substances.All.Galena.GetChemicalReference(), galena));
             }
             if (uraninite > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.Uraninite), uraninite));
+                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
             }
             if (cassiterite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cassiterite), cassiterite));
+                components.Add((Substances.All.Cassiterite.GetChemicalReference(), cassiterite));
             }
             if (cinnabar > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cinnabar), cinnabar));
+                components.Add((Substances.All.Cinnabar.GetChemicalReference(), cinnabar));
             }
             if (acanthite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Acanthite), acanthite));
+                components.Add((Substances.All.Acanthite.GetChemicalReference(), acanthite));
             }
             if (sperrylite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Sperrylite), sperrylite));
+                components.Add((Substances.All.Sperrylite.GetChemicalReference(), sperrylite));
             }
             if (gold > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Gold), gold));
+                components.Add((Substances.All.Gold.GetChemicalReference(), gold));
             }
             if (bauxite > 0)
             {
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Bauxite), bauxite));
+                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
             }
             if (hematite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Hematite), hematite));
+                components.Add((Substances.All.Hematite.GetChemicalReference(), hematite));
             }
             if (magnetite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Magnetite), magnetite));
+                components.Add((Substances.All.Magnetite.GetChemicalReference(), magnetite));
             }
             if (ilmenite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ilmenite), ilmenite));
+                components.Add((Substances.All.Ilmenite.GetChemicalReference(), ilmenite));
             }
 
             yield return (new Material(
@@ -443,7 +443,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 innerTemp = lowerLayerTemp;
 
                 yield return (new Material(
-                    Substances.GetChemicalReference(Substances.Chemicals.SiliconCarbide),
+                    Substances.All.SiliconCarbide.GetChemicalReference(),
                     (double)(lowerLayerMass / lowerLayerShape.Volume),
                     lowerLayerMass,
                     lowerLayerShape,
@@ -465,7 +465,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
 
             yield return (new Material(
-                Substances.GetChemicalReference(Substances.Chemicals.Diamond),
+                Substances.All.Diamond.GetChemicalReference(),
                 (double)(upperLayerMass / upperLayerShape.Volume),
                 upperLayerMass,
                 upperLayerShape,

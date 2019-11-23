@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience.Chemistry;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
@@ -156,7 +157,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
+            => Substances.All.IntraclusterMedium.GetReference();
 
         private protected override async Task InitializeAsync()
         {

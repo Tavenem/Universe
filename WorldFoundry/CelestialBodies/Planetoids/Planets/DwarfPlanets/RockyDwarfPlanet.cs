@@ -176,7 +176,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
             }
             if (dust > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust));
+                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
             }
             yield return (new Material(
                 components,

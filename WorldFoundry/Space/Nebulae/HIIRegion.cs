@@ -84,7 +84,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IonizedCloud);
+            => Substances.All.IonizedCloud.GetReference();
 
         private protected override double? GetTemperature() => 10000;
     }

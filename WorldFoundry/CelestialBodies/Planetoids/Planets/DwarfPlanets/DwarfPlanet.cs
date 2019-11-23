@@ -205,22 +205,22 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
 
             var crust = Material.GetSurface();
 
-            var water = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.Water));
+            var water = crust.GetProportion(Substances.All.Water.GetChemicalReference());
             var anyIces = water > 0;
 
-            var n2 = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.Nitrogen));
+            var n2 = crust.GetProportion(Substances.All.Nitrogen.GetChemicalReference());
             anyIces &= n2 > 0;
 
-            var ch4 = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.Methane));
+            var ch4 = crust.GetProportion(Substances.All.Methane.GetChemicalReference());
             anyIces &= ch4 > 0;
 
-            var co = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide));
+            var co = crust.GetProportion(Substances.All.CarbonMonoxide.GetChemicalReference());
             anyIces &= co > 0;
 
-            var co2 = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide));
+            var co2 = crust.GetProportion(Substances.All.CarbonDioxide.GetChemicalReference());
             anyIces &= co2 > 0;
 
-            var nh3 = crust.GetProportion(Substances.GetChemicalReference(Substances.Chemicals.Ammonia));
+            var nh3 = crust.GetProportion(Substances.All.Ammonia.GetChemicalReference());
             anyIces &= nh3 > 0;
 
             if (!anyIces)
@@ -231,27 +231,27 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
             var components = new List<(ISubstanceReference, decimal)>();
             if (water > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), water));
+                components.Add((Substances.All.Water.GetChemicalReference(), water));
             }
             if (n2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Nitrogen), n2));
+                components.Add((Substances.All.Nitrogen.GetChemicalReference(), n2));
             }
             if (ch4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
             }
             if (co > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co));
+                components.Add((Substances.All.CarbonMonoxide.GetChemicalReference(), co));
             }
             if (co2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2));
+                components.Add((Substances.All.CarbonDioxide.GetChemicalReference(), co2));
             }
             if (nh3 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3));
+                components.Add((Substances.All.Ammonia.GetChemicalReference(), nh3));
             }
             _atmosphere = await Atmosphere.GetNewInstanceAsync(this, Randomizer.Instance.NextDouble(2.5), components.ToArray()).ConfigureAwait(false);
         }

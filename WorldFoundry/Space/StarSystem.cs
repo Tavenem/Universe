@@ -505,7 +505,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // If this is the first planet, the orbit is selected based on the number of giants the
             // system is to have.
-            if (innerPlanet == null)
+            if (innerPlanet is null)
             {
                 // Evaluates to ~0.3 AU if there is only 1 giant, ~5 AU if there are 4 giants (as
                 // would be the case for the Solar system), and ~8 AU if there are 6 giants.
@@ -1061,7 +1061,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // If this is the first planet generated, and there are to be any
             // giants, generate a giant first.
-            if (planetarySystemInfo.InnerPlanet == null && planetarySystemInfo.TotalGiants > 0)
+            if (planetarySystemInfo.InnerPlanet is null && planetarySystemInfo.TotalGiants > 0)
             {
                 if (planetarySystemInfo.NumGiants > 0)
                 {
@@ -1263,7 +1263,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.InterplanetaryMedium);
+            => Substances.All.InterplanetaryMedium.GetReference();
 
         private class PlanetarySystemInfo
         {

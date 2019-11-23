@@ -94,7 +94,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             PrecipitationMap = precipitation;
             SnowfallMap = snowfall;
 
-            if (precipitation == null)
+            if (precipitation is null)
             {
                 Precipitation = FloatRange.Zero;
             }
@@ -115,7 +115,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 Precipitation = new FloatRange(min, sum / (xLength * yLength), max);
             }
 
-            if (snowfall == null)
+            if (snowfall is null)
             {
                 Snowfall = FloatRange.Zero;
             }

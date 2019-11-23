@@ -77,6 +77,6 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.BlackHoles
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetHomogeneousSubstanceReference(Substances.HomogeneousSubstances.Fuzzball);
+            => Substances.All.Fuzzball.GetHomogeneousReference();
     }
 }

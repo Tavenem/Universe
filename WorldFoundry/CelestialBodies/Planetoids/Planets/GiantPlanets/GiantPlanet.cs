@@ -207,25 +207,25 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
 
             var components = new List<(ISubstanceReference, decimal)>()
             {
-                (Substances.GetChemicalReference(Substances.Chemicals.Hydrogen), h),
-                (Substances.GetChemicalReference(Substances.Chemicals.Helium), he),
-                (Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4),
+                (Substances.All.Hydrogen.GetChemicalReference(), h),
+                (Substances.All.Helium.GetChemicalReference(), he),
+                (Substances.All.Methane.GetChemicalReference(), ch4),
             };
             if (c2h6 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ethane), c2h6));
+                components.Add((Substances.All.Ethane.GetChemicalReference(), c2h6));
             }
             if (nh3 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3));
+                components.Add((Substances.All.Ammonia.GetChemicalReference(), nh3));
             }
             if (waterVapor > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), waterVapor));
+                components.Add((Substances.All.Water.GetChemicalReference(), waterVapor));
             }
             if (nh4sh > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.AmmoniumHydrosulfide), nh4sh));
+                components.Add((Substances.All.AmmoniumHydrosulfide.GetChemicalReference(), nh4sh));
             }
 
             _atmosphere = await Atmosphere.GetNewInstanceAsync(this, 1000, components.ToArray()).ConfigureAwait(false);
@@ -329,7 +329,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
             var innerCoreRadius = planetShape.ContainingRadius * coreProportion * innerCoreProportion;
             var innerCoreShape = new Sphere(innerCoreRadius, planetShape.Position);
             yield return (new Material(
-                Substances.GetSolutionReference(Substances.Solutions.IronNickelAlloy),
+                Substances.All.IronNickelAlloy.GetHomogeneousReference(),
                 (double)(innerCoreMass / innerCoreShape.Volume),
                 innerCoreMass,
                 innerCoreShape,
@@ -401,7 +401,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
                 innerTemp = metalHTemp;
 
                 yield return (new Material(
-                    Substances.GetChemicalReference(Substances.Chemicals.MetallicHydrogen),
+                    Substances.All.MetallicHydrogen.GetChemicalReference(),
                     (double)(metalHMass / metalHShape.Volume),
                     metalHMass,
                     metalHShape,
@@ -439,25 +439,25 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.GiantPlan
 
             var components = new List<(ISubstanceReference, decimal)>()
             {
-                (Substances.GetChemicalReference(Substances.Chemicals.Hydrogen), 0.71m),
-                (Substances.GetChemicalReference(Substances.Chemicals.Helium), 0.24m),
-                (Substances.GetChemicalReference(Substances.Chemicals.Neon), ne),
+                (Substances.All.Hydrogen.GetChemicalReference(), 0.71m),
+                (Substances.All.Helium.GetChemicalReference(), 0.24m),
+                (Substances.All.Neon.GetChemicalReference(), ne),
             };
             if (ch4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
             }
             if (nh4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh4));
+                components.Add((Substances.All.Ammonia.GetChemicalReference(), nh4));
             }
             if (c2h6 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ethane), c2h6));
+                components.Add((Substances.All.Ethane.GetChemicalReference(), c2h6));
             }
             if (water > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), water));
+                components.Add((Substances.All.Water.GetChemicalReference(), water));
             }
 
             yield return (new Material(

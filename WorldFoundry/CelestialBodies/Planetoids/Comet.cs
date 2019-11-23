@@ -200,14 +200,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
             _atmosphere = await Atmosphere.GetNewInstanceAsync(
                 this,
                 1e-8,
-                (Substances.GetChemicalReference(Substances.Chemicals.Water), water),
-                (Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust),
-                (Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co),
-                (Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2),
-                (Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3),
-                (Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4),
-                (Substances.GetChemicalReference(Substances.Chemicals.HydrogenSulfide), h2s),
-                (Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2))
+                (Substances.All.Water.GetChemicalReference(), water),
+                (Substances.All.CosmicDust.GetHomogeneousReference(), dust),
+                (Substances.All.CarbonMonoxide.GetChemicalReference(), co),
+                (Substances.All.CarbonDioxide.GetChemicalReference(), co2),
+                (Substances.All.Ammonia.GetChemicalReference(), nh3),
+                (Substances.All.Methane.GetChemicalReference(), ch4),
+                (Substances.All.HydrogenSulfide.GetChemicalReference(), h2s),
+                (Substances.All.SulphurDioxide.GetChemicalReference(), so2))
                 .ConfigureAwait(false);
         }
 

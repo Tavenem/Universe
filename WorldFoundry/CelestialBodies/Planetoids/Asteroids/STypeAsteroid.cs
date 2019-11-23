@@ -56,9 +56,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Asteroids
             {
                 substances.Add((material, proportion * 0.427m));
             }
-            substances.Add((Substances.GetSolutionReference(Substances.Solutions.IronNickelAlloy), 0.568m));
-            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Gold), gold));
-            substances.Add((Substances.GetChemicalReference(Substances.Chemicals.Platinum), 0.005m - gold));
+            substances.Add((Substances.All.IronNickelAlloy.GetHomogeneousReference(), 0.568m));
+            substances.Add((Substances.All.Gold.GetChemicalReference(), gold));
+            substances.Add((Substances.All.Platinum.GetChemicalReference(), 0.005m - gold));
 
             return new Material(
                 substances,

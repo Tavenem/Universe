@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
@@ -46,7 +47,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// </summary>
         private static readonly Dictionary<double, double> _HadleyValues = new Dictionary<double, double>();
 
-        private static readonly double _LowTemp = CelestialSubstances.WaterMeltingPoint - 16;
+        private static readonly double _LowTemp = (Substances.All.Water.MeltingPoint ?? 0) - 16;
 
         internal double? _greenhouseEffect;
 
@@ -648,13 +649,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// Removes this location and all contained children from the data store, as well as all
         /// satellites.
         /// </summary>
-        public override async Task DeleteAsync()
+        public override async Task<bool> DeleteAsync()
         {
-            await foreach (var satellite in GetSatellitesAsync())
+            var childrenSuccess = true;
+            await foreach (var child in GetSatellitesAsync())
             {
-                await satellite.DeleteAsync().ConfigureAwait(false);
+                childrenSuccess &= await child.DeleteAsync().ConfigureAwait(false);
             }
-            await base.DeleteAsync().ConfigureAwait(false);
+            return await base.DeleteAsync().ConfigureAwait(false) && childrenSuccess;
         }
 
         /// <summary>
@@ -2014,7 +2016,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 
             var precipitation = avgPrecipitation * relativeHumidity;
 
-            if (temperature <= CelestialSubstances.WaterMeltingPoint)
+            if (temperature <= Substances.All.Water.MeltingPoint)
             {
                 snow = precipitation * Atmosphere.SnowToRainRatio;
             }
@@ -2226,7 +2228,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
 
             // Also add halite (rock salt) as a resource, despite not being an ore or gem.
             AddResources(Material.GetSurface()
-                  .Constituents.Where(x => x.substance.Equals(Substances.GetChemicalReference(Substances.Chemicals.SodiumChloride)))
+                  .Constituents.Where(x => x.substance.Equals(Substances.All.SodiumChloride.GetChemicalReference()))
                   .Select(x => (x.substance, x.proportion, false))
                   ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
 
@@ -2237,7 +2239,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
                 var sulfurProportion = (decimal)Randomizer.Instance.NormalDistributionSample(3.5e-5, 1.75e-6);
                 if (sulfurProportion > 0)
                 {
-                    AddResource(Substances.GetChemicalReference(Substances.Chemicals.Sulfur), sulfurProportion, false);
+                    AddResource(Substances.All.Sulfur.GetChemicalReference(), sulfurProportion, false);
                 }
             }
         }

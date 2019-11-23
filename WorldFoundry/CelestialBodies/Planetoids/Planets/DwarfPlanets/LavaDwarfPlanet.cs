@@ -178,7 +178,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
             }
             if (dust > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust));
+                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
             }
             yield return (new Material(
                 components,
@@ -188,6 +188,6 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.DwarfPlan
         }
 
         private protected override ISubstanceReference GetMantleSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.Peridotite);
+            => Substances.All.Peridotite.GetReference();
     }
 }

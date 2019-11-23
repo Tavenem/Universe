@@ -109,6 +109,6 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.IntraclusterMedium);
+            => Substances.All.IntraclusterMedium.GetReference();
     }
 }

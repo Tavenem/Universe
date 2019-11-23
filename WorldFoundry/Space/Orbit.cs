@@ -1,4 +1,5 @@
-﻿using NeverFoundry.MathAndScience.Constants.Numbers;
+﻿using NeverFoundry.DataStorage;
+using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
@@ -486,7 +487,7 @@ namespace NeverFoundry.WorldFoundry.Space
             double argPeriapsis,
             double trueAnomaly)
         {
-            if (orbitingObject == null)
+            if (orbitingObject is null)
             {
                 throw new ArgumentNullException(nameof(orbitingObject), $"{nameof(orbitingObject)} cannot be null");
             }

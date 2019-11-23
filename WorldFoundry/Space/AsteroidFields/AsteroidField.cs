@@ -193,7 +193,7 @@ namespace NeverFoundry.WorldFoundry.Space.AsteroidFields
         }
 
         private protected override ISubstanceReference? GetSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.InterplanetaryMedium);
+            => Substances.All.InterplanetaryMedium.GetReference();
 
         private protected override async Task InitializeChildAsync(CelestialLocation child)
         {

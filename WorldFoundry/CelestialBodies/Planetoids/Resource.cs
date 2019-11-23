@@ -37,7 +37,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         {
             get
             {
-                if (_noise == null)
+                if (_noise is null)
                 {
                     _noise = new FastNoise(Seed, 10, FastNoise.NoiseType.SimplexFractal, gain: 0.75f);
                     _noise.SetFractalLacunarity(3);

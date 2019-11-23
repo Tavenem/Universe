@@ -506,7 +506,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             float[,]? precipitationMap = null,
             double? averageElevation = null)
         {
-            if (planet == null)
+            if (planet is null)
             {
                 throw new ArgumentNullException(nameof(planet));
             }
@@ -524,11 +524,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap);
             }
 
-            if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
-            if (precipitationMap == null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
+            if (precipitationMap is null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
             {
                 precipitationMap = (await GetWeatherMapsAsync(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap, averageElevation)
                     .ConfigureAwait(false))
@@ -778,11 +778,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
-            if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }
-            if (precipitationMap == null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
+            if (precipitationMap is null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
             {
                 precipitationMap = (await planet.GetWeatherMapsAsync(region, resolution, 1, elevationMap, averageElevation)
                     .ConfigureAwait(false))
@@ -1224,7 +1224,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double[,]? elevationMap = null,
             double? averageElevation = null)
         {
-            if (planet == null)
+            if (planet is null)
             {
                 throw new ArgumentNullException(nameof(planet));
             }
@@ -1461,7 +1461,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var latitude = planet.VectorToLatitude(region.Position);
             var range = (double)((Frustum)region.Shape).FieldOfViewAngle;
 
-            if (elevationMap == null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }

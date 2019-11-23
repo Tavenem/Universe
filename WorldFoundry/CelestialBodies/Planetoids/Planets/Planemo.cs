@@ -329,7 +329,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
         private protected virtual Number GetCoreProportion() => new Number(15, -2);
 
         private protected virtual (ISubstanceReference, decimal)[] GetCoreConstituents()
-            => new (ISubstanceReference, decimal)[] { (Substances.GetSolutionReference(Substances.Solutions.IronNickelAlloy), 1) };
+            => new (ISubstanceReference, decimal)[] { (Substances.All.IronNickelAlloy.GetHomogeneousReference(), 1) };
 
         private protected virtual IEnumerable<(IMaterial, decimal)> GetCrust(
             IShape planetShape,
@@ -376,31 +376,31 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
 
             var components = new List<(ISubstanceReference, decimal)>()
             {
-                (Substances.GetSolutionReference(Substances.Solutions.CosmicDust), dust),
+                (Substances.All.CosmicDust.GetHomogeneousReference(), dust),
             };
             if (waterIce > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), waterIce));
+                components.Add((Substances.All.Water.GetChemicalReference(), waterIce));
             }
             if (n2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Nitrogen), n2));
+                components.Add((Substances.All.Nitrogen.GetChemicalReference(), n2));
             }
             if (ch4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
             }
             if (co > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co));
+                components.Add((Substances.All.CarbonMonoxide.GetChemicalReference(), co));
             }
             if (co2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2));
+                components.Add((Substances.All.CarbonDioxide.GetChemicalReference(), co2));
             }
             if (nh3 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ammonia), nh3));
+                components.Add((Substances.All.Ammonia.GetChemicalReference(), nh3));
             }
             yield return (new Material(
                 components,
@@ -439,7 +439,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets
         }
 
         private protected virtual ISubstanceReference GetMantleSubstance()
-            => Substances.GetChemicalReference(Substances.Chemicals.Water);
+            => Substances.All.Water.GetChemicalReference();
 
         private protected override async ValueTask<Number> GetMassAsync()
         {

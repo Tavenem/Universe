@@ -676,12 +676,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             double adjustedAtmosphericPressure)
         {
             var proportionInHydrosphere = Hydrosphere.GetProportion(substance);
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var water = Substances.All.Water.GetChemicalReference();
             var isWater = substance.Equals(water);
             if (isWater)
             {
                 proportionInHydrosphere = Hydrosphere.GetProportion(x =>
-                    x.Equals(Substances.GetSolutionReference(Substances.Solutions.Seawater))
+                    x.Equals(Substances.All.Seawater.GetHomogeneousReference())
                     || x.Equals(water));
             }
 
@@ -730,30 +730,30 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // trace atmospheric gases, never surface liquids or ices, or in large enough quantities
             // to form precipitation.
 
-            var methane = Substances.GetChemicalReference(Substances.Chemicals.Methane);
+            var methane = Substances.All.Methane.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, methane, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
-            var carbonMonoxide = Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide);
+            var carbonMonoxide = Substances.All.CarbonMonoxide.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
-            var carbonDioxide = Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide);
+            var carbonDioxide = Substances.All.CarbonDioxide.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
-            var nitrogen = Substances.GetChemicalReference(Substances.Chemicals.Nitrogen);
+            var nitrogen = Substances.All.Nitrogen.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, nitrogen, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
-            var oxygen = Substances.GetChemicalReference(Substances.Chemicals.Oxygen);
+            var oxygen = Substances.All.Oxygen.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, oxygen, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
             // No need to check for ozone, since it is only added to atmospheres on planets with
             // liquid surface water, which means temperatures too high for liquid or solid ozone.
 
-            var sulphurDioxide = Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide);
+            var sulphurDioxide = Substances.All.SulphurDioxide.GetChemicalReference();
             adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
 
             // Water is handled differently, since the planet may already have surface water.
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+            var water = Substances.All.Water.GetChemicalReference();
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
             if (Hydrosphere.Contains(water)
                 || Hydrosphere.Contains(seawater)
                 || Atmosphere.Material.Contains(water))
@@ -788,42 +788,42 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
             // carbon-silicate cycle.
 
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var water = Substances.All.Water.GetChemicalReference();
             var air = Atmosphere.Material is LayeredComposite lc
                 ? lc.Layers[0].material
                 : Atmosphere.Material;
             if ((double)(air?.GetProportion(water) ?? 0) * Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
             {
-                var carbonDioxide = Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide);
+                var carbonDioxide = Substances.All.CarbonDioxide.GetChemicalReference();
                 var co2 = air?.GetProportion(carbonDioxide) ?? 0;
                 if (co2 >= 1e-3m) // reduce CO2 if not already trace
                 {
                     co2 = Randomizer.Instance.NextDecimal(15e-6m, 0.001m);
 
                     // Replace most of the CO2 with inert gases.
-                    var nitrogen = Substances.GetChemicalReference(Substances.Chemicals.Nitrogen);
+                    var nitrogen = Substances.All.Nitrogen.GetChemicalReference();
                     var n2 = Atmosphere.Material.GetProportion(nitrogen) + Atmosphere.Material.GetProportion(carbonDioxide) - co2;
                     Atmosphere.Material.AddConstituent(carbonDioxide, co2);
 
                     // Some portion of the N2 may be Ar instead.
-                    var argon = Substances.GetChemicalReference(Substances.Chemicals.Argon);
+                    var argon = Substances.All.Argon.GetChemicalReference();
                     var ar = Math.Max(Atmosphere.Material.GetProportion(argon), n2 * Randomizer.Instance.NextDecimal(-0.02m, 0.04m));
                     Atmosphere.Material.AddConstituent(argon, ar);
                     n2 -= ar;
 
                     // An even smaller fraction may be Kr.
-                    var krypton = Substances.GetChemicalReference(Substances.Chemicals.Krypton);
+                    var krypton = Substances.All.Krypton.GetChemicalReference();
                     var kr = Math.Max(Atmosphere.Material.GetProportion(krypton), n2 * Randomizer.Instance.NextDecimal(-25e-5m, 0.0005m));
                     Atmosphere.Material.AddConstituent(krypton, kr);
                     n2 -= kr;
 
                     // An even smaller fraction may be Xe or Ne.
-                    var xenon = Substances.GetChemicalReference(Substances.Chemicals.Xenon);
+                    var xenon = Substances.All.Xenon.GetChemicalReference();
                     var xe = Math.Max(Atmosphere.Material.GetProportion(xenon), n2 * Randomizer.Instance.NextDecimal(-18e-6m, 35e-6m));
                     Atmosphere.Material.AddConstituent(xenon, xe);
                     n2 -= xe;
 
-                    var neon = Substances.GetChemicalReference(Substances.Chemicals.Neon);
+                    var neon = Substances.All.Neon.GetChemicalReference();
                     var ne = Math.Max(Atmosphere.Material.GetProportion(neon), n2 * Randomizer.Instance.NextDecimal(-18e-6m, 35e-6m));
                     Atmosphere.Material.AddConstituent(neon, ne);
                     n2 -= ne;
@@ -844,7 +844,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             double vaporPressure,
             ref double adjustedAtmosphericPressure)
         {
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var water = Substances.All.Water.GetChemicalReference();
 
             // Fully precipitate out of the atmosphere when below the freezing point.
             if (!substance.MeltingPoint.HasValue || surfaceTemp < substance.MeltingPoint.Value)
@@ -892,7 +892,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                         // For water, also add a corresponding amount of oxygen, if it's not already present.
                         if (CanHaveOxygen)
                         {
-                            var oxygen = Substances.GetChemicalReference(Substances.Chemicals.Oxygen);
+                            var oxygen = Substances.All.Oxygen.GetChemicalReference();
                             var o2 = Atmosphere.Material.GetProportion(oxygen);
                             previousGasFraction += o2;
                             o2 = Math.Max(o2, vaporProportion * 0.0001m);
@@ -928,7 +928,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 return;
             }
 
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var water = Substances.All.Water.GetChemicalReference();
             if (substance.Equals(water))
             {
                 _hydrosphere = Hydrosphere.GetHomogenized();
@@ -942,7 +942,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             if (substance.Equals(water))
             {
-                var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+                var seawater = Substances.All.Seawater.GetHomogeneousReference();
                 Hydrosphere.GetSurface().RemoveConstituent(seawater);
 
                 // It is presumed that photodissociation will eventually reduce the amount of water
@@ -951,7 +951,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 var waterVapor = Math.Min(gasProportion, Randomizer.Instance.NextDecimal(0.001m));
                 gasProportion = waterVapor;
 
-                var oxygen = Substances.GetChemicalReference(Substances.Chemicals.Oxygen);
+                var oxygen = Substances.All.Oxygen.GetChemicalReference();
                 previousGasProportion += Atmosphere.Material.GetProportion(oxygen);
                 var o2 = gasProportion * 0.0001m;
                 gasProportion += o2;
@@ -972,8 +972,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
         private void FractionHydrophere(double temperature)
         {
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
+            var water = Substances.All.Water.GetChemicalReference();
 
             var seawaterProportion = Hydrosphere.GetProportion(seawater);
             var waterProportion = 1 - seawaterProportion;
@@ -981,7 +981,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             var depth = SeaLevel + (MaxElevation / 2);
             if (depth > 0)
             {
-                var stateTop = CelestialSubstances.SeawaterMeltingPoint <= temperature
+                var stateTop = Substances.All.Seawater.MeltingPoint <= temperature
                     ? PhaseType.Liquid
                     : PhaseType.Solid;
 
@@ -990,7 +990,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     : depth < 200
                         ? temperature
                         : temperature.Lerp(277, (depth - 200) / 800);
-                var stateBottom = CelestialSubstances.SeawaterMeltingPoint <= tempBottom
+                var stateBottom = Substances.All.Seawater.MeltingPoint <= tempBottom
                     ? PhaseType.Liquid
                     : PhaseType.Solid;
 
@@ -1088,8 +1088,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             var adjustedAtmosphericPressure = Atmosphere.AtmosphericPressure;
 
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+            var water = Substances.All.Water.GetChemicalReference();
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
             // Water may be removed, or if not may remove CO2 from the atmosphere, depending on
             // planetary conditions.
             if (Hydrosphere.Contains(water)
@@ -1263,8 +1263,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
             // chance of water vapor without significant surface water (results of cometary deposits, etc.)
             var waterVapor = 0.0m;
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+            var water = Substances.All.Water.GetChemicalReference();
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
             var surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
             if (CanHaveWater && !surfaceWater)
             {
@@ -1304,42 +1304,42 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             var components = new List<(ISubstanceReference, decimal)>()
             {
-                (Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2),
-                (Substances.GetChemicalReference(Substances.Chemicals.Helium), he),
-                (Substances.GetChemicalReference(Substances.Chemicals.Hydrogen), h),
-                (Substances.GetChemicalReference(Substances.Chemicals.Nitrogen), n2),
+                (Substances.All.CarbonDioxide.GetChemicalReference(), co2),
+                (Substances.All.Helium.GetChemicalReference(), he),
+                (Substances.All.Hydrogen.GetChemicalReference(), h),
+                (Substances.All.Nitrogen.GetChemicalReference(), n2),
             };
             if (ar > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Argon), ar));
+                components.Add((Substances.All.Argon.GetChemicalReference(), ar));
             }
             if (co > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co));
+                components.Add((Substances.All.CarbonMonoxide.GetChemicalReference(), co));
             }
             if (kr > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Krypton), kr));
+                components.Add((Substances.All.Krypton.GetChemicalReference(), kr));
             }
             if (ch4 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
             }
             if (o2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Oxygen), o2));
+                components.Add((Substances.All.Oxygen.GetChemicalReference(), o2));
             }
             if (so2 > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2));
+                components.Add((Substances.All.SulphurDioxide.GetChemicalReference(), so2));
             }
             if (waterVapor > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), waterVapor));
+                components.Add((Substances.All.Water.GetChemicalReference(), waterVapor));
             }
             if (xe > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Xenon), xe));
+                components.Add((Substances.All.Xenon.GetChemicalReference(), xe));
             }
             _atmosphere = await Atmosphere.GetNewInstanceAsync(this, pressure, components.ToArray()).ConfigureAwait(false);
         }
@@ -1382,8 +1382,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
             // chance of water vapor without significant surface water (results of cometary deposits, etc.)
             var waterVapor = 0.0m;
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+            var water = Substances.All.Water.GetChemicalReference();
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
             if (CanHaveWater
                 && !Hydrosphere.Contains(water)
                 && !Hydrosphere.Contains(seawater))
@@ -1425,48 +1425,48 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             {
                 var components = new List<(ISubstanceReference, decimal)>()
                 {
-                    (Substances.GetChemicalReference(Substances.Chemicals.Helium), he),
-                    (Substances.GetChemicalReference(Substances.Chemicals.Hydrogen), h),
+                    (Substances.All.Helium.GetChemicalReference(), he),
+                    (Substances.All.Hydrogen.GetChemicalReference(), h),
                 };
                 if (ar > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Argon), ar));
+                    components.Add((Substances.All.Argon.GetChemicalReference(), ar));
                 }
                 if (co2 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide), co2));
+                    components.Add((Substances.All.CarbonDioxide.GetChemicalReference(), co2));
                 }
                 if (co > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.CarbonMonoxide), co));
+                    components.Add((Substances.All.CarbonMonoxide.GetChemicalReference(), co));
                 }
                 if (kr > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Krypton), kr));
+                    components.Add((Substances.All.Krypton.GetChemicalReference(), kr));
                 }
                 if (ch4 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Methane), ch4));
+                    components.Add((Substances.All.Methane.GetChemicalReference(), ch4));
                 }
                 if (n2 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Nitrogen), n2));
+                    components.Add((Substances.All.Nitrogen.GetChemicalReference(), n2));
                 }
                 if (o2 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Oxygen), o2));
+                    components.Add((Substances.All.Oxygen.GetChemicalReference(), o2));
                 }
                 if (so2 > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.SulphurDioxide), so2));
+                    components.Add((Substances.All.SulphurDioxide.GetChemicalReference(), so2));
                 }
                 if (waterVapor > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Water), waterVapor));
+                    components.Add((Substances.All.Water.GetChemicalReference(), waterVapor));
                 }
                 if (xe > 0)
                 {
-                    components.Add((Substances.GetChemicalReference(Substances.Chemicals.Xenon), xe));
+                    components.Add((Substances.All.Xenon.GetChemicalReference(), xe));
                 }
                 _atmosphere = await Atmosphere.GetNewInstanceAsync(this, Randomizer.Instance.NextDouble(25), components.ToArray()).ConfigureAwait(false);
             }
@@ -1478,14 +1478,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // with life, and therefore that some fossilized hydrocarbon deposits exist.
             var coal = (decimal)Randomizer.Instance.NormalDistributionSample(2e-13, 3.4e-14) * 0.5m;
 
-            AddResource(Substances.GetMixtureReference(Substances.Mixtures.Anthracite), coal, false);
-            AddResource(Substances.GetMixtureReference(Substances.Mixtures.BituminousCoal), coal, false);
+            AddResource(Substances.All.Anthracite.GetReference(), coal, false);
+            AddResource(Substances.All.BituminousCoal.GetReference(), coal, false);
 
             var petroleum = (decimal)Randomizer.Instance.NormalDistributionSample(1e-8, 1.6e-9);
-            var petroleumSeed = AddResource(Substances.GetMixtureReference(Substances.Mixtures.Petroleum), petroleum, false);
+            var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false);
 
             // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
-            AddResource(Substances.GetMixtureReference(Substances.Mixtures.NaturalGas), petroleum, false, true, petroleumSeed);
+            AddResource(Substances.All.NaturalGas.GetReference(), petroleum, false, true, petroleumSeed);
         }
 
         private protected virtual async Task GenerateHydrosphereAsync() => GenerateHydrosphere(null, await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false));
@@ -1493,7 +1493,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         private protected void GenerateHydrosphere(double surfaceTemp, decimal ratio)
         {
             var mass = Number.Zero;
-            var seawater = Substances.GetSolutionReference(Substances.Solutions.Seawater);
+            var seawater = Substances.All.Seawater.GetHomogeneousReference();
 
             if (ratio <= 0)
             {
@@ -1542,7 +1542,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // Surface water is mostly salt water.
             var seawaterProportion = (decimal)Randomizer.Instance.NormalDistributionSample(0.945, 0.015);
             var waterProportion = 1 - seawaterProportion;
-            var water = Substances.GetChemicalReference(Substances.Chemicals.Water);
+            var water = Substances.All.Water.GetChemicalReference();
             var density = ((seawater.Homogeneous.DensityLiquid ?? 0) * (double)seawaterProportion) + ((water.Homogeneous.DensityLiquid ?? 0) * (double)waterProportion);
 
             var outerRadius = (3 * ((mass / density) + new Sphere(Material.Shape.ContainingRadius).Volume) / MathConstants.FourPI).CubeRoot();
@@ -1619,12 +1619,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // cyanobacteria analogue will produce a significant amount of free oxygen, which in turn
             // will transform most CH4 to CO2 and H2O, and also produce an ozone layer.
             var o2 = Randomizer.Instance.NextDecimal(0.2m, 0.25m);
-            var oxygen = Substances.GetChemicalReference(Substances.Chemicals.Oxygen);
+            var oxygen = Substances.All.Oxygen.GetChemicalReference();
             Atmosphere.Material.AddConstituent(oxygen, o2);
 
             // Calculate ozone based on level of free oxygen.
             var o3 = o2 * 4.5e-5m;
-            var ozone = Substances.GetChemicalReference(Substances.Chemicals.Ozone);
+            var ozone = Substances.All.Ozone.GetChemicalReference();
             if (!(Atmosphere.Material is LayeredComposite lc) || lc.Layers.Count < 3)
             {
                 Atmosphere.DifferentiateTroposphere(); // First ensure troposphere is differentiated.
@@ -1633,23 +1633,22 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (Atmosphere.Material as LayeredComposite)?.Layers[2].material.AddConstituent(ozone, o3);
 
             // Convert most methane to CO2 and H2O.
-            var methane = Substances.GetChemicalReference(Substances.Chemicals.Methane);
+            var methane = Substances.All.Methane.GetChemicalReference();
             var ch4 = Atmosphere.Material.GetProportion(methane);
             if (ch4 != 0)
             {
                 // The levels of CO2 and H2O are not adjusted; it is presumed that the levels already
                 // determined for them take the amounts derived from CH4 into account. If either gas
                 // is entirely missing, however, it is added.
-                var carbonDioxide = Substances.GetChemicalReference(Substances.Chemicals.CarbonDioxide);
+                var carbonDioxide = Substances.All.CarbonDioxide.GetChemicalReference();
                 if (Atmosphere.Material.GetProportion(carbonDioxide) <= 0)
                 {
                     Atmosphere.Material.AddConstituent(carbonDioxide, ch4 / 3);
                 }
 
-                _ = Substances.TryGetChemical(Substances.Chemicals.Water, out var water);
-                if (Atmosphere.Material.GetProportion(water) <= 0)
+                if (Atmosphere.Material.GetProportion(Substances.All.Water) <= 0)
                 {
-                    Atmosphere.Material.AddConstituent(water, ch4 * 2 / 3);
+                    Atmosphere.Material.AddConstituent(Substances.All.Water, ch4 * 2 / 3);
                     Atmosphere.ResetWater(this);
                 }
 
@@ -1737,8 +1736,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 var greenhouseEffect = 30.0; // naive initial guess, corrected if possible with param values
                 if (planetParams?.AtmosphericPressure.HasValue == true
                     && (planetParams?.WaterVaporRatio.HasValue == true
-                    || planetParams?.WaterRatio.HasValue == true)
-                    && Substances.TryGetChemical(Substances.Chemicals.Water, out var water))
+                    || planetParams?.WaterRatio.HasValue == true))
                 {
                     var pressure = planetParams!.Value.AtmosphericPressure!.Value;
 
@@ -1749,12 +1747,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     }
                     else
                     {
-                        vaporRatio = (water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
+                        vaporRatio = (Substances.All.Water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
                     }
 
                     greenhouseEffect = await GetGreenhouseEffectAsync(
                         GetInsolationFactor(Atmosphere.GetAtmosphericMass(this, pressure), 0), // scale height will be ignored since this isn't a polar calculation
-                        Atmosphere.GetGreenhouseFactor(water.GreenhousePotential * vaporRatio, pressure)).ConfigureAwait(false);
+                        Atmosphere.GetGreenhouseFactor(Substances.All.Water.GreenhousePotential * vaporRatio, pressure)).ConfigureAwait(false);
                 }
                 var targetEffectiveTemp = totalTargetEffectiveTemp - greenhouseEffect;
 
@@ -1858,27 +1856,27 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             if (beryl > 0)
             {
-                AddResource(Substances.GetChemicalReference(Substances.Chemicals.Beryl), beryl, true);
+                AddResource(Substances.All.Beryl.GetChemicalReference(), beryl, true);
             }
             if (emerald > 0)
             {
-                AddResource(Substances.GetSolutionReference(Substances.Solutions.Emerald), emerald, true);
+                AddResource(Substances.All.Emerald.GetHomogeneousReference(), emerald, true);
             }
             if (corundum > 0)
             {
-                AddResource(Substances.GetChemicalReference(Substances.Chemicals.Corundum), corundum, true);
+                AddResource(Substances.All.Corundum.GetChemicalReference(), corundum, true);
             }
             if (ruby > 0)
             {
-                AddResource(Substances.GetSolutionReference(Substances.Solutions.Ruby), ruby, true);
+                AddResource(Substances.All.Ruby.GetHomogeneousReference(), ruby, true);
             }
             if (sapphire > 0)
             {
-                AddResource(Substances.GetSolutionReference(Substances.Solutions.Sapphire), sapphire, true);
+                AddResource(Substances.All.Sapphire.GetHomogeneousReference(), sapphire, true);
             }
             if (diamond > 0)
             {
-                AddResource(Substances.GetChemicalReference(Substances.Chemicals.Diamond), diamond, true);
+                AddResource(Substances.All.Diamond.GetChemicalReference(), diamond, true);
             }
         }
 
@@ -2017,59 +2015,59 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             if (chalcopyrite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chalcopyrite), chalcopyrite));
+                components.Add((Substances.All.Chalcopyrite.GetChemicalReference(), chalcopyrite));
             }
             if (chromite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Chromite), chromite));
+                components.Add((Substances.All.Chromite.GetChemicalReference(), chromite));
             }
             if (sphalerite > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.Sphalerite), sphalerite));
+                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
             }
             if (galena > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Galena), galena));
+                components.Add((Substances.All.Galena.GetChemicalReference(), galena));
             }
             if (uraninite > 0)
             {
-                components.Add((Substances.GetSolutionReference(Substances.Solutions.Uraninite), uraninite));
+                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
             }
             if (cassiterite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cassiterite), cassiterite));
+                components.Add((Substances.All.Cassiterite.GetChemicalReference(), cassiterite));
             }
             if (cinnabar > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Cinnabar), cinnabar));
+                components.Add((Substances.All.Cinnabar.GetChemicalReference(), cinnabar));
             }
             if (acanthite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Acanthite), acanthite));
+                components.Add((Substances.All.Acanthite.GetChemicalReference(), acanthite));
             }
             if (sperrylite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Sperrylite), sperrylite));
+                components.Add((Substances.All.Sperrylite.GetChemicalReference(), sperrylite));
             }
             if (gold > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Gold), gold));
+                components.Add((Substances.All.Gold.GetChemicalReference(), gold));
             }
             if (bauxite > 0)
             {
-                components.Add((Substances.GetMixtureReference(Substances.Mixtures.Bauxite), bauxite));
+                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
             }
             if (hematite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Hematite), hematite));
+                components.Add((Substances.All.Hematite.GetChemicalReference(), hematite));
             }
             if (magnetite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Magnetite), magnetite));
+                components.Add((Substances.All.Magnetite.GetChemicalReference(), magnetite));
             }
             if (ilmenite > 0)
             {
-                components.Add((Substances.GetChemicalReference(Substances.Chemicals.Ilmenite), ilmenite));
+                components.Add((Substances.All.Ilmenite.GetChemicalReference(), ilmenite));
             }
 
             yield return (new Material(
@@ -2118,7 +2116,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         private decimal GetHydrosphereAtmosphereRatio() => Math.Min(1, (decimal)(Hydrosphere.Mass / Atmosphere.Material.Mass));
 
         private protected override ISubstanceReference GetMantleSubstance()
-            => Substances.GetMixtureReference(Substances.Mixtures.Peridotite);
+            => Substances.All.Peridotite.GetReference();
 
         private async Task<Number> GetMassAsync(double? gravity, IShape? shape = null)
         {
@@ -2263,12 +2261,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // under the assumption that if liquid water exists anywhere on the world, it is likely
             // to be found at at least one of those values, even if one or more are too extreme
             // (e.g. polar icecaps below freezing, or an equator above boiling).
-            return Hydrosphere.Contains(Substances.GetChemicalReference(Substances.Chemicals.Water), PhaseType.Liquid, maxTemp, pressure)
-                || Hydrosphere.Contains(Substances.GetSolutionReference(Substances.Solutions.Seawater), PhaseType.Liquid, maxTemp, pressure)
-                || Hydrosphere.Contains(Substances.GetChemicalReference(Substances.Chemicals.Water), PhaseType.Liquid, minTemp, pressure)
-                || Hydrosphere.Contains(Substances.GetSolutionReference(Substances.Solutions.Seawater), PhaseType.Liquid, minTemp, pressure)
-                || Hydrosphere.Contains(Substances.GetChemicalReference(Substances.Chemicals.Water), PhaseType.Liquid, avgTemp, pressure)
-                || Hydrosphere.Contains(Substances.GetSolutionReference(Substances.Solutions.Seawater), PhaseType.Liquid, avgTemp, pressure);
+            return Hydrosphere.Contains(Substances.All.Water.GetChemicalReference(), PhaseType.Liquid, maxTemp, pressure)
+                || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, maxTemp, pressure)
+                || Hydrosphere.Contains(Substances.All.Water.GetChemicalReference(), PhaseType.Liquid, minTemp, pressure)
+                || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, minTemp, pressure)
+                || Hydrosphere.Contains(Substances.All.Water.GetChemicalReference(), PhaseType.Liquid, avgTemp, pressure)
+                || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, avgTemp, pressure);
         }
     }
 }
