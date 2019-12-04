@@ -763,11 +763,16 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="time">The time at which to get a position.</param>
         /// <returns>A <see cref="Vector3"/> representing position relative to the center of the
         /// parent.</returns>
-        public async ValueTask<Vector3> GetPositionAtTimeAsync(Duration time)
+        public async ValueTask<Vector3> GetPositionAtTimeAsync(Instant time)
         {
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            if (universe is null)
+            {
+                return Position;
+            }
             if (Orbit.HasValue)
             {
-                var (position, _) = Orbit.Value.GetStateVectorsAtTime(time);
+                var (position, _) = Orbit.Value.GetStateVectorsAtTime(time, universe);
 
                 var orbited = await Orbit.Value.GetOrbitedObjectAsync().ConfigureAwait(false);
                 if (orbited?.ParentId != ParentId)
@@ -796,7 +801,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else
             {
-                return Position + (Velocity * time.ToSeconds());
+                return Position + (Velocity * universe.Time.GetDifference(universe.Time.Now, time).ToSeconds());
             }
         }
 
@@ -995,7 +1000,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 return;
             }
 
-            var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(universe.Time.Now);
+            var (position, velocity) = Orbit.Value.GetStateVectorsAtTime(universe.Time.Now, universe);
 
             await UpdateOrbitAsync(position, velocity).ConfigureAwait(false);
         }

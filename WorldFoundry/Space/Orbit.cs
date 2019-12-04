@@ -39,7 +39,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The time at which the state of this orbit is defined, which coincides with a time of
         /// pericenter passage.
         /// </summary>
-        public Duration Epoch { get; }
+        public Instant Epoch { get; }
 
         /// <summary>
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
@@ -141,7 +141,7 @@ namespace NeverFoundry.WorldFoundry.Space
             double trueAnomaly,
             Vector3 v0,
             Number period,
-            Duration epoch)
+            Instant epoch)
         {
             OrbitedObjectId = orbitedObjectId;
             _alpha = alpha;
@@ -179,8 +179,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (double)info.GetValue(nameof(TrueAnomaly), typeof(double)),
             (Vector3)info.GetValue(nameof(V0), typeof(Vector3)),
             (Number)info.GetValue(nameof(Period), typeof(Number)),
-            (Duration)info.GetValue(nameof(Epoch), typeof(Duration)))
-        { }
+            (Instant)info.GetValue(nameof(Epoch), typeof(Instant))) { }
 
         /// <summary>
         /// Calculates the change in velocity necessary for the given object to achieve a circular
@@ -324,7 +323,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 0,
                 orbitingObject.Velocity,
                 period,
-                universe?.Time.Now ?? Duration.Zero)).ConfigureAwait(false);
+                universe?.Time.Now ?? Instant.Zero)).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -390,15 +389,16 @@ namespace NeverFoundry.WorldFoundry.Space
             var universe = await orbitingObject.GetContainingUniverseAsync().ConfigureAwait(false);
             // If at periapsis now, this is the epoch;
             // if not, the epoch is half the period away.
-            var epoch = universe?.Time.Now ?? Duration.Zero;
+            var epoch = universe?.Time.Now ?? Instant.Zero;
             if (radius > semiMajorAxis)
             {
                 var epochOffset = Duration.FromSeconds(period / 2);
-                // Preferably set the epoch in the past; but if the current age of the universe is
+                // Preferably set the epoch in the past; but if the length of the current epoch is
                 // less than half the period, set it in the future.
-                epoch = epoch >= epochOffset
-                    ? epoch - epochOffset
-                    : epoch + epochOffset;
+                epoch = new Instant(epoch.Offset >= epochOffset
+                    ? epoch.Offset - epochOffset
+                    : epoch.Offset + epochOffset
+                    , epoch.Epoch);
             }
 
             // Calculate the perifocal vectors
@@ -598,12 +598,13 @@ namespace NeverFoundry.WorldFoundry.Space
             var period = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
             var meanMotion = period.IsZero ? Number.Zero : MathConstants.TwoPI / period;
             var universe = await orbitingObject.GetContainingUniverseAsync().ConfigureAwait(false);
-            var time = universe?.Time.Now ?? Duration.Zero;
+            var time = universe?.Time.Now ?? Instant.Zero;
             var epochOffsetSeconds = meanMotion.IsZero ? Number.Zero : meanAnomaly / meanMotion;
             var epochOffset = Duration.FromSeconds(epochOffsetSeconds);
-            var epoch = time > epochOffset
-                ? time - epochOffset
-                : time + Duration.FromSeconds(period - epochOffsetSeconds);
+            var epoch = new Instant(time.Offset > epochOffset
+                ? time.Offset - epochOffset
+                : time.Offset + Duration.FromSeconds(period - epochOffsetSeconds),
+                time.Epoch);
 
             await orbitingObject.SetOrbitAsync(new Orbit(
                 orbitedObject.Id,
@@ -677,10 +678,14 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Gets orbital parameters at a given time.
         /// </summary>
         /// <param name="time">The time at which to determine orbital parameters.</param>
+        /// <param name="universe">The <see cref="Universe"/> in which the calculation is to be
+        /// made.</param>
         /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
-        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Duration time)
+        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Instant time, Universe universe)
         {
-            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            var t = (time >= Epoch
+                ? universe.Time.GetDifference(Epoch, time)
+                : universe.Time.GetDifference(time, Epoch)).ToSeconds() % Period;
             if (time < Epoch)
             {
                 t = Period - t;
@@ -745,11 +750,15 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Gets orbital state vectors at a given time.
         /// </summary>
         /// <param name="time">The time at which to determine orbital state vectors.</param>
+        /// <param name="universe">The <see cref="Universe"/> in which the calculation is to be
+        /// made.</param>
         /// <returns>The position vector (relative to the orbited object), and the velocity
         /// vector.</returns>
-        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Duration time)
+        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Instant time, Universe universe)
         {
-            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            var t = (time >= Epoch
+                ? universe.Time.GetDifference(Epoch, time)
+                : universe.Time.GetDifference(time, Epoch)).ToSeconds() % Period;
             if (time < Epoch)
             {
                 t = Period - t;
@@ -775,10 +784,14 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Gets the true anomaly of this orbit at a given time.
         /// </summary>
         /// <param name="time">The time at which to determine orbital state vectors.</param>
+        /// <param name="universe">The <see cref="Universe"/> in which the calculation is to be
+        /// made.</param>
         /// <returns>The true anomaly, in radians.</returns>
-        public double GetTrueAnomalyAtTime(Duration time)
+        public double GetTrueAnomalyAtTime(Instant time, Universe universe)
         {
-            var t = (time >= Epoch ? time - Epoch : Epoch - time).ToSeconds() % Period;
+            var t = (time >= Epoch
+                ? universe.Time.GetDifference(Epoch, time)
+                : universe.Time.GetDifference(time, Epoch)).ToSeconds() % Period;
             if (time < Epoch)
             {
                 t = Period - t;

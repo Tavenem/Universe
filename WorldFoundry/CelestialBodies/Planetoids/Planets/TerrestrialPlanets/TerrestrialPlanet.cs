@@ -532,9 +532,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// the snow.
         /// </para>
         /// </returns>
-        public async Task<(double precipitation, double snow)> GetPrecipitationAsync(Duration time, Vector3 position, float proportionOfYear)
+        public async Task<(double precipitation, double snow)> GetPrecipitationAsync(Instant time, Vector3 position, float proportionOfYear)
         {
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            var trueAnomaly = universe is null
+                ? Orbit?.TrueAnomaly ?? 0
+                : Orbit?.GetTrueAnomalyAtTime(time, universe) ?? 0;
             var seasonalLatitude = Math.Abs(GetSeasonalLatitude(VectorToLatitude(position), trueAnomaly));
             var temp = await GetSurfaceTemperatureAtTrueAnomalyAsync(trueAnomaly, seasonalLatitude).ConfigureAwait(false);
             temp = await GetTemperatureAtElevationAsync(temp, GetElevationAt(position)).ConfigureAwait(false);
@@ -571,7 +574,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         public async Task<(double precipitation, double snow)> GetPrecipitationAsync(Vector3 position, float proportionOfYear)
         {
             var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
-            return await GetPrecipitationAsync(universe?.Time.Now ?? Duration.Zero, position, proportionOfYear).ConfigureAwait(false);
+            return await GetPrecipitationAsync(universe?.Time.Now ?? Instant.Zero, position, proportionOfYear).ConfigureAwait(false);
         }
 
         /// <summary>

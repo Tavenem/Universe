@@ -667,7 +667,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="longitude">The longitude of the object.</param>
         /// <param name="altitude">The altitude of the object.</param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        public async Task<double> GetAtmosphericDensityAsync(Duration time, double latitude, double longitude, double altitude)
+        public async Task<double> GetAtmosphericDensityAsync(Instant time, double latitude, double longitude, double altitude)
         {
             var surfaceTemp = await GetSurfaceTemperatureAtLatLonAsync(time, latitude, longitude).ConfigureAwait(false);
             var tempAtElevation = await GetTemperatureAtElevationAsync(surfaceTemp, altitude).ConfigureAwait(false);
@@ -690,7 +690,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// is accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public async Task<double> GetAtmosphericDragAsync(Duration time, double latitude, double longitude, double altitude, double speed)
+        public async Task<double> GetAtmosphericDragAsync(Instant time, double latitude, double longitude, double altitude, double speed)
         {
             var surfaceTemp = await GetSurfaceTemperatureAtLatLonAsync(time, latitude, longitude).ConfigureAwait(false);
             var tempAtElevation = await GetTemperatureAtElevationAsync(surfaceTemp, altitude).ConfigureAwait(false);
@@ -714,10 +714,13 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// mass of air on Earth, which is clearly not correct for other atmospheres, but is
         /// considered "close enough" for the purposes of this library.
         /// </remarks>
-        public async Task<double> GetAtmosphericPressureAsync(Duration time, double latitude, double longitude)
+        public async Task<double> GetAtmosphericPressureAsync(Instant time, double latitude, double longitude)
         {
             var elevation = GetElevationAt(latitude, longitude);
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(time) ?? 0;
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            var trueAnomaly = universe is null
+                ? Orbit?.TrueAnomaly ?? 0
+                : Orbit?.GetTrueAnomalyAtTime(time, universe) ?? 0;
             var blackbodyTemperature = await GetBlackbodyTemperatureAsync().ConfigureAwait(false);
             var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
             var lat = GetSeasonalLatitude(latitude, trueAnomaly);
@@ -759,7 +762,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// hierarchy which contains the specified <paramref name="position"/>, or <see
         /// langword="null"/>, if no region contains the position.
         /// </returns>
-        public SurfaceRegion GetContainingSurfaceRegion(Vector3 position)
+        public SurfaceRegion? GetContainingSurfaceRegion(Vector3 position)
             => SurfaceRegions.Where(x => x.Shape.IsPointWithin(position))
             .ItemWithMin(x => x.Shape.ContainingRadius);
 
@@ -775,7 +778,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// hierarchy which fully contains the specified <see cref="Location"/> within its
         /// containing radius, or <see langword="null"/>, if no region contains the position.
         /// </returns>
-        public SurfaceRegion GetContainingSurfaceRegion(Location other)
+        public SurfaceRegion? GetContainingSurfaceRegion(Location other)
             => SurfaceRegions.Where(x => Vector3.Distance(x.Position, other.Position) <= x.Shape.ContainingRadius - other.Shape.ContainingRadius)
             .ItemWithMin(x => x.Shape.ContainingRadius);
 
@@ -906,7 +909,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// reasonable results.
         /// </para>
         /// </remarks>
-        public async Task<double> GetIlluminationAsync(Duration time, double latitude, double longitude)
+        public async Task<double> GetIlluminationAsync(Instant time, double latitude, double longitude)
         {
             var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
             Planetoid? stellarOrbiter = null;
@@ -1097,7 +1100,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// local day since midnight. If the sun does not rise and set on the given day (e.g. near
         /// the poles), then <see langword="null"/> will be returned for sunrise in the case of a
         /// polar night, and <see langword="null"/> for sunset in the case of a midnight sun.</returns>
-        public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(Duration time, double latitude)
+        public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(Instant time, double latitude)
         {
             var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
             var starPos = Vector3.Zero;
@@ -1144,7 +1147,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="longitude">The longitude at which to make the calculation.</param>
         /// <returns>A <see cref="RelativeDuration"/> set to a proportion of a local day since
         /// midnight.</returns>
-        public async Task<RelativeDuration> GetLocalTimeOfDayAsync(Duration time, double longitude)
+        public async Task<RelativeDuration> GetLocalTimeOfDayAsync(Instant time, double longitude)
         {
             var pos = await GetPositionAtTimeAsync(time).ConfigureAwait(false);
             var starPos = Vector3.Zero;
@@ -1337,9 +1340,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the determination.</param>
         /// <returns>>The proportion of the current season, as a value between 0.0 and 1.0, at the
         /// given <paramref name="time"/>.</returns>
-        public double GetProportionOfSeasonAtTime(uint numSeasons, Duration time)
+        public async Task<double> GetProportionOfSeasonAtTimeAsync(uint numSeasons, Instant time)
         {
-            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionOfYear = await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             var proportionPerSeason = 1.0 / numSeasons;
             var seasonIndex = Math.Floor(proportionOfYear / proportionPerSeason);
             return (proportionOfYear - (seasonIndex * proportionPerSeason)) / proportionPerSeason;
@@ -1352,8 +1355,16 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the calculation.</param>
         /// <returns>The proportion of the year, starting and ending with midwinter, at the given
         /// <paramref name="time"/>.</returns>
-        public double GetProportionOfYearAtTime(Duration time)
-            => ((Orbit?.GetTrueAnomalyAtTime(time) ?? 0) - WinterSolsticeTrueAnomaly + MathAndScience.Constants.Doubles.MathConstants.TwoPI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI / MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+        public async Task<double> GetProportionOfYearAtTimeAsync(Instant time)
+        {
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            var trueAnomaly = universe is null
+                ? Orbit?.TrueAnomaly ?? 0
+                : Orbit?.GetTrueAnomalyAtTime(time, universe) ?? 0;
+            return (trueAnomaly - WinterSolsticeTrueAnomaly + MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+                % MathAndScience.Constants.Doubles.MathConstants.TwoPI
+                / MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+        }
 
         /// <summary>
         /// Gets the richness of the resources at the given <paramref name="latitude"/> and
@@ -1398,7 +1409,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <returns>The proportion of the satellite which is currently illuminated, and a boolean
         /// value indicating whether the body is in the waxing half of its cycle (vs. the waning
         /// half).</returns>
-        public async Task<(Number phase, bool waxing)> GetSatellitePhaseAsync(Duration time, Planetoid satellite)
+        public async Task<(Number phase, bool waxing)> GetSatellitePhaseAsync(Instant time, Planetoid satellite)
         {
             if (_satelliteIDs?.Contains(satellite.Id) != true || !satellite.Orbit.HasValue)
             {
@@ -1472,9 +1483,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="latitude">Used to determine hemisphere.</param>
         /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
         /// at the given <paramref name="time"/>.</returns>
-        public double GetSeasonalProportionAtTime(Duration time, double latitude)
+        public async Task<double> GetSeasonalProportionAtTimeAsync(Instant time, double latitude)
         {
-            var proportionOfYear = GetProportionOfYearAtTime(time);
+            var proportionOfYear = await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             if (proportionOfYear > 0.5)
             {
                 proportionOfYear = 1 - proportionOfYear;
@@ -1494,7 +1505,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// <param name="time">The time at which to make the determination.</param>
         /// <returns>The 0-based index of the current season at the given <paramref
         /// name="time"/>.</returns>
-        public uint GetSeasonAtTime(uint numSeasons, Duration time) => (uint)Math.Floor(GetProportionOfYearAtTime(time) * numSeasons);
+        public async Task<uint> GetSeasonAtTimeAsync(uint numSeasons, Instant time) => (uint)Math.Floor(await GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false) * numSeasons);
 
         /// <summary>
         /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
@@ -1549,11 +1560,15 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// The longitude at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public async Task<double> GetSurfaceTemperatureAtLatLonAsync(Duration time, double latitude, double longitude)
+        public async Task<double> GetSurfaceTemperatureAtLatLonAsync(Instant time, double latitude, double longitude)
         {
             var blackbodyTemperature = await GetBlackbodyTemperatureAsync().ConfigureAwait(false);
             var greenhouseEffect = await GetGreenhouseEffectAsync().ConfigureAwait(false);
-            var lat = GetSeasonalLatitude(latitude, Orbit?.GetTrueAnomalyAtTime(time) ?? 0);
+            var universe = await GetContainingUniverseAsync().ConfigureAwait(false);
+            var trueAnomaly = universe is null
+                ? Orbit?.TrueAnomaly ?? 0
+                : Orbit?.GetTrueAnomalyAtTime(time, universe) ?? 0;
+            var lat = GetSeasonalLatitude(latitude, trueAnomaly);
             return await GetTemperatureAtElevationAsync(
                 (blackbodyTemperature * GetInsolationFactor(lat)) + greenhouseEffect,
                 GetElevationAt(latitude, longitude)).ConfigureAwait(false);
@@ -1568,7 +1583,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids
         /// The surface position at which temperature will be calculated.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public Task<double> GetSurfaceTemperatureAtSurfacePositionAsync(Duration time, Vector3 position)
+        public Task<double> GetSurfaceTemperatureAtSurfacePositionAsync(Instant time, Vector3 position)
             => GetSurfaceTemperatureAtLatLonAsync(time, VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>

@@ -46,13 +46,18 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// Initializes a new instance of <see cref="Universe"/>.
         /// </summary>
-        /// <param name="present">The present time in the universe.</param>
-        public Universe(Duration? present = null)
-        {
-            Time = present.HasValue
-                ? new Time(present.Value)
-                : new Time();
-        }
+        /// <param name="present">
+        /// <para>
+        /// The elapsed time since the beginning of the current epoch.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> the approximate current time of our universe will be
+        /// used.
+        /// </para>
+        /// </param>
+        public Universe(Duration? present = null) => Time = present.HasValue
+            ? new Time(present.Value)
+            : new Time();
 
         private Universe(
             string id,
@@ -65,8 +70,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (string)info.GetValue(nameof(Id), typeof(string)),
             (string)info.GetValue(nameof(Name), typeof(string)),
             (IMaterial)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (Time)info.GetValue(nameof(Time), typeof(Time)))
-        { }
+            (Time)info.GetValue(nameof(Time), typeof(Time))) { }
 
         /// <summary>
         /// Gets a new <see cref="CelestialLocation"/> instance.

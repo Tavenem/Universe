@@ -26,11 +26,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns>The specific value from a range which varies over the course of a
         /// year.</returns>
-        public static float GetAnnualRangeValue(
+        public static async Task<float> GetAnnualRangeValueAsync(
             this Planetoid planet,
             FloatRange range,
-            Duration time)
-            => range.Min.Lerp(range.Max, (float)planet.GetProportionOfYearAtTime(time));
+            Instant time)
+            => range.Min.Lerp(range.Max, (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false));
 
         /// <summary>
         /// Determines whether the given <paramref name="time"/> falls within the range indicated.
@@ -40,12 +40,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the determination is to be performed.</param>
         /// <returns><see langword="true"/> if the range indicates a positive result for the given
         /// <paramref name="time"/>; otherwise <see langword="false"/>.</returns>
-        public static bool GetAnnualRangeIsPositiveAtTime(
+        public static async Task<bool> GetAnnualRangeIsPositiveAtTimeAsync(
             this Planetoid planet,
             FloatRange range,
-            Duration time)
+            Instant time)
         {
-            var proportionOfYear = (float)planet.GetProportionOfYearAtTime(time);
+            var proportionOfYear = (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
             return !range.IsZero
             && (range.Min > range.Max
                 ? proportionOfYear >= range.Min || proportionOfYear <= range.Max
@@ -64,19 +64,19 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="time">The time at which the calculation is to be performed.</param>
         /// <returns>The value for a <paramref name="position"/> in a <paramref name="region"/> at a
         /// given <paramref name="time"/> from a set of ranges.</returns>
-        public static float GetAnnualValueFromLocalPosition(
+        public static Task<float> GetAnnualValueFromLocalPositionAsync(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             FloatRange[,] ranges,
-            Duration time)
+            Instant time)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 ranges.GetLength(0));
-            return planet.GetAnnualRangeValue(
+            return planet.GetAnnualRangeValueAsync(
                 ranges[x, y],
                 time);
         }
@@ -94,19 +94,19 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns><see langword="true"/> if the given <paramref name="time"/> falls within the
         /// range indicated for a <paramref name="position"/> in a <paramref name="region"/>;
         /// otherwise <see langword="false"/>.</returns>
-        public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
+        public static Task<bool> GetAnnualRangeIsPositiveAtTimeAndLocalPositionAsync(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             FloatRange[,] ranges,
-            Duration time)
+            Instant time)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 ranges.GetLength(0));
-            return planet.GetAnnualRangeIsPositiveAtTime(ranges[x, y], time);
+            return planet.GetAnnualRangeIsPositiveAtTimeAsync(ranges[x, y], time);
         }
 
         /// <summary>
@@ -589,7 +589,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     {
                         if (!lakes.ContainsKey((finalDrainage[x, y].x, finalDrainage[x, y].y)))
                         {
-                            lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)] = new HashSet<(int x, int y)>();
+                            lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)] = new HashSet<(int x, int y)> { (x, y) };
                         }
                         lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)].Add((x, y));
                     }
@@ -722,7 +722,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 depthMap[xL, yL] = lakeDepths[(xL, yL)];
                 foreach (var (x, y) in points)
                 {
-                    depthMap[xL, yL] = lakeDepths[(xL, yL)];
+                    depthMap[x, y] = lakeDepths[(xL, yL)];
                 }
             }
 
@@ -823,13 +823,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// name="region"/>.</param>
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns></returns>
-        public static double GetPrecipitationFromLocalPosition(
+        /// <returns>The precipitation value for a <paramref name="position"/> in a <paramref
+        /// name="region"/> at a given <paramref name="time"/> from a set of maps.</returns>
+        public static async Task<double> GetPrecipitationFromLocalPositionAsync(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             PrecipitationMaps[] maps,
-            Duration time)
+            Instant time)
         {
             if (maps.Length == 0)
             {
@@ -841,7 +842,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.PrecipitationMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.PrecipitationMap[x, y]);
         }
 
         /// <summary>
@@ -924,13 +925,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// name="region"/>.</param>
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns></returns>
-        public static double GetSnowfallFromLocalPosition(
+        /// <returns>The snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
+        /// at a given <paramref name="time"/> from a set of maps.</returns>
+        public static async Task<double> GetSnowfallFromLocalPositionAsync(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             PrecipitationMaps[] maps,
-            Duration time)
+            Instant time)
         {
             if (maps.Length == 0)
             {
@@ -942,7 +944,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.SnowfallMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.SnowfallMap[x, y]);
         }
 
         /// <summary>
@@ -1080,12 +1082,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="latitude">The latitude at which the calculation is being performed (used to
         /// determine hemisphere, and thus season).</param>
         /// <returns>The specific temperature value from a temperature range.</returns>
-        public static float GetTemperatureRangeValue(
+        public static async Task<float> GetTemperatureRangeValueAsync(
             this Planetoid planet,
             FloatRange range,
-            Duration time,
+            Instant time,
             double latitude)
-            => range.Min.Lerp(range.Max, (float)planet.GetSeasonalProportionAtTime(time, latitude));
+            => range.Min.Lerp(range.Max, (float)await planet.GetSeasonalProportionAtTimeAsync(time, latitude).ConfigureAwait(false));
 
         /// <summary>
         /// Gets the temperature value for a <paramref name="position"/> in a <paramref
@@ -1100,19 +1102,19 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
         /// name="region"/> at a given <paramref name="time"/> from a set of temperature
         /// ranges.</returns>
-        public static float GetTemperatureFromLocalPosition(
+        public static Task<float> GetTemperatureFromLocalPositionAsync(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             FloatRange[,] temperatureRanges,
-            Duration time)
+            Instant time)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 temperatureRanges.GetLength(0));
-            return planet.GetTemperatureRangeValue(
+            return planet.GetTemperatureRangeValueAsync(
                 temperatureRanges[x, y],
                 time,
                 planet.VectorToLatitude(region.Position + position));
@@ -1125,19 +1127,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="planet">The mapped planet.</param>
         /// <param name="maps">A set of precipitation maps.</param>
         /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns></returns>
-        public static FloatRange GetTotalPrecipitationAtTime(
+        /// <returns>The total precipitation value at a given <paramref name="time"/> from a set of
+        /// maps.</returns>
+        public static async Task<FloatRange> GetTotalPrecipitationAtTimeAsync(
             this Planetoid planet,
             PrecipitationMaps[] maps,
-            Duration time)
-        {
-            if (maps.Length == 0)
-            {
-                return FloatRange.Zero;
-            }
-
-            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(time), map => map.Precipitation);
-        }
+            Instant time) => maps.Length == 0
+            ? FloatRange.Zero
+            : InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.Precipitation);
 
         /// <summary>
         /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> from a
