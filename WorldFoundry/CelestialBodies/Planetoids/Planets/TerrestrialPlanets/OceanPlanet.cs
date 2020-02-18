@@ -162,7 +162,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
         { }
 
-        private protected override void GenerateHydrosphere(TerrestrialPlanetParams? planetParams, double surfaceTemp)
+        private protected override void GenerateHydrosphere(TerrestrialPlanetParams? planetParams, double surfaceTemp, bool earthlike = false)
             => GenerateHydrosphere(
                 surfaceTemp,
                 planetParams?.WaterRatio ?? (decimal)Randomizer.Instance.NormalDistributionSample(MaxElevation * 2, MaxElevation / 3));

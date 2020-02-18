@@ -27,7 +27,7 @@ namespace NeverFoundry.WorldFoundry.Test
 
             var json = JsonConvert.SerializeObject(planet, _JsonSerializerSettings);
             var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
+            Console.WriteLine($"Saved size: {bytes.Length:N} bytes");
             Console.WriteLine();
 
             //Console.Write("JSON: ");
@@ -49,7 +49,7 @@ namespace NeverFoundry.WorldFoundry.Test
 
             var json = JsonConvert.SerializeObject(maps);
             var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
+            Console.WriteLine($"Saved size: {bytes.Length:N} bytes");
             Console.WriteLine();
 
             //Console.Write("JSON: ");
@@ -89,7 +89,7 @@ namespace NeverFoundry.WorldFoundry.Test
 
             var json = JsonConvert.SerializeObject(universe, _JsonSerializerSettings);
             var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Saved size: {bytes.Length.ToString("N")} bytes");
+            Console.WriteLine($"Saved size: {bytes.Length:N} bytes");
             Console.WriteLine();
 
             //Console.Write("JSON: ");

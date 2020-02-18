@@ -18,6 +18,37 @@ namespace NeverFoundry.WorldFoundry.Test
         private const int SurfaceMapResolution = 90;
 
         [TestMethod]
+        public async Task EarthlikePlanet_GenerateAsync()
+        {
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(earthlike: true).ConfigureAwait(false);
+            Assert.IsNotNull(planet);
+
+            Console.WriteLine($"Radius: {planet!.Shape.ContainingRadius / 1000} km");
+            Console.WriteLine($"Surface area: {planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000} km²");
+        }
+
+        [TestMethod]
+        public async Task EarthlikePlanet_Generate_WithSeasonsAsync()
+        {
+            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(earthlike: true).ConfigureAwait(false);
+            Assert.IsNotNull(planet);
+
+            var maps = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
+
+            var sb = new StringBuilder();
+
+            AddTempString(sb, planet!, maps);
+            sb.AppendLine();
+            AddTerrainString(sb, planet!, maps);
+            sb.AppendLine();
+            AddClimateString(sb, planet!, maps);
+            sb.AppendLine();
+            AddPrecipitationString(sb, planet!, maps);
+
+            Console.WriteLine(sb.ToString());
+        }
+
+        [TestMethod]
         public async Task TerrestrialPlanet_GenerateAsync()
         {
             var planetParams = TerrestrialPlanetParams.FromDefaults();
@@ -25,8 +56,8 @@ namespace NeverFoundry.WorldFoundry.Test
             var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Radius: {(planet!.Shape.ContainingRadius / 1000).ToString()} km");
-            Console.WriteLine($"Surface area: {(planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000).ToString()} km²");
+            Console.WriteLine($"Radius: {planet!.Shape.ContainingRadius / 1000} km");
+            Console.WriteLine($"Surface area: {planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000} km²");
         }
 
         [TestMethod]

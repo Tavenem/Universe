@@ -238,6 +238,11 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
+        /// <param name="earthlike">
+        /// If <see langword="true"/> the planet will be configured to match the orbit and physical
+        /// parameters of Earth (except as defined in <paramref name="planetParams"/> and <paramref
+        /// name="habitabilityRequirements"/>).
+        /// </param>
         /// <returns>A new instance of the indicated <see cref="TerrestrialPlanet"/> type, or <see
         /// langword="null"/> if no instance could be generated with the given parameters.</returns>
         public static async Task<T?> GetNewInstanceAsync<T>(
@@ -245,7 +250,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             Vector3 position,
             Star star,
             TerrestrialPlanetParams? planetParams,
-            HabitabilityRequirements? habitabilityRequirements = null) where T : TerrestrialPlanet
+            HabitabilityRequirements? habitabilityRequirements = null,
+            bool earthlike = false) where T : TerrestrialPlanet
         {
             if (!(typeof(T).InvokeMember(
                 null,
@@ -266,7 +272,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 instance.HasMagnetosphere = planetParams!.Value.HasMagnetosphere!.Value;
             }
 
-            instance.Material = await instance.GetMaterialAsync(planetParams, habitabilityRequirements).ConfigureAwait(false);
+            instance.Material = await instance.GetMaterialAsync(planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
 
             double surfaceTemp;
             if (planetParams?.SurfaceTemperature.HasValue == true)
@@ -275,17 +281,29 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
             else if (habitabilityRequirements?.MinimumTemperature.HasValue == true)
             {
-                surfaceTemp = habitabilityRequirements!.Value.MaximumTemperature!.HasValue
-                    ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
-                        + habitabilityRequirements!.Value.MaximumTemperature!.Value)
-                        / 2
-                    : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                if (earthlike
+                    && (!habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                    || habitabilityRequirements!.Value.MaximumTemperature.Value >= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                    && habitabilityRequirements!.Value.MinimumTemperature!.Value <= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                {
+                    surfaceTemp = TerrestrialPlanetParams.DefaultSurfaceTemperature;
+                }
+                else
+                {
+                    surfaceTemp = habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                        ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
+                            + habitabilityRequirements!.Value.MaximumTemperature.Value)
+                            / 2
+                        : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                }
             }
             else
             {
-                surfaceTemp = await instance.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+                surfaceTemp = earthlike
+                    ? TerrestrialPlanetParams.DefaultSurfaceTemperature
+                    : await instance.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
             }
-            instance.GenerateHydrosphere(planetParams, surfaceTemp);
+            instance.GenerateHydrosphere(planetParams, surfaceTemp, earthlike);
 
             await instance.GenerateOrbitAsync(star, planetParams, habitabilityRequirements).ConfigureAwait(false);
             await instance.SetRotationalPeriodAsync().ConfigureAwait(false);
@@ -310,12 +328,18 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
+        /// <param name="earthlike">
+        /// If <see langword="true"/> the planet will be configured to match the orbit and physical
+        /// parameters of Earth (except as defined in <paramref name="planetParams"/> and <paramref
+        /// name="habitabilityRequirements"/>).
+        /// </param>
         /// <returns>A planet with the given parameters.</returns>
         public static async Task<TerrestrialPlanet?> GetPlanetForStarAsync(
             StarSystem system,
             Star star,
             TerrestrialPlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
+            HabitabilityRequirements? habitabilityRequirements = null,
+            bool earthlike = false)
         {
             var pParams = planetParams ?? TerrestrialPlanetParams.FromDefaults();
             var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
@@ -328,7 +352,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     Vector3.Zero,
                     star,
                     pParams,
-                    requirements).ConfigureAwait(false);
+                    requirements,
+                    earthlike).ConfigureAwait(false);
                 if (planet is null)
                 {
                     sanityCheck++;
@@ -354,11 +379,18 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
+        /// <param name="earthlike">
+        /// If <see langword="true"/> the star will be configured to match the physical parameters
+        /// of Earth's star, Sol, and the planet will be configured to match the orbit and physical
+        /// parameters of Earth (except as defined in <paramref name="planetParams"/> and <paramref
+        /// name="habitabilityRequirements"/>).
+        /// </param>
         /// <returns>A planet with the given parameters.</returns>
         public static async Task<TerrestrialPlanet?> GetPlanetForGalaxyAsync(
             Galaxy galaxy,
             TerrestrialPlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
+            HabitabilityRequirements? habitabilityRequirements = null,
+            bool earthlike = false)
         {
             StarSystem? system;
             var sanityCheck = 10000;
@@ -379,13 +411,19 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 }
                 sanityCheck--;
             } while (sanityCheck > 0 && (star is null || isBinary));
-            if (system != null)
+            if (star != null && earthlike)
+            {
+                star.Luminosity = 3.828e26;
+                star.Mass = 1.989e30;
+                star.SetTemperature(5778);
+            }
+            if (system != null && star != null)
             {
                 await system.SaveAsync().ConfigureAwait(false);
             }
             return system is null || star is null
                 ? null
-                : await GetPlanetForStarAsync(system, star, planetParams, habitabilityRequirements).ConfigureAwait(false);
+                : await GetPlanetForStarAsync(system, star, planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -399,11 +437,18 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
+        /// <param name="earthlike">
+        /// If <see langword="true"/> the star will be configured to match the physical parameters
+        /// of Earth's star, Sol, and the planet will be configured to match the orbit and physical
+        /// parameters of Earth (except as defined in <paramref name="planetParams"/> and <paramref
+        /// name="habitabilityRequirements"/>).
+        /// </param>
         /// <returns>A planet with the given parameters.</returns>
         public static async Task<TerrestrialPlanet?> GetPlanetForUniverseAsync(
             Universe universe,
             TerrestrialPlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
+            HabitabilityRequirements? habitabilityRequirements = null,
+            bool earthlike = false)
         {
             var gsc = await universe.GetNewChildAsync<GalaxySupercluster>().ConfigureAwait(false);
             if (gsc is null)
@@ -435,7 +480,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 return null;
             }
             await g.SaveAsync().ConfigureAwait(false);
-            return await GetPlanetForGalaxyAsync(g, planetParams, habitabilityRequirements).ConfigureAwait(false);
+            return await GetPlanetForGalaxyAsync(g, planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -448,10 +493,17 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="habitabilityRequirements">A set of <see cref="HabitabilityRequirements"/>.
         /// If omitted, <see cref="HabitabilityRequirements.HumanHabitabilityRequirements"/> will be
         /// used.</param>
+        /// <param name="earthlike">
+        /// If <see langword="true"/> the star will be configured to match the physical parameters
+        /// of Earth's star, Sol, and the planet will be configured to match the orbit and physical
+        /// parameters of Earth (except as defined in <paramref name="planetParams"/> and <paramref
+        /// name="habitabilityRequirements"/>).
+        /// </param>
         /// <returns>A planet with the given parameters.</returns>
         public static async Task<TerrestrialPlanet?> GetPlanetForNewUniverseAsync(
             TerrestrialPlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
+            HabitabilityRequirements? habitabilityRequirements = null,
+            bool earthlike = false)
         {
             var universe = await Universe.GetNewInstanceAsync().ConfigureAwait(false);
             if (universe is null)
@@ -459,7 +511,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 return null;
             }
             await universe.SaveAsync().ConfigureAwait(false);
-            return await GetPlanetForUniverseAsync(universe, planetParams, habitabilityRequirements).ConfigureAwait(false);
+            return await GetPlanetForUniverseAsync(universe, planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
         }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -652,14 +704,14 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         internal override Task GenerateOrbitAsync(CelestialLocation orbitedObject)
             => GenerateOrbitAsync(orbitedObject, null, null);
 
-        private async Task AdjustOrbitForTemperatureAsync(TerrestrialPlanetParams? planetParams, Star star, Number? semiMajorAxis, double trueAnomaly, double targetTemp)
+        private async Task AdjustOrbitForTemperatureAsync(TerrestrialPlanetParams? planetParams, Star star, Number? semiMajorAxis, double trueAnomaly, double targetTemp, bool earthlike)
         {
             var temp = await GetTemperatureAsync().ConfigureAwait(false);
 
             // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
             // This allows calculation of the correct distance/orbit for an average
             // orbital temperature (rather than the temperature at the current position).
-            if (planetParams?.RevolutionPeriod.HasValue == true && semiMajorAxis.HasValue)
+            if ((earthlike || planetParams?.RevolutionPeriod.HasValue == true) && semiMajorAxis.HasValue)
             {
                 var albedo = await GetAlbedoAsync().ConfigureAwait(false);
                 star.SetTempForTargetPlanetTemp(targetTemp - (temp ?? 0), semiMajorAxis.Value * (1 + (Eccentricity * Eccentricity / 2)), albedo);
@@ -676,7 +728,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             TerrestrialPlanetParams? planetParams,
             IHomogeneousReference substance,
             double surfaceTemp,
-            double adjustedAtmosphericPressure)
+            double adjustedAtmosphericPressure,
+            bool earthlike)
         {
             var proportionInHydrosphere = Hydrosphere.GetProportion(substance);
             var water = Substances.All.Water.GetChemicalReference();
@@ -704,7 +757,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     proportionInHydrosphere,
                     vaporProportion,
                     vaporPressure,
-                    ref adjustedAtmosphericPressure);
+                    ref adjustedAtmosphericPressure,
+                    earthlike);
             }
             // This indicates that the chemical will fully boil off.
             else if (proportionInHydrosphere > 0)
@@ -716,7 +770,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     ref adjustedAtmosphericPressure);
             }
 
-            if (isWater)
+            if (isWater && !earthlike)
             {
                 await CheckCO2ReductionAsync(vaporPressure).ConfigureAwait(false);
             }
@@ -724,7 +778,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             return adjustedAtmosphericPressure;
         }
 
-        private async Task<double> CalculatePhasesAsync(TerrestrialPlanetParams? planetParams, int counter, double adjustedAtmosphericPressure)
+        private async Task<double> CalculatePhasesAsync(TerrestrialPlanetParams? planetParams, int counter, double adjustedAtmosphericPressure, bool earthlike)
         {
             var surfaceTemp = await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
 
@@ -734,53 +788,59 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             // to form precipitation.
 
             var methane = Substances.All.Methane.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, methane, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, methane, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             var carbonMonoxide = Substances.All.CarbonMonoxide.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             var carbonDioxide = Substances.All.CarbonDioxide.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             var nitrogen = Substances.All.Nitrogen.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, nitrogen, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, nitrogen, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             var oxygen = Substances.All.Oxygen.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, oxygen, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, oxygen, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             // No need to check for ozone, since it is only added to atmospheres on planets with
             // liquid surface water, which means temperatures too high for liquid or solid ozone.
 
             var sulphurDioxide = Substances.All.SulphurDioxide.GetChemicalReference();
-            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
 
             // Water is handled differently, since the planet may already have surface water.
-            var water = Substances.All.Water.GetChemicalReference();
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            if (Hydrosphere.Contains(water)
-                || Hydrosphere.Contains(seawater)
-                || Atmosphere.Material.Contains(water))
+            if (counter > 0) // Not performed on first pass, since it was already done.
             {
-                adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, water, surfaceTemp, adjustedAtmosphericPressure).ConfigureAwait(false);
+                var water = Substances.All.Water.GetChemicalReference();
+                var seawater = Substances.All.Seawater.GetHomogeneousReference();
+                if (Hydrosphere.Contains(water)
+                    || Hydrosphere.Contains(seawater)
+                    || Atmosphere.Material.Contains(water))
+                {
+                    adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(planetParams, water, surfaceTemp, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
+                }
             }
 
-            // Ices and clouds significantly impact albedo.
-            var pressure = adjustedAtmosphericPressure;
-            var iceAmount = (double)Math.Min(1,
-                Hydrosphere.GetSurface()?
-                .Constituents.Sum(x => x.substance.Substance.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid).First().proportion * x.proportion) ?? 0);
-            var cloudCover = Atmosphere.AtmosphericPressure
-                * (double)Atmosphere.Material.Constituents.Sum(x => x.substance.Substance.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid | PhaseType.Liquid).First().proportion * x.proportion / 100);
-            var reflectiveSurface = Math.Max(iceAmount, cloudCover);
-            var surfaceAlbedo = await GetSurfaceAlbedoAsync().ConfigureAwait(false);
-            await SetAlbedoAsync((surfaceAlbedo * (1 - reflectiveSurface)) + (0.9 * reflectiveSurface)).ConfigureAwait(false);
-
-            // An albedo change might significantly alter surface temperature, which may require a
-            // re-calculation (but not too many). 5K is used as the threshold for re-calculation,
-            // which may lead to some inaccuracies, but should avoid over-repetition for small changes.
-            if (counter < 10 && Math.Abs(surfaceTemp - await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false)) > 5)
+            if (!earthlike) // Albedo already pre-set for earthlike.
             {
-                adjustedAtmosphericPressure = await CalculatePhasesAsync(planetParams, counter + 1, adjustedAtmosphericPressure).ConfigureAwait(false);
+                // Ices and clouds significantly impact albedo.
+                var pressure = adjustedAtmosphericPressure;
+                var iceAmount = (double)Math.Min(1,
+                    Hydrosphere.GetSurface()?
+                    .Constituents.Sum(x => x.substance.Substance.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid).First().proportion * x.proportion) ?? 0);
+                var cloudCover = Atmosphere.AtmosphericPressure
+                    * (double)Atmosphere.Material.Constituents.Sum(x => x.substance.Substance.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid | PhaseType.Liquid).First().proportion * x.proportion / 100);
+                var reflectiveSurface = Math.Max(iceAmount, cloudCover);
+                var surfaceAlbedo = await GetSurfaceAlbedoAsync().ConfigureAwait(false);
+                await SetAlbedoAsync((surfaceAlbedo * (1 - reflectiveSurface)) + (0.9 * reflectiveSurface)).ConfigureAwait(false);
+
+                // An albedo change might significantly alter surface temperature, which may require a
+                // re-calculation (but not too many). 5K is used as the threshold for re-calculation,
+                // which may lead to some inaccuracies, but should avoid over-repetition for small changes.
+                if (counter < 10 && Math.Abs(surfaceTemp - await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false)) > 5)
+                {
+                    adjustedAtmosphericPressure = await CalculatePhasesAsync(planetParams, counter + 1, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
+                }
             }
 
             return adjustedAtmosphericPressure;
@@ -845,7 +905,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             decimal proportionInHydrosphere,
             decimal vaporProportion,
             double vaporPressure,
-            ref double adjustedAtmosphericPressure)
+            ref double adjustedAtmosphericPressure,
+            bool earthlike)
         {
             var water = Substances.All.Water.GetChemicalReference();
 
@@ -870,9 +931,9 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             {
                 // Adjust vapor present in the atmosphere based on the vapor pressure.
                 var pressureRatio = (vaporPressure / Atmosphere.AtmosphericPressure).Clamp(0, 1);
-                if (substance.Equals(water) && planetParams?.WaterVaporRatio.HasValue == true)
+                if (substance.Equals(water) && (earthlike || planetParams?.WaterVaporRatio.HasValue == true))
                 {
-                    vaporProportion = planetParams!.Value.WaterVaporRatio!.Value;
+                    vaporProportion = planetParams?.WaterVaporRatio ?? TerrestrialPlanetParams.DefaultWaterVaporRatio;
                 }
                 else
                 {
@@ -893,7 +954,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                         Atmosphere.ResetWater(this);
 
                         // For water, also add a corresponding amount of oxygen, if it's not already present.
-                        if (CanHaveOxygen)
+                        if (!earthlike && CanHaveOxygen)
                         {
                             var oxygen = Substances.All.Oxygen.GetChemicalReference();
                             var o2 = Atmosphere.Material.GetProportion(oxygen);
@@ -988,11 +1049,20 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     ? PhaseType.Liquid
                     : PhaseType.Solid;
 
-                var tempBottom = depth > 1000
-                    ? 277
-                    : depth < 200
-                        ? temperature
-                        : temperature.Lerp(277, (depth - 200) / 800);
+                double tempBottom;
+                if (depth > 1000)
+                {
+                    tempBottom = 277;
+                }
+                else if (depth < 200)
+                {
+                    tempBottom = temperature;
+                }
+                else
+                {
+                    tempBottom = temperature.Lerp(277, (depth - 200) / 800);
+                }
+
                 var stateBottom = Substances.All.Seawater.MeltingPoint <= tempBottom
                     ? PhaseType.Liquid
                     : PhaseType.Solid;
@@ -1031,11 +1101,20 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
 
             var avgDepth = (double)(Hydrosphere.Shape.ContainingRadius - Material.Shape.ContainingRadius) / 2;
-            var avgTemp = avgDepth > 1000
-                ? 277
-                : avgDepth < 200
-                    ? temperature
-                    : temperature.Lerp(277, (avgDepth - 200) / 800);
+            double avgTemp;
+            if (avgDepth > 1000)
+            {
+                avgTemp = 277;
+            }
+            else if (avgDepth < 200)
+            {
+                avgTemp = temperature;
+            }
+            else
+            {
+                avgTemp = temperature.Lerp(277, (avgDepth - 200) / 800);
+            }
+
             _hydrosphere = new Material(
                 Hydrosphere.Density,
                 Hydrosphere.Mass,
@@ -1053,27 +1132,27 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
         private protected override Task GenerateAngleOfRotationAsync() => GenerateAngleOfRotationAsync(null);
 
-        private async Task GenerateAngleOfRotationAsync(TerrestrialPlanetParams? planetParams)
+        private async Task GenerateAngleOfRotationAsync(TerrestrialPlanetParams? planetParams, bool earthlike = false)
         {
-            if (planetParams?.AxialTilt.HasValue != true)
-            {
-                await base.GenerateAngleOfRotationAsync().ConfigureAwait(false);
-            }
-            else
+            if (planetParams?.AxialTilt.HasValue == true || earthlike)
             {
                 _axialPrecession = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-                var axialTilt = planetParams!.Value.AxialTilt!.Value;
+                var axialTilt = planetParams?.AxialTilt ?? TerrestrialPlanetParams.DefaultAxialTilt;
                 if (Orbit.HasValue)
                 {
                     axialTilt += Orbit.Value.Inclination;
                 }
                 await SetAngleOfRotationAsync(axialTilt).ConfigureAwait(false);
             }
+            else
+            {
+                await base.GenerateAngleOfRotationAsync().ConfigureAwait(false);
+            }
         }
 
         private protected override Task GenerateAtmosphereAsync() => GenerateAtmosphereAsync(null, null);
 
-        private async Task GenerateAtmosphereAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
+        private async Task GenerateAtmosphereAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements, bool earthlike = false)
         {
             if (_atmosphere != null)
             {
@@ -1086,7 +1165,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
             else
             {
-                await GenerateAtmosphereThickAsync(planetParams, habitabilityRequirements).ConfigureAwait(false);
+                await GenerateAtmosphereThickAsync(planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
             }
 
             var adjustedAtmosphericPressure = Atmosphere.AtmosphericPressure;
@@ -1109,21 +1188,34 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 }
                 else if (habitabilityRequirements?.MinimumTemperature.HasValue == true)
                 {
-                    surfaceTemp = habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                        ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
-                            + habitabilityRequirements!.Value.MaximumTemperature!.Value)
-                            / 2
-                        : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                    if (earthlike
+                        && (!habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                        || habitabilityRequirements!.Value.MaximumTemperature!.Value >= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                        && habitabilityRequirements!.Value.MinimumTemperature!.Value <= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                    {
+                        surfaceTemp = TerrestrialPlanetParams.DefaultSurfaceTemperature;
+                    }
+                    else
+                    {
+                        surfaceTemp = habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                            ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
+                                + habitabilityRequirements!.Value.MaximumTemperature!.Value)
+                                / 2
+                            : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                    }
                 }
                 else
                 {
-                    surfaceTemp = await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
+                    surfaceTemp = earthlike
+                        ? TerrestrialPlanetParams.DefaultSurfaceTemperature
+                        : await GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
                 }
                 adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(
                     planetParams,
                     water,
                     surfaceTemp,
-                    adjustedAtmosphericPressure).ConfigureAwait(false);
+                    adjustedAtmosphericPressure,
+                    earthlike).ConfigureAwait(false);
 
                 // Recalculate temperatures based on the new atmosphere.
                 await ResetCachedTemperaturesAsync().ConfigureAwait(false);
@@ -1135,17 +1227,19 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     planetParams,
                     water,
                     await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false),
-                    adjustedAtmosphericPressure).ConfigureAwait(false);
+                    adjustedAtmosphericPressure,
+                    earthlike).ConfigureAwait(false);
 
                 // If life alters the greenhouse potential, temperature and water phase must be
                 // recalculated once again.
-                if (await GenerateLifeAsync().ConfigureAwait(false))
+                if (await GenerateLifeAsync(earthlike).ConfigureAwait(false))
                 {
                     adjustedAtmosphericPressure = await CalculateGasPhaseMixAsync(
                         planetParams,
                         water,
                         await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false),
-                        adjustedAtmosphericPressure).ConfigureAwait(false);
+                        adjustedAtmosphericPressure,
+                        earthlike).ConfigureAwait(false);
                     await ResetCachedTemperaturesAsync().ConfigureAwait(false);
                     FractionHydrophere(await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false));
                 }
@@ -1181,10 +1275,10 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 await Atmosphere.ResetGreenhouseFactorAsync(this).ConfigureAwait(false);
             }
 
-            adjustedAtmosphericPressure = await CalculatePhasesAsync(planetParams, 0, adjustedAtmosphericPressure).ConfigureAwait(false);
+            adjustedAtmosphericPressure = await CalculatePhasesAsync(planetParams, 0, adjustedAtmosphericPressure, earthlike).ConfigureAwait(false);
             FractionHydrophere(await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false));
 
-            if (planetParams?.AtmosphericPressure.HasValue != true && habitabilityRequirements is null)
+            if (!earthlike && planetParams?.AtmosphericPressure.HasValue != true && habitabilityRequirements is null)
             {
                 await SetAtmosphericPressureAsync(Math.Max(0, adjustedAtmosphericPressure)).ConfigureAwait(false);
                 await Atmosphere.ResetPressureDependentPropertiesAsync(this).ConfigureAwait(false);
@@ -1199,7 +1293,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
         }
 
-        private async Task GenerateAtmosphereThickAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
+        private async Task GenerateAtmosphereThickAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements, bool earthlike)
         {
             double pressure;
             if (planetParams?.AtmosphericPressure.HasValue == true)
@@ -1209,8 +1303,16 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             else if (habitabilityRequirements?.MinimumPressure.HasValue == true
                 || habitabilityRequirements?.MaximumPressure.HasValue == true)
             {
+                if (earthlike
+                    && (!habitabilityRequirements!.Value.MinimumPressure.HasValue
+                    || habitabilityRequirements!.Value.MinimumPressure.Value <= TerrestrialPlanetParams.DefaultAtmosphericPressure)
+                    && (!habitabilityRequirements!.Value.MaximumPressure.HasValue
+                    || habitabilityRequirements!.Value.MaximumPressure.Value >= TerrestrialPlanetParams.DefaultAtmosphericPressure))
+                {
+                    pressure = TerrestrialPlanetParams.DefaultAtmosphericPressure;
+                }
                 // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                if (!habitabilityRequirements!.Value.MaximumPressure!.HasValue)
+                else if (!habitabilityRequirements!.Value.MaximumPressure!.HasValue)
                 {
                     pressure = habitabilityRequirements!.Value.MinimumPressure!.Value
                         + Math.Abs(Randomizer.Instance.NormalDistributionSample(0, habitabilityRequirements.Value.MinimumPressure.Value / 3));
@@ -1219,6 +1321,10 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 {
                     pressure = Randomizer.Instance.NextDouble(habitabilityRequirements.Value.MinimumPressure ?? 0, habitabilityRequirements.Value.MaximumPressure.Value);
                 }
+            }
+            else if (earthlike)
+            {
+                pressure = TerrestrialPlanetParams.DefaultAtmosphericPressure;
             }
             else
             {
@@ -1239,44 +1345,63 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
             // atmospheric escape.
-            var h = Randomizer.Instance.NextDecimal(5e-8m, 2e-7m);
-            var he = Randomizer.Instance.NextDecimal(2.6e-7m, 1e-5m);
+            var h = earthlike ? 3.8e-8m : Randomizer.Instance.NextDecimal(1e-8m, 2e-7m);
+            var he = earthlike ? 7.24e-6m : Randomizer.Instance.NextDecimal(2.6e-7m, 1e-5m);
 
             // 50% chance not to have these components at all.
-            var ch4 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
+            var ch4 = earthlike ? 2.9e-6m : Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             var traceTotal = ch4;
 
-            var co = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
+            var co = earthlike ? 2.5e-7m : Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             traceTotal += co;
 
-            var so2 = Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
+            var so2 = earthlike ? 1e-7m : Math.Max(0, Randomizer.Instance.NextDecimal(-0.5m, 0.5m));
             traceTotal += so2;
 
-            var trace = traceTotal == 0 ? 0 : Randomizer.Instance.NextDecimal(1.5e-4m, 2.5e-3m);
-            var traceRatio = traceTotal == 0 ? 0 : trace / traceTotal;
-            ch4 *= traceRatio;
-            co *= traceRatio;
-            so2 *= traceRatio;
+            decimal trace;
+            if (earthlike)
+            {
+                trace = traceTotal;
+            }
+            else if (traceTotal == 0)
+            {
+                trace = 0;
+            }
+            else
+            {
+                trace = Randomizer.Instance.NextDecimal(1e-6m, 2.5e-4m);
+            }
+            if (!earthlike)
+            {
+                var traceRatio = traceTotal == 0 ? 0 : trace / traceTotal;
+                ch4 *= traceRatio;
+                co *= traceRatio;
+                so2 *= traceRatio;
+            }
 
             // CO2 makes up the bulk of a thick atmosphere by default (although the presence of water
             // may change this later).
-            var co2 = Randomizer.Instance.NextDecimal(0.97m, 0.99m) - trace;
+            var co2 = earthlike ? 5.3e-4m : Randomizer.Instance.NextDecimal(0.97m, 0.99m) - trace;
 
             // If there is water on the surface, the water in the air will be determined based on
             // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
             // chance of water vapor without significant surface water (results of cometary deposits, etc.)
-            var waterVapor = 0.0m;
-            var water = Substances.All.Water.GetChemicalReference();
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            var surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
-            if (CanHaveWater && !surfaceWater)
+            var waterVapor = earthlike ? TerrestrialPlanetParams.DefaultWaterVaporRatio : 0.0m;
+            var surfaceWater = false;
+            if (!earthlike)
             {
-                waterVapor = Math.Max(0, Randomizer.Instance.NextDecimal(-0.05m, 0.001m));
+                var water = Substances.All.Water.GetChemicalReference();
+                var seawater = Substances.All.Seawater.GetHomogeneousReference();
+                surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
+                if (CanHaveWater && !surfaceWater)
+                {
+                    waterVapor = Math.Max(0, Randomizer.Instance.NextDecimal(-0.05m, 0.001m));
+                }
             }
 
             // Always at least some oxygen if there is water, planetary composition allowing
-            var o2 = 0.0m;
-            if (CanHaveOxygen)
+            var o2 = earthlike ? 0.23133m : 0.0m;
+            if (!earthlike && CanHaveOxygen)
             {
                 if (waterVapor != 0)
                 {
@@ -1288,21 +1413,23 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 }
             }
 
+            var o3 = earthlike ? o2 * 4.5e-5m : 0;
+
             // N2 (largely inert gas) comprises whatever is left after the other components have been
             // determined. This is usually a trace amount, unless CO2 has been reduced to a trace, in
             // which case it will comprise the bulk of the atmosphere.
-            var n2 = 1 - (h + he + co2 + waterVapor + o2 + trace);
+            var n2 = 1 - (h + he + co2 + waterVapor + o2 + o3 + trace);
 
             // Some portion of the N2 may be Ar instead.
-            var ar = Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-0.02m, 0.04m));
+            var ar = earthlike ? 1.288e-3m : Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-0.02m, 0.04m));
             n2 -= ar;
             // An even smaller fraction may be Kr.
-            var kr = Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-2.5e-4m, 5.0e-4m));
+            var kr = earthlike ? 3.3e-6m : Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-2.5e-4m, 5.0e-4m));
             n2 -= kr;
             // An even smaller fraction may be Xe or Ne.
-            var xe = Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-1.8e-5m, 3.5e-5m));
+            var xe = earthlike ? 8.7e-8m : Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-1.8e-5m, 3.5e-5m));
             n2 -= xe;
-            var ne = Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-1.8e-5m, 3.5e-5m));
+            var ne = earthlike ? 1.267e-5m : Math.Max(0, n2 * Randomizer.Instance.NextDecimal(-1.8e-5m, 3.5e-5m));
             n2 -= ne;
 
             var components = new List<(ISubstanceReference, decimal)>()
@@ -1331,6 +1458,10 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             if (o2 > 0)
             {
                 components.Add((Substances.All.Oxygen.GetChemicalReference(), o2));
+            }
+            if (o3 > 0)
+            {
+                components.Add((Substances.All.Ozone.GetChemicalReference(), o3));
             }
             if (so2 > 0)
             {
@@ -1554,11 +1685,19 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 outerRadius,
                 Material.Shape.Position);
             var avgDepth = (double)(outerRadius - Material.Shape.ContainingRadius) / 2;
-            var avgTemp = avgDepth > 1000
-                ? 277
-                : avgDepth < 200
-                    ? surfaceTemp
-                    : surfaceTemp.Lerp(277, (avgDepth - 200) / 800);
+            double avgTemp;
+            if (avgDepth > 1000)
+            {
+                avgTemp = 277;
+            }
+            else if (avgDepth < 200)
+            {
+                avgTemp = surfaceTemp;
+            }
+            else
+            {
+                avgTemp = surfaceTemp.Lerp(277, (avgDepth - 200) / 800);
+            }
 
             _hydrosphere = new Material(
                 density,
@@ -1573,7 +1712,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             HydrolyzeCrust();
         }
 
-        private protected virtual void GenerateHydrosphere(TerrestrialPlanetParams? planetParams, double surfaceTemp)
+        private protected virtual void GenerateHydrosphere(TerrestrialPlanetParams? planetParams, double surfaceTemp, bool earthlike = false)
         {
             // Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
             // icecaps, etc.). This might be removed later, depending on the planet's conditions.
@@ -1584,7 +1723,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 return;
             }
 
-            GenerateHydrosphere(surfaceTemp, planetParams?.WaterRatio ?? Randomizer.Instance.NextDecimal());
+            GenerateHydrosphere(surfaceTemp, earthlike ? TerrestrialPlanetParams.DefaultWaterRatio : planetParams?.WaterRatio ?? Randomizer.Instance.NextDecimal());
         }
 
         /// <summary>
@@ -1594,7 +1733,7 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <returns>
         /// True if the atmosphere's greenhouse potential is adjusted; false if not.
         /// </returns>
-        private async Task<bool> GenerateLifeAsync()
+        private async Task<bool> GenerateLifeAsync(bool earthlike)
         {
             if (!await GetIsHospitableAsync().ConfigureAwait(false) || !await IsHabitableAsync().ConfigureAwait(false))
             {
@@ -1614,6 +1753,11 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
 
             // If the habitable zone is a subsurface ocean, no further adjustments occur.
             if (Hydrosphere is LayeredComposite)
+            {
+                return false;
+            }
+
+            if (earthlike)
             {
                 return false;
             }
@@ -1664,15 +1808,19 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             return false;
         }
 
-        private async Task GenerateOrbitAsync(CelestialLocation orbitedObject, TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
+        private async Task GenerateOrbitAsync(CelestialLocation orbitedObject, TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements, bool earthlike = false)
         {
             if (planetParams?.RotationalPeriod.HasValue == true)
             {
                 await SetRotationalPeriodAsync(Number.Max(0, planetParams!.Value.RotationalPeriod!.Value)).ConfigureAwait(false);
             }
+            else if (earthlike)
+            {
+                await SetRotationalPeriodAsync(TerrestrialPlanetParams.DefaultRotationalPeriod).ConfigureAwait(false);
+            }
             if (orbitedObject is null)
             {
-                await GenerateAngleOfRotationAsync(planetParams).ConfigureAwait(false);
+                await GenerateAngleOfRotationAsync(planetParams, earthlike).ConfigureAwait(false);
                 return;
             }
 
@@ -1680,12 +1828,16 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             {
                 Eccentricity = planetParams!.Value.Eccentricity!.Value;
             }
+            else if (earthlike)
+            {
+                Eccentricity = TerrestrialPlanetParams.DefaultEccentricity;
+            }
 
             var ta = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             Number? semiMajorAxis;
-            if (planetParams?.RevolutionPeriod.HasValue == true)
+            if (planetParams?.RevolutionPeriod.HasValue == true || earthlike)
             {
-                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams!.Value.RevolutionPeriod!.Value);
+                semiMajorAxis = WorldFoundry.Space.Orbit.GetSemiMajorAxisForPeriod(this, orbitedObject, planetParams?.RevolutionPeriod ?? TerrestrialPlanetParams.DefaultRevolutionPeriod);
                 await GenerateOrbitAsync(orbitedObject, semiMajorAxis.Value, ta).ConfigureAwait(false);
             }
             else
@@ -1702,10 +1854,11 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     .ConfigureAwait(false);
                 semiMajorAxis = Orbit?.SemiMajorAxis;
             }
-            await GenerateAngleOfRotationAsync(planetParams).ConfigureAwait(false);
+            await GenerateAngleOfRotationAsync(planetParams, earthlike).ConfigureAwait(false);
 
             if (orbitedObject is Star star
-                && (planetParams?.SurfaceTemperature.HasValue == true
+                && (earthlike
+                || planetParams?.SurfaceTemperature.HasValue == true
                 || habitabilityRequirements?.MinimumTemperature.HasValue == true
                 || habitabilityRequirements?.MaximumTemperature.HasValue == true))
             {
@@ -1716,15 +1869,27 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 }
                 else if (habitabilityRequirements?.MinimumTemperature.HasValue == true)
                 {
-                    targetTemp = habitabilityRequirements?.MaximumTemperature.HasValue == true
-                        ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
-                            + habitabilityRequirements!.Value.MaximumTemperature!.Value)
-                            / 2
-                        : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                    if (earthlike
+                        && (!habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                        || habitabilityRequirements!.Value.MaximumTemperature.Value >= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                        && habitabilityRequirements!.Value.MinimumTemperature!.Value <= TerrestrialPlanetParams.DefaultSurfaceTemperature)
+                    {
+                        targetTemp = TerrestrialPlanetParams.DefaultSurfaceTemperature;
+                    }
+                    else
+                    {
+                        targetTemp = habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                            ? (habitabilityRequirements!.Value.MinimumTemperature!.Value
+                                + habitabilityRequirements!.Value.MaximumTemperature!.Value)
+                                / 2
+                            : habitabilityRequirements!.Value.MinimumTemperature!.Value;
+                    }
                 }
                 else
                 {
-                    targetTemp = GetTempForThinAtmosphere() / 2;
+                    targetTemp = earthlike
+                        ? TerrestrialPlanetParams.DefaultSurfaceTemperature
+                        : GetTempForThinAtmosphere() / 2;
                 }
 
                 // Convert the target average surface temperature to an estimated target equatorial
@@ -1736,23 +1901,17 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 var avgElevation = MaxElevation * 0.04;
                 var totalTargetEffectiveTemp = targetEquatorialTemp + (avgElevation * LapseRateDry);
 
-                var greenhouseEffect = 30.0; // naive initial guess, corrected if possible with param values
-                if (planetParams?.AtmosphericPressure.HasValue == true
+                var greenhouseEffect = 30.0; // naïve initial guess, corrected if possible with param values
+                if (earthlike
+                    || (planetParams?.AtmosphericPressure.HasValue == true
                     && (planetParams?.WaterVaporRatio.HasValue == true
-                    || planetParams?.WaterRatio.HasValue == true))
+                    || planetParams?.WaterRatio.HasValue == true)))
                 {
-                    var pressure = planetParams!.Value.AtmosphericPressure!.Value;
+                    var pressure = planetParams?.AtmosphericPressure ?? TerrestrialPlanetParams.DefaultAtmosphericPressure;
 
-                    double vaporRatio;
-                    if (planetParams?.WaterVaporRatio.HasValue == true)
-                    {
-                        vaporRatio = (double)planetParams!.Value.WaterVaporRatio!.Value;
-                    }
-                    else
-                    {
-                        vaporRatio = (Substances.All.Water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
-                    }
-
+                    var vaporRatio = earthlike || planetParams?.WaterVaporRatio.HasValue == true
+                        ? (double)(planetParams?.WaterVaporRatio ?? TerrestrialPlanetParams.DefaultWaterVaporRatio)
+                        : (Substances.All.Water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
                     greenhouseEffect = await GetGreenhouseEffectAsync(
                         GetInsolationFactor(Atmosphere.GetAtmosphericMass(this, pressure), 0), // scale height will be ignored since this isn't a polar calculation
                         Atmosphere.GetGreenhouseFactor(Substances.All.Water.GreenhousePotential * vaporRatio, pressure)).ConfigureAwait(false);
@@ -1760,6 +1919,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 var targetEffectiveTemp = totalTargetEffectiveTemp - greenhouseEffect;
 
                 var currentTargetTemp = targetEffectiveTemp;
+
+                // Albedo will affect temperature/orbit adjustments below.
+                if (earthlike)
+                {
+                    await SetAlbedoAsync(0.325).ConfigureAwait(false);
+                }
 
                 // Due to atmospheric effects, the target is likely to be missed considerably on the
                 // first attempt, since the calculations for orbit/luminosity will not be able to
@@ -1773,14 +1938,15 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                 do
                 {
                     prevDelta = delta;
-                    await AdjustOrbitForTemperatureAsync(planetParams, star, semiMajorAxis, ta, currentTargetTemp).ConfigureAwait(false);
+
+                    await AdjustOrbitForTemperatureAsync(planetParams, star, semiMajorAxis, ta, currentTargetTemp, earthlike).ConfigureAwait(false);
 
                     // Reset hydrosphere to negate effects of runaway evaporation or freezing.
                     _hydrosphere = originalHydrosphere;
 
-                    await GenerateAtmosphereAsync(planetParams, habitabilityRequirements).ConfigureAwait(false);
+                    await GenerateAtmosphereAsync(planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
 
-                    if (planetParams?.SurfaceTemperature.HasValue == true)
+                    if (earthlike || planetParams?.SurfaceTemperature.HasValue == true)
                     {
                         delta = targetEquatorialTemp - await GetTemperatureAtElevationAsync(await GetAverageSurfaceTemperatureAsync().ConfigureAwait(false), avgElevation).ConfigureAwait(false);
                     }
@@ -1807,24 +1973,29 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                             }
                         }
                     }
-                    // Avoid oscillation by reducing deltas which bounce around zero.
-                    var deltaAdjustment = prevDelta != 0 && Math.Sign(delta) != Math.Sign(prevDelta)
-                        ? delta / 2
-                        : 0;
-                    // If the corrections are resulting in a runaway drift in the wrong direction,
-                    // reset by deleting the atmosphere and targeting the original temp; do not
-                    // reset the count, to prevent this from repeating indefinitely.
-                    if (prevDelta != 0
-                        && (delta >= 0) == (prevDelta >= 0)
-                        && Math.Abs(delta) > Math.Abs(prevDelta))
+                    if (earthlike
+                        || planetParams?.SurfaceTemperature.HasValue == true
+                        || habitabilityRequirements.HasValue)
                     {
-                        _atmosphere = null;
-                        await ResetCachedTemperaturesAsync().ConfigureAwait(false);
-                        currentTargetTemp = targetEffectiveTemp;
-                    }
-                    else
-                    {
-                        currentTargetTemp = Math.Max(0, currentTargetTemp + (delta - deltaAdjustment));
+                        // Avoid oscillation by reducing deltas which bounce around zero.
+                        var deltaAdjustment = prevDelta != 0 && Math.Sign(delta) != Math.Sign(prevDelta)
+                            ? delta / 2
+                            : 0;
+                        // If the corrections are resulting in a runaway drift in the wrong direction,
+                        // reset by deleting the atmosphere and targeting the original temp; do not
+                        // reset the count, to prevent this from repeating indefinitely.
+                        if (prevDelta != 0
+                            && (delta >= 0) == (prevDelta >= 0)
+                            && Math.Abs(delta) > Math.Abs(prevDelta))
+                        {
+                            _atmosphere = null;
+                            await ResetCachedTemperaturesAsync().ConfigureAwait(false);
+                            currentTargetTemp = targetEffectiveTemp;
+                        }
+                        else
+                        {
+                            currentTargetTemp = Math.Max(0, currentTargetTemp + (delta - deltaAdjustment));
+                        }
                     }
                     count++;
                 } while (count < 10 && Math.Abs(delta) > 0.5);
@@ -2164,13 +2335,13 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
             }
         }
 
-        private protected async Task<IMaterial> GetMaterialAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
+        private protected async Task<IMaterial> GetMaterialAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements, bool earthlike = false)
         {
-            var (density, mass, shape) = await GetMatterAsync(planetParams, habitabilityRequirements).ConfigureAwait(false);
+            var (density, mass, shape) = await GetMatterAsync(planetParams, habitabilityRequirements, earthlike).ConfigureAwait(false);
             return GetComposition(density, mass, shape, GetTemperature());
         }
 
-        private async Task<(double density, Number mass, IShape shape)> GetMatterAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements)
+        private async Task<(double density, Number mass, IShape shape)> GetMatterAsync(TerrestrialPlanetParams? planetParams, HabitabilityRequirements? habitabilityRequirements, bool earthlike)
         {
             var density = GetDensity();
 
@@ -2194,24 +2365,33 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
                     var maxRadius = (maxVolume / MathConstants.FourThirdsPI).CubeRoot();
                     maxGravity = (double)(ScienceConstants.G * maxMass / (maxRadius * maxRadius));
                 }
-                gravity = Randomizer.Instance.NextDouble(habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
+                if (!earthlike
+                    || maxGravity < TerrestrialPlanetParams.DefaultSurfaceGravity
+                    || habitabilityRequirements?.MinimumGravity >= TerrestrialPlanetParams.DefaultSurfaceGravity)
+                {
+                    gravity = Randomizer.Instance.NextDouble(habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
+                }
             }
 
             if (planetParams?.Radius.HasValue == true)
             {
+                if (earthlike && !gravity.HasValue)
+                {
+                    gravity = TerrestrialPlanetParams.DefaultSurfaceGravity;
+                }
                 var shape = GetShape(knownRadius: Number.Max(MinimumRadius, planetParams!.Value.Radius!.Value));
                 return (density, await GetMassAsync(gravity, shape).ConfigureAwait(false), shape);
             }
-            else if (planetParams?.SurfaceGravity.HasValue == true
-                || habitabilityRequirements?.MinimumGravity.HasValue == true
-                || habitabilityRequirements?.MaximumGravity.HasValue == true)
+            else if (gravity.HasValue)
             {
-                var shape = GetShape(knownRadius: Number.Max(MinimumRadius, Number.Min(GetRadiusForSurfaceGravity(gravity!.Value), GetMaxRadius(density))));
+                var shape = GetShape(knownRadius: Number.Max(MinimumRadius, Number.Min(GetRadiusForSurfaceGravity(gravity.Value), GetMaxRadius(density))));
                 return (density, await GetMassAsync(gravity, shape).ConfigureAwait(false), shape);
             }
             else
             {
-                var mass = await GetMassAsync(gravity).ConfigureAwait(false);
+                var mass = earthlike
+                    ? 5.972e24
+                    : await GetMassAsync(gravity).ConfigureAwait(false);
                 return (density, mass, GetShape(density, mass));
             }
         }

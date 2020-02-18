@@ -65,12 +65,12 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         public double? MaximumPressure { get; }
 
         /// <summary>
-        /// The minimum required gravity in N, if any.
+        /// The minimum required gravity in m/s², if any.
         /// </summary>
         public double? MinimumGravity { get; }
 
         /// <summary>
-        /// The maximum required gravity in N, if any.
+        /// The maximum required gravity in m/s², if any.
         /// </summary>
         public double? MaximumGravity { get; }
 
@@ -82,8 +82,8 @@ namespace NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.Terrestri
         /// <param name="maximumTemperature">The maximum required temperature in K.</param>
         /// <param name="minimumPressure">The minimum required pressure in kPa.</param>
         /// <param name="maximumPressure">The maximum required pressure in kPa.</param>
-        /// <param name="minimumGravity">The minimum required gravity in N.</param>
-        /// <param name="maximumGravity">The maximum required gravity in N.</param>
+        /// <param name="minimumGravity">The minimum required gravity in m/s².</param>
+        /// <param name="maximumGravity">The maximum required gravity in m/s².</param>
         public HabitabilityRequirements(
             IEnumerable<SubstanceRequirement> atmosphericRequirements,
             double? minimumTemperature, double? maximumTemperature,
