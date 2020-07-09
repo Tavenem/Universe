@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
@@ -19,8 +20,13 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="destHeight">An optional height to which the image will be stretched. If
         /// left <see langword="null"/> the source height will be retained.</param>
         /// <returns>A surface map.</returns>
-        public static double[,] ImageToDoubleSurfaceMap(this Bitmap image, int? destWidth = null, int? destHeight = null)
+        public static double[][] ImageToDoubleSurfaceMap(this Bitmap? image, int? destWidth = null, int? destHeight = null)
         {
+            if (image is null)
+            {
+                return new double[0][];
+            }
+
             var img = image;
             var resized = false;
             if (destWidth.HasValue || destHeight.HasValue)
@@ -28,7 +34,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 img = image.Resize(destWidth ?? image.Width, destHeight ?? image.Height);
                 resized = true;
             }
-            var surfaceMap = new double[img.Width, img.Height];
+            var surfaceMap = new double[img.Width][];
+            for (var i = 0; i < surfaceMap.Length; i++)
+            {
+                surfaceMap[i] = new double[img.Height];
+            }
 
             var data = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
             var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
@@ -45,7 +55,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     b = bytes[pos];
                     g = bytes[pos + 1];
                     r = bytes[pos + 2];
-                    surfaceMap[x, y] = RgbToDouble(r, g, b);
+                    surfaceMap[x][y] = RgbToDouble(r, g, b);
                 }
             }
 
@@ -59,6 +69,18 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         /// <summary>
+        /// Converts a byte array containing an image to a surface map.
+        /// </summary>
+        /// <param name="bytes">The byte array containing an image to convert.</param>
+        /// <param name="destWidth">An optional width to which the image will be stretched. If left
+        /// <see langword="null"/> the source width will be retained.</param>
+        /// <param name="destHeight">An optional height to which the image will be stretched. If
+        /// left <see langword="null"/> the source height will be retained.</param>
+        /// <returns>A surface map.</returns>
+        public static double[][] ImageToDoubleSurfaceMap(this byte[]? bytes, int? destWidth = null, int? destHeight = null)
+            => ImageToDoubleSurfaceMap(ToImage(bytes), destWidth, destHeight);
+
+        /// <summary>
         /// Converts an image to a surface map.
         /// </summary>
         /// <param name="image">The image to convert.</param>
@@ -67,8 +89,13 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="destHeight">An optional height to which the image will be stretched. If
         /// left <see langword="null"/> the source height will be retained.</param>
         /// <returns>A surface map.</returns>
-        public static float[,] ImageToFloatSurfaceMap(this Bitmap image, int? destWidth = null, int? destHeight = null)
+        public static float[][] ImageToFloatSurfaceMap(this Bitmap? image, int? destWidth = null, int? destHeight = null)
         {
+            if (image is null)
+            {
+                return new float[0][];
+            }
+
             var img = image;
             var resized = false;
             if (destWidth.HasValue || destHeight.HasValue)
@@ -76,7 +103,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 img = image.Resize(destWidth ?? image.Width, destHeight ?? image.Height);
                 resized = true;
             }
-            var surfaceMap = new float[img.Width, img.Height];
+            var surfaceMap = new float[img.Width][];
+            for (var i = 0; i < surfaceMap.Length; i++)
+            {
+                surfaceMap[i] = new float[img.Height];
+            }
 
             var data = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
             var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
@@ -93,7 +124,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     b = bytes[pos];
                     g = bytes[pos + 1];
                     r = bytes[pos + 2];
-                    surfaceMap[x, y] = RgbToFloat(r, g, b);
+                    surfaceMap[x][y] = RgbToFloat(r, g, b);
                 }
             }
 
@@ -105,6 +136,18 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             return surfaceMap;
         }
+
+        /// <summary>
+        /// Converts a byte array containing an image to a surface map.
+        /// </summary>
+        /// <param name="bytes">The byte array containing an image to convert.</param>
+        /// <param name="destWidth">An optional width to which the image will be stretched. If left
+        /// <see langword="null"/> the source width will be retained.</param>
+        /// <param name="destHeight">An optional height to which the image will be stretched. If
+        /// left <see langword="null"/> the source height will be retained.</param>
+        /// <returns>A surface map.</returns>
+        public static float[][] ImageToFloatSurfaceMap(this byte[]? bytes, int? destWidth = null, int? destHeight = null)
+            => ImageToFloatSurfaceMap(ToImage(bytes), destWidth, destHeight);
 
         /// <summary>
         /// Converts a pair of images to a surface map.
@@ -116,8 +159,42 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="destHeight">An optional height to which the image will be stretched. If
         /// left <see langword="null"/> the source height will be retained.</param>
         /// <returns>A surface map.</returns>
-        public static FloatRange[,] ImagesToFloatRangeSurfaceMap(this Bitmap imageMin, Bitmap imageMax, int? destWidth = null, int? destHeight = null)
+        public static FloatRange[][] ImagesToFloatRangeSurfaceMap(this Bitmap? imageMin, Bitmap? imageMax, int? destWidth = null, int? destHeight = null)
         {
+            if (imageMin is null && imageMax is null)
+            {
+                return new FloatRange[0][];
+            }
+
+            if (imageMin is null)
+            {
+                var max = ImageToFloatSurfaceMap(imageMax!, destWidth, destHeight);
+                var result = new FloatRange[max.Length][];
+                for (var x = 0; x < max.Length; x++)
+                {
+                    result[x] = new FloatRange[max[x].Length];
+                    for (var y = 0; y < max[x].Length; y++)
+                    {
+                        result[x][y] = new FloatRange(max[x][y]);
+                    }
+                }
+                return result;
+            }
+            if (imageMax is null)
+            {
+                var min = ImageToFloatSurfaceMap(imageMin!, destWidth, destHeight);
+                var result = new FloatRange[min.Length][];
+                for (var x = 0; x < min.Length; x++)
+                {
+                    result[x] = new FloatRange[min[x].Length];
+                    for (var y = 0; y < min[x].Length; y++)
+                    {
+                        result[x][y] = new FloatRange(min[x][y]);
+                    }
+                }
+                return result;
+            }
+
             var imgMin = imageMin;
             var imgMax = imageMax;
             var minResized = false;
@@ -137,7 +214,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             var xLength = imgMin.Width;
             var yLength = imgMin.Height;
-            var minMap = new float[xLength, yLength];
+            var minMap = new float[xLength][];
+            for (var i = 0; i < minMap.Length; i++)
+            {
+                minMap[i] = new float[yLength];
+            }
             var dataMin = imgMin.LockBits(new Rectangle(0, 0, xLength, yLength), ImageLockMode.ReadOnly, imgMin.PixelFormat);
             var pixelSizeMin = Image.GetPixelFormatSize(dataMin.PixelFormat) / 8;
             var lengthMin = dataMin.Height * dataMin.Stride;
@@ -152,7 +233,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     b = bytesMin[pos];
                     g = bytesMin[pos + 1];
                     r = bytesMin[pos + 2];
-                    minMap[x, y] = RgbToFloat(r, g, b);
+                    minMap[x][y] = RgbToFloat(r, g, b);
                 }
             }
             imgMin.UnlockBits(dataMin);
@@ -161,7 +242,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 imgMin.Dispose();
             }
 
-            var maxMap = new float[xLength, yLength];
+            var maxMap = new float[xLength][];
+            for (var i = 0; i < maxMap.Length; i++)
+            {
+                maxMap[i] = new float[yLength];
+            }
             var dataMax = imgMax.LockBits(new Rectangle(0, 0, xLength, yLength), ImageLockMode.ReadOnly, imgMax.PixelFormat);
             var pixelSizeMax = Image.GetPixelFormatSize(dataMax.PixelFormat) / 8;
             var lengthMax = dataMax.Height * dataMax.Stride;
@@ -175,7 +260,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     b = bytesMax[pos];
                     g = bytesMax[pos + 1];
                     r = bytesMax[pos + 2];
-                    maxMap[x, y] = RgbToFloat(r, g, b);
+                    maxMap[x][y] = RgbToFloat(r, g, b);
                 }
             }
             imgMax.UnlockBits(dataMax);
@@ -184,15 +269,65 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 imgMax.Dispose();
             }
 
-            var surfaceMap = new FloatRange[xLength, yLength];
-            for (var y = 0; y < yLength; y++)
+            var surfaceMap = new FloatRange[xLength][];
+            for (var x = 0; x < xLength; x++)
             {
-                for (var x = 0; x < xLength; x++)
+                surfaceMap[x] = new FloatRange[yLength];
+                for (var y = 0; y < yLength; y++)
                 {
-                    surfaceMap[x, y] = new FloatRange(minMap[x, y], maxMap[x, y]);
+                    surfaceMap[x][y] = new FloatRange(minMap[x][y], maxMap[x][y]);
                 }
             }
             return surfaceMap;
+        }
+
+        /// <summary>
+        /// Converts a pair of byte arrays containing images to a surface map.
+        /// </summary>
+        /// <param name="imageMin">The byte arrays containing an image with the minimum values to convert.</param>
+        /// <param name="imageMax">The byte arrays containing an image with the maximum values to convert.</param>
+        /// <param name="destWidth">An optional width to which the image will be stretched. If left
+        /// <see langword="null"/> the source width will be retained.</param>
+        /// <param name="destHeight">An optional height to which the image will be stretched. If
+        /// left <see langword="null"/> the source height will be retained.</param>
+        /// <returns>A surface map.</returns>
+        public static FloatRange[][] ImagesToFloatRangeSurfaceMap(this byte[]? imageMin, byte[]? imageMax, int? destWidth = null, int? destHeight = null)
+        {
+            if (imageMin is null && imageMax is null)
+            {
+                return new FloatRange[0][];
+            }
+
+            if (imageMin is null)
+            {
+                var max = ImageToFloatSurfaceMap(imageMax!, destWidth, destHeight);
+                var result = new FloatRange[max.Length][];
+                for (var x = 0; x < max.Length; x++)
+                {
+                    result[x] = new FloatRange[max[x].Length];
+                    for (var y = 0; y < max[x].Length; y++)
+                    {
+                        result[x][y] = new FloatRange(max[x][y]);
+                    }
+                }
+                return result;
+            }
+            if (imageMax is null)
+            {
+                var min = ImageToFloatSurfaceMap(imageMin!, destWidth, destHeight);
+                var result = new FloatRange[min.Length][];
+                for (var x = 0; x < min.Length; x++)
+                {
+                    result[x] = new FloatRange[min[x].Length];
+                    for (var y = 0; y < min[x].Length; y++)
+                    {
+                        result[x][y] = new FloatRange(min[x][y]);
+                    }
+                }
+                return result;
+            }
+
+            return ImagesToFloatRangeSurfaceMap(ToImage(imageMin), ToImage(imageMax), destWidth, destHeight);
         }
 
         /// <summary>
@@ -200,10 +335,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         /// <param name="surfaceMap">The surface map to convert.</param>
         /// <returns>A grayscale image.</returns>
-        public static Bitmap SurfaceMapToImage(this float[,] surfaceMap)
+        public static Bitmap SurfaceMapToImage(this float[][] surfaceMap)
         {
-            var xLength = surfaceMap.GetLength(0);
-            var yLength = surfaceMap.GetLength(1);
+            var xLength = surfaceMap.Length;
+            var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
             var image = new Bitmap(xLength, yLength);
             var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
             var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
@@ -217,7 +352,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 for (var x = 0; x < image.Width; x++)
                 {
                     var pos = (y * data.Stride) + (x * pixelSize);
-                    rgb = FloatToRgb(surfaceMap[x, y]);
+                    rgb = FloatToRgb(surfaceMap[x][y]);
                     bytes[pos] = rgb;
                     bytes[pos + 1] = rgb;
                     bytes[pos + 2] = rgb;
@@ -234,10 +369,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         /// <param name="surfaceMap">The surface map to convert.</param>
         /// <returns>A grayscale image.</returns>
-        public static Bitmap SurfaceMapToImage(this double[,] surfaceMap)
+        public static Bitmap SurfaceMapToImage(this double[][] surfaceMap)
         {
-            var xLength = surfaceMap.GetLength(0);
-            var yLength = surfaceMap.GetLength(1);
+            var xLength = surfaceMap.Length;
+            var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
             var image = new Bitmap(xLength, yLength);
             var data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
             var pixelSize = Image.GetPixelFormatSize(data.PixelFormat) / 8;
@@ -251,7 +386,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 for (var x = 0; x < image.Width; x++)
                 {
                     var pos = (y * data.Stride) + (x * pixelSize);
-                    rgb = DoubleToRgb(surfaceMap[x, y]);
+                    rgb = DoubleToRgb(surfaceMap[x][y]);
                     bytes[pos] = rgb;
                     bytes[pos + 1] = rgb;
                     bytes[pos + 2] = rgb;
@@ -270,10 +405,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="surfaceMap">The surface map to convert.</param>
         /// <returns>A pair of grayscale images representing the minimum and maximum
         /// values.</returns>
-        public static (Bitmap min, Bitmap max) SurfaceMapToImages(this FloatRange[,] surfaceMap)
+        public static (Bitmap min, Bitmap max) SurfaceMapToImages(this FloatRange[][] surfaceMap)
         {
-            var xLength = surfaceMap.GetLength(0);
-            var yLength = surfaceMap.GetLength(1);
+            var xLength = surfaceMap.Length;
+            var yLength = xLength == 0 ? 0 : surfaceMap[0].Length;
             var imageMin = new Bitmap(xLength, yLength);
             var imageMax = new Bitmap(xLength, yLength);
             var dataMin = imageMin.LockBits(new Rectangle(0, 0, imageMin.Width, imageMin.Height), ImageLockMode.ReadOnly, imageMin.PixelFormat);
@@ -292,12 +427,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 {
                     var pos = (y * dataMin.Stride) + (x * pixelSize);
 
-                    rgb = FloatToRgb(surfaceMap[x, y].Min);
+                    rgb = FloatToRgb(surfaceMap[x][y].Min);
                     bytesMin[pos] = rgb;
                     bytesMin[pos + 1] = rgb;
                     bytesMin[pos + 2] = rgb;
 
-                    rgb = FloatToRgb(surfaceMap[x, y].Max);
+                    rgb = FloatToRgb(surfaceMap[x][y].Max);
                     bytesMax[pos] = rgb;
                     bytesMax[pos + 1] = rgb;
                     bytesMax[pos + 2] = rgb;
@@ -309,6 +444,38 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             imageMin.UnlockBits(dataMin);
             imageMax.UnlockBits(dataMax);
             return (imageMin, imageMax);
+        }
+
+        /// <summary>
+        /// Converts a <see cref="Bitmap"/> to a byte array.
+        /// </summary>
+        /// <param name="image">A <see cref="Bitmap"/>.</param>
+        /// <returns>A byte array.</returns>
+        public static byte[]? ToByteArray(this Bitmap? image)
+        {
+            if (image is null)
+            {
+                return new byte[0];
+            }
+
+            using var stream = new MemoryStream();
+            image.Save(stream, ImageFormat.Bmp);
+            return stream.ToArray();
+        }
+
+        /// <summary>
+        /// Converts a byte array containing an image to a <see cref="Bitmap"/>.
+        /// </summary>
+        /// <param name="bytes">A byte array containing an image.</param>
+        /// <returns>A <see cref="Bitmap"/>.</returns>
+        public static Bitmap? ToImage(this byte[]? bytes)
+        {
+            if (bytes is null)
+            {
+                return null;
+            }
+            using var stream = new MemoryStream(bytes);
+            return new Bitmap(stream);
         }
 
         private static byte DoubleToRgb(double value)

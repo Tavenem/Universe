@@ -2,73 +2,37 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
-    /// <summary>
-    /// A large structure of gravitationally-bound galaxies.
-    /// </summary>
-    [Serializable]
-    public class GalaxyCluster : CelestialLocation
+    public partial class CosmicLocation
     {
-        internal static readonly Number Space = new Number(1.5, 24);
-
-        private static readonly List<IChildDefinition> _BaseChildDefinitions = new List<IChildDefinition>
+        private static readonly List<ChildDefinition> _GalaxyClusterChildDefinitions = new List<ChildDefinition>
         {
-            new ChildDefinition<GalaxyGroup>(GalaxyGroup.Space, new Number(1.8, -70)),
+            new ChildDefinition(_GalaxyGroupSpace, new Number(1.415, -72), CosmicStructureType.GalaxyGroup), // ~20 groups = ~1000 galaxies
         };
+        private protected static readonly Number _GalaxyClusterSpace = new Number(1.5, 24);
 
-        private protected override string BaseTypeName => "Galaxy Cluster";
+        private void ConfigureGalaxyClusterInstance(Vector3 position, double? ambientTemperature = null)
+        {
+            _seed = Randomizer.Instance.NextUIntInclusive();
+            ReconstituteGalaxyClusterInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
+        }
 
-        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _BaseChildDefinitions;
+        private void ReconstituteGalaxyClusterInstance(Vector3 position, double? temperature)
+        {
+            var randomizer = new Randomizer(_seed);
 
-        internal GalaxyCluster() { }
+            var mass = randomizer.NextNumber(new Number(2, 45), new Number(2, 46)); // General average; 1.0e15–1.0e16 solar masses
 
-        internal GalaxyCluster(string? parentId, Vector3 position) : base(parentId, position) { }
+            var radius = randomizer.NextNumber(new Number(3, 23), new Number(1.5, 24)); // ~1–5 Mpc
 
-        private GalaxyCluster(
-            string id,
-            string? name,
-            bool isPrepopulated,
-            double? albedo,
-            Vector3 velocity,
-            Orbit? orbit,
-            IMaterial? material,
-            string? parentId)
-            : base(
-                id,
-                name,
-                isPrepopulated,
-                albedo,
-                velocity,
-                orbit,
-                material,
-                parentId)
-        { }
-
-        private GalaxyCluster(SerializationInfo info, StreamingContext context) : this(
-            (string)info.GetValue(nameof(Id), typeof(string)),
-            (string?)info.GetValue(nameof(Name), typeof(string)),
-            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
-            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
-            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string)))
-        { }
-
-        // General average; 1.0e15–1.0e16 solar masses
-        private protected override ValueTask<Number> GetMassAsync()
-            => new ValueTask<Number>(Randomizer.Instance.NextNumber(new Number(2, 45), new Number(2, 46)));
-
-        private protected override ValueTask<IShape> GetShapeAsync()
-            => new ValueTask<IShape>(new Sphere(Randomizer.Instance.NextNumber(new Number(3, 23), new Number(1.5, 24)), Position)); // ~1–5 Mpc
-
-        private protected override ISubstanceReference? GetSubstance()
-            => Substances.All.IntraclusterMedium.GetReference();
+            Material = new Material(
+                Substances.All.IntraclusterMedium.GetReference(),
+                mass,
+                new Sphere(radius, position),
+                temperature);
+        }
     }
 }

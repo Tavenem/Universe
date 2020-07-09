@@ -2,100 +2,59 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using NeverFoundry.WorldFoundry.Space.Galaxies;
-using System;
+using NeverFoundry.WorldFoundry.Place;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
-    /// <summary>
-    /// A collection of gravitationally-bound galaxies, mostly small dwarfs orbiting a few large galaxies.
-    /// </summary>
-    [Serializable]
-    public class GalaxyGroup : CelestialLocation
+    public partial class CosmicLocation
     {
-        internal static readonly Number Space = new Number(3, 23);
+        private protected static readonly Number _GalaxyGroupMass = new Number(2, 44); // General average; 1.0e14 solar masses
+        private protected static readonly Number _GalaxyGroupSpace = new Number(3, 23);
 
-        private static readonly List<IChildDefinition> _ChildDefinitions = new List<IChildDefinition>
+        private List<CosmicLocation> ConfigureGalaxyGroupInstance(Vector3 position, double? ambientTemperature = null, CosmicLocation? child = null)
         {
-            new ChildDefinition<DwarfGalaxy>(DwarfGalaxy.Space, new Number(1.5, -70)),
-        };
-
-        private protected override string BaseTypeName => "Galaxy Group";
-
-        private protected override IEnumerable<IChildDefinition> ChildDefinitions => _ChildDefinitions;
-
-        internal GalaxyGroup() { }
-
-        internal GalaxyGroup(string? parentId, Vector3 position) : base(parentId, position) { }
-
-        private GalaxyGroup(
-            string id,
-            string? name,
-            bool isPrepopulated,
-            double? albedo,
-            Vector3 velocity,
-            Orbit? orbit,
-            IMaterial? material,
-            string? parentId)
-            : base(
-                id,
-                name,
-                isPrepopulated,
-                albedo,
-                velocity,
-                orbit,
-                material,
-                parentId)
-        { }
-
-        private GalaxyGroup(SerializationInfo info, StreamingContext context) : this(
-            (string)info.GetValue(nameof(Id), typeof(string)),
-            (string?)info.GetValue(nameof(Name), typeof(string)),
-            (bool)info.GetValue(nameof(_isPrepopulated), typeof(bool)),
-            (double?)info.GetValue(nameof(_albedo), typeof(double?)),
-            (Vector3)info.GetValue(nameof(Velocity), typeof(Vector3)),
-            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (IMaterial?)info.GetValue(nameof(_material), typeof(IMaterial)),
-            (string)info.GetValue(nameof(ParentId), typeof(string)))
-        { }
-
-        // General average; 1.0e14 solar masses
-        private protected override ValueTask<Number> GetMassAsync() => new ValueTask<Number>(new Number(2, 44));
-
-        private protected override ValueTask<IShape> GetShapeAsync()
-            => new ValueTask<IShape>(new Sphere(Randomizer.Instance.NextNumber(new Number(1.5, 23), new Number(3, 23)), Position)); // ~500–1000 kpc
-
-        private protected override ISubstanceReference? GetSubstance()
-            => Substances.All.IntraclusterMedium.GetReference();
-
-        private protected override async Task PrepopulateRegionAsync()
-        {
-            if (_isPrepopulated)
-            {
-                return;
-            }
-            _isPrepopulated = true;
+            _seed = Randomizer.Instance.NextUIntInclusive();
+            ReconstituteGalaxyGroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
             var amount = Randomizer.Instance.Next(1, 6);
+            if (child is not null && child.StructureType == CosmicStructureType.GalaxySubgroup)
+            {
+                amount--;
+            }
+
+            var subgroups = new List<Location>();
+            var children = new List<CosmicLocation>();
             for (var i = 0; i < amount; i++)
             {
-                var location = await GetOpenSpaceAsync(GalaxySubgroup.Space).ConfigureAwait(false);
-                if (location.HasValue)
-                {
-                    var subgroup = await GetNewInstanceAsync<GalaxySubgroup>(this, location.Value).ConfigureAwait(false);
-                    if (subgroup != null)
-                    {
-                        await subgroup.SaveAsync().ConfigureAwait(false);
-                    }
-                }
-                else
+                var location = GetNearestOpenSpace(Vector3.Zero, _GalaxySubgroupSpace, subgroups);
+                if (!location.HasValue)
                 {
                     break;
                 }
+
+                var subgroup = New(CosmicStructureType.GalaxySubgroup, this, location.Value, out var subgroupChildren);
+                if (subgroup != null)
+                {
+                    subgroups.Add(subgroup);
+                    children.Add(subgroup);
+                    children.AddRange(subgroupChildren);
+                }
             }
+            return children;
+        }
+
+        private void ReconstituteGalaxyGroupInstance(Vector3 position, double? temperature)
+        {
+            var randomizer = new Randomizer(_seed);
+
+            var radius = randomizer.NextNumber(new Number(1.5, 23), new Number(3, 23)); // ~500–1000 kpc
+
+            Material = new Material(
+                Substances.All.IntraclusterMedium.GetReference(),
+                _GalaxyGroupMass,
+                new Sphere(radius, position),
+                temperature);
         }
     }
 }

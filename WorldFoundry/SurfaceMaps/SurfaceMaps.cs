@@ -1,4 +1,5 @@
 ﻿using NeverFoundry.WorldFoundry.Climate;
+using Newtonsoft.Json;
 using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -6,27 +7,30 @@ using System.Security.Permissions;
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
     /// <summary>
-    /// A collection of surface and weather maps for a <see
-    /// cref="CelestialBodies.Planetoids.Planets.TerrestrialPlanets.TerrestrialPlanet"/>.
+    /// A collection of surface and weather maps for a <see cref="Space.Planetoid"/>.
     /// </summary>
     [Serializable]
+    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     public struct SurfaceMaps : ISerializable
     {
-        private readonly HydrologyMaps _hydrologyMaps;
-        private readonly WeatherMaps _weatherMaps;
-
         /// <summary>
+        /// <para>
         /// The average normalized elevation of the area, from -1 to 1, where negative values are
         /// below sea level and positive values are above sea level, and 1 is equal to the maximum
         /// elevation of the planet.
-        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxElevation"/>
+        /// </para>
+        /// <para>
+        /// See also <seealso cref="Space.Planetoid.MaxElevation"/>.
+        /// </para>
         /// </summary>
+        [JsonProperty]
         public float AverageElevation { get; }
 
         /// <summary>
         /// The overall <see cref="BiomeType"/> of the area.
         /// </summary>
-        public BiomeType Biome => _weatherMaps.Biome;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public BiomeType Biome => WeatherMaps.Biome;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -34,12 +38,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="BiomeType"/>.
         /// </summary>
-        public BiomeType[,] BiomeMap => _weatherMaps.BiomeMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public BiomeType[][] BiomeMap => WeatherMaps.BiomeMap;
 
         /// <summary>
         /// The overall <see cref="ClimateType"/> of the area, based on average annual temperature.
         /// </summary>
-        public ClimateType Climate => _weatherMaps.Climate;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ClimateType Climate => WeatherMaps.Climate;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -47,7 +53,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="ClimateType"/>, based on average annual temperature.
         /// </summary>
-        public ClimateType[,] ClimateMap => _weatherMaps.ClimateMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ClimateType[][] ClimateMap => WeatherMaps.ClimateMap;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -57,14 +64,16 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// the maximum elevation of the planet. Note that the values are depths above ground level,
         /// not absolute elevations above sea level. To obtain the absolute elevation of the water
         /// level at any point, the sum of this map and the elevation map can be taken.
-        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxElevation"/>
+        /// <seealso cref="Space.Planetoid.MaxElevation"/>
         /// </summary>
-        public float[,] Depth => _hydrologyMaps.Depth;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public float[][] Depth => HydrologyMaps.Depth;
 
         /// <summary>
         /// The overall <see cref="EcologyType"/> of the area.
         /// </summary>
-        public EcologyType Ecology => _weatherMaps.Ecology;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public EcologyType Ecology => WeatherMaps.Ecology;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -72,7 +81,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="EcologyType"/>.
         /// </summary>
-        public EcologyType[,] EcologyMap => _weatherMaps.EcologyMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public EcologyType[][] EcologyMap => WeatherMaps.EcologyMap;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -80,9 +90,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent normalized elevations
         /// from -1 to 1, where negative values are below sea level and positive values are above
         /// sea level, and 1 is equal to the maximum elevation of the planet.
-        /// <seealso cref="CelestialBodies.Planetoids.Planetoid.MaxElevation"/>
+        /// <seealso cref="Space.Planetoid.MaxElevation"/>
         /// </summary>
-        public float[,] Elevation { get; }
+        [JsonProperty]
+        public float[][] Elevation { get; }
 
         /// <summary>
         /// <para>
@@ -100,12 +111,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// distinct "rivers" and less like a dense mesh.
         /// </para>
         /// </summary>
-        public float[,] Flow => _hydrologyMaps.Flow;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public float[][] Flow => HydrologyMaps.Flow;
 
         /// <summary>
         /// The overall <see cref="HumidityType"/> of the area, based on annual precipitation.
         /// </summary>
-        public HumidityType Humidity => _weatherMaps.Humidity;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public HumidityType Humidity => WeatherMaps.Humidity;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -113,12 +126,20 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent <see
         /// cref="HumidityType"/>, based on annual precipitation.
         /// </summary>
-        public HumidityType[,] HumidityMap => _weatherMaps.HumidityMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public HumidityType[][] HumidityMap => WeatherMaps.HumidityMap;
 
         /// <summary>
-        /// A collection of <see cref="PrecipitationMaps"/>.
+        /// The <see cref="SurfaceMapping.HydrologyMaps"/> associated with this instance.
         /// </summary>
-        public PrecipitationMaps[] PrecipitationMaps => _weatherMaps.PrecipitationMaps;
+        [JsonProperty]
+        public HydrologyMaps HydrologyMaps { get; }
+
+        /// <summary>
+        /// A collection of <see cref="SurfaceMapping.PrecipitationMaps"/>.
+        /// </summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public PrecipitationMaps[] PrecipitationMaps => WeatherMaps.PrecipitationMaps;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -126,13 +147,15 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent the proportion of the
         /// year during which there is persistent sea ice.
         /// </summary>
-        public FloatRange[,] SeaIceRangeMap => _weatherMaps.SeaIceRangeMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange[][] SeaIceRangeMap => WeatherMaps.SeaIceRangeMap;
 
         /// <summary>
         /// The number of seasons into which the year is divided by this set, for the purposes of
         /// precipitation and snowfall reporting.
         /// </summary>
-        public int Seasons => _weatherMaps.Seasons;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Seasons => WeatherMaps.Seasons;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -140,13 +163,15 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent the proportion of the
         /// year during which there is persistent snow cover.
         /// </summary>
-        public FloatRange[,] SnowCoverRangeMap => _weatherMaps.SnowCoverRangeMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange[][] SnowCoverRangeMap => WeatherMaps.SnowCoverRangeMap;
 
         /// <summary>
         /// A range giving the minimum, maximum, and average temperature throughout the specified
         /// area over the entire period represented by all <see cref="PrecipitationMaps"/>.
         /// </summary>
-        public FloatRange TemperatureRange => _weatherMaps.TemperatureRange;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange TemperatureRange => WeatherMaps.TemperatureRange;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -154,7 +179,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// second index corresponds to the Y coordinate. The values represent the temperature
         /// range.
         /// </summary>
-        public FloatRange[,] TemperatureRangeMap => _weatherMaps.TemperatureRangeMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange[][] TemperatureRangeMap => WeatherMaps.TemperatureRangeMap;
 
         /// <summary>
         /// A range giving the minimum, maximum, and average precipitation throughout the specified
@@ -163,7 +189,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// planet's atmosphere.
         /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
-        public FloatRange TotalPrecipitation => _weatherMaps.TotalPrecipitation;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange TotalPrecipitation => WeatherMaps.TotalPrecipitation;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -174,7 +201,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// atmosphere. Will be <see langword="null"/> if no <see cref="PrecipitationMaps"/> are present.
         /// <seealso cref="Atmosphere.MaxPrecipitation"/>
         /// </summary>
-        public float[,] TotalPrecipitationMap => _weatherMaps.TotalPrecipitationMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public float[][] TotalPrecipitationMap => WeatherMaps.TotalPrecipitationMap;
 
         /// <summary>
         /// A range giving the minimum, maximum, and average snowfall throughout the specified area
@@ -183,7 +211,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// atmosphere.
         /// <seealso cref="Atmosphere.MaxSnowfall"/>
         /// </summary>
-        public FloatRange TotalSnowfall => _weatherMaps.TotalSnowfall;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public FloatRange TotalSnowfall => WeatherMaps.TotalSnowfall;
 
         /// <summary>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
@@ -195,76 +224,74 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// present.
         /// <seealso cref="Atmosphere.MaxSnowfall"/>
         /// </summary>
-        public float[,] TotalSnowfallMap => _weatherMaps.TotalSnowfallMap;
+        [System.Text.Json.Serialization.JsonIgnore]
+        public float[][] TotalSnowfallMap => WeatherMaps.TotalSnowfallMap;
 
         /// <summary>
         /// The length of the "X" (0-index) dimension of the maps.
         /// </summary>
+        [System.Text.Json.Serialization.JsonIgnore]
         public int XLength { get; }
 
         /// <summary>
         /// The length of the "Y" (1-index) dimension of the maps.
         /// </summary>
+        [System.Text.Json.Serialization.JsonIgnore]
         public int YLength { get; }
+
+        /// <summary>
+        /// The <see cref="SurfaceMapping.WeatherMaps"/> associated with this instance.
+        /// </summary>
+        [JsonProperty]
+        public WeatherMaps WeatherMaps { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SurfaceMaps"/>.
         /// </summary>
-        /// <param name="xLength">The length of the "X" (0-index) dimension of the maps.</param>
-        /// <param name="yLength">The length of the "Y" (1-index) dimension of the maps.</param>
         /// <param name="elevation">An elevation map.</param>
         /// <param name="averageElevation"></param>
         /// <param name="weatherMaps">A <see cref="PrecipitationMaps"/> instance.</param>
-        /// <param name="hydrologyMaps">A <see cref="HydrologyMaps"/> instance.</param>
+        /// <param name="hydrologyMaps">A <see cref="SurfaceMapping.HydrologyMaps"/> instance.</param>
+        [JsonConstructor]
+        [System.Text.Json.Serialization.JsonConstructor]
         public SurfaceMaps(
-            int xLength,
-            int yLength,
-            float[,] elevation,
+            float[][] elevation,
             float averageElevation,
             WeatherMaps weatherMaps,
             HydrologyMaps hydrologyMaps)
         {
-            if (elevation.GetLength(0) != xLength)
+            XLength = elevation.Length;
+            YLength = XLength == 0 ? 0 : elevation[0].Length;
+
+            if (weatherMaps.XLength != XLength)
             {
-                throw new ArgumentException($"Length of {nameof(elevation)} was not equal to {nameof(xLength)}", nameof(xLength));
+                throw new ArgumentException($"X length of {nameof(weatherMaps)} was not equal to X length of {nameof(elevation)}");
             }
-            if (elevation.GetLength(1) != yLength)
+            if (weatherMaps.YLength != YLength)
             {
-                throw new ArgumentException($"Length of {nameof(elevation)} was not equal to {nameof(yLength)}", nameof(yLength));
-            }
-            if (weatherMaps.XLength != xLength)
-            {
-                throw new ArgumentException($"{nameof(weatherMaps.XLength)} of {nameof(weatherMaps)} was not equal to {nameof(xLength)}", nameof(xLength));
-            }
-            if (weatherMaps.YLength != yLength)
-            {
-                throw new ArgumentException($"{nameof(weatherMaps.YLength)} of {nameof(weatherMaps)} was not equal to {nameof(yLength)}", nameof(yLength));
-            }
-            if (hydrologyMaps.XLength != xLength)
-            {
-                throw new ArgumentException($"{nameof(hydrologyMaps.XLength)} of {nameof(hydrologyMaps)} was not equal to {nameof(xLength)}", nameof(xLength));
-            }
-            if (hydrologyMaps.YLength != yLength)
-            {
-                throw new ArgumentException($"{nameof(hydrologyMaps.YLength)} of {nameof(hydrologyMaps)} was not equal to {nameof(yLength)}", nameof(yLength));
+                throw new ArgumentException($"Y length of {nameof(weatherMaps)} was not equal to Y length of {nameof(elevation)}");
             }
 
-            XLength = xLength;
-            YLength = yLength;
+            if (hydrologyMaps.XLength != XLength)
+            {
+                throw new ArgumentException($"X length of {nameof(hydrologyMaps)} was not equal to X length of {nameof(elevation)}");
+            }
+            if (hydrologyMaps.YLength != YLength)
+            {
+                throw new ArgumentException($"Y length of {nameof(hydrologyMaps)} was not equal to Y length of {nameof(elevation)}");
+            }
 
             AverageElevation = averageElevation;
             Elevation = elevation;
-            _weatherMaps = weatherMaps;
-            _hydrologyMaps = hydrologyMaps;
+            WeatherMaps = weatherMaps;
+            HydrologyMaps = hydrologyMaps;
         }
 
         private SurfaceMaps(SerializationInfo info, StreamingContext context) : this(
-            (int)info.GetValue(nameof(XLength), typeof(int)),
-            (int)info.GetValue(nameof(YLength), typeof(int)),
-            (float[,])info.GetValue(nameof(Elevation), typeof(float[,])),
-            (float)info.GetValue(nameof(AverageElevation), typeof(float)),
-            (WeatherMaps)info.GetValue(nameof(_weatherMaps), typeof(WeatherMaps)),
-            (HydrologyMaps)info.GetValue(nameof(_hydrologyMaps), typeof(HydrologyMaps)))
+            (float[][]?)info.GetValue(nameof(Elevation), typeof(float[][])) ?? new float[0][],
+            (float?)info.GetValue(nameof(AverageElevation), typeof(float)) ?? default,
+            (WeatherMaps?)info.GetValue(nameof(WeatherMaps), typeof(WeatherMaps)) ?? default,
+            (HydrologyMaps?)info.GetValue(nameof(HydrologyMaps), typeof(HydrologyMaps)) ?? default)
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -278,12 +305,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue(nameof(XLength), XLength);
-            info.AddValue(nameof(YLength), YLength);
             info.AddValue(nameof(Elevation), Elevation);
             info.AddValue(nameof(AverageElevation), AverageElevation);
-            info.AddValue(nameof(_weatherMaps), _weatherMaps);
-            info.AddValue(nameof(_hydrologyMaps), _hydrologyMaps);
+            info.AddValue(nameof(WeatherMaps), WeatherMaps);
+            info.AddValue(nameof(HydrologyMaps), HydrologyMaps);
         }
     }
 }

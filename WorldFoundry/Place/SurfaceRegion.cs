@@ -1,12 +1,12 @@
 ﻿using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -18,43 +18,108 @@ namespace NeverFoundry.WorldFoundry.Place
     /// local conditions with manually-specified maps.
     /// </summary>
     [Serializable]
+    [JsonObject]
+    [System.Text.Json.Serialization.JsonConverter(typeof(SurfaceRegionConverter))]
     public class SurfaceRegion : Location
     {
-        private byte[]? _depthMap;
-        private byte[]? _elevationMap;
-        private byte[]? _flowMap;
-        private byte[][]? _precipitationMaps;
-        private byte[][]? _snowfallMaps;
-        private byte[]? _temperatureMapSummer;
-        private byte[]? _temperatureMapWinter;
+        [JsonProperty(PropertyName = "depthMap")]
+        internal byte[]? _depthMap;
 
-        internal bool HasDepthMap => _depthMap != null;
+        [JsonProperty(PropertyName = "elevationMap")]
+        internal byte[]? _elevationMap;
 
-        internal bool HasElevationMap => _elevationMap != null;
+        [JsonProperty(PropertyName = "flowMap")]
+        internal byte[]? _flowMap;
 
-        internal bool HasFlowMap => _flowMap != null;
+        [JsonProperty(PropertyName = "precipitationMaps")]
+        internal byte[][]? _precipitationMaps;
 
-        internal bool HasHydrologyMaps
-            => _depthMap != null
-            && _flowMap != null;
+        [JsonProperty(PropertyName = "snowfallMaps")]
+        internal byte[][]? _snowfallMaps;
 
-        internal bool HasPrecipitationMap => _precipitationMaps != null;
+        [JsonProperty(PropertyName = "temperatureMapSummer")]
+        internal byte[]? _temperatureMapSummer;
 
-        internal bool HasSnowfallMap => _snowfallMaps != null;
+        [JsonProperty(PropertyName = "temperatureMapWinter")]
+        internal byte[]? _temperatureMapWinter;
 
-        internal bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
-
-        internal bool HasAllWeatherMaps
+        /// <summary>
+        /// Whether any custom precipitation maps, snowfall maps, and temperature maps for both
+        /// summer and winter have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasAllWeatherMaps
             => _precipitationMaps != null
             && _snowfallMaps != null
             && _temperatureMapSummer != null
             && _temperatureMapWinter != null;
 
-        internal bool HasAnyWeatherMaps
+        /// <summary>
+        /// Whether any custom precipitation maps, snowfall maps, or temperature maps for either
+        /// summer and winter have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasAnyWeatherMaps
             => _precipitationMaps != null
             || _snowfallMaps != null
             || _temperatureMapSummer != null
             || _temperatureMapWinter != null;
+
+        /// <summary>
+        /// Whether a custom depth map has been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasDepthMap => _depthMap != null;
+
+        /// <summary>
+        /// Whether a custom elevation map has been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasElevationMap => _elevationMap != null;
+
+        /// <summary>
+        /// Whether a custom flor map has been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasFlowMap => _flowMap != null;
+
+        /// <summary>
+        /// Whether a custom depth map and flow map have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasHydrologyMaps
+            => _depthMap != null
+            && _flowMap != null;
+
+        /// <summary>
+        /// Whether any custom precipitation maps have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasPrecipitationMap => _precipitationMaps != null;
+
+        /// <summary>
+        /// Whether any custom snowfall maps have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasSnowfallMap => _snowfallMaps != null;
+
+        /// <summary>
+        /// Whether a custom summer temperature map has been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasSummerTemperatureMap => _temperatureMapSummer != null;
+
+        /// <summary>
+        /// Whether any custom temperature maps have been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
+
+        /// <summary>
+        /// Whether a custom winter temperature map has been supplied for this region.
+        /// </summary>
+        [JsonIgnore]
+        public bool HasWinterTemperatureMap => _temperatureMapWinter != null;
 
         /// <summary>
         /// Initializes a new instance of <see cref="SurfaceRegion"/>.
@@ -73,7 +138,55 @@ namespace NeverFoundry.WorldFoundry.Place
         public SurfaceRegion(Planetoid planet, Vector3 position, Number latitudeRange)
             : base(planet.Id, new Frustum(2, position * (planet.Shape.ContainingRadius + planet.Atmosphere.AtmosphericHeight), Number.Min(latitudeRange, MathConstants.PI), 0)) { }
 
-        private SurfaceRegion(
+        /// <summary>
+        /// Initializes a new instance of <see cref="SurfaceRegion"/>.
+        /// </summary>
+        /// <param name="id">The unique ID of this item.</param>
+        /// <param name="shape">The shape of the location.</param>
+        /// <param name="parentId">The ID of the location which contains this one.</param>
+        /// <param name="depthMap">
+        /// A byte array containing an image representing a depth map.
+        /// </param>
+        /// <param name="elevationMap">
+        /// A byte array containing an image representing an elevation map.
+        /// </param>
+        /// <param name="flowMap">
+        /// A byte array containing an image representing a flow map.
+        /// </param>
+        /// <param name="precipitationMaps">
+        /// An array of byte arrays, each containing an image representing a precipitation map.
+        /// </param>
+        /// <param name="snowfallMaps">
+        /// An array of byte arrays, each containing an image representing a snowfall map.
+        /// </param>
+        /// <param name="temperatureMapSummer">
+        /// A byte array containing an image representing a summer temperature map.
+        /// </param>
+        /// <param name="temperatureMapWinter">
+        /// A byte array containing an image representing a winter temperature map.
+        /// </param>
+        /// <param name="absolutePosition">
+        /// <para>
+        /// The position of this location, as a set of relative positions starting with the position
+        /// of its outermost containing parent within the universe, down to the relative position of
+        /// its most immediate parent.
+        /// </para>
+        /// <para>
+        /// The location's own relative <see cref="Location.Position"/> is not expected to be
+        /// included.
+        /// </para>
+        /// <para>
+        /// May be <see langword="null"/> for a location with no containing parent, or whose parent
+        /// is the universe itself (i.e. there is no intermediate container).
+        /// </para>
+        /// </param>
+        /// <remarks>
+        /// Note: this constructor is most useful for deserializers. The other constructors are more
+        /// suited to creating a new instance, as they will automatically generate an appropriate
+        /// ID.
+        /// </remarks>
+        [JsonConstructor]
+        public SurfaceRegion(
             string id,
             IShape shape,
             string? parentId,
@@ -83,7 +196,8 @@ namespace NeverFoundry.WorldFoundry.Place
             byte[][]? precipitationMaps,
             byte[][]? snowfallMaps,
             byte[]? temperatureMapSummer,
-            byte[]? temperatureMapWinter) : base(id, shape, parentId)
+            byte[]? temperatureMapWinter,
+            Vector3[]? absolutePosition = null) : base(id, shape, parentId, absolutePosition)
         {
             _depthMap = depthMap;
             _elevationMap = elevationMap;
@@ -95,16 +209,17 @@ namespace NeverFoundry.WorldFoundry.Place
         }
 
         private SurfaceRegion(SerializationInfo info, StreamingContext context) : this(
-            (string)info.GetValue(nameof(Id), typeof(string)),
-            (IShape)info.GetValue(nameof(Shape), typeof(IShape)),
-            (string)info.GetValue(nameof(ParentId), typeof(string)),
+            (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
+            (IShape?)info.GetValue(nameof(Shape), typeof(IShape)) ?? SinglePoint.Origin,
+            (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (byte[]?)info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_flowMap), typeof(byte[])),
             (byte[][]?)info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
             (byte[][]?)info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[]?)info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
-            (byte[]?)info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])))
+            (byte[]?)info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])),
+            (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])))
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -128,52 +243,26 @@ namespace NeverFoundry.WorldFoundry.Place
             info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
             info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
             info.AddValue(nameof(_temperatureMapWinter), _temperatureMapWinter);
-        }
-
-        internal static float[,] GetMapFromImage(byte[]? bytes, int width, int height)
-        {
-            using var image = GetMapImage(bytes);
-            if (image is null)
-            {
-                return new float[width, height];
-            }
-            return image.ImageToFloatSurfaceMap(width, height);
-        }
-
-        internal static Bitmap? GetMapImage(byte[]? bytes)
-        {
-            if (bytes is null)
-            {
-                return null;
-            }
-            using var stream = new MemoryStream(bytes);
-            return new Bitmap(stream);
-        }
-
-        private static byte[] GetByteArray(Bitmap image)
-        {
-            using var stream = new MemoryStream();
-            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
-            return stream.ToArray();
+            info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
         }
 
         /// <summary>
         /// Gets the stored hydrology depth map image for this region, if any.
         /// </summary>
         /// <returns>The stored hydrology depth map image for this region, if any.</returns>
-        public Bitmap? GetDepthMap() => GetMapImage(_depthMap);
+        public Bitmap? GetDepthMap() => _depthMap.ToImage();
 
         /// <summary>
         /// Gets the stored elevation map image for this region, if any.
         /// </summary>
         /// <returns>The stored elevation map image for this region, if any.</returns>
-        public Bitmap? GetElevationMap() => GetMapImage(_elevationMap);
+        public Bitmap? GetElevationMap() => _elevationMap.ToImage();
 
         /// <summary>
         /// Gets the stored hydrology flow map image for this region, if any.
         /// </summary>
         /// <returns>The stored hydrology flow map image for this region, if any.</returns>
-        public Bitmap? GetFlowMap() => GetMapImage(_flowMap);
+        public Bitmap? GetFlowMap() => _flowMap.ToImage();
 
         /// <summary>
         /// Gets the stored set of precipitation map images for this region, if any.
@@ -188,7 +277,7 @@ namespace NeverFoundry.WorldFoundry.Place
             var maps = new Bitmap[_precipitationMaps.Length];
             for (var i = 0; i < _precipitationMaps.Length; i++)
             {
-                maps[i] = GetMapImage(_precipitationMaps[i])!;
+                maps[i] = _precipitationMaps[i].ToImage()!;
             }
             return maps;
         }
@@ -206,7 +295,7 @@ namespace NeverFoundry.WorldFoundry.Place
             var maps = new Bitmap[_snowfallMaps.Length];
             for (var i = 0; i < _snowfallMaps.Length; i++)
             {
-                maps[i] = GetMapImage(_snowfallMaps[i])!;
+                maps[i] = _snowfallMaps[i].ToImage()!;
             }
             return maps;
         }
@@ -216,55 +305,55 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </summary>
         /// <returns>The stored temperature map image for this region at the summer solstice, if
         /// any.</returns>
-        public Bitmap? GetTemperatureMapSummer() => GetMapImage(_temperatureMapSummer ?? _temperatureMapWinter);
+        public Bitmap? GetTemperatureMapSummer() => (_temperatureMapSummer ?? _temperatureMapWinter).ToImage();
 
         /// <summary>
         /// Gets the stored temperature map image for this region at the winter solstice, if any.
         /// </summary>
         /// <returns>The stored temperature map image for this region at the winter solstice, if
         /// any.</returns>
-        public Bitmap? GetTemperatureMapWinter() => GetMapImage(_temperatureMapWinter ?? _temperatureMapSummer);
+        public Bitmap? GetTemperatureMapWinter() => (_temperatureMapWinter ?? _temperatureMapSummer).ToImage();
 
         /// <summary>
         /// Loads an image as the hydrology depth map for this region.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadDepthMap(Bitmap image)
+        public void SetDepthMap(Bitmap image)
         {
             if (image is null)
             {
                 _depthMap = null;
                 return;
             }
-            _depthMap = GetByteArray(image);
+            _depthMap = image.ToByteArray();
         }
 
         /// <summary>
         /// Loads an image as the elevation map for this region.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadElevationMap(Bitmap image)
+        public void SetElevationMap(Bitmap image)
         {
             if (image is null)
             {
                 _elevationMap = null;
                 return;
             }
-            _elevationMap = GetByteArray(image);
+            _elevationMap = image.ToByteArray();
         }
 
         /// <summary>
         /// Loads an image as the hydrology flow map for this region.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadFlowMap(Bitmap image)
+        public void SetFlowMap(Bitmap image)
         {
             if (image is null)
             {
                 _flowMap = null;
                 return;
             }
-            _flowMap = GetByteArray(image);
+            _flowMap = image.ToByteArray();
         }
 
         /// <summary>
@@ -272,14 +361,19 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </summary>
         /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
         /// course of a year.</param>
-        public void LoadPrecipitationMaps(IEnumerable<Bitmap> images)
+        public void SetPrecipitationMaps(IEnumerable<Bitmap> images)
         {
-            if (images?.Any() != true)
+            var list = images.ToList();
+            if (list.Count == 0)
             {
                 _precipitationMaps = null;
                 return;
             }
-            _precipitationMaps = images.Select(GetByteArray).ToArray();
+            _precipitationMaps = new byte[list.Count][];
+            for (var i = 0; i < list.Count; i++)
+            {
+                _precipitationMaps[i] = list[i].ToByteArray()!;
+            }
         }
 
         /// <summary>
@@ -287,14 +381,19 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </summary>
         /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
         /// course of a year.</param>
-        public void LoadSnowfallMaps(IEnumerable<Bitmap> images)
+        public void SetSnowfallMaps(IEnumerable<Bitmap> images)
         {
-            if (images?.Any() != true)
+            var list = images.ToList();
+            if (list.Count == 0)
             {
                 _snowfallMaps = null;
                 return;
             }
-            _snowfallMaps = images.Select(GetByteArray).ToArray();
+            _snowfallMaps = new byte[list.Count][];
+            for (var i = 0; i < list.Count; i++)
+            {
+                _snowfallMaps[i] = list[i].ToByteArray()!;
+            }
         }
 
         /// <summary>
@@ -302,7 +401,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// summer and winter.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMap(Bitmap image)
+        public void SetTemperatureMap(Bitmap image)
         {
             if (image is null)
             {
@@ -310,7 +409,7 @@ namespace NeverFoundry.WorldFoundry.Place
                 _temperatureMapWinter = null;
                 return;
             }
-            _temperatureMapSummer = GetByteArray(image);
+            _temperatureMapSummer = image.ToByteArray();
             _temperatureMapWinter = _temperatureMapSummer;
         }
 
@@ -318,50 +417,43 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Loads an image as the temperature map for this region at the summer solstice.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMapSummer(Bitmap image)
+        public void SetTemperatureMapSummer(Bitmap image)
         {
             if (image is null)
             {
                 _temperatureMapSummer = null;
                 return;
             }
-            _temperatureMapSummer = GetByteArray(image);
+            _temperatureMapSummer = image.ToByteArray();
         }
 
         /// <summary>
         /// Loads an image as the temperature map for this region at the winter solstice.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMapWinter(Bitmap image)
+        public void SetTemperatureMapWinter(Bitmap image)
         {
             if (image is null)
             {
                 _temperatureMapWinter = null;
                 return;
             }
-            _temperatureMapWinter = GetByteArray(image);
+            _temperatureMapWinter = image.ToByteArray();
         }
 
-        internal float[,] GetDepthMap(int width, int height)
-            => GetMapFromImage(_depthMap, width, height);
+        internal float[][] GetDepthMap(int width, int height)
+            => _depthMap.ImageToFloatSurfaceMap(width, height);
 
-        internal double[,] GetElevationMap(int width, int height)
-        {
-            using var image = GetMapImage(_elevationMap);
-            if (image is null)
-            {
-                return new double[width, height];
-            }
-            return image.ImageToDoubleSurfaceMap(width, height);
-        }
+        internal double[][] GetElevationMap(int width, int height)
+            => _elevationMap.ImageToDoubleSurfaceMap(width, height);
 
-        internal float[,] GetFlowMap(int width, int height)
-            => GetMapFromImage(_flowMap, width, height);
+        internal float[][] GetFlowMap(int width, int height)
+            => _flowMap.ImageToFloatSurfaceMap(width, height);
 
-        internal float[][,] GetPrecipitationMaps(int width, int height)
+        internal float[][][] GetPrecipitationMaps(int width, int height)
         {
             var mapImages = GetPrecipitationMaps();
-            var maps = new float[mapImages.Length][,];
+            var maps = new float[mapImages.Length][][];
             for (var i = 0; i < mapImages.Length; i++)
             {
                 maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
@@ -370,10 +462,10 @@ namespace NeverFoundry.WorldFoundry.Place
             return maps;
         }
 
-        internal float[][,] GetSnowfallMaps(int width, int height)
+        internal float[][][] GetSnowfallMaps(int width, int height)
         {
             var mapImages = GetSnowfallMaps();
-            var maps = new float[mapImages.Length][,];
+            var maps = new float[mapImages.Length][][];
             for (var i = 0; i < mapImages.Length; i++)
             {
                 maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
@@ -382,15 +474,7 @@ namespace NeverFoundry.WorldFoundry.Place
             return maps;
         }
 
-        internal FloatRange[,] GetTemperatureMap(int width, int height)
-        {
-            using var winter = GetTemperatureMapWinter();
-            using var summer = GetTemperatureMapSummer();
-            if (winter is null || summer is null)
-            {
-                return new FloatRange[width, height];
-            }
-            return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
-        }
+        internal FloatRange[][] GetTemperatureMap(int width, int height)
+            => _temperatureMapWinter.ImagesToFloatRangeSurfaceMap(_temperatureMapSummer, width, height);
     }
 }

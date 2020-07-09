@@ -1,6 +1,5 @@
-﻿using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
+﻿using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
-using Newtonsoft.Json;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,31 +20,46 @@ namespace NeverFoundry.WorldFoundry.ConsoleTester
 
         private static void GeneratePlanets()
         {
-            Task.Run(async () =>
+            Task.Run(() =>
             {
                 while (true)
                 {
-                    var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync().ConfigureAwait(false);
+                    var planet = Planetoid.GetPlanetForSunlikeStar(out _);
                     if (planet is null)
                     {
-                        Console.Write("Failed to generate planet.");
+                        Console.WriteLine("Failed to generate planet.");
                     }
                     else
                     {
                         Console.Write($"Generated planet {planet}.");
 
-                        var json = JsonConvert.SerializeObject(planet);
-                        var bytes = Encoding.UTF8.GetBytes(json);
-                        Console.Write($" Saved planet size: {(bytes.Length / 1000).ToString("N0")} KB.");
+                        var bytes = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(planet)).Length;
+                        Console.Write($" Size: {BytesToString(bytes)}.");
 
-                        var maps = await planet.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
+                        var maps = planet.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
-                        json = JsonConvert.SerializeObject(maps);
-                        bytes = Encoding.UTF8.GetBytes(json);
-                        Console.WriteLine($" Saved maps size: {(bytes.Length / 1000000.0).ToString("N1")} MB.");
+                        bytes = Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(maps)).Length;
+                        Console.WriteLine($" Maps size: {BytesToString(bytes)}.");
                     }
                 }
             });
+        }
+
+        private static string BytesToString(int numBytes)
+        {
+            if (numBytes < 1000)
+            {
+                return $"{numBytes} bytes";
+            }
+            if (numBytes < 1000000)
+            {
+                return $"{numBytes / 1000.0:N2} KB";
+            }
+            if (numBytes < 1000000000)
+            {
+                return $"{numBytes / 1000000.0:N2} MB";
+            }
+            return $"{numBytes / 1000000000.0:N2} GB";
         }
     }
 }

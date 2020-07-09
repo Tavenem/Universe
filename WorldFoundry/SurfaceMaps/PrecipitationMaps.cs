@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 
@@ -10,6 +11,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
     /// particular portion of a year.
     /// </summary>
     [Serializable]
+    [JsonObject]
     public struct PrecipitationMaps : ISerializable
     {
         /// <summary>
@@ -18,17 +20,23 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// indicating the maximum annual potential precipitation of the planet's atmosphere.
         /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
         /// </summary>
+        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public FloatRange Precipitation { get; }
 
         /// <summary>
+        /// <para>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent the total amount of
         /// precipitation which falls during the specified period. Values range from 0 to 1, with 1
         /// indicating the maximum annual potential precipitation of the planet's atmosphere.
-        /// <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>
+        /// </para>
+        /// <para>
+        /// See also <seealso cref="Climate.Atmosphere.MaxPrecipitation"/>.
+        /// </para>
         /// </summary>
-        public float[,] PrecipitationMap { get; }
+        public float[][] PrecipitationMap { get; }
 
         /// <summary>
         /// A range giving the minimum, maximum, and average snowfall throughout the specified
@@ -36,112 +44,99 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// snowfall of the planet's atmosphere.
         /// <seealso cref="Climate.Atmosphere.MaxSnowfall"/>
         /// </summary>
+        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public FloatRange Snowfall { get; }
 
         /// <summary>
+        /// <para>
         /// A two-dimensional array corresponding to points on an equirectangular projected map of a
         /// terrestrial planet's surface. The first index corresponds to the X coordinate, and the
         /// second index corresponds to the Y coordinate. The values represent the total amount of
         /// snow which falls during the specified period. Values range from 0 to 1, with 1
         /// indicating the maximum potential snowfall of the planet's atmosphere.
-        /// <seealso cref="Climate.Atmosphere.MaxSnowfall"/>
+        /// </para>
+        /// <para>
+        /// See also <seealso cref="Climate.Atmosphere.MaxSnowfall"/>.
+        /// </para>
         /// </summary>
-        public float[,] SnowfallMap { get; }
+        public float[][] SnowfallMap { get; }
 
         /// <summary>
         /// The length of the "X" (0-index) dimension of the maps.
         /// </summary>
+        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public int XLength { get; }
 
         /// <summary>
         /// The length of the "Y" (1-index) dimension of the maps.
         /// </summary>
+        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public int YLength { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="PrecipitationMaps"/>.
         /// </summary>
-        /// <param name="xLength">The length of the "X" (0-index) dimension of the maps.</param>
-        /// <param name="yLength">The length of the "Y" (1-index) dimension of the maps.</param>
-        /// <param name="precipitation">A precipitation map.</param>
-        /// <param name="snowfall">A snowfall map.</param>
-        public PrecipitationMaps(
-            int xLength,
-            int yLength,
-            float[,] precipitation,
-            float[,] snowfall)
+        /// <param name="precipitationMap">
+        /// A precipitation map. Must have the same dimensions as the <paramref name="snowfallMap"/> map.
+        /// </param>
+        /// <param name="snowfallMap">
+        /// A snowfall map. Must have the same dimensions as the <paramref name="precipitationMap"/> map.
+        /// </param>
+        [JsonConstructor]
+        [System.Text.Json.Serialization.JsonConstructor]
+        public PrecipitationMaps(float[][] precipitationMap, float[][] snowfallMap)
         {
-            if (precipitation.GetLength(0) != xLength)
+            if (precipitationMap.Length != snowfallMap.Length)
             {
-                throw new ArgumentException($"Length of {nameof(precipitation)} was not equal to {nameof(xLength)}", nameof(xLength));
-            }
-            if (precipitation.GetLength(1) != yLength)
-            {
-                throw new ArgumentException($"Length of {nameof(precipitation)} was not equal to {nameof(yLength)}", nameof(yLength));
-            }
-            if (snowfall.GetLength(0) != xLength)
-            {
-                throw new ArgumentException($"Length of {nameof(snowfall)} was not equal to {nameof(xLength)}", nameof(xLength));
-            }
-            if (snowfall.GetLength(1) != yLength)
-            {
-                throw new ArgumentException($"Length of {nameof(snowfall)} was not equal to {nameof(yLength)}", nameof(yLength));
+                throw new ArgumentException($"X length of {nameof(precipitationMap)} was not equal to X length of {nameof(snowfallMap)}");
             }
 
-            XLength = xLength;
-            YLength = yLength;
+            XLength = precipitationMap.Length;
+            YLength = XLength == 0 ? 0 : precipitationMap[0].Length;
 
-            PrecipitationMap = precipitation;
-            SnowfallMap = snowfall;
-
-            if (precipitation is null)
+            if (XLength != 0 && snowfallMap[0].Length != YLength)
             {
-                Precipitation = FloatRange.Zero;
+                throw new ArgumentException($"Y length of {nameof(precipitationMap)} was not equal to Y length of {nameof(snowfallMap)}");
             }
-            else
+
+            PrecipitationMap = precipitationMap;
+            SnowfallMap = snowfallMap;
+
+            var min = 2f;
+            var max = -2f;
+            var sum = 0f;
+            for (var x = 0; x < XLength; x++)
             {
-                var min = 2f;
-                var max = -2f;
-                var sum = 0f;
-                for (var x = 0; x < xLength; x++)
+                for (var y = 0; y < YLength; y++)
                 {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        min = Math.Min(min, precipitation[x, y]);
-                        max = Math.Max(max, precipitation[x, y]);
-                        sum += precipitation[x, y];
-                    }
+                    min = Math.Min(min, precipitationMap[x][y]);
+                    max = Math.Max(max, precipitationMap[x][y]);
+                    sum += precipitationMap[x][y];
                 }
-                Precipitation = new FloatRange(min, sum / (xLength * yLength), max);
             }
+            Precipitation = new FloatRange(min, sum / (XLength * YLength), max);
 
-            if (snowfall is null)
+            min = 2f;
+            max = -2f;
+            sum = 0f;
+            for (var x = 0; x < XLength; x++)
             {
-                Snowfall = FloatRange.Zero;
-            }
-            else
-            {
-                var min = 2f;
-                var max = -2f;
-                var sum = 0f;
-                for (var x = 0; x < xLength; x++)
+                for (var y = 0; y < YLength; y++)
                 {
-                    for (var y = 0; y < yLength; y++)
-                    {
-                        min = Math.Min(min, snowfall[x, y]);
-                        max = Math.Max(max, snowfall[x, y]);
-                        sum += snowfall[x, y];
-                    }
+                    min = Math.Min(min, snowfallMap[x][y]);
+                    max = Math.Max(max, snowfallMap[x][y]);
+                    sum += snowfallMap[x][y];
                 }
-                Snowfall = new FloatRange(min, sum / (xLength * yLength), max);
             }
+            Snowfall = new FloatRange(min, sum / (XLength * YLength), max);
         }
 
         private PrecipitationMaps(SerializationInfo info, StreamingContext context) : this(
-            (int)info.GetValue(nameof(XLength), typeof(int)),
-            (int)info.GetValue(nameof(YLength), typeof(int)),
-            (float[,])info.GetValue(nameof(PrecipitationMap), typeof(float[,])),
-            (float[,])info.GetValue(nameof(SnowfallMap), typeof(float[,])))
+            (float[][]?)info.GetValue(nameof(PrecipitationMap), typeof(float[][])) ?? new float[0][],
+            (float[][]?)info.GetValue(nameof(SnowfallMap), typeof(float[][])) ?? new float[0][])
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -155,8 +150,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
-            info.AddValue(nameof(XLength), XLength);
-            info.AddValue(nameof(YLength), YLength);
             info.AddValue(nameof(PrecipitationMap), PrecipitationMap);
             info.AddValue(nameof(SnowfallMap), SnowfallMap);
         }

@@ -1,5 +1,6 @@
 ﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +13,8 @@ namespace NeverFoundry.WorldFoundry
     /// The requirements for a particular component in a mixture.
     /// </summary>
     [Serializable]
-    public struct SubstanceRequirement : ISerializable
+    [JsonObject]
+    public struct SubstanceRequirement : ISerializable, IEquatable<SubstanceRequirement>
     {
         /// <summary>
         /// <para>
@@ -46,7 +48,7 @@ namespace NeverFoundry.WorldFoundry
         /// <summary>
         /// The substance required.
         /// </summary>
-        public IHomogeneousReference Substance { get; }
+        public HomogeneousReference Substance { get; }
 
         /// <summary>
         /// Initializes a new instance of <see cref="SubstanceRequirement"/>.
@@ -75,7 +77,9 @@ namespace NeverFoundry.WorldFoundry
         /// The phase(s) required. If multiple phases are included, and any indicated phase is
         /// present, the requirement is considered met.
         /// </param>
-        public SubstanceRequirement(IHomogeneousReference substance, decimal minimumProportion = 0, decimal? maximumProportion = null, PhaseType phase = PhaseType.Any)
+        [JsonConstructor]
+        [System.Text.Json.Serialization.JsonConstructor]
+        public SubstanceRequirement(HomogeneousReference substance, decimal minimumProportion = 0, decimal? maximumProportion = null, PhaseType phase = PhaseType.Any)
         {
             Substance = substance;
             MinimumProportion = minimumProportion;
@@ -84,11 +88,34 @@ namespace NeverFoundry.WorldFoundry
         }
 
         private SubstanceRequirement(SerializationInfo info, StreamingContext context) : this(
-            (IHomogeneousReference)info.GetValue(nameof(Substance), typeof(IHomogeneousReference)),
-            (decimal)info.GetValue(nameof(MinimumProportion), typeof(decimal)),
+            (HomogeneousReference?)info.GetValue(nameof(Substance), typeof(HomogeneousReference)) ?? new HomogeneousReference(string.Empty),
+            (decimal?)info.GetValue(nameof(MinimumProportion), typeof(decimal)) ?? default,
             (decimal?)info.GetValue(nameof(MaximumProportion), typeof(decimal?)),
-            (PhaseType)info.GetValue(nameof(Phase), typeof(PhaseType)))
+            (PhaseType?)info.GetValue(nameof(Phase), typeof(PhaseType)) ?? PhaseType.None)
         { }
+
+        /// <summary>Indicates whether the current object is equal to another object of the same type.</summary>
+        /// <param name="other">An object to compare with this object.</param>
+        /// <returns>
+        /// <see langword="true" /> if the current object is equal to the <paramref name="other" />
+        /// parameter; otherwise, <see langword="false" />.
+        /// </returns>
+        public bool Equals(SubstanceRequirement other) => MaximumProportion == other.MaximumProportion
+            && MinimumProportion == other.MinimumProportion
+            && Phase == other.Phase
+            && Substance.Equals(other.Substance);
+
+        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
+        /// <param name="obj">The object to compare with the current instance.</param>
+        /// <returns>
+        /// <see langword="true" /> if <paramref name="obj" /> and this instance are the same type
+        /// and represent the same value; otherwise, <see langword="false" />.
+        /// </returns>
+        public override bool Equals(object? obj) => obj is SubstanceRequirement requirement && Equals(requirement);
+
+        /// <summary>Returns the hash code for this instance.</summary>
+        /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
+        public override int GetHashCode() => HashCode.Combine(MaximumProportion, MinimumProportion, Phase, Substance);
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -171,5 +198,23 @@ namespace NeverFoundry.WorldFoundry
             }
             return phaseMatch;
         }
+
+        /// <summary>Indicates whether two objects are equal.</summary>
+        /// <param name="left">The first object to compare.</param>
+        /// <param name="right">The second object to compare.</param>
+        /// <returns>
+        /// <see langword="true" /> if <paramref name="left"/> is equal to <paramref
+        /// name="right"/>; otherwise, <see langword="false" />.
+        /// </returns>
+        public static bool operator ==(SubstanceRequirement left, SubstanceRequirement right) => left.Equals(right);
+
+        /// <summary>Indicates whether two objects are unequal.</summary>
+        /// <param name="left">The first object to compare.</param>
+        /// <param name="right">The second object to compare.</param>
+        /// <returns>
+        /// <see langword="true" /> if <paramref name="left"/> is not equal to <paramref
+        /// name="right"/>; otherwise, <see langword="false" />.
+        /// </returns>
+        public static bool operator !=(SubstanceRequirement left, SubstanceRequirement right) => !(left == right);
     }
 }

@@ -3,13 +3,12 @@ using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Climate
 {
@@ -32,16 +31,16 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// </summary>
         public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } = new SubstanceRequirement[]
         {
-            new SubstanceRequirement(Substances.All.Oxygen.GetChemicalReference(), 0.07m, 0.53m, PhaseType.Gas),
-            new SubstanceRequirement(Substances.All.Ammonia.GetChemicalReference(), maximumProportion: 5e-5m),
-            new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetChemicalReference(), maximumProportion: 1e-6m),
-            new SubstanceRequirement(Substances.All.CarbonMonoxide.GetChemicalReference(), maximumProportion: 5e-5m),
-            new SubstanceRequirement(Substances.All.CarbonDioxide.GetChemicalReference(), maximumProportion: 0.005m),
-            new SubstanceRequirement(Substances.All.HydrogenSulfide.GetChemicalReference(), maximumProportion: 0),
-            new SubstanceRequirement(Substances.All.Methane.GetChemicalReference(), maximumProportion: 0.001m),
-            new SubstanceRequirement(Substances.All.Ozone.GetChemicalReference(), maximumProportion: 1e-7m),
-            new SubstanceRequirement(Substances.All.Phosphine.GetChemicalReference(), maximumProportion: 3e-7m),
-            new SubstanceRequirement(Substances.All.SulphurDioxide.GetChemicalReference(), maximumProportion: 2e-6m),
+            new SubstanceRequirement(Substances.All.Oxygen.GetHomogeneousReference(), 0.07m, 0.53m, PhaseType.Gas),
+            new SubstanceRequirement(Substances.All.Ammonia.GetHomogeneousReference(), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetHomogeneousReference(), maximumProportion: 1e-6m),
+            new SubstanceRequirement(Substances.All.CarbonMonoxide.GetHomogeneousReference(), maximumProportion: 5e-5m),
+            new SubstanceRequirement(Substances.All.CarbonDioxide.GetHomogeneousReference(), maximumProportion: 0.005m),
+            new SubstanceRequirement(Substances.All.HydrogenSulfide.GetHomogeneousReference(), maximumProportion: 0),
+            new SubstanceRequirement(Substances.All.Methane.GetHomogeneousReference(), maximumProportion: 0.001m),
+            new SubstanceRequirement(Substances.All.Ozone.GetHomogeneousReference(), maximumProportion: 1e-7m),
+            new SubstanceRequirement(Substances.All.Phosphine.GetHomogeneousReference(), maximumProportion: 3e-7m),
+            new SubstanceRequirement(Substances.All.SulphurDioxide.GetHomogeneousReference(), maximumProportion: 2e-6m),
         };
 
         /// <summary>
@@ -99,7 +98,7 @@ namespace NeverFoundry.WorldFoundry.Climate
             {
                 if (!_greenhouseFactor.HasValue)
                 {
-                    SetGreenhouseFactor();
+                    SetGreenhouseFactor(null);
                     if (!_greenhouseFactor.HasValue)
                     {
                         _greenhouseFactor = 1;
@@ -110,7 +109,7 @@ namespace NeverFoundry.WorldFoundry.Climate
         }
 
         private decimal? _waterRatio;
-        internal decimal WaterRatio => _waterRatio ??= Material.Constituents.Sum(x => x.substance.Substance.GetWaterProportion() * x.proportion);
+        internal decimal WaterRatio => _waterRatio ??= Material.Constituents.Sum(x => x.Key.Substance.GetWaterProportion() * x.Value);
 
         private double? _waterRatioDouble;
         internal double WaterRatioDouble => _waterRatioDouble ??= (double)WaterRatio;
@@ -131,6 +130,40 @@ namespace NeverFoundry.WorldFoundry.Climate
             Material = new Material(0, SinglePoint.Origin); // unused; set correctly during initialization
         }
 
+        internal Atmosphere(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents) : this(pressure)
+        {
+            if ((constituents?.Length ?? 0) == 0)
+            {
+                AtmosphericPressure = 0;
+            }
+
+            SetAtmosphericScaleHeight(planet);
+
+            var mass = GetAtmosphericMass(planet, AtmosphericPressure);
+
+            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
+            var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
+            SetGreenhouseFactor(constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
+            planet.GreenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
+            var greenhouseEffect = planet.GetGreenhouseEffect();
+            var temperature = tIF + greenhouseEffect;
+
+            SetAtmosphericHeight(planet, temperature);
+
+            var density = GetAtmosphericDensity(temperature, AtmosphericPressure);
+
+            var shape = GetShape(planet);
+
+            Material = new Material(
+                density,
+                mass,
+                shape,
+                temperature,
+                constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
+
+            SetPrecipitation(planet);
+        }
+
         private Atmosphere(
             IMaterial material,
             double precipitationFactor,
@@ -148,20 +181,13 @@ namespace NeverFoundry.WorldFoundry.Climate
         }
 
         private Atmosphere(SerializationInfo info, StreamingContext context) : this(
-            (IMaterial)info.GetValue(nameof(Material), typeof(IMaterial)),
-            (double)info.GetValue(nameof(_precipitationFactor), typeof(double)),
-            (double)info.GetValue(nameof(AtmosphericHeight), typeof(double)),
-            (double)info.GetValue(nameof(AtmosphericPressure), typeof(double)),
-            (double)info.GetValue(nameof(AtmosphericScaleHeight), typeof(double)),
-            (double)info.GetValue(nameof(AveragePrecipitation), typeof(double)))
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)) ?? MathAndScience.Chemistry.Material.Empty,
+            (double?)info.GetValue(nameof(_precipitationFactor), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(AtmosphericHeight), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(AtmosphericPressure), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(AtmosphericScaleHeight), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(AveragePrecipitation), typeof(double)) ?? default)
         { }
-
-        internal static async Task<Atmosphere> GetNewInstanceAsync(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents)
-        {
-            var instance = new Atmosphere(pressure);
-            await instance.InitializeAsync(planet, constituents).ConfigureAwait(false);
-            return instance;
-        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -262,10 +288,10 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// <param name="planet">The <see cref="Planetoid"/> which this atmosphere surrounds;
         /// required in order to correctly reset the properties dependent on pressure.</param>
         /// <param name="value">The new pressure, in kPa.</param>
-        public async Task SetAtmosphericPressureAsync(Planetoid planet, double value)
+        public void SetAtmosphericPressure(Planetoid planet, double value)
         {
             AtmosphericPressure = value;
-            await ResetPressureDependentPropertiesAsync(planet).ConfigureAwait(false);
+            ResetPressureDependentProperties(planet);
         }
 
         /// <summary>
@@ -277,9 +303,7 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// otherwise <see langword="false"/>.</returns>
         public bool MeetsRequirements(IEnumerable<SubstanceRequirement> requirements)
         {
-            var surfaceLayer = Material is LayeredComposite lc && lc.Layers.Count > 0
-                ? lc.Layers[0].material
-                : Material;
+            var surfaceLayer = Material.GetCore();
             if (surfaceLayer?.IsEmpty != false)
             {
                 return !requirements.Any();
@@ -288,13 +312,13 @@ namespace NeverFoundry.WorldFoundry.Climate
             return requirements.All(x => x.IsSatisfiedBy(surfaceLayer, pressure));
         }
 
-        internal void AddToTroposphere(IHomogeneousReference constituent, decimal proportion)
+        internal void AddToTroposphere(HomogeneousReference constituent, decimal proportion)
         {
             DifferentiateTroposphere();
-            if (Material is LayeredComposite lc
-                && lc.Layers.Count > 0)
+            if (Material is Composite lc
+                && lc.Components.Count > 0)
             {
-                AddConstituent(lc.Layers[0].material, constituent, proportion);
+                lc.Components[0].AddConstituent(constituent, proportion);
             }
         }
 
@@ -324,64 +348,26 @@ namespace NeverFoundry.WorldFoundry.Climate
 
         internal void DifferentiateTroposphere()
         {
-            if (!(Material is LayeredComposite))
+            if (Material is not Composite)
             {
                 // Separate troposphere from upper atmosphere if undifferentiated.
                 Material = Material.Split(0.8m);
             }
         }
 
-        internal async Task InitializeAsync(Planetoid planet, (ISubstanceReference substance, decimal proportion)[] constituents)
+        internal void ResetGreenhouseFactor() => _greenhouseFactor = null;
+
+        internal void ResetPressureDependentProperties(Planetoid planet)
         {
-            if ((constituents?.Length ?? 0) == 0)
-            {
-                AtmosphericPressure = 0;
-            }
-
-            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
-
-            var mass = GetAtmosphericMass(planet, AtmosphericPressure);
-
-            planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
-            var tIF = await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false) * planet.InsolationFactor_Equatorial;
-            SetGreenhouseFactor();
-            planet._greenhouseEffect = (tIF * GreenhouseFactor) - await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
-            var greenhouseEffect = await planet.GetGreenhouseEffectAsync().ConfigureAwait(false);
-            var temperature = tIF + greenhouseEffect;
-
-            await SetAtmosphericHeightAsync(planet, temperature).ConfigureAwait(false);
-
-            var density = GetAtmosphericDensity(temperature, AtmosphericPressure);
-
-            var shape = GetShape(planet);
-
-            Material = new Material(
-                density,
-                mass,
-                shape,
-                temperature,
-                constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
-
-            SetPrecipitation(planet);
-        }
-
-        internal async Task ResetGreenhouseFactorAsync(Planetoid planet)
-        {
-            _greenhouseFactor = null;
-            await planet.ResetCachedTemperaturesAsync().ConfigureAwait(false);
-        }
-
-        internal async Task ResetPressureDependentPropertiesAsync(Planetoid planet)
-        {
-            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
+            SetAtmosphericScaleHeight(planet);
             Material = Material.GetClone((decimal)(GetAtmosphericMass(planet, AtmosphericPressure) / Material.Mass));
-            await SetAtmosphericHeightAsync(planet).ConfigureAwait(false);
+            SetAtmosphericHeight(planet);
             Material.Shape = GetShape(planet);
-            var temp = await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            var temp = planet.GetAverageSurfaceTemperature();
             Material.Density = GetAtmosphericDensity(temp, AtmosphericPressure);
-            if (Material is LayeredComposite lc)
+            if (Material is Composite lc)
             {
-                foreach (var (material, _) in lc.Layers)
+                foreach (var material in lc.Components)
                 {
                     material.Density = Material.Density;
                 }
@@ -389,16 +375,16 @@ namespace NeverFoundry.WorldFoundry.Climate
             SetPrecipitation(planet);
         }
 
-        internal async Task ResetTemperatureDependentPropertiesAsync(Planetoid planet)
+        internal void ResetTemperatureDependentProperties(Planetoid planet)
         {
-            await SetAtmosphericScaleHeightAsync(planet).ConfigureAwait(false);
-            await SetAtmosphericHeightAsync(planet).ConfigureAwait(false);
+            SetAtmosphericScaleHeight(planet);
+            SetAtmosphericHeight(planet);
             Material.Shape = GetShape(planet);
-            var temp = await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            var temp = planet.GetAverageSurfaceTemperature();
             Material.Density = GetAtmosphericDensity(temp, AtmosphericPressure);
-            if (Material is LayeredComposite lc)
+            if (Material is Composite lc)
             {
-                foreach (var (material, _) in lc.Layers)
+                foreach (var material in lc.Components)
                 {
                     material.Density = Material.Density;
                 }
@@ -415,21 +401,6 @@ namespace NeverFoundry.WorldFoundry.Climate
         }
 
         internal void SetAtmosphericPressure(double value) => AtmosphericPressure = value;
-
-        private void AddConstituent(IMaterial material, IHomogeneousReference constituent, decimal proportion)
-        {
-            if (material is Material m)
-            {
-                m.AddConstituent(constituent, proportion);
-            }
-            else if (material is Composite composite)
-            {
-                foreach (var component in composite.Components)
-                {
-                    AddConstituent(component, constituent, proportion);
-                }
-            }
-        }
 
         /// <summary>
         /// Standard pressure of 101.325 kPa is presumed for a <see cref="SubstanceRequirement"/>.
@@ -465,17 +436,14 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// Uses the molar mass of air on Earth, which is clearly not correct for other atmospheres,
         /// but is considered "close enough" for the purposes of this library.
         /// </remarks>
-        private async Task SetAtmosphericHeightAsync(Planetoid planet, double? temp = null)
+        private void SetAtmosphericHeight(Planetoid planet, double? temp = null)
         {
-            temp ??= await planet.GetAverageSurfaceTemperatureAsync().ConfigureAwait(false);
+            temp ??= planet.GetAverageSurfaceTemperature();
             AtmosphericHeight = Math.Log(0.0005 / AtmosphericPressure) * MathAndScience.Constants.Doubles.ScienceConstants.R * temp.Value / (-(double)planet.SurfaceGravity * MathAndScience.Constants.Doubles.ScienceConstants.MAir);
         }
 
-        private async Task SetAtmosphericScaleHeightAsync(Planetoid planet)
-        {
-            var avgBlackbodyTemp = await planet.GetAverageBlackbodyTemperatureAsync().ConfigureAwait(false);
-            AtmosphericScaleHeight = AtmosphericPressure * 1000 / (double)planet.SurfaceGravity / GetAtmosphericDensity(avgBlackbodyTemp, AtmosphericPressure);
-        }
+        private void SetAtmosphericScaleHeight(Planetoid planet)
+            => AtmosphericScaleHeight = AtmosphericPressure * 1000 / (double)planet.SurfaceGravity / GetAtmosphericDensity(planet.AverageBlackbodyTemperature, AtmosphericPressure);
 
         /// <summary>
         /// Calculates the total greenhouse temperature multiplier for this <see cref="Atmosphere"/>.
@@ -490,12 +458,17 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// temperature based on changing proportions in an existing atmosphere is well-studied, and
         /// relies on unique formulas for each gas, which is impractical for this library.
         /// </remarks>
-        private void SetGreenhouseFactor() => SetGreenhouseFactor(Material.Constituents);
-
-        private void SetGreenhouseFactor(IEnumerable<(ISubstanceReference substance, decimal proportion)> substances)
-            => _greenhouseFactor = GetGreenhouseFactor(
-                substances.Sum(x => x.substance.Substance.GreenhousePotential * (double)x.proportion),
-                AtmosphericPressure);
+        private void SetGreenhouseFactor(IEnumerable<(ISubstanceReference substance, decimal proportion)>? components)
+        {
+            if (components is null)
+            {
+                _greenhouseFactor = GetGreenhouseFactor(Material.GetOverallDoubleValue(x => x.GreenhousePotential), AtmosphericPressure);
+            }
+            else
+            {
+                _greenhouseFactor = GetGreenhouseFactor(components.Sum(x => x.substance.Substance.GreenhousePotential * (double)x.proportion), AtmosphericPressure);
+            }
+        }
 
         /// <summary>
         /// Calculates the <see cref="Atmosphere"/>'s shape.

@@ -3,12 +3,11 @@ using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Time;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
 using NeverFoundry.WorldFoundry.Place;
+using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.SurfaceMapping
 {
@@ -23,29 +22,29 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="range">The range being interpolated.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <returns>The specific value from a range which varies over the course of a
         /// year.</returns>
-        public static async Task<float> GetAnnualRangeValueAsync(
+        public static float GetAnnualRangeValue(
             this Planetoid planet,
             FloatRange range,
-            Instant time)
-            => range.Min.Lerp(range.Max, (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false));
+            Instant moment)
+            => range.Min.Lerp(range.Max, (float)planet.GetProportionOfYearAtTime(moment));
 
         /// <summary>
-        /// Determines whether the given <paramref name="time"/> falls within the range indicated.
+        /// Determines whether the given <paramref name="moment"/> falls within the range indicated.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="range">The range being interpolated.</param>
-        /// <param name="time">The time at which the determination is to be performed.</param>
+        /// <param name="moment">The time at which the determination is to be performed.</param>
         /// <returns><see langword="true"/> if the range indicates a positive result for the given
-        /// <paramref name="time"/>; otherwise <see langword="false"/>.</returns>
-        public static async Task<bool> GetAnnualRangeIsPositiveAtTimeAsync(
+        /// <paramref name="moment"/>; otherwise <see langword="false"/>.</returns>
+        public static bool GetAnnualRangeIsPositiveAtTime(
             this Planetoid planet,
             FloatRange range,
-            Instant time)
+            Instant moment)
         {
-            var proportionOfYear = (float)await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false);
+            var proportionOfYear = (float)planet.GetProportionOfYearAtTime(moment);
             return !range.IsZero
             && (range.Min > range.Max
                 ? proportionOfYear >= range.Min || proportionOfYear <= range.Max
@@ -54,35 +53,35 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
         /// <summary>
         /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> at a
-        /// given <paramref name="time"/> from a set of ranges.
+        /// given <paramref name="moment"/> from a set of ranges.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="region">The mapped region.</param>
         /// <param name="position">A position relative to the center of <paramref
         /// name="region"/>.</param>
         /// <param name="ranges">A set of ranges.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <returns>The value for a <paramref name="position"/> in a <paramref name="region"/> at a
-        /// given <paramref name="time"/> from a set of ranges.</returns>
-        public static Task<float> GetAnnualValueFromLocalPositionAsync(
+        /// given <paramref name="moment"/> from a set of ranges.</returns>
+        public static float GetAnnualValueFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             FloatRange[,] ranges,
-            Instant time)
+            Instant moment)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 ranges.GetLength(0));
-            return planet.GetAnnualRangeValueAsync(
+            return planet.GetAnnualRangeValue(
                 ranges[x, y],
-                time);
+                moment);
         }
 
         /// <summary>
-        /// Determines whether the given <paramref name="time"/> falls within the range indicated
+        /// Determines whether the given <paramref name="moment"/> falls within the range indicated
         /// for a <paramref name="position"/> in a <paramref name="region"/>.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
@@ -90,23 +89,23 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="position">A position relative to the center of <paramref
         /// name="region"/>.</param>
         /// <param name="ranges">A set of ranges.</param>
-        /// <param name="time">The time at which the determination is to be performed.</param>
-        /// <returns><see langword="true"/> if the given <paramref name="time"/> falls within the
+        /// <param name="moment">The time at which the determination is to be performed.</param>
+        /// <returns><see langword="true"/> if the given <paramref name="moment"/> falls within the
         /// range indicated for a <paramref name="position"/> in a <paramref name="region"/>;
         /// otherwise <see langword="false"/>.</returns>
-        public static Task<bool> GetAnnualRangeIsPositiveAtTimeAndLocalPositionAsync(
+        public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             FloatRange[,] ranges,
-            Instant time)
+            Instant moment)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 ranges.GetLength(0));
-            return planet.GetAnnualRangeIsPositiveAtTimeAsync(ranges[x, y], time);
+            return planet.GetAnnualRangeIsPositiveAtTime(ranges[x, y], moment);
         }
 
         /// <summary>
@@ -207,7 +206,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <see cref="Planetoid"/>.
         /// <seealso cref="Planetoid.MaxElevation"/>
         /// </returns>
-        public static double[,] GetElevationMap(
+        public static double[][] GetElevationMap(
             this Planetoid planet,
             int resolution,
             double? centralMeridian = null,
@@ -240,7 +239,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// planet.
         /// <seealso cref="Planetoid.MaxElevation"/>
         /// </returns>
-        public static double[,] GetElevationMap(
+        public static double[][] GetElevationMap(
             this Planetoid planet,
             SurfaceRegion region,
             int resolution)
@@ -495,15 +494,15 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// smooth local gradients. A degree of smoothing may even benefit the flow map when used
         /// for the purpose of displaying rivers, to mitigate aliasing.
         /// </remarks>
-        public static async Task<HydrologyMaps> GetHydrologyMapsAsync(
+        public static HydrologyMaps GetHydrologyMaps(
             this Planetoid planet,
             int resolution,
             double? centralMeridian = null,
             double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
-            double[,]? elevationMap = null,
-            float[,]? precipitationMap = null,
+            double[][]? elevationMap = null,
+            float[][]? precipitationMap = null,
             double? averageElevation = null)
         {
             if (planet is null)
@@ -512,39 +511,42 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             }
             if (resolution > int.MaxValue / 2)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({int.MaxValue / 2}).");
             }
             var doubleResolution = resolution * 2;
 
-            float[,] depthMap, flowMap;
+            float[][] depthMap, flowMap;
             if (planet.HasHydrologyMaps)
             {
                 depthMap = planet.GetDepthMap(doubleResolution, resolution);
                 flowMap = planet.GetFlowMap(doubleResolution, resolution);
-                return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap);
+                return new HydrologyMaps(depthMap, flowMap);
             }
 
-            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.Length != doubleResolution || (resolution > 0 && elevationMap[0].Length != resolution))
             {
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
-            if (precipitationMap is null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
+            if (precipitationMap is null || precipitationMap.Length != doubleResolution || (resolution > 0 && precipitationMap[0].Length != resolution))
             {
-                precipitationMap = (await GetWeatherMapsAsync(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap, averageElevation)
-                    .ConfigureAwait(false))
+                precipitationMap = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, 1, elevationMap, averageElevation)
                     .TotalPrecipitationMap;
             }
 
             // Set each point's drainage to be its neighbor with the lowest elevation.
             // Only consider points above sea level.
-            var drainage = new (int x, int y)[doubleResolution, resolution];
+            var drainage = new (int x, int y)[doubleResolution][];
+            for (var i = 0; i < drainage.Length; i++)
+            {
+                drainage[i] = new (int x, int y)[resolution];
+            }
             for (var x = 0; x < doubleResolution; x++)
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    if (elevationMap[x, y] <= 0)
+                    if (elevationMap[x][y] <= 0)
                     {
-                        drainage[x, y] = (x, y);
+                        drainage[x][y] = (x, y);
                         continue;
                     }
 
@@ -552,58 +554,80 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     var dY = -1;
                     for (var x1 = x - 1; x1 <= x + 1; x1++)
                     {
-                        var xN = x1 == -1
-                            ? doubleResolution - 1
-                            : x1 == doubleResolution
-                                ? 0
-                                : x1;
+                        int xN;
+                        if (x1 == -1)
+                        {
+                            xN = doubleResolution - 1;
+                        }
+                        else if (x1 == doubleResolution)
+                        {
+                            xN = 0;
+                        }
+                        else
+                        {
+                            xN = x1;
+                        }
+
                         for (var y1 = y - 1; y1 <= y + 1; y1++)
                         {
-                            var yN = y1 == -1
-                                ? resolution - 1
-                                : y1 == resolution
-                                    ? 0
-                                    : y1;
-                            if (dX == -1 || elevationMap[xN, yN] < elevationMap[dX, dY])
+                            int yN;
+                            if (y1 == -1)
+                            {
+                                yN = resolution - 1;
+                            }
+                            else if (y1 == resolution)
+                            {
+                                yN = 0;
+                            }
+                            else
+                            {
+                                yN = y1;
+                            }
+
+                            if (dX == -1 || elevationMap[xN][yN] < elevationMap[dX][dY])
                             {
                                 dX = xN;
                                 dY = yN;
                             }
                         }
                     }
-                    drainage[x, y] = (dX, dY);
+                    drainage[x][y] = (dX, dY);
                 }
             }
 
             // Find the final drainage point of each point (the last drainage point in the chain,
             // which has itself as its own drainage point). Keep track of final drainage points
             // which are above sea level.
-            var finalDrainage = new (int x, int y)[doubleResolution, resolution];
+            var finalDrainage = new (int x, int y)[doubleResolution][];
+            for (var i = 0; i < finalDrainage.Length; i++)
+            {
+                finalDrainage[i] = new (int x, int y)[resolution];
+            }
             var lakes = new Dictionary<(int x, int y), HashSet<(int x, int y)>>();
             for (var x = 0; x < doubleResolution; x++)
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    finalDrainage[x, y] = FindFinalDrainage(x, y);
-                    if (finalDrainage[x, y] != (x, y) && elevationMap[finalDrainage[x, y].x, finalDrainage[x, y].y] > 0)
+                    finalDrainage[x][y] = FindFinalDrainage(x, y);
+                    if (finalDrainage[x][y] != (x, y) && elevationMap[finalDrainage[x][y].x][finalDrainage[x][y].y] > 0)
                     {
-                        if (!lakes.ContainsKey((finalDrainage[x, y].x, finalDrainage[x, y].y)))
+                        if (!lakes.ContainsKey((finalDrainage[x][y].x, finalDrainage[x][y].y)))
                         {
-                            lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)] = new HashSet<(int x, int y)> { (x, y) };
+                            lakes[(finalDrainage[x][y].x, finalDrainage[x][y].y)] = new HashSet<(int x, int y)> { (x, y) };
                         }
-                        lakes[(finalDrainage[x, y].x, finalDrainage[x, y].y)].Add((x, y));
+                        lakes[(finalDrainage[x][y].x, finalDrainage[x][y].y)].Add((x, y));
                     }
                 }
             }
             (int x, int y) FindFinalDrainage(int x, int y)
             {
-                if (drainage[x, y] == (x, y))
+                if (drainage[x][y] == (x, y))
                 {
                     return (x, y);
                 }
                 else
                 {
-                    return FindFinalDrainage(drainage[x, y].x, drainage[x, y].y);
+                    return FindFinalDrainage(drainage[x][y].x, drainage[x][y].y);
                 }
             }
 
@@ -619,11 +643,20 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     var found = false;
                     for (var x1 = x - 1; x1 <= x + 1; x1++)
                     {
-                        var xN = x1 == -1
-                            ? doubleResolution - 1
-                            : x1 == doubleResolution
-                                ? 0
-                                : x1;
+                        int xN;
+                        if (x1 == -1)
+                        {
+                            xN = doubleResolution - 1;
+                        }
+                        else if (x1 == doubleResolution)
+                        {
+                            xN = 0;
+                        }
+                        else
+                        {
+                            xN = x1;
+                        }
+
                         if (found)
                         {
                             break;
@@ -634,13 +667,22 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             {
                                 continue;
                             }
-                            var yN = y1 == -1
-                                ? resolution - 1
-                                : y1 == resolution
-                                    ? 0
-                                    : y1;
-                            if (finalDrainage[xN, yN] != finalDrainage[x, y]
-                                && (lowX == -1 || elevationMap[x, y] < elevationMap[lowX, lowY]))
+                            int yN;
+                            if (y1 == -1)
+                            {
+                                yN = resolution - 1;
+                            }
+                            else if (y1 == resolution)
+                            {
+                                yN = 0;
+                            }
+                            else
+                            {
+                                yN = y1;
+                            }
+
+                            if (finalDrainage[xN][yN] != finalDrainage[x][y]
+                                && (lowX == -1 || elevationMap[x][y] < elevationMap[lowX][lowY]))
                             {
                                 lowX = x;
                                 lowY = y;
@@ -650,7 +692,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         }
                     }
                 }
-                lakeDepths.Add((xL, yL), lowX == -1 ? 0 : (float)(elevationMap[lowX, lowY] - elevationMap[xL, yL]));
+                lakeDepths.Add((xL, yL), lowX == -1 ? 0 : (float)(elevationMap[lowX][lowY] - elevationMap[xL][yL]));
             }
 
             var areaMap = new double[doubleResolution, resolution];
@@ -667,33 +709,37 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    if (!precipitationMap[x, y].IsNearlyZero())
+                    if (!precipitationMap[x][y].IsNearlyZero())
                     {
                         if (areaMap[x, y] < 0)
                         {
                             areaMap[x, y] = (double)GetAreaOfPointFromRadiusSquared(planet.RadiusSquared, x, y, resolution, centralMeridian, centralParallel, standardParallels, range);
                         }
-                        var runoff = (float)(precipitationMap[x, y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (double)(planet.Orbit?.Period ?? 31557600));
-                        if (drainage[x, y] != (x, y))
+                        var runoff = (float)(precipitationMap[x][y] * planet.Atmosphere.MaxPrecipitation * 0.001 * areaMap[x, y] / (double)(planet.Orbit?.Period ?? 31557600));
+                        if (drainage[x][y] != (x, y))
                         {
-                            flows.Add((drainage[x, y].x, drainage[x, y].y, runoff));
+                            flows.Add((drainage[x][y].x, drainage[x][y].y, runoff));
                         }
                     }
                 }
             }
 
             var maxFlow = 0.0;
-            flowMap = new float[doubleResolution, resolution];
+            flowMap = new float[doubleResolution][];
+            for (var i = 0; i < flowMap.Length; i++)
+            {
+                flowMap[i] = new float[resolution];
+            }
             while (flows.Count > 0)
             {
                 var newFlows = new List<(int, int, float)>();
                 foreach (var (x, y, flow) in flows)
                 {
-                    flowMap[x, y] += flow;
-                    maxFlow = Math.Max(maxFlow, flowMap[x, y]);
-                    if (drainage[x, y] != (x, y))
+                    flowMap[x][y] += flow;
+                    maxFlow = Math.Max(maxFlow, flowMap[x][y]);
+                    if (drainage[x][y] != (x, y))
                     {
-                        newFlows.Add((drainage[x, y].x, drainage[x, y].y, flow));
+                        newFlows.Add((drainage[x][y].x, drainage[x][y].y, flow));
                     }
                 }
                 flows = newFlows;
@@ -702,7 +748,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    flowMap[x, y] = (float)(flowMap[x, y] / maxFlow);
+                    flowMap[x][y] = maxFlow.IsNearlyZero() ? 0 : (float)(flowMap[x][y] / maxFlow);
                 }
             }
 
@@ -712,17 +758,21 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             // subsurface water table until reaching a point where more extended flow begins. This
             // avoids single-point fills with no outflows that would otherwise fill every localized
             // low point.
-            depthMap = new float[doubleResolution, resolution];
+            depthMap = new float[doubleResolution][];
+            for (var i = 0; i < depthMap.Length; i++)
+            {
+                depthMap[i] = new float[resolution];
+            }
             foreach (var ((xL, yL), points) in lakes)
             {
-                if (flowMap[xL, yL].IsNearlyZero())
+                if (flowMap[xL][yL].IsNearlyZero())
                 {
                     continue;
                 }
-                depthMap[xL, yL] = lakeDepths[(xL, yL)];
+                depthMap[xL][yL] = lakeDepths[(xL, yL)];
                 foreach (var (x, y) in points)
                 {
-                    depthMap[x, y] = lakeDepths[(xL, yL)];
+                    depthMap[x][y] = lakeDepths[(xL, yL)];
                 }
             }
 
@@ -731,7 +781,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 planet.MaxFlow = maxFlow;
             }
 
-            return new HydrologyMaps(doubleResolution, resolution, depthMap, flowMap);
+            return new HydrologyMaps(depthMap, flowMap);
         }
 
         /// <summary>
@@ -769,68 +819,65 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// smooth local gradients. A degree of smoothing may even benefit the flow map when used
         /// for the purpose of displaying rivers, to mitigate aliasing.
         /// </remarks>
-        public static async Task<HydrologyMaps> GetHydrologyMapsAsync(
+        public static HydrologyMaps GetHydrologyMaps(
             this Planetoid planet,
             SurfaceRegion region,
             int resolution,
-            double[,]? elevationMap = null,
-            float[,]? precipitationMap = null,
+            double[][]? elevationMap = null,
+            float[][]? precipitationMap = null,
             double? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
-            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.Length != doubleResolution || (resolution > 0 && elevationMap[0].Length != resolution))
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }
-            if (precipitationMap is null || precipitationMap.GetLength(0) != doubleResolution || precipitationMap.GetLength(1) != resolution)
+            if (precipitationMap is null || precipitationMap.Length != doubleResolution || (resolution > 0 && precipitationMap[0].Length != resolution))
             {
-                precipitationMap = (await planet.GetWeatherMapsAsync(region, resolution, 1, elevationMap, averageElevation)
-                    .ConfigureAwait(false))
+                precipitationMap = planet.GetWeatherMaps(region, resolution, 1, elevationMap, averageElevation)
                     .TotalPrecipitationMap;
             }
             if (region.HasHydrologyMaps)
             {
                 return new HydrologyMaps(
-                    doubleResolution,
-                    resolution,
                     region.GetDepthMap(doubleResolution, resolution),
                     region.GetFlowMap(doubleResolution, resolution));
             }
-            var hydrologyMaps = await planet.GetHydrologyMapsAsync(
+            var hydrologyMaps = planet.GetHydrologyMaps(
                   resolution,
                   planet.VectorToLongitude(region.Position),
                   planet.VectorToLatitude(region.Position),
                   range: (double)(region.Shape.ContainingRadius / planet.RadiusSquared),
                   elevationMap: elevationMap,
                   precipitationMap: precipitationMap,
-                  averageElevation: averageElevation).ConfigureAwait(false);
+                  averageElevation: averageElevation);
             if (!region.HasDepthMap && !region.HasFlowMap)
             {
                 return hydrologyMaps;
             }
             var depth = region.HasDepthMap ? region.GetDepthMap(doubleResolution, resolution) : hydrologyMaps.Depth;
             var flow = region.HasFlowMap ? region.GetFlowMap(doubleResolution, resolution) : hydrologyMaps.Flow;
-            return new HydrologyMaps(doubleResolution, resolution, depth, flow);
+            return new HydrologyMaps(depth, flow);
         }
 
         /// <summary>
         /// Gets the precipitation value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of maps.
+        /// name="region"/> at a given <paramref name="moment"/> from a set of maps.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="region">The mapped region.</param>
         /// <param name="position">A position relative to the center of <paramref
         /// name="region"/>.</param>
         /// <param name="maps">A set of precipitation maps.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <returns>The precipitation value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of maps.</returns>
-        public static async Task<double> GetPrecipitationFromLocalPositionAsync(
+        /// name="region"/> at a given <paramref name="moment"/> from a set of maps.</returns>
+        public static double GetPrecipitationFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             PrecipitationMaps[] maps,
-            Instant time)
+            Instant moment)
         {
             if (maps.Length == 0)
             {
@@ -842,7 +889,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            return InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.PrecipitationMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(moment), map => map.PrecipitationMap[x][y]);
         }
 
         /// <summary>
@@ -917,22 +964,22 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
         /// <summary>
         /// Gets the snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
-        /// at a given <paramref name="time"/> from a set of maps.
+        /// at a given <paramref name="moment"/> from a set of maps.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="region">The mapped region.</param>
         /// <param name="position">A position relative to the center of <paramref
         /// name="region"/>.</param>
         /// <param name="maps">A set of precipitation maps.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <returns>The snowfall value for a <paramref name="position"/> in a <paramref name="region"/>
-        /// at a given <paramref name="time"/> from a set of maps.</returns>
-        public static async Task<double> GetSnowfallFromLocalPositionAsync(
+        /// at a given <paramref name="moment"/> from a set of maps.</returns>
+        public static double GetSnowfallFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
             PrecipitationMaps[] maps,
-            Instant time)
+            Instant moment)
         {
             if (maps.Length == 0)
             {
@@ -944,7 +991,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 region,
                 position,
                 maps[0].PrecipitationMap.GetLength(0));
-            return InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.SnowfallMap[x, y]);
+            return InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(moment), map => map.SnowfallMap[x][y]);
         }
 
         /// <summary>
@@ -954,10 +1001,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </para>
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid, int,
-        /// double?, double?, double?, double?)"/>, <see cref="GetWeatherMapsAsync(Planetoid, int,
-        /// double?, double?, double?, double?, int, double[,], double?)"/>, and <see
-        /// cref="GetHydrologyMapsAsync(Planetoid, int, double?, double?, double?, double?,
-        /// double[,], float[,], double?)"/> separately.
+        /// double?, double?, double?, double?)"/>, <see cref="GetWeatherMaps(Planetoid, int,
+        /// double?, double?, double?, double?, int, double[][], double?)"/>, and <see
+        /// cref="GetHydrologyMaps(Planetoid, int, double?, double?, double?, double?, double[][],
+        /// float[][], double?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -992,7 +1039,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// data points as when explicitly calculating values for each high-resolution point, since
         /// this data will nearly always follow relatively smooth local gradients.
         /// </remarks>
-        public static async Task<SurfaceMaps> GetSurfaceMapsAsync(
+        public static SurfaceMaps GetSurfaceMaps(
             this Planetoid planet,
             int resolution,
             double? centralMeridian = null,
@@ -1008,14 +1055,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    totalElevation += elevationMap[x, y];
+                    totalElevation += elevationMap[x][y];
                 }
             }
             var averageElevation = totalElevation / (doubleResolution * resolution);
 
-            var weatherMapSet = await GetWeatherMapsAsync(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap, averageElevation).ConfigureAwait(false);
-            var hydrologyMaps = await GetHydrologyMapsAsync(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation).ConfigureAwait(false);
-            return new SurfaceMaps(doubleResolution, resolution, CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
+            var weatherMapSet = GetWeatherMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, steps, elevationMap, averageElevation);
+            var hydrologyMaps = GetHydrologyMaps(planet, resolution, centralMeridian, centralParallel, standardParallels, range, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
+            return new SurfaceMaps(CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -1025,9 +1072,9 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </para>
         /// <para>
         /// This method is more efficient than calling <see cref="GetElevationMap(Planetoid,
-        /// SurfaceRegion, int)"/>, <see cref="GetWeatherMapsAsync(Planetoid, SurfaceRegion, int,
-        /// int, double[,], double?)"/>, and <see cref="GetHydrologyMapsAsync(Planetoid,
-        /// SurfaceRegion, int, double[,], float[,], double?)"/> separately.
+        /// SurfaceRegion, int)"/>, <see cref="GetWeatherMaps(Planetoid, SurfaceRegion, int,
+        /// int, double[][], double?)"/>, and <see cref="GetHydrologyMaps(Planetoid,
+        /// SurfaceRegion, int, double[][], float[][], double?)"/> separately.
         /// </para>
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
@@ -1050,7 +1097,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// data points as when explicitly calculating values for each high-resolution point, since
         /// this data will nearly always follow relatively smooth local gradients.
         /// </remarks>
-        public static async Task<SurfaceMaps> GetSurfaceMapsAsync(
+        public static SurfaceMaps GetSurfaceMaps(
             this Planetoid planet,
             SurfaceRegion region,
             int resolution,
@@ -1063,14 +1110,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             {
                 for (var y = 0; y < resolution; y++)
                 {
-                    totalElevation += elevationMap[x, y];
+                    totalElevation += elevationMap[x][y];
                 }
             }
             var averageElevation = totalElevation / (doubleResolution * resolution);
 
-            var weatherMapSet = await planet.GetWeatherMapsAsync(region, resolution, steps, elevationMap, averageElevation).ConfigureAwait(false);
-            var hydrologyMaps = await planet.GetHydrologyMapsAsync(region, resolution, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation).ConfigureAwait(false);
-            return new SurfaceMaps(doubleResolution, resolution, CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
+            var weatherMapSet = planet.GetWeatherMaps(region, resolution, steps, elevationMap, averageElevation);
+            var hydrologyMaps = planet.GetHydrologyMaps(region, resolution, elevationMap, weatherMapSet.TotalPrecipitationMap, averageElevation);
+            return new SurfaceMaps(CastArray(elevationMap, resolution), (float)averageElevation, weatherMapSet, hydrologyMaps);
         }
 
         /// <summary>
@@ -1078,63 +1125,63 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="range">The range being interpolated.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <param name="latitude">The latitude at which the calculation is being performed (used to
         /// determine hemisphere, and thus season).</param>
         /// <returns>The specific temperature value from a temperature range.</returns>
-        public static async Task<float> GetTemperatureRangeValueAsync(
+        public static float GetTemperatureRangeValue(
             this Planetoid planet,
             FloatRange range,
-            Instant time,
+            Instant moment,
             double latitude)
-            => range.Min.Lerp(range.Max, (float)await planet.GetSeasonalProportionAtTimeAsync(time, latitude).ConfigureAwait(false));
+            => range.Min.Lerp(range.Max, (float)planet.GetSeasonalProportionAtTime(moment, latitude));
 
         /// <summary>
         /// Gets the temperature value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of temperature ranges.
+        /// name="region"/> at a given <paramref name="moment"/> from a set of temperature ranges.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="region">The mapped region.</param>
         /// <param name="position">A position relative to the center of <paramref
         /// name="region"/>.</param>
         /// <param name="temperatureRanges">A set of temperature ranges.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
         /// <returns>The temperature value for a <paramref name="position"/> in a <paramref
-        /// name="region"/> at a given <paramref name="time"/> from a set of temperature
+        /// name="region"/> at a given <paramref name="moment"/> from a set of temperature
         /// ranges.</returns>
-        public static Task<float> GetTemperatureFromLocalPositionAsync(
+        public static float GetTemperatureFromLocalPosition(
             this Planetoid planet,
             SurfaceRegion region,
             Vector3 position,
-            FloatRange[,] temperatureRanges,
-            Instant time)
+            FloatRange[][] temperatureRanges,
+            Instant moment)
         {
             var (x, y) = GetEquirectangularProjectionFromLocalPosition(
                 planet,
                 region,
                 position,
                 temperatureRanges.GetLength(0));
-            return planet.GetTemperatureRangeValueAsync(
-                temperatureRanges[x, y],
-                time,
+            return planet.GetTemperatureRangeValue(
+                temperatureRanges[x][y],
+                moment,
                 planet.VectorToLatitude(region.Position + position));
         }
 
         /// <summary>
-        /// Gets the total precipitation value at a given <paramref name="time"/> from a set of
+        /// Gets the total precipitation value at a given <paramref name="moment"/> from a set of
         /// maps.
         /// </summary>
         /// <param name="planet">The mapped planet.</param>
         /// <param name="maps">A set of precipitation maps.</param>
-        /// <param name="time">The time at which the calculation is to be performed.</param>
-        /// <returns>The total precipitation value at a given <paramref name="time"/> from a set of
+        /// <param name="moment">The time at which the calculation is to be performed.</param>
+        /// <returns>The total precipitation value at a given <paramref name="moment"/> from a set of
         /// maps.</returns>
-        public static async Task<FloatRange> GetTotalPrecipitationAtTimeAsync(
+        public static FloatRange GetTotalPrecipitationAtTime(
             this Planetoid planet,
             PrecipitationMaps[] maps,
-            Instant time) => maps.Length == 0
+            Instant moment) => maps.Length == 0
             ? FloatRange.Zero
-            : InterpolateAmongWeatherMaps(maps, await planet.GetProportionOfYearAtTimeAsync(time).ConfigureAwait(false), map => map.Precipitation);
+            : InterpolateAmongWeatherMaps(maps, planet.GetProportionOfYearAtTime(moment), map => map.Precipitation);
 
         /// <summary>
         /// Gets the value for a <paramref name="position"/> in a <paramref name="region"/> from a
@@ -1210,7 +1257,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// high-resolution point, since this data will nearly always follow relatively smooth local
         /// gradients.
         /// </remarks>
-        public static async Task<WeatherMaps> GetWeatherMapsAsync(
+        public static WeatherMaps GetWeatherMaps(
             this Planetoid planet,
             int resolution,
             double? centralMeridian = null,
@@ -1218,7 +1265,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double? standardParallels = null,
             double? range = null,
             int steps = 12,
-            double[,]? elevationMap = null,
+            double[][]? elevationMap = null,
             double? averageElevation = null)
         {
             if (planet is null)
@@ -1227,23 +1274,23 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             }
             if (resolution > int.MaxValue / 2)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({(int.MaxValue / 2).ToString()}).");
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed half of int.MaxValue ({int.MaxValue / 2}).");
             }
             if (steps > int.MaxValue)
             {
-                throw new ArgumentOutOfRangeException(nameof(steps), $"The value of {nameof(steps)} cannot exceed int.MaxValue ({int.MaxValue.ToString()}).");
+                throw new ArgumentOutOfRangeException(nameof(steps), $"The value of {nameof(steps)} cannot exceed int.MaxValue ({int.MaxValue}).");
             }
             steps = Math.Max(1, steps);
 
             var doubleResolution = resolution * 2;
             var total = doubleResolution * resolution;
 
-            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.Length != doubleResolution || (resolution > 0 && elevationMap[0].Length != resolution))
             {
                 elevationMap = planet.GetElevationMap(resolution, centralMeridian, centralParallel, standardParallels, range);
             }
 
-            float[][,] precipitationMaps, snowfallMaps;
+            float[][][] precipitationMaps, snowfallMaps;
             PrecipitationMaps[] precipMaps;
             if (planet.HasAllWeatherMaps)
             {
@@ -1252,12 +1299,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 precipMaps = new PrecipitationMaps[precipitationMaps.Length];
                 for (var i = 0; i < precipitationMaps.Length; i++)
                 {
-                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                    precipMaps[i] = new PrecipitationMaps(precipitationMaps[i], snowfallMaps[i]);
                 }
                 return new WeatherMaps(
                     planet,
-                    doubleResolution,
-                    resolution,
                     elevationMap,
                     precipMaps,
                     planet.GetTemperatureMap(doubleResolution, resolution),
@@ -1269,7 +1314,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     averageElevation);
             }
 
-            FloatRange[,] temperatureRanges;
+            FloatRange[][] temperatureRanges;
             if (planet.HasTemperatureMap)
             {
                 temperatureRanges = planet.GetTemperatureMap(doubleResolution, resolution);
@@ -1283,10 +1328,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 var summerLatitudes = new Dictionary<double, double>();
                 var latitudeTemperatures = new Dictionary<double, double>();
                 var elevationTemperatures = new Dictionary<(double, int), float>();
-                temperatureRanges = await GetSurfaceMapAsync(
-                    async (lat, _, x, y) =>
+                temperatureRanges = GetSurfaceMap(
+                    (lat, _, x, y) =>
                     {
-                        var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x, y] * planet.MaxElevation) / 100) * 100;
+                        var roundedElevation = (int)Math.Round(Math.Max(0, elevationMap![x][y] * planet.MaxElevation) / 100) * 100;
 
                         if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                         {
@@ -1295,12 +1340,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         }
                         if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
                         {
-                            winterTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(winterTrueAnomaly, winterLat).ConfigureAwait(false);
+                            winterTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(winterTrueAnomaly, winterLat);
                             latitudeTemperatures.Add(winterLat, winterTemp);
                         }
                         if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
                         {
-                            winterTempAtElevation = (float)await planet.GetTemperatureAtElevationAsync(winterTemp, roundedElevation).ConfigureAwait(false);
+                            winterTempAtElevation = (float)planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
                             elevationTemperatures.Add((winterTemp, roundedElevation), winterTempAtElevation);
                         }
 
@@ -1311,12 +1356,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         }
                         if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
                         {
-                            summerTemp = await planet.GetSurfaceTemperatureAtTrueAnomalyAsync(summerTrueAnomaly, summerLat).ConfigureAwait(false);
+                            summerTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(summerTrueAnomaly, summerLat);
                             latitudeTemperatures.Add(summerLat, summerTemp);
                         }
                         if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
                         {
-                            summerTempAtElevation = (float)await planet.GetTemperatureAtElevationAsync(summerTemp, roundedElevation).ConfigureAwait(false);
+                            summerTempAtElevation = (float)planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
                             elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
                         }
 
@@ -1328,7 +1373,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     centralMeridian,
                     centralParallel,
                     standardParallels,
-                    range).ConfigureAwait(false);
+                    range);
             }
 
             if (planet.HasPrecipitationMap && planet.HasSnowfallMap && planet.MappedSeasons >= steps)
@@ -1339,7 +1384,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 var step = planet.MappedSeasons == steps ? 1 : Math.Max(1, (int)Math.Floor(planet.MappedSeasons / (double)steps));
                 for (var i = 0; i < precipitationMaps.Length; i += step)
                 {
-                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                    precipMaps[i] = new PrecipitationMaps(precipitationMaps[i], snowfallMaps[i]);
                 }
             }
             else
@@ -1356,13 +1401,17 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
 
                     // Precipitation & snowfall
-                    var snowfallMap = new float[doubleResolution, resolution];
+                    var snowfallMap = new float[doubleResolution][];
+                    for (var j = 0; j < snowfallMap.Length; j++)
+                    {
+                        snowfallMap[j] = new float[resolution];
+                    }
                     var precipMap = GetSurfaceMap(
                         (lat, lon, x, y) =>
                         {
                             if (planet.Atmosphere.MaxPrecipitation.IsNearlyZero())
                             {
-                                snowfallMap[x, y] = 0;
+                                snowfallMap[x][y] = 0;
                                 return 0;
                             }
                             else
@@ -1370,10 +1419,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                                 var precipitation = planet.GetPrecipitation(
                                     planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
                                     planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
-                                    temperatureRanges[x, y].Min.Lerp(temperatureRanges[x, y].Max, lat < 0 ? 1 - proportionOfSummerAtMidpoint : proportionOfSummerAtMidpoint),
+                                    temperatureRanges[x][y].Min.Lerp(temperatureRanges[x][y].Max, lat < 0 ? 1 - proportionOfSummerAtMidpoint : proportionOfSummerAtMidpoint),
                                     proportionOfYear,
                                     out var snow);
-                                snowfallMap[x, y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
+                                snowfallMap[x][y] = (float)(snow / planet.Atmosphere.MaxSnowfall);
                                 return (float)(precipitation / planet.Atmosphere.MaxPrecipitation);
                             }
                         },
@@ -1382,7 +1431,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         centralParallel,
                         standardParallels,
                         range);
-                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipMap, snowfallMap);
+                    precipMaps[i] = new PrecipitationMaps(precipMap, snowfallMap);
 
                     proportionOfYearAtMidpoint += proportionOfYear;
                     proportionOfSummerAtMidpoint = 1 - (Math.Abs(0.5f - proportionOfYearAtMidpoint) / 0.5f);
@@ -1396,8 +1445,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             return new WeatherMaps(
                 planet,
-                doubleResolution,
-                resolution,
                 elevationMap,
                 precipMaps,
                 temperatureRanges,
@@ -1445,12 +1492,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// high-resolution point, since this data will nearly always follow relatively smooth local
         /// gradients.
         /// </remarks>
-        public static async Task<WeatherMaps> GetWeatherMapsAsync(
+        public static WeatherMaps GetWeatherMaps(
             this Planetoid planet,
             SurfaceRegion region,
             int resolution,
             int steps = 12,
-            double[,]? elevationMap = null,
+            double[][]? elevationMap = null,
             double? averageElevation = null)
         {
             var doubleResolution = resolution * 2;
@@ -1458,12 +1505,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var latitude = planet.VectorToLatitude(region.Position);
             var range = (double)((Frustum)region.Shape).FieldOfViewAngle;
 
-            if (elevationMap is null || elevationMap.GetLength(0) != doubleResolution || elevationMap.GetLength(1) != resolution)
+            if (elevationMap is null || elevationMap.Length != doubleResolution || (resolution > 0 && elevationMap[0].Length != resolution))
             {
                 elevationMap = planet.GetElevationMap(region, resolution);
             }
 
-            float[][,] precipitationMaps, snowfallMaps;
+            float[][][] precipitationMaps, snowfallMaps;
             PrecipitationMaps[] precipMaps;
 
             if (region.HasAllWeatherMaps)
@@ -1473,12 +1520,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 precipMaps = new PrecipitationMaps[precipitationMaps.Length];
                 for (var i = 0; i < precipitationMaps.Length; i++)
                 {
-                    precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                    precipMaps[i] = new PrecipitationMaps(precipitationMaps[i], snowfallMaps[i]);
                 }
                 return new WeatherMaps(
                     planet,
-                    doubleResolution,
-                    resolution,
                     elevationMap,
                     precipMaps,
                     region.GetTemperatureMap(doubleResolution, resolution),
@@ -1489,14 +1534,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     averageElevation: averageElevation);
             }
 
-            var weatherMaps = await planet.GetWeatherMapsAsync(
+            var weatherMaps = planet.GetWeatherMaps(
                 resolution,
                 longitude,
                 latitude,
                 range: range,
                 steps: steps,
                 elevationMap: elevationMap,
-                averageElevation: averageElevation).ConfigureAwait(false);
+                averageElevation: averageElevation);
             if (!region.HasAnyWeatherMaps)
             {
                 return weatherMaps;
@@ -1511,7 +1556,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             precipMaps = new PrecipitationMaps[precipitationMaps.Length];
             for (var i = 0; i < precipitationMaps.Length; i++)
             {
-                precipMaps[i] = new PrecipitationMaps(doubleResolution, resolution, precipitationMaps[i], snowfallMaps[i]);
+                precipMaps[i] = new PrecipitationMaps(precipitationMaps[i], snowfallMaps[i]);
             }
 
             var tempRanges = region.HasTemperatureMap
@@ -1520,8 +1565,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             return new WeatherMaps(
                 planet,
-                doubleResolution,
-                resolution,
                 elevationMap,
                 precipMaps,
                 tempRanges,
@@ -1532,14 +1575,15 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 averageElevation: averageElevation);
         }
 
-        internal static T[,] GetInitializedArray<T>(int xLength, int yLength, T defaultValue)
+        internal static T[][] GetInitializedArray<T>(int xLength, int yLength, T defaultValue)
         {
-            var arr = new T[xLength, yLength];
+            var arr = new T[xLength][];
             for (var x = 0; x < xLength; x++)
             {
+                arr[x] = new T[yLength];
                 for (var y = 0; y < yLength; y++)
                 {
-                    arr[x, y] = defaultValue;
+                    arr[x][y] = defaultValue;
                 }
             }
             return arr;
@@ -1560,7 +1604,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             return (x, y);
         }
 
-        internal static T[,] GetSurfaceMap<T>(
+        internal static T[][] GetSurfaceMap<T>(
             Func<double, double, long, long, T> func,
             int resolution,
             double? centralMeridian = null,
@@ -1573,58 +1617,32 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
             }
             var doubleResolution = resolution * 2;
-            var map = new T[doubleResolution, resolution];
+            var map = new T[doubleResolution][];
             var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
                 ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
                 : Math.PI / resolution;
             for (var x = 0; x < doubleResolution; x++)
             {
+                map[x] = new T[resolution];
                 for (var y = 0; y < resolution; y++)
                 {
                     var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
-                    map[x, y] = func(latitude, longitude, x, y);
+                    map[x][y] = func(latitude, longitude, x, y);
                 }
             }
             return map;
         }
 
-        internal static async Task<T[,]> GetSurfaceMapAsync<T>(
-            Func<double, double, long, long, Task<T>> func,
-            int resolution,
-            double? centralMeridian = null,
-            double? centralParallel = null,
-            double? standardParallels = null,
-            double? range = null)
-        {
-            if (resolution > 32767)
-            {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
-            }
-            var doubleResolution = resolution * 2;
-            var map = new T[doubleResolution, resolution];
-            var scale = range.HasValue && range.Value < MathConstants.PI && !range.Value.IsNearlyZero()
-                ? MathAndScience.Constants.Doubles.MathConstants.PISquared / (resolution * range.Value)
-                : Math.PI / resolution;
-            for (var x = 0; x < doubleResolution; x++)
-            {
-                for (var y = 0; y < resolution; y++)
-                {
-                    var (latitude, longitude) = GetLatLonOfEquirectangularProjectionFromAdjustedCoordinates(x, y, resolution, scale, centralMeridian, centralParallel, standardParallels);
-                    map[x, y] = await func(latitude, longitude, x, y).ConfigureAwait(false);
-                }
-            }
-            return map;
-        }
-
-        private static float[,] CastArray(double[,] array, int resolution)
+        private static float[][] CastArray(double[][] array, int resolution)
         {
             var doubleResolution = resolution * 2;
-            var result = new float[doubleResolution, resolution];
+            var result = new float[doubleResolution][];
             for (var x = 0; x < doubleResolution; x++)
             {
+                result[x] = new float[resolution];
                 for (var y = 0; y < resolution; y++)
                 {
-                    result[x, y] = (float)array[x, y];
+                    result[x][y] = (float)array[x][y];
                 }
             }
             return result;

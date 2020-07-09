@@ -1,13 +1,14 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NeverFoundry.MathAndScience.Constants.Numbers;
-using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids.Planets.TerrestrialPlanets;
 using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Space.Planetoids;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Test
 {
@@ -18,22 +19,33 @@ namespace NeverFoundry.WorldFoundry.Test
         private const int SurfaceMapResolution = 90;
 
         [TestMethod]
-        public async Task EarthlikePlanet_GenerateAsync()
+        public void EarthlikePlanet()
         {
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(earthlike: true).ConfigureAwait(false);
+            // First run to ensure timed runs do not include any one-time initialization costs.
+            var planet = Planetoid.GetPlanetForSunlikeStar(out _);
+            Assert.IsNotNull(planet);
+            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            planet = Planetoid.GetPlanetForSunlikeStar(out _);
+
+            stopwatch.Stop();
+
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Radius: {planet!.Shape.ContainingRadius / 1000} km");
-            Console.WriteLine($"Surface area: {planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000} km²");
-        }
+            Console.WriteLine($"Planet generation time: {stopwatch.Elapsed:s'.'FFF} s");
+            Console.WriteLine($"Radius: {planet!.Shape.ContainingRadius / 1000:N0} km");
+            Console.WriteLine($"Surface area: {planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000:N0} km²");
 
-        [TestMethod]
-        public async Task EarthlikePlanet_Generate_WithSeasonsAsync()
-        {
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(earthlike: true).ConfigureAwait(false);
-            Assert.IsNotNull(planet);
+            stopwatch.Restart();
 
-            var maps = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
+            var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+
+            stopwatch.Stop();
+
+            Console.WriteLine($"Surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
 
             var sb = new StringBuilder();
 
@@ -49,63 +61,36 @@ namespace NeverFoundry.WorldFoundry.Test
         }
 
         [TestMethod]
-        public async Task TerrestrialPlanet_GenerateAsync()
+        public void TerrestrialPlanet()
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults();
+            // First run to ensure timed runs do not include any one-time initialization costs.
+            var planet = Planetoid.GetPlanetForNewStar(out _, planetParams: new PlanetParams(), habitabilityRequirements: new HabitabilityRequirements());
+            Assert.IsNotNull(planet);
+            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            planet = Planetoid.GetPlanetForSunlikeStar(out _);
+
+            stopwatch.Stop();
+
             Assert.IsNotNull(planet);
 
-            Console.WriteLine($"Radius: {planet!.Shape.ContainingRadius / 1000} km");
-            Console.WriteLine($"Surface area: {planet!.Shape.ContainingRadius.Square() * MathConstants.FourPI / 1000000} km²");
+            Console.WriteLine($"Planet generation time: {stopwatch.Elapsed:s'.'FFF} s");
+
+            stopwatch.Restart();
+
+            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+
+            stopwatch.Stop();
+
+            Console.WriteLine($"Surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
         }
 
-        [TestMethod]
-        public async Task TerrestrialPlanet_Generate_NoOutputAsync()
+        private static void AddClimateString(StringBuilder sb, Planetoid planet, SurfaceMaps maps)
         {
-            var planetParams = TerrestrialPlanetParams.FromDefaults();
-
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
-            Assert.IsNotNull(planet);
-        }
-
-        [TestMethod]
-        public async Task TerrestrialPlanet_Generate_WithSeasonsAsync()
-        {
-            var planetParams = TerrestrialPlanetParams.FromDefaults();
-
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
-            Assert.IsNotNull(planet);
-
-            var maps = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
-
-            var sb = new StringBuilder();
-
-            AddTempString(sb, planet!, maps);
-            sb.AppendLine();
-            AddTerrainString(sb, planet!, maps);
-            sb.AppendLine();
-            AddClimateString(sb, planet!, maps);
-            sb.AppendLine();
-            AddPrecipitationString(sb, planet!, maps);
-
-            Console.WriteLine(sb.ToString());
-        }
-
-        [TestMethod]
-        public async Task TerrestrialPlanet_Generate_WithSeasons_NoOutputAsync()
-        {
-            var planetParams = TerrestrialPlanetParams.FromDefaults();
-
-            var planet = await TerrestrialPlanet.GetPlanetForNewUniverseAsync(planetParams).ConfigureAwait(false);
-            Assert.IsNotNull(planet);
-
-            _ = await planet!.GetSurfaceMapsAsync(SurfaceMapResolution, steps: NumSeasons).ConfigureAwait(false);
-        }
-
-        private static void AddClimateString(StringBuilder sb, TerrestrialPlanet planet, SurfaceMaps maps)
-        {
-            if (maps.BiomeMap[0, 0] == BiomeType.None)
+            if (maps.BiomeMap[0][0] == BiomeType.None)
             {
                 return;
             }
@@ -118,7 +103,7 @@ namespace NeverFoundry.WorldFoundry.Test
                 {
                     for (var y = 0; y < maps.YLength; y++)
                     {
-                        if (maps.Elevation[x, y] > 0)
+                        if (maps.Elevation[x][y] > 0)
                         {
                             landCoords++;
                         }
@@ -135,13 +120,13 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    if (biomes.ContainsKey(maps.BiomeMap[x, y]))
+                    if (biomes.ContainsKey(maps.BiomeMap[x][y]))
                     {
-                        biomes[maps.BiomeMap[x, y]]++;
+                        biomes[maps.BiomeMap[x][y]]++;
                     }
                     else
                     {
-                        biomes[maps.BiomeMap[x, y]] = 1;
+                        biomes[maps.BiomeMap[x][y]] = 1;
                     }
                 }
             }
@@ -154,24 +139,24 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    if (maps.BiomeMap[x, y] == BiomeType.HotDesert
-                        || maps.BiomeMap[x, y] == BiomeType.ColdDesert
-                        || (maps.ClimateMap[x, y] == ClimateType.Polar
-                        && maps.EcologyMap[x, y] == EcologyType.Desert))
+                    if (maps.BiomeMap[x][y] == BiomeType.HotDesert
+                        || maps.BiomeMap[x][y] == BiomeType.ColdDesert
+                        || (maps.ClimateMap[x][y] == ClimateType.Polar
+                        && maps.EcologyMap[x][y] == EcologyType.Desert))
                     {
                         allDeserts++;
-                        if (maps.BiomeMap[x, y] == BiomeType.HotDesert
-                            || maps.BiomeMap[x, y] == BiomeType.ColdDesert)
+                        if (maps.BiomeMap[x][y] == BiomeType.HotDesert
+                            || maps.BiomeMap[x][y] == BiomeType.ColdDesert)
                         {
                             deserts++;
                         }
-                        if (maps.BiomeMap[x, y] == BiomeType.HotDesert
-                            && maps.ClimateMap[x, y] == ClimateType.WarmTemperate)
+                        if (maps.BiomeMap[x][y] == BiomeType.HotDesert
+                            && maps.ClimateMap[x][y] == ClimateType.WarmTemperate)
                         {
                             warmDeserts++;
                         }
-                        if (maps.BiomeMap[x, y] == BiomeType.HotDesert
-                            && maps.ClimateMap[x, y] != ClimateType.WarmTemperate)
+                        if (maps.BiomeMap[x][y] == BiomeType.HotDesert
+                            && maps.ClimateMap[x][y] != ClimateType.WarmTemperate)
                         {
                             tropicalDeserts++;
                         }
@@ -184,30 +169,30 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    if (maps.Elevation[x, y] < 0)
+                    if (maps.Elevation[x][y] < 0)
                     {
                         continue;
                     }
-                    if (climates.ContainsKey(maps.ClimateMap[x, y]))
+                    if (climates.ContainsKey(maps.ClimateMap[x][y]))
                     {
-                        climates[maps.ClimateMap[x, y]]++;
+                        climates[maps.ClimateMap[x][y]]++;
                     }
                     else
                     {
-                        climates[maps.ClimateMap[x, y]] = 1;
+                        climates[maps.ClimateMap[x][y]] = 1;
                     }
                 }
             }
 
             sb.AppendLine("Climates:");
             var desert = allDeserts * 100.0 / landCoords;
-            sb.AppendFormat("  Desert (all):            {0}% ({1})", Math.Round(desert, 2), Math.Round(desert - 30, 2));
+            sb.AppendFormat("  Desert (all):            {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(desert, 2), Math.Round(desert - 30, 2));
             sb.AppendLine();
             var nonPolarDesert = deserts * 100.0 / landCoords;
-            sb.AppendFormat("  Desert (non-polar):      {0}% ({1})", Math.Round(nonPolarDesert, 2), Math.Round(nonPolarDesert - 14, 2));
+            sb.AppendFormat("  Desert (non-polar):      {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(nonPolarDesert, 2), Math.Round(nonPolarDesert - 14, 2));
             sb.AppendLine();
             var polar = (climates.TryGetValue(ClimateType.Polar, out var value) ? value : 0) * 100.0 / landCoords;
-            sb.AppendFormat("  Polar:                   {0}% ({1})", Math.Round(polar, 2), Math.Round(polar - 25, 2));
+            sb.AppendFormat("  Polar:                   {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(polar, 2), Math.Round(polar - 25, 2));
             sb.AppendLine();
             sb.AppendFormat("  Tundra:                  {0}%", Math.Round((biomes.TryGetValue(BiomeType.Tundra, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
@@ -215,41 +200,41 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendFormat("  Boreal:                  {0}%", Math.Round(boreal * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Lichen Woodland:       {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / boreal, 2),
+                boreal == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / boreal, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.LichenWoodland, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Coniferous Forest:     {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / boreal, 2),
+                boreal == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / boreal, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.ConiferousForest, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             var coolTemperate = climates.TryGetValue(ClimateType.CoolTemperate, out value) ? value : 0;
             sb.AppendFormat("  Cool Temperate:          {0}%", Math.Round(coolTemperate * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Cold Desert:           {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / coolTemperate, 2),
+                coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / coolTemperate, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.ColdDesert, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Steppe:                {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / coolTemperate, 2),
+                coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / coolTemperate, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.Steppe, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Mixed Forest:          {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / coolTemperate, 2),
+                coolTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / coolTemperate, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.MixedForest, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             var warmTemperate = climates.TryGetValue(ClimateType.WarmTemperate, out value) ? value : 0;
             sb.AppendFormat("  Warm Temperate:          {0}%", Math.Round(warmTemperate * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Desert:                {0}% ({1}%)",
-                Math.Round(warmDeserts * 100.0 / warmTemperate, 2),
+                warmTemperate == 0 ? 0 : Math.Round(warmDeserts * 100.0 / warmTemperate, 2),
                 Math.Round(warmDeserts * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Shrubland:             {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / warmTemperate, 2),
+                warmTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / warmTemperate, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.Shrubland, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Deciduous Forest:      {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / warmTemperate, 2),
+                warmTemperate == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / warmTemperate, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.DeciduousForest, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             var tropical = 0;
@@ -259,26 +244,26 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendFormat("  Tropical:                {0}%", Math.Round(tropical * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Desert:                {0}% ({1}%)",
-                Math.Round(tropicalDeserts * 100.0 / tropical, 2),
+                tropical == 0 ? 0 : Math.Round(tropicalDeserts * 100.0 / tropical, 2),
                 Math.Round(tropicalDeserts * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Savanna:               {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / tropical, 2),
+                tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / tropical, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.Savanna, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             sb.AppendFormat("    Monsoon Forest:        {0}% ({1}%)",
-                Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / tropical, 2),
+                tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / tropical, 2),
                 Math.Round((biomes.TryGetValue(BiomeType.MonsoonForest, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             var rainforest = (biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / landCoords;
-            sb.AppendFormat("    Rain Forest:           {0}% ({1}%) ({2})",
+            sb.AppendFormat("    Rain Forest:           {0}% ({1}%) ({2:+0.##;-0.##;on-targ\\et})",
                 Math.Round(rainforest, 2),
-                Math.Round((biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / tropical, 2),
+                tropical == 0 ? 0 : Math.Round((biomes.TryGetValue(BiomeType.RainForest, out value) ? value : 0) * 100.0 / tropical, 2),
                 Math.Round(rainforest - 6, 2));
             sb.AppendLine();
         }
 
-        private static void AddPrecipitationString(StringBuilder sb, TerrestrialPlanet planet, SurfaceMaps maps)
+        private static void AddPrecipitationString(StringBuilder sb, Planetoid planet, SurfaceMaps maps)
         {
             sb.AppendLine("Precipitation (annual average, land):");
             var landCoords = new List<(int x, int y)>();
@@ -286,7 +271,7 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    if (maps.Elevation[x, y] > 0)
+                    if (maps.Elevation[x][y] > 0)
                     {
                         landCoords.Add((x, y));
                     }
@@ -299,18 +284,18 @@ namespace NeverFoundry.WorldFoundry.Test
             }
 
             var list = landCoords
-                .Select(x => maps.TotalPrecipitationMap[x.x, x.y] * planet.Atmosphere.MaxPrecipitation)
+                .Select(x => maps.TotalPrecipitationMap[x.x][x.y] * planet.Atmosphere.MaxPrecipitation)
                 .ToList();
 
             list.Sort();
             var avg = list.Average();
-            sb.AppendFormat("  Avg:                     {0}mm ({1})", Math.Round(avg), Math.Round(avg - 990, 2));
+            sb.AppendFormat("  Avg:                     {0}mm ({1:+0.##;-0.##;on-targ\\et})", Math.Round(avg), Math.Round(avg - 990, 2));
             sb.AppendLine();
             var avg90 = list.Take((int)Math.Floor(list.Count * 0.9)).Average();
-            sb.AppendFormat("  Avg (<=P90):             {0}mm ({1})", Math.Round(avg90), Math.Round(avg90 - 990, 2));
+            sb.AppendFormat("  Avg (<=P90):             {0}mm ({1:+0.##;-0.##;on-targ\\et})", Math.Round(avg90), Math.Round(avg90 - 990, 2));
             sb.AppendLine();
             var avgList = planet.Atmosphere.MaxPrecipitation / 3.5403429574618413761305460296723;
-            sb.AppendFormat("  Avg (listed):            {0}mm ({1})", Math.Round(avgList), Math.Round(avgList - 990, 2));
+            sb.AppendFormat("  Avg (listed):            {0}mm ({1:+0.##;-0.##;on-targ\\et})", Math.Round(avgList), Math.Round(avgList - 990, 2));
             sb.AppendLine();
 
             var n = 0;
@@ -319,17 +304,24 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    if (maps.ClimateMap[x, y] == ClimateType.CoolTemperate
-                        || maps.ClimateMap[x, y] == ClimateType.WarmTemperate)
+                    if (maps.ClimateMap[x][y] == ClimateType.CoolTemperate
+                        || maps.ClimateMap[x][y] == ClimateType.WarmTemperate)
                     {
-                        temperate += maps.TotalPrecipitationMap[x, y];
+                        temperate += maps.TotalPrecipitationMap[x][y];
                         n++;
                     }
                 }
             }
-            temperate /= n;
-            temperate *= planet.Atmosphere.MaxPrecipitation;
-            sb.AppendFormat("  Avg (Temperate):         {0}mm ({1})", Math.Round(temperate), Math.Round(temperate - 1100, 2));
+            if (n == 0)
+            {
+                temperate = 0;
+            }
+            else
+            {
+                temperate /= n;
+                temperate *= planet.Atmosphere.MaxPrecipitation;
+            }
+            sb.AppendFormat("  Avg (Temperate):         {0}mm ({1:+0.##;-0.##;on-targ\\et})", Math.Round(temperate), Math.Round(temperate - 1100, 2));
             sb.AppendLine();
 
             sb.AppendFormat("  Min:                     {0}mm", Math.Round(list[0]));
@@ -353,16 +345,16 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendFormat("  P90:                     {0}mm", Math.Round(list.Skip((int)Math.Floor(list.Count * 0.9)).First()));
             sb.AppendLine();
             var max = list.Last();
-            sb.AppendFormat("  Max:                     {0}mm ({1})", Math.Round(max), Math.Round(max - 11871, 2));
+            sb.AppendFormat("  Max:                     {0}mm ({1:+0.##;-0.##;on-targ\\et})", Math.Round(max), Math.Round(max - 11871, 2));
 
             sb.AppendLine();
         }
 
-        private static void AddTempString(StringBuilder sb, TerrestrialPlanet planet, SurfaceMaps maps)
+        private static void AddTempString(StringBuilder sb, Planetoid planet, SurfaceMaps maps)
         {
             sb.AppendLine("Temp:");
             var avg = maps.TemperatureRange.Average;
-            sb.AppendFormat("  Avg:                     {0} K ({1})", Math.Round(avg), Math.Round(avg - (float)TerrestrialPlanetParams.DefaultSurfaceTemperature, 2));
+            sb.AppendFormat("  Avg:                     {0} K ({1:+0.##;-0.##;on-targ\\et})", Math.Round(avg), Math.Round(avg - (float)PlanetParams.EarthSurfaceTemperature, 2));
             sb.AppendLine();
 
             var water = planet.Hydrosphere?.IsEmpty == false;
@@ -373,17 +365,17 @@ namespace NeverFoundry.WorldFoundry.Test
                 {
                     for (var y = 0; y < maps.YLength; y++)
                     {
-                        if (maps.Elevation[x, y] <= 0)
+                        if (maps.Elevation[x][y] <= 0)
                         {
                             seaLevelCoords.Add((x, y));
                         }
                     }
                 }
-                var min = seaLevelCoords.Min(x => maps.TemperatureRangeMap[x.x, x.y].Min);
+                var min = seaLevelCoords.Min(x => maps.TemperatureRangeMap[x.x][x.y].Min);
                 sb.AppendFormat("  Min Sea-Level:           {0} K", Math.Round(min));
                 sb.AppendLine();
 
-                var avgSeaLevel = seaLevelCoords.Average(x => maps.TemperatureRangeMap[x.x, x.y].Average);
+                var avgSeaLevel = seaLevelCoords.Average(x => maps.TemperatureRangeMap[x.x][x.y].Average);
                 sb.AppendFormat("  Avg Sea-Level:           {0} K", Math.Round(avgSeaLevel));
                 sb.AppendLine();
             }
@@ -396,7 +388,7 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    maxAvg = Math.Max(maxAvg, maps.TemperatureRangeMap[x, y].Average);
+                    maxAvg = Math.Max(maxAvg, maps.TemperatureRangeMap[x][y].Average);
                 }
             }
             sb.AppendFormat("  Max Avg:          {0} K", Math.Round(maxAvg));
@@ -404,13 +396,13 @@ namespace NeverFoundry.WorldFoundry.Test
 
             if (water)
             {
-                var minMaxTemp = seaLevelCoords.Min(x => maps.TemperatureRangeMap[x.x, x.y].Max);
+                var minMaxTemp = seaLevelCoords.Min(x => maps.TemperatureRangeMap[x.x][x.y].Max);
                 sb.AppendFormat("  Min Max (water):  {0} K", Math.Round(minMaxTemp));
             }
             sb.AppendLine();
         }
 
-        private static void AddTerrainString(StringBuilder sb, TerrestrialPlanet planet, SurfaceMaps maps)
+        private static void AddTerrainString(StringBuilder sb, Planetoid planet, SurfaceMaps maps)
         {
             sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
             sb.AppendLine();
@@ -423,13 +415,13 @@ namespace NeverFoundry.WorldFoundry.Test
                 {
                     for (var y = 0; y < maps.YLength; y++)
                     {
-                        if (maps.Elevation[x, y] > 0)
+                        if (maps.Elevation[x][y] > 0)
                         {
                             landCoords.Add((x, y));
                         }
                     }
                 }
-                avg = landCoords.Average(x => maps.Elevation[x.x, x.y]) * planet.MaxElevation;
+                avg = landCoords.Average(x => maps.Elevation[x.x][x.y]) * planet.MaxElevation;
             }
             else
             {
@@ -444,7 +436,7 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
-                    max = Math.Max(max, maps.Elevation[x, y]);
+                    max = Math.Max(max, maps.Elevation[x][y]);
                 }
             }
             max *= planet.MaxElevation;

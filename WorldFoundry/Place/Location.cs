@@ -2,6 +2,7 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,9 +22,27 @@ namespace NeverFoundry.WorldFoundry.Place
     /// hierarchy can be analyzed using the methods available on this class.
     /// </remarks>
     [Serializable]
+    [JsonObject]
     public class Location : IdItem, ISerializable
     {
         private Location? _parent;
+
+        /// <summary>
+        /// <para>
+        /// The position of this location, as a set of relative positions starting with the position
+        /// of its outermost containing parent within the universe, down to the relative position of
+        /// its most immediate parent.
+        /// </para>
+        /// <para>
+        /// The location's own relative <see cref="Position"/> is not included, and should be
+        /// retrieved from that property.
+        /// </para>
+        /// <para>
+        /// May be <see langword="null"/> for a location with no containing parent, or whose parent
+        /// is the universe itself (i.e. there is no intermediate container).
+        /// </para>
+        /// </summary>
+        public Vector3[]? AbsolutePosition { get; private set; }
 
         /// <summary>
         /// The id of the parent location which contains this instance, if any.
@@ -33,41 +52,38 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The position of this location relative to the center of its parent.
         /// </summary>
+        [JsonIgnore]
+        [System.Text.Json.Serialization.JsonIgnore]
         public virtual Vector3 Position
         {
             get => Shape.Position;
-            set => Shape = Shape.GetCloneAtPosition(value);
+            internal set => Shape = Shape.GetCloneAtPosition(value);
         }
 
-        private IShape? _shape;
         /// <summary>
         /// The shape of this location.
         /// </summary>
-        public virtual IShape Shape
-        {
-            get => _shape ?? SinglePoint.Origin;
-            set => _shape = value;
-        }
-
-        private protected virtual bool HasDefinedShape => !(_shape is null);
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Location"/>.
-        /// </summary>
-        protected Location() { }
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="Location"/>.
-        /// </summary>
-        /// <param name="position">The position of the location relative to the center of its
-        /// containing region.</param>
-        public Location(Vector3 position) => Position = position;
+        [JsonProperty(TypeNameHandling = TypeNameHandling.None)]
+        public virtual IShape Shape { get; private protected set; } = SinglePoint.Origin;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
         /// <param name="shape">The shape of the location.</param>
         public Location(IShape shape) => Shape = shape;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        public Location() : this(SinglePoint.Origin) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        /// <param name="position">
+        /// The position of the location relative to the center of its containing region.
+        /// </param>
+        public Location(Vector3 position) : this(new SinglePoint(position)) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
@@ -79,37 +95,214 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
         /// <param name="parentId">The id of the location which contains this one.</param>
-        /// <param name="position">The position of the location relative to the center of its
-        /// parent.</param>
-        public Location(string? parentId, Vector3 position)
-        {
-            Position = position;
-            ParentId = parentId;
-        }
+        /// <param name="shape">The shape of the location.</param>
+        public Location(string? parentId, IShape shape) : this(parentId) => Shape = shape;
 
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
         /// <param name="parentId">The id of the location which contains this one.</param>
+        /// <param name="position">The position of the location relative to the center of its
+        /// parent.</param>
+        public Location(string? parentId, Vector3 position) : this(parentId, new SinglePoint(position)) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        /// <param name="parent">The location which contains this one.</param>
+        public Location(Location parent) : this(parent.Id) { }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        /// <param name="parent">The location which contains this one.</param>
         /// <param name="shape">The shape of the location.</param>
-        public Location(string? parentId, IShape shape)
+        /// <remarks>
+        /// Automatically sets <see cref="AbsolutePosition"/> based on the <see
+        /// cref="AbsolutePosition"/> and <see cref="Position"/> of the <paramref name="parent"/>.
+        /// </remarks>
+        public Location(Location parent, IShape shape) : this(parent.Id, shape)
+        {
+            AbsolutePosition = new Vector3[parent.AbsolutePosition is null ? 1 : parent.AbsolutePosition.Length + 1];
+            if (parent.AbsolutePosition is not null)
+            {
+                for (var i = 0; i < parent.AbsolutePosition.Length; i++)
+                {
+                    AbsolutePosition[i] = parent.AbsolutePosition[i];
+                }
+            }
+            AbsolutePosition[^1] = parent.Position;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        /// <param name="parent">The location which contains this one.</param>
+        /// <param name="position">The position of the location relative to the center of its
+        /// parent.</param>
+        public Location(Location parent, Vector3 position) : this(parent, new SinglePoint(position)) { }
+
+        private protected Location(string id, string? parentId, Vector3[]? absolutePosition) : base(id)
+        {
+            ParentId = parentId;
+            AbsolutePosition = absolutePosition;
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="Location"/>.
+        /// </summary>
+        /// <param name="id">The unique ID of this item.</param>
+        /// <param name="shape">The shape of the location.</param>
+        /// <param name="parentId">The ID of the location which contains this one.</param>
+        /// <param name="absolutePosition">
+        /// <para>
+        /// The position of this location, as a set of relative positions starting with the position
+        /// of its outermost containing parent within the universe, down to the relative position of
+        /// its most immediate parent.
+        /// </para>
+        /// <para>
+        /// The location's own relative <see cref="Position"/> is not expected to be included.
+        /// </para>
+        /// <para>
+        /// May be <see langword="null"/> for a location with no containing parent, or whose parent
+        /// is the universe itself (i.e. there is no intermediate container).
+        /// </para>
+        /// </param>
+        /// <remarks>
+        /// Note: this constructor is most useful for deserializers. The other constructors are more
+        /// suited to creating a new instance, as they will automatically generate an appropriate ID.
+        /// </remarks>
+        [JsonConstructor]
+        [System.Text.Json.Serialization.JsonConstructor]
+        public Location(string id, IShape shape, string? parentId, Vector3[]? absolutePosition) : base(id)
         {
             Shape = shape;
             ParentId = parentId;
-        }
-
-        private protected Location(string id, string? parentId) : base(id) => ParentId = parentId;
-
-        private protected Location(string id, IShape? shape, string? parentId) : base(id)
-        {
-            _shape = shape;
-            ParentId = parentId;
+            AbsolutePosition = absolutePosition;
         }
 
         private Location(SerializationInfo info, StreamingContext context) : this(
-            (string)info.GetValue(nameof(Id), typeof(string)),
-            (IShape?)info.GetValue(nameof(Shape), typeof(IShape)),
-            (string?)info.GetValue(nameof(ParentId), typeof(string))) { }
+            (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
+            (IShape?)info.GetValue(nameof(Shape), typeof(IShape)) ?? SinglePoint.Origin,
+            (string?)info.GetValue(nameof(ParentId), typeof(string)),
+            (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])))
+        { }
+
+        /// <summary>
+        /// Translates the given position relative to the first absolute position, into a position
+        /// relative to the final element of the second absolute position.
+        /// </summary>
+        /// <param name="firstAbsolutePosition">An absolute position. <seealso
+        /// cref="AbsolutePosition"/>.</param>
+        /// <param name="position">A final position relative to the first absolute position.</param>
+        /// <param name="secondAbsolutePosition">Another absolute position. <seealso
+        /// cref="AbsolutePosition"/>.</param>
+        /// <returns>
+        /// <para>
+        /// A <see cref="Vector3"/> giving the location of the first absolute position relative to
+        /// the final element of the second absolute position.
+        /// </para>
+        /// <para>
+        /// If the first absolute position is <see langword="null"/> it is treated as an outermost
+        /// container, and the position is given relative to its center.
+        /// </para>
+        /// <para>
+        /// If the second absolute position is <see langword="null"/> it is treated as an outermost
+        /// container, and the position is given relative to its center.
+        /// </para>
+        /// </returns>
+        internal static Vector3 LocalizePosition(Vector3[]? firstAbsolutePosition, Vector3 position, Vector3[]? secondAbsolutePosition)
+        {
+            if (firstAbsolutePosition is null && secondAbsolutePosition is null)
+            {
+                return position;
+            }
+            if (secondAbsolutePosition is null)
+            {
+                return firstAbsolutePosition!.Aggregate((acc, x) => acc + x) + position;
+            }
+            if (firstAbsolutePosition is null)
+            {
+                return position - secondAbsolutePosition!.Aggregate((acc, x) => acc + x);
+            }
+            if (firstAbsolutePosition == secondAbsolutePosition)
+            {
+                return position;
+            }
+
+            var commonAbsolutePosition = GetCommonAbsolutePosition(firstAbsolutePosition, secondAbsolutePosition);
+            Vector3 otherPosition;
+            Vector3 targetPosition;
+            if (commonAbsolutePosition is null)
+            {
+                otherPosition = secondAbsolutePosition.Aggregate((acc, x) => acc + x);
+                targetPosition = firstAbsolutePosition.Aggregate((acc, x) => acc + x) + position;
+            }
+            else
+            {
+                otherPosition = Vector3.Zero;
+                var i = commonAbsolutePosition.Length;
+                for (; i < secondAbsolutePosition.Length; i++)
+                {
+                    otherPosition += secondAbsolutePosition[i];
+                }
+
+                targetPosition = Vector3.Zero;
+                i = commonAbsolutePosition.Length;
+                for (; i < firstAbsolutePosition.Length; i++)
+                {
+                    targetPosition += firstAbsolutePosition[i];
+                }
+                targetPosition += position;
+            }
+            return targetPosition - otherPosition;
+        }
+
+        /// <summary>
+        /// Translates the position of the given <paramref name="location"/> into a position
+        /// relative to the final element of the second absolute position.
+        /// </summary>
+        /// <param name="location">A <see cref="Location"/>.</param>
+        /// <param name="absolutePosition">An absolute position. <seealso
+        /// cref="AbsolutePosition"/>.</param>
+        /// <returns>
+        /// <para>
+        /// A <see cref="Vector3"/> giving the location relative to the final element of the given
+        /// absolute position.
+        /// </para>
+        /// <para>
+        /// If the absolute position is <see langword="null"/> it is treated as an outermost
+        /// container, and the position is given relative to its center.
+        /// </para>
+        /// </returns>
+        internal static Vector3 LocalizePosition(Location location, Vector3[]? absolutePosition)
+            => LocalizePosition(location.AbsolutePosition, location.Position, absolutePosition);
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        private protected static async IAsyncEnumerable<T> EmptyAsyncEnumerable<T>()
+        {
+            yield break;
+        }
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+
+        private static Vector3[]? GetCommonAbsolutePosition(Vector3[]? firstAbsolutePosition, Vector3[]? secondAbsolutePosition)
+        {
+            if (secondAbsolutePosition is null)
+            {
+                return null;
+            }
+            if (firstAbsolutePosition is null)
+            {
+                return null;
+            }
+            if (firstAbsolutePosition == secondAbsolutePosition)
+            {
+                return firstAbsolutePosition;
+            }
+            return firstAbsolutePosition
+                .TakeWhile((o, i) => secondAbsolutePosition.Length > i && o == secondAbsolutePosition[i])
+                .ToArray();
+        }
 
         /// <summary>
         /// Determines whether the specified <see cref="Location"/> is contained within the current
@@ -120,13 +313,16 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <see langword="true"/> if the specified <see cref="Location"/> is contained within this
         /// instance; otherwise, <see langword="false"/>.
         /// </returns>
-        public virtual async ValueTask<bool> ContainsAsync(Location other)
+        public bool Contains(Location other)
         {
-            if (await GetCommonParentAsync(other).ConfigureAwait(false) != this)
+            var commonAbsolutePosition = GetCommonAbsolutePosition(other);
+            if (commonAbsolutePosition is null
+                || commonAbsolutePosition.Length == 0
+                || commonAbsolutePosition[^1] != Position)
             {
                 return false;
             }
-            return Shape.Intersects(other.Shape.GetCloneAtPosition(await GetLocalizedPositionAsync(other).ConfigureAwait(false)));
+            return Shape.Intersects(other.Shape.GetCloneAtPosition(LocalizePosition(other)));
         }
 
         /// <summary>
@@ -139,33 +335,38 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <see langword="true"/> if the specified <paramref name="position"/> is contained within
         /// this instance; otherwise, <see langword="false"/>.
         /// </returns>
-        public virtual ValueTask<bool> ContainsAsync(Vector3 position) => new ValueTask<bool>(Shape.IsPointWithin(position));
+        public bool Contains(Vector3 position) => Shape.IsPointWithin(position);
 
         /// <summary>
-        /// Removes this location and all contained children from the data store.
+        /// Removes this location and all contained children from the given data store.
         /// </summary>
-        public override async Task<bool> DeleteAsync()
+        public virtual async Task<bool> DeleteAsync(IDataStore dataStore)
         {
             var childrenSuccess = true;
-            await foreach (var child in GetChildrenAsync())
+            await foreach (var child in GetChildrenAsync(dataStore))
             {
-                childrenSuccess &= await child.DeleteAsync().ConfigureAwait(false);
+                childrenSuccess &= await child.DeleteAsync(dataStore).ConfigureAwait(false);
             }
-            return await base.DeleteAsync().ConfigureAwait(false) && childrenSuccess;
+            return childrenSuccess && await dataStore.RemoveItemAsync(this).ConfigureAwait(false);
         }
 
         /// <summary>
         /// Gets a flattened enumeration of all descendants of this instance.
         /// </summary>
-        /// <returns>A flattened <see cref="IAsyncEnumerable{T}"/> of all descendant child <see
-        /// cref="Location"/> instances of this one.</returns>
-        public async IAsyncEnumerable<Location> GetAllChildrenAsync()
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <returns>
+        /// A flattened <see cref="IAsyncEnumerable{T}"/> of all descendant child <see
+        /// cref="Location"/> instances of this one.
+        /// </returns>
+        public async IAsyncEnumerable<Location> GetAllChildrenAsync(IDataStore dataStore)
         {
-            await foreach (var child in GetChildrenAsync())
+            await foreach (var child in GetChildrenAsync(dataStore))
             {
                 yield return child;
 
-                await foreach (var sub in child.GetAllChildrenAsync())
+                await foreach (var sub in child.GetAllChildrenAsync(dataStore))
                 {
                     yield return sub;
                 }
@@ -176,116 +377,137 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Gets a flattened enumeration of all descendants of this instance of the given type.
         /// </summary>
         /// <typeparam name="T">The type of child instances to retrieve.</typeparam>
-        /// <returns>A flattened <see cref="IEnumerable{T}"/> of all descendant child <see
-        /// cref="Location"/> instances of this one which are of the given type.</returns>
-        public IAsyncEnumerable<T> GetAllChildrenAsync<T>() where T : Location
-            => GetAllChildrenAsync().OfType<T>();
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <returns>
+        /// A flattened <see cref="IEnumerable{T}"/> of all descendant child <see cref="Location"/>
+        /// instances of this one which are of the given type.
+        /// </returns>
+        public async IAsyncEnumerable<T> GetAllChildrenAsync<T>(IDataStore dataStore) where T : Location
+        {
+            await foreach (var item in GetAllChildrenAsync(dataStore))
+            {
+                if (item is T child)
+                {
+                    yield return child;
+                }
+            }
+        }
 
         /// <summary>
         /// Gets a flattened enumeration of all descendants of this instance of the given type.
         /// </summary>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
         /// <param name="type">The type of child instances to retrieve.</param>
-        /// <returns>A flattened <see cref="IEnumerable{T}"/> of all descendant child <see
-        /// cref="Location"/> instances of this one which are of the given type.</returns>
-        public IAsyncEnumerable<Location> GetAllChildrenAsync(Type type)
-            => GetAllChildrenAsync().Where(x => type.IsAssignableFrom(x.GetType()));
+        /// <returns>
+        /// A flattened <see cref="IEnumerable{T}"/> of all descendant child <see cref="Location"/>
+        /// instances of this one which are of the given type.
+        /// </returns>
+        public async IAsyncEnumerable<Location> GetAllChildrenAsync(IDataStore dataStore, Type type)
+        {
+            await foreach (var item in GetAllChildrenAsync(dataStore))
+            {
+                if (type.IsAssignableFrom(item.GetType()))
+                {
+                    yield return item;
+                }
+            }
+        }
 
         /// <summary>
         /// Enumerates the children of this instance.
         /// </summary>
-        /// <returns>An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of
-        /// this one.</returns>
-        public virtual IAsyncEnumerable<Location> GetChildrenAsync() => DataStore.GetItemsWhereAsync<Location>(x => x.ParentId == Id);
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <returns>
+        /// An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of this one.
+        /// </returns>
+        public virtual IAsyncEnumerable<Location> GetChildrenAsync(IDataStore dataStore) => dataStore.Query<Location>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
 
         /// <summary>
-        /// Finds a common location which contains both this instance and the given location.
+        /// Enumerates the children of this instance of the given type.
         /// </summary>
-        /// <param name="other">The other <see cref="Location"/>.</param>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
         /// <returns>
-        /// A common location which contains both this and the given location (may be either of
-        /// them); or <see langword="null"/> if this instance and the given location do not have a
-        /// common parent.
+        /// An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of this one.
         /// </returns>
-        public async Task<Location?> GetCommonParentAsync(Location? other)
-        {
-            if (other is null)
-            {
-                return null;
-            }
-            if (other == this)
-            {
-                return this;
-            }
-            // Handle common cases before performing the expensive calculation.
-            if (string.Equals(ParentId, other.Id, StringComparison.Ordinal))
-            {
-                return other;
-            }
-            if (string.Equals(other.ParentId, Id, StringComparison.Ordinal))
-            {
-                return this;
-            }
-            if (string.Equals(ParentId, other.ParentId, StringComparison.Ordinal))
-            {
-                return await GetParentAsync().ConfigureAwait(false);
-            }
-            var secondPath = (await other.GetPathToLocationAsync().ConfigureAwait(false)).ToList();
-            return (await GetPathToLocationAsync().ConfigureAwait(false)).TakeWhile((o, i) => secondPath.Count > i && o == secondPath[i]).LastOrDefault();
-        }
+        public virtual IAsyncEnumerable<T> GetChildrenAsync<T>(IDataStore dataStore) where T : Location
+            => dataStore.Query<T>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
 
         /// <summary>
         /// Determines the smallest child <see cref="Location"/> at any level of this instance's
         /// descendant hierarchy which fully contains the specified <see cref="Location"/> within
         /// its containing radius.
         /// </summary>
-        /// <param name="other">The <see cref="Location"/> whose smallest containing <see
-        /// cref="Location"/> is to be determined.</param>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <param name="other">
+        /// The <see cref="Location"/> whose smallest containing <see cref="Location"/> is to be
+        /// determined.
+        /// </param>
         /// <returns>
         /// The smallest child <see cref="Location"/> at any level of this instance's descendant
         /// hierarchy which fully contains the specified <see cref="Location"/> within its
         /// containing radius, or this instance, if no child contains the position.
         /// </returns>
-        public async Task<Location?> GetContainingChildAsync(Location other)
+        public async Task<Location?> GetContainingChildAsync(IDataStore dataStore, Location other)
         {
             var min = Number.PositiveInfinity;
             Location? minItem = null;
-            await foreach (var item in GetAllChildrenAsync()
-                .WhereAwait(async x => x.Position.Distance(await x.GetLocalizedPositionAsync(other).ConfigureAwait(false)) <= x.Shape.ContainingRadius - other.Shape.ContainingRadius))
+            await foreach (var item in GetAllChildrenAsync(dataStore))
             {
+                if (item.Position.Distance(item.LocalizePosition(other)) > item.Shape.ContainingRadius - other.Shape.ContainingRadius)
+                {
+                    continue;
+                }
                 if (item.Shape.ContainingRadius < min)
                 {
                     min = item.Shape.ContainingRadius;
                     minItem = item;
                 }
             }
-            return minItem ?? (await ContainsAsync(other).ConfigureAwait(false) ? this : null);
+            return minItem ?? (Contains(other) ? this : null);
         }
 
         /// <summary>
         /// Determines the smallest child <see cref="Location"/> at any level of this instance's
         /// descendant hierarchy which contains the specified <paramref name="position"/>.
         /// </summary>
-        /// <param name="position">The position whose smallest containing <see cref="Location"/> is
-        /// to be determined.</param>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <param name="position">
+        /// The position whose smallest containing <see cref="Location"/> is to be determined.
+        /// </param>
         /// <returns>
         /// The smallest child <see cref="Location"/> at any level of this instance's descendant
         /// hierarchy which contains the specified <paramref name="position"/>, or this instance, if
         /// no child contains the position.
         /// </returns>
-        public async Task<Location?> GetContainingChildAsync(Vector3 position)
+        public async Task<Location?> GetContainingChildAsync(IDataStore dataStore, Vector3 position)
         {
             var min = Number.PositiveInfinity;
             Location? minItem = null;
-            await foreach (var item in GetAllChildrenAsync()
-                .WhereAwait(async x => x.Shape.IsPointWithin(await x.GetLocalizedPositionAsync(this, position).ConfigureAwait(false))))
+            await foreach (var item in GetAllChildrenAsync(dataStore))
             {
+                if (!item.Shape.IsPointWithin(item.GetLocalPosition(this, position)))
+                {
+                    continue;
+                }
                 if (item.Shape.ContainingRadius < min)
                 {
                     min = item.Shape.ContainingRadius;
                     minItem = item;
                 }
             }
-            return minItem ?? (await ContainsAsync(position).ConfigureAwait(false) ? this : null);
+            return minItem ?? (Contains(position) ? this : null);
         }
 
         /// <summary>
@@ -299,13 +521,8 @@ namespace NeverFoundry.WorldFoundry.Place
         /// cref="Location"/>, in meters; or <see
         /// cref="Number.PositiveInfinity"/>, if they do not
         /// share a common parent.</returns>
-        public async Task<Number> GetDistanceFromPositionToAsync(Vector3 position, Location other)
-        {
-            var pos = await GetLocalizedPositionOrNullAsync(other).ConfigureAwait(false);
-            return pos.HasValue
-                ? Vector3.Distance(position, pos.Value)
-                : Number.PositiveInfinity;
-        }
+        public Number GetDistanceFromPositionTo(Vector3 position, Location other)
+            => other.LocalizePosition(this, position).Distance(other.Position);
 
         /// <summary>
         /// Gets the distance from the given position relative to the center of this instance to the
@@ -319,13 +536,8 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <returns>The distance between the given positions, in meters; or <see
         /// cref="Number.PositiveInfinity"/>, if they do not
         /// share a common parent.</returns>
-        public async Task<Number> GetDistanceFromPositionToAsync(Vector3 localPosition, Location other, Vector3 otherPosition)
-        {
-            var pos = await GetLocalizedPositionOrNullAsync(other, otherPosition).ConfigureAwait(false);
-            return pos.HasValue
-                ? Vector3.Distance(localPosition, pos.Value)
-                : Number.PositiveInfinity;
-        }
+        public Number GetDistanceFromPositionTo(Vector3 localPosition, Location other, Vector3 otherPosition)
+            => other.GetLocalPosition(this, localPosition).Distance(otherPosition);
 
         /// <summary>
         /// Gets the distance from this instance to the given <paramref name="other"/> <see
@@ -335,7 +547,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <returns>The distance between this instance and the given <see cref="Location"/>, in
         /// meters; or <see cref="Number.PositiveInfinity"/>,
         /// if they do not share a common parent.</returns>
-        public async Task<Number> GetDistanceToAsync(Location other) => (await GetLocalizedPositionOrNullAsync(other).ConfigureAwait(false))?.Length() ?? Number.PositiveInfinity;
+        public Number GetDistanceTo(Location other) => LocalizePosition(other).Distance(Position);
 
         /// <summary>
         /// Returns the hash code for this instance.
@@ -344,34 +556,49 @@ namespace NeverFoundry.WorldFoundry.Place
         public override int GetHashCode() => Id.GetHashCode();
 
         /// <summary>
-        /// Translates the given <paramref name="position"/> relative to the center of the given
-        /// <see cref="Location"/> to an equivalent position relative to the center of this
-        /// instance.
+        /// Attempts to find an open space within this location, with the given radius, in a random
+        /// direction, as close as possible to the given point.
         /// </summary>
-        /// <param name="other">The <see cref="Location"/> in which <paramref name="position"/>
-        /// currently represents a point relative to the center.</param>
-        /// <param name="position">A position relative to the center of <paramref
-        /// name="other"/>.</param>
+        /// <param name="position">
+        /// The position closest to which an open space is to be found.
+        /// </param>
+        /// <param name="radius">The radius of the space to find.</param>
+        /// <param name="children">The current children of this location.</param>
         /// <returns>
-        /// A <see cref="Vector3"/> giving the location of <paramref name="position"/> relative to
-        /// the center of this instance; or <see cref="Vector3.Zero"/> if <paramref name="other"/>
-        /// is <see langword="null"/> or does not share a common parent with this instance.
+        /// The center point of an open space within this location with the given radius; or <see langword="null"/> if
+        /// no such open position could be found.
         /// </returns>
-        public async Task<Vector3> GetLocalizedPositionAsync(Location other, Vector3 position)
-            => await GetLocalizedPositionOrNullAsync(other, position).ConfigureAwait(false) ?? Vector3.Zero;
-
-        /// <summary>
-        /// Translates the center of the given <see cref="Location"/>
-        /// to an equivalent position relative to the center of this instance.
-        /// </summary>
-        /// <param name="other">The <see cref="Location"/> whose center is to be translated.</param>
-        /// <returns>
-        /// A <see cref="Vector3"/> giving the center of the given <see cref="Location"/>
-        /// relative to the center of this instance; or <see cref="Vector3.Zero"/> if <paramref
-        /// name="other"/> is <see langword="null"/> or does not share a common parent with this
-        /// instance.
-        /// </returns>
-        public Task<Vector3> GetLocalizedPositionAsync(Location other) => GetLocalizedPositionAsync(other, Vector3.Zero);
+        public Vector3? GetNearestOpenSpace(Vector3 position, Number radius, List<Location> children)
+        {
+            var insanityCheck = 0;
+            Vector3? pos;
+            var distance = Number.Zero;
+            do
+            {
+                var rot = Randomizer.Instance.NextQuaternionNumber();
+                var direction = Vector3.UnitX.Transform(rot);
+                pos = position + (direction.Normalize() * distance);
+                var shape = new Sphere(radius, pos.Value);
+                var any = false;
+                foreach (var child in children)
+                {
+                    if (child.Shape.Intersects(shape))
+                    {
+                        any = true;
+                        break;
+                    }
+                }
+                if (any)
+                {
+                    pos = null;
+                    distance += radius;
+                }
+                insanityCheck++;
+            } while (!pos.HasValue && insanityCheck < 1000);
+            return pos.HasValue
+                ? position + pos.Value
+                : (Vector3?)null;
+        }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
@@ -385,133 +612,9 @@ namespace NeverFoundry.WorldFoundry.Place
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(Shape), _shape);
+            info.AddValue(nameof(Shape), Shape);
             info.AddValue(nameof(ParentId), ParentId);
-        }
-
-        /// <summary>
-        /// Gets the parent location which contains this one, if any.
-        /// </summary>
-        /// <returns>The parent location which contains this one, if any.</returns>
-        public async Task<Location?> GetParentAsync()
-        {
-            _parent ??= await DataStore.GetItemAsync<Location>(ParentId).ConfigureAwait(false);
-            return _parent;
-        }
-
-        /// <summary>
-        /// Sets the id of the parent location which contains this one, if any.
-        /// </summary>
-        /// <param name="id">The id of the parent location which contains this one. May be <see
-        /// langword="null"/>.</param>
-        public async Task SetParentAsync(string? id)
-        {
-            ParentId = id;
-            _parent = null;
-            var parent = await GetParentAsync().ConfigureAwait(false);
-            _parent = parent;
-            if (parent is null)
-            {
-                Position = Vector3.Zero;
-            }
-            else
-            {
-                Position = await parent.GetLocalizedPositionAsync(this).ConfigureAwait(false);
-                if (HasDefinedShape)
-                {
-                    await foreach (var child in parent.GetChildrenAsync()
-                        .Where(x => x != this
-                            && x.HasDefinedShape
-                            && x.Shape.ContainingRadius < Shape.ContainingRadius)
-                        .WhereAwait(x => ContainsAsync(x.Position)))
-                    {
-                        await child.SetParentAsync(Id).ConfigureAwait(false);
-                    }
-                }
-            }
-        }
-
-        internal async Task<Number> GetDistanceSquaredToAsync(Location other) => (await GetLocalizedPositionAsync(other).ConfigureAwait(false)).LengthSquared();
-
-        /// <summary>
-        /// Translates the given <paramref name="position"/> relative to the center of the given
-        /// <see cref="Location"/> to an equivalent position relative to the center of this
-        /// instance.
-        /// </summary>
-        /// <param name="other">The <see cref="Location"/> in which <paramref name="position"/>
-        /// currently represents a point relative to the center.</param>
-        /// <param name="position">A position relative to the center of <paramref
-        /// name="other"/>.</param>
-        /// <returns>
-        /// A <see cref="Vector3"/> giving the location of <paramref name="position"/> relative to
-        /// the center of this instance; or <see langword="null"/> if <paramref name="other"/>
-        /// is <see langword="null"/> or does not share a common parent with this instance.
-        /// </returns>
-        private async Task<Vector3?> GetLocalizedPositionOrNullAsync(Location other, Vector3 position)
-        {
-            if (other is null)
-            {
-                return null;
-            }
-            if (other == this)
-            {
-                return position;
-            }
-
-            var parent = await GetCommonParentAsync(other).ConfigureAwait(false);
-            if (parent is null)
-            {
-                return null;
-            }
-
-            var current = other;
-            while (current != parent)
-            {
-                position += current.Position;
-                current = (await current.GetParentAsync().ConfigureAwait(false))!;
-            }
-
-            if (current == this)
-            {
-                return position;
-            }
-
-            var targetPosition = Vector3.Zero;
-            var target = this;
-            while (target != current)
-            {
-                targetPosition += target.Position;
-                target = (await target.GetParentAsync().ConfigureAwait(false))!;
-            }
-
-            return position - targetPosition;
-        }
-
-        /// <summary>
-        /// Translates the center of the given <see cref="Location"/>
-        /// to an equivalent position relative to the center of this instance.
-        /// </summary>
-        /// <param name="other">The <see cref="Location"/> whose center is to be translated.</param>
-        /// <returns>
-        /// A <see cref="Vector3"/> giving the center of the given <see cref="Location"/>
-        /// relative to the center of this instance; or <see langword="null"/> if <paramref
-        /// name="other"/> is <see langword="null"/> or does not share a common parent with this
-        /// instance.
-        /// </returns>
-        private Task<Vector3?> GetLocalizedPositionOrNullAsync(Location other) => GetLocalizedPositionOrNullAsync(other, Vector3.Zero);
-
-        private async Task<Stack<Location>?> GetPathToLocationAsync(Stack<Location>? path = null)
-        {
-            (path ??= new Stack<Location>()).Push(this);
-            var parent = await GetParentAsync().ConfigureAwait(false);
-            if (parent is null)
-            {
-                return path;
-            }
-            else
-            {
-                return await parent.GetPathToLocationAsync(path).ConfigureAwait(false) ?? path;
-            }
+            info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
         }
 
         /// <summary>
@@ -519,23 +622,221 @@ namespace NeverFoundry.WorldFoundry.Place
         /// radius.
         /// </summary>
         /// <param name="radius">The radius of the space to find.</param>
-        /// <returns>An open space within this location with the given radius; or <see
-        /// langword="null"/> if no such open position could be found.</returns>
-        private protected async Task<Vector3?> GetOpenSpaceAsync(Number radius)
+        /// <param name="children">The current children of this location.</param>
+        /// <returns>
+        /// The center point of an open space within this location with the given radius; or <see langword="null"/> if
+        /// no such open position could be found.
+        /// </returns>
+        public Vector3? GetOpenSpace(Number radius, List<Location> children)
         {
-            Vector3? pos = null;
             var insanityCheck = 0;
+            Vector3? pos;
             do
             {
-                pos = Randomizer.Instance.NextVector3Number(Shape.ContainingRadius);
+                pos = Randomizer.Instance.NextVector3Number(Shape.ContainingRadius - radius);
                 var shape = new Sphere(radius, pos.Value);
-                if (await GetAllChildrenAsync().AnyAwaitAsync(async x => x.Shape.GetCloneAtPosition(await GetLocalizedPositionAsync(x).ConfigureAwait(false)).Intersects(shape)).ConfigureAwait(false))
+                var any = false;
+                foreach (var child in children)
+                {
+                    if (child.Shape.Intersects(shape))
+                    {
+                        any = true;
+                        break;
+                    }
+                }
+                if (any)
                 {
                     pos = null;
                 }
                 insanityCheck++;
-            } while (!pos.HasValue && insanityCheck < 10000);
+            } while (!pos.HasValue && insanityCheck < 100);
             return pos;
         }
+
+        /// <summary>
+        /// Gets the parent location which contains this one, if any.
+        /// </summary>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <returns>The parent location which contains this one, if any.</returns>
+        public async ValueTask<Location?> GetParentAsync(IDataStore dataStore)
+        {
+            _parent ??= await dataStore.GetItemAsync<Location>(ParentId).ConfigureAwait(false);
+            return _parent;
+        }
+
+        /// <summary>
+        /// Sets the id of the parent location which contains this one, if any.
+        /// </summary>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <param name="parent">
+        /// The parent location which contains this one. May be <see langword="null"/>.
+        /// </param>
+        public async Task SetParentAsync(IDataStore dataStore, Location? parent)
+        {
+            AssignParent(parent);
+            await ResetPosition(dataStore);
+        }
+
+        /// <summary>
+        /// Sets the <see cref="Position"/> of this location relative to the center of its parent.
+        /// </summary>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <param name="position">The new position.</param>
+        public async Task SetPositionAsync(IDataStore dataStore, Vector3 position)
+        {
+            if (Position != position)
+            {
+                AssignPosition(position);
+                await ResetPosition(dataStore).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Sets the <see cref="Shape"/> of this location.
+        /// </summary>
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// </param>
+        /// <param name="shape">The new shape.</param>
+        public virtual Task SetShapeAsync(IDataStore dataStore, IShape shape)
+        {
+            Shape = shape;
+            return Task.CompletedTask;
+        }
+
+        internal void AssignParent(Location? parent)
+        {
+            ParentId = parent?.Id;
+            _parent = parent;
+            AssignPosition(parent is null
+                ? Vector3.Zero
+                : parent.LocalizePosition(this));
+            if (AbsolutePosition is not null
+                && parent is null)
+            {
+                AbsolutePosition = null;
+            }
+            if (parent is not null)
+            {
+                UpdateParentPosition(parent.Position);
+            }
+        }
+
+        internal Number GetDistanceSquaredTo(Location other) => LocalizePosition(other).LengthSquared();
+
+        /// <summary>
+        /// Translates the given position relative to the given <paramref name="location"/>'s center
+        /// into a position relative to this location's center.
+        /// </summary>
+        /// <param name="location">A <see cref="Location"/>.</param>
+        /// <param name="position">A position relative to the given <paramref name="location"/>'s
+        /// center.</param>
+        /// <returns>
+        /// <para>
+        /// A <see cref="Vector3"/> giving the location relative to this
+        /// location's center.
+        /// </para>
+        /// </returns>
+        internal Vector3 GetLocalPosition(Location location, Vector3 position)
+        {
+            var result = new Vector3[(AbsolutePosition?.Length ?? 0) + 1];
+            AbsolutePosition?.CopyTo(result, 0);
+            result[^1] = Position;
+
+            return LocalizePosition(location.AbsolutePosition, position, result);
+        }
+
+        /// <summary>
+        /// Translates the position of the given <paramref name="location"/> into a position
+        /// relative to the final element of this location's absolute position.
+        /// </summary>
+        /// <param name="location">A <see cref="Location"/>.</param>
+        /// <returns>
+        /// <para>
+        /// A <see cref="Vector3"/> giving the location relative to the final element of this
+        /// location's absolute position.
+        /// </para>
+        /// </returns>
+        internal Vector3 LocalizePosition(Location location)
+            => LocalizePosition(location.AbsolutePosition, location.Position, AbsolutePosition);
+
+        /// <summary>
+        /// Translates the given position relative to the given <paramref name="location"/>'s center
+        /// into a position relative to the final element of this location's absolute position.
+        /// </summary>
+        /// <param name="location">A <see cref="Location"/>.</param>
+        /// <param name="position">A position relative to the given <paramref name="location"/>'s
+        /// center.</param>
+        /// <returns>
+        /// <para>
+        /// A <see cref="Vector3"/> giving the location relative to the final element of this
+        /// location's absolute position.
+        /// </para>
+        /// </returns>
+        internal Vector3 LocalizePosition(Location location, Vector3 position)
+            => LocalizePosition(location.AbsolutePosition, position, AbsolutePosition);
+
+        internal void UpdateParentPosition(Vector3 parentPosition)
+        {
+            if (AbsolutePosition is null
+                || AbsolutePosition.Length == 0)
+            {
+                AbsolutePosition = new Vector3[] { parentPosition };
+            }
+            else
+            {
+                AbsolutePosition[^1] = parentPosition;
+            }
+        }
+
+        private protected virtual void AssignPosition(Vector3 position)
+            => Shape = Shape.GetCloneAtPosition(position);
+
+        private protected Vector3[]? GetCommonAbsolutePosition(Location? other)
+        {
+            if (other is null)
+            {
+                return null;
+            }
+            if (other == this)
+            {
+                return AbsolutePosition;
+            }
+            // Handle common cases before performing the expensive calculation.
+            if (string.Equals(ParentId, other.Id, StringComparison.Ordinal))
+            {
+                var result = new Vector3[(other.AbsolutePosition?.Length ?? 0) + 1];
+                other.AbsolutePosition?.CopyTo(result, 0);
+                result[^1] = other.Position;
+                return result;
+            }
+            if (string.Equals(other.ParentId, Id, StringComparison.Ordinal))
+            {
+                var result = new Vector3[(AbsolutePosition?.Length ?? 0) + 1];
+                AbsolutePosition?.CopyTo(result, 0);
+                result[^1] = Position;
+                return result;
+            }
+            if (string.Equals(ParentId, other.ParentId, StringComparison.Ordinal))
+            {
+                return AbsolutePosition;
+            }
+            if (AbsolutePosition is null
+                || other.AbsolutePosition is null)
+            {
+                return null;
+            }
+            return AbsolutePosition
+                .TakeWhile((o, i) => other.AbsolutePosition.Length > i && o == other.AbsolutePosition[i])
+                .ToArray();
+        }
+
+        private protected virtual ValueTask ResetPosition(IDataStore dataStore) => new ValueTask();
     }
 }

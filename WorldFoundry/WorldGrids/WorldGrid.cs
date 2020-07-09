@@ -1,4 +1,4 @@
-﻿using NeverFoundry.WorldFoundry.CelestialBodies.Planetoids;
+﻿using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
