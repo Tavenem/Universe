@@ -256,7 +256,7 @@ namespace NeverFoundry.WorldFoundry.WorldGrids
 
             foreach (var t in Tiles)
             {
-                t.Elevation = planet.GetElevationNoiseAt(t.Vector.X, t.Vector.Y, t.Vector.Z);
+                t.Elevation = planet.GetElevationNoiseAt(t.Vector);
             }
         }
     }

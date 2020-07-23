@@ -24,7 +24,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </para>
         /// </summary>
         [JsonProperty]
-        public float AverageElevation { get; }
+        public double AverageElevation { get; }
 
         /// <summary>
         /// The overall <see cref="BiomeType"/> of the area.
@@ -93,7 +93,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <seealso cref="Space.Planetoid.MaxElevation"/>
         /// </summary>
         [JsonProperty]
-        public float[][] Elevation { get; }
+        public double[][] Elevation { get; }
 
         /// <summary>
         /// <para>
@@ -134,6 +134,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         [JsonProperty]
         public HydrologyMaps HydrologyMaps { get; }
+
+        /// <summary>
+        /// The maximum elevation of the mapped area, in meters.
+        /// </summary>
+        [JsonProperty]
+        public double MaxElevation { get; }
 
         /// <summary>
         /// A collection of <see cref="SurfaceMapping.PrecipitationMaps"/>.
@@ -249,14 +255,22 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// Initializes a new instance of <see cref="SurfaceMaps"/>.
         /// </summary>
         /// <param name="elevation">An elevation map.</param>
-        /// <param name="averageElevation"></param>
+        /// <param name="averageElevation">
+        /// The average normalized elevation of the area, from -1 to 1, where negative values are
+        /// below sea level and positive values are above sea level, and 1 is equal to the maximum
+        /// elevation of the area.
+        /// </param>
+        /// <param name="maxElevation">
+        /// The maximum elevation of the mapped area, in meters.
+        /// </param>
         /// <param name="weatherMaps">A <see cref="PrecipitationMaps"/> instance.</param>
         /// <param name="hydrologyMaps">A <see cref="SurfaceMapping.HydrologyMaps"/> instance.</param>
         [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public SurfaceMaps(
-            float[][] elevation,
-            float averageElevation,
+            double[][] elevation,
+            double averageElevation,
+            double maxElevation,
             WeatherMaps weatherMaps,
             HydrologyMaps hydrologyMaps)
         {
@@ -283,13 +297,15 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             AverageElevation = averageElevation;
             Elevation = elevation;
+            MaxElevation = maxElevation;
             WeatherMaps = weatherMaps;
             HydrologyMaps = hydrologyMaps;
         }
 
         private SurfaceMaps(SerializationInfo info, StreamingContext context) : this(
-            (float[][]?)info.GetValue(nameof(Elevation), typeof(float[][])) ?? new float[0][],
-            (float?)info.GetValue(nameof(AverageElevation), typeof(float)) ?? default,
+            (double[][]?)info.GetValue(nameof(Elevation), typeof(double[][])) ?? new double[0][],
+            (double?)info.GetValue(nameof(AverageElevation), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(MaxElevation), typeof(double)) ?? default,
             (WeatherMaps?)info.GetValue(nameof(WeatherMaps), typeof(WeatherMaps)) ?? default,
             (HydrologyMaps?)info.GetValue(nameof(HydrologyMaps), typeof(HydrologyMaps)) ?? default)
         { }
@@ -307,6 +323,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             info.AddValue(nameof(Elevation), Elevation);
             info.AddValue(nameof(AverageElevation), AverageElevation);
+            info.AddValue(nameof(MaxElevation), MaxElevation);
             info.AddValue(nameof(WeatherMaps), WeatherMaps);
             info.AddValue(nameof(HydrologyMaps), HydrologyMaps);
         }

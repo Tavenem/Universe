@@ -51,6 +51,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         public float[][] Flow { get; }
 
         /// <summary>
+        /// The maximum flow rate of waterways on this map, in m³/s.
+        /// </summary>
+        public double MaxFlow { get; }
+
+        /// <summary>
         /// The length of the "X" (0-index) dimension of the maps.
         /// </summary>
         [JsonIgnore]
@@ -73,9 +78,12 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="flow">
         /// A flow map. Must have the same dimensions as the <paramref name="depth"/> map.
         /// </param>
+        /// <param name="maxFlow">
+        /// The maximum flow rate of waterways on this map, in m³/s.
+        /// </param>
         [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
-        public HydrologyMaps(float[][] depth, float[][] flow)
+        public HydrologyMaps(float[][] depth, float[][] flow, double maxFlow)
         {
             if (depth.Length != flow.Length)
             {
@@ -92,11 +100,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
             Depth = depth;
             Flow = flow;
+
+            MaxFlow = maxFlow;
         }
 
         private HydrologyMaps(SerializationInfo info, StreamingContext context) : this(
             (float[][]?)info.GetValue(nameof(Depth), typeof(float[,])) ?? new float[0][],
-            (float[][]?)info.GetValue(nameof(Flow), typeof(float[,])) ?? new float[0][])
+            (float[][]?)info.GetValue(nameof(Flow), typeof(float[,])) ?? new float[0][],
+            (double?)info.GetValue(nameof(MaxFlow), typeof(double)) ?? default)
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -112,6 +123,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             info.AddValue(nameof(Depth), Depth);
             info.AddValue(nameof(Flow), Flow);
+            info.AddValue(nameof(MaxFlow), MaxFlow);
         }
     }
 }

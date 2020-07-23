@@ -59,14 +59,14 @@ public class FastNoise
     private int m_octaves = 3;
     private FN_DECIMAL m_lacunarity = 2.0;
     private FN_DECIMAL m_gain = 0.5;
-    private FractalType m_fractalType = FractalType.FBM;
+    private FractalType m_fractalType;
 
     private FN_DECIMAL m_fractalBounding;
 
-    private CellularDistanceFunction m_cellularDistanceFunction = CellularDistanceFunction.Euclidean;
-    private CellularReturnType m_cellularReturnType = CellularReturnType.CellValue;
-    private FastNoise m_cellularNoiseLookup = null;
-    private int m_cellularDistanceIndex0 = 0;
+    private CellularDistanceFunction m_cellularDistanceFunction;
+    private CellularReturnType m_cellularReturnType;
+    private FastNoise m_cellularNoiseLookup;
+    private int m_cellularDistanceIndex0;
     private int m_cellularDistanceIndex1 = 1;
     private float m_cellularJitter = 0.45f;
 
@@ -90,6 +90,16 @@ public class FastNoise
         m_seed = seed;
         m_frequency = frequency;
         m_noiseType = noiseType;
+        m_octaves = octaves;
+        CalculateFractalBounding();
+    }
+
+    public FastNoise(int seed, FN_DECIMAL frequency, NoiseType noiseType, FractalType fractalType, int octaves)
+    {
+        m_seed = seed;
+        m_frequency = frequency;
+        m_noiseType = noiseType;
+        m_fractalType = fractalType;
         m_octaves = octaves;
         CalculateFractalBounding();
     }
@@ -460,63 +470,48 @@ public class FastNoise
         y *= m_frequency;
         z *= m_frequency;
 
-        switch (m_noiseType)
+        return m_noiseType switch
         {
-            case NoiseType.Value:
-                return SingleValue(m_seed, x, y, z);
-            case NoiseType.ValueFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleValueFractalFBM(x, y, z),
-                    FractalType.Billow => SingleValueFractalBillow(x, y, z),
-                    FractalType.RigidMulti => SingleValueFractalRigidMulti(x, y, z),
-                    _ => 0,
-                };
-            case NoiseType.Perlin:
-                return SinglePerlin(m_seed, x, y, z);
-            case NoiseType.PerlinFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SinglePerlinFractalFBM(x, y, z),
-                    FractalType.Billow => SinglePerlinFractalBillow(x, y, z),
-                    FractalType.RigidMulti => SinglePerlinFractalRigidMulti(x, y, z),
-                    _ => 0,
-                };
-            case NoiseType.Simplex:
-                return SingleSimplex(m_seed, x, y, z);
-            case NoiseType.SimplexFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleSimplexFractalFBM(x, y, z),
-                    FractalType.Billow => SingleSimplexFractalBillow(x, y, z),
-                    FractalType.RigidMulti => SingleSimplexFractalRigidMulti(x, y, z),
-                    _ => 0,
-                };
-            case NoiseType.Cellular:
-                switch (m_cellularReturnType)
-                {
-                    case CellularReturnType.CellValue:
-                    case CellularReturnType.NoiseLookup:
-                    case CellularReturnType.Distance:
-                        return SingleCellular(x, y, z);
-                    default:
-                        return SingleCellular2Edge(x, y, z);
-                }
-            case NoiseType.WhiteNoise:
-                return GetWhiteNoise(x, y, z);
-            case NoiseType.Cubic:
-                return SingleCubic(m_seed, x, y, z);
-            case NoiseType.CubicFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleCubicFractalFBM(x, y, z),
-                    FractalType.Billow => SingleCubicFractalBillow(x, y, z),
-                    FractalType.RigidMulti => SingleCubicFractalRigidMulti(x, y, z),
-                    _ => 0,
-                };
-            default:
-                return 0;
-        }
+            NoiseType.Value => SingleValue(m_seed, x, y, z),
+            NoiseType.ValueFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleValueFractalFBM(x, y, z),
+                FractalType.Billow => SingleValueFractalBillow(x, y, z),
+                FractalType.RigidMulti => SingleValueFractalRigidMulti(x, y, z),
+                _ => 0,
+            },
+            NoiseType.Perlin => SinglePerlin(m_seed, x, y, z),
+            NoiseType.PerlinFractal => m_fractalType switch
+            {
+                FractalType.FBM => SinglePerlinFractalFBM(x, y, z),
+                FractalType.Billow => SinglePerlinFractalBillow(x, y, z),
+                FractalType.RigidMulti => SinglePerlinFractalRigidMulti(x, y, z),
+                _ => 0,
+            },
+            NoiseType.Simplex => SingleSimplex(m_seed, x, y, z),
+            NoiseType.SimplexFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleSimplexFractalFBM(x, y, z),
+                FractalType.Billow => SingleSimplexFractalBillow(x, y, z),
+                FractalType.RigidMulti => SingleSimplexFractalRigidMulti(x, y, z),
+                _ => 0,
+            },
+            NoiseType.Cellular => m_cellularReturnType switch
+            {
+                CellularReturnType.CellValue or CellularReturnType.NoiseLookup or CellularReturnType.Distance => SingleCellular(x, y, z),
+                _ => SingleCellular2Edge(x, y, z),
+            },
+            NoiseType.WhiteNoise => GetWhiteNoise(x, y, z),
+            NoiseType.Cubic => SingleCubic(m_seed, x, y, z),
+            NoiseType.CubicFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleCubicFractalFBM(x, y, z),
+                FractalType.Billow => SingleCubicFractalBillow(x, y, z),
+                FractalType.RigidMulti => SingleCubicFractalRigidMulti(x, y, z),
+                _ => 0,
+            },
+            _ => 0,
+        };
     }
 
     public FN_DECIMAL GetPerturbedNoise(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z)
@@ -530,63 +525,48 @@ public class FastNoise
         x *= m_frequency;
         y *= m_frequency;
 
-        switch (m_noiseType)
+        return m_noiseType switch
         {
-            case NoiseType.Value:
-                return SingleValue(m_seed, x, y);
-            case NoiseType.ValueFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleValueFractalFBM(x, y),
-                    FractalType.Billow => SingleValueFractalBillow(x, y),
-                    FractalType.RigidMulti => SingleValueFractalRigidMulti(x, y),
-                    _ => 0,
-                };
-            case NoiseType.Perlin:
-                return SinglePerlin(m_seed, x, y);
-            case NoiseType.PerlinFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SinglePerlinFractalFBM(x, y),
-                    FractalType.Billow => SinglePerlinFractalBillow(x, y),
-                    FractalType.RigidMulti => SinglePerlinFractalRigidMulti(x, y),
-                    _ => 0,
-                };
-            case NoiseType.Simplex:
-                return SingleSimplex(m_seed, x, y);
-            case NoiseType.SimplexFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleSimplexFractalFBM(x, y),
-                    FractalType.Billow => SingleSimplexFractalBillow(x, y),
-                    FractalType.RigidMulti => SingleSimplexFractalRigidMulti(x, y),
-                    _ => 0,
-                };
-            case NoiseType.Cellular:
-                switch (m_cellularReturnType)
-                {
-                    case CellularReturnType.CellValue:
-                    case CellularReturnType.NoiseLookup:
-                    case CellularReturnType.Distance:
-                        return SingleCellular(x, y);
-                    default:
-                        return SingleCellular2Edge(x, y);
-                }
-            case NoiseType.WhiteNoise:
-                return GetWhiteNoise(x, y);
-            case NoiseType.Cubic:
-                return SingleCubic(m_seed, x, y);
-            case NoiseType.CubicFractal:
-                return m_fractalType switch
-                {
-                    FractalType.FBM => SingleCubicFractalFBM(x, y),
-                    FractalType.Billow => SingleCubicFractalBillow(x, y),
-                    FractalType.RigidMulti => SingleCubicFractalRigidMulti(x, y),
-                    _ => 0,
-                };
-            default:
-                return 0;
-        }
+            NoiseType.Value => SingleValue(m_seed, x, y),
+            NoiseType.ValueFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleValueFractalFBM(x, y),
+                FractalType.Billow => SingleValueFractalBillow(x, y),
+                FractalType.RigidMulti => SingleValueFractalRigidMulti(x, y),
+                _ => 0,
+            },
+            NoiseType.Perlin => SinglePerlin(m_seed, x, y),
+            NoiseType.PerlinFractal => m_fractalType switch
+            {
+                FractalType.FBM => SinglePerlinFractalFBM(x, y),
+                FractalType.Billow => SinglePerlinFractalBillow(x, y),
+                FractalType.RigidMulti => SinglePerlinFractalRigidMulti(x, y),
+                _ => 0,
+            },
+            NoiseType.Simplex => SingleSimplex(m_seed, x, y),
+            NoiseType.SimplexFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleSimplexFractalFBM(x, y),
+                FractalType.Billow => SingleSimplexFractalBillow(x, y),
+                FractalType.RigidMulti => SingleSimplexFractalRigidMulti(x, y),
+                _ => 0,
+            },
+            NoiseType.Cellular => m_cellularReturnType switch
+            {
+                CellularReturnType.CellValue or CellularReturnType.NoiseLookup or CellularReturnType.Distance => SingleCellular(x, y),
+                _ => SingleCellular2Edge(x, y),
+            },
+            NoiseType.WhiteNoise => GetWhiteNoise(x, y),
+            NoiseType.Cubic => SingleCubic(m_seed, x, y),
+            NoiseType.CubicFractal => m_fractalType switch
+            {
+                FractalType.FBM => SingleCubicFractalFBM(x, y),
+                FractalType.Billow => SingleCubicFractalBillow(x, y),
+                FractalType.RigidMulti => SingleCubicFractalRigidMulti(x, y),
+                _ => 0,
+            },
+            _ => 0,
+        };
     }
 
     // White Noise
@@ -1770,15 +1750,11 @@ public class FastNoise
         y *= m_frequency;
         z *= m_frequency;
 
-        switch (m_cellularReturnType)
+        return m_cellularReturnType switch
         {
-            case CellularReturnType.CellValue:
-            case CellularReturnType.NoiseLookup:
-            case CellularReturnType.Distance:
-                return SingleCellular(x, y, z);
-            default:
-                return SingleCellular2Edge(x, y, z);
-        }
+            CellularReturnType.CellValue or CellularReturnType.NoiseLookup or CellularReturnType.Distance => SingleCellular(x, y, z),
+            _ => SingleCellular2Edge(x, y, z),
+        };
     }
 
     private FN_DECIMAL SingleCellular(FN_DECIMAL x, FN_DECIMAL y, FN_DECIMAL z)
@@ -1993,15 +1969,11 @@ public class FastNoise
         x *= m_frequency;
         y *= m_frequency;
 
-        switch (m_cellularReturnType)
+        return m_cellularReturnType switch
         {
-            case CellularReturnType.CellValue:
-            case CellularReturnType.NoiseLookup:
-            case CellularReturnType.Distance:
-                return SingleCellular(x, y);
-            default:
-                return SingleCellular2Edge(x, y);
-        }
+            CellularReturnType.CellValue or CellularReturnType.NoiseLookup or CellularReturnType.Distance => SingleCellular(x, y),
+            _ => SingleCellular2Edge(x, y),
+        };
     }
 
     private FN_DECIMAL SingleCellular(FN_DECIMAL x, FN_DECIMAL y)

@@ -24,9 +24,9 @@ namespace NeverFoundry.WorldFoundry.Climate
             switch (climateType)
             {
                 case ClimateType.Polar:
-                    return BiomeType.Polar;
+                    return elevation >= 0.15 ? BiomeType.Alpine : BiomeType.Polar;
                 case ClimateType.Subpolar:
-                    return BiomeType.Tundra;
+                    return elevation >= 0.15 ? BiomeType.Subalpine : BiomeType.Tundra;
                 case ClimateType.Boreal:
                     if (humidityType <= HumidityType.Perarid)
                     {

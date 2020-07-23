@@ -295,9 +295,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </summary>
         /// <param name="planet">The planet being mapped.</param>
         /// <param name="elevationMap">An elevation map.</param>
+        /// <param name="maxElevation">
+        /// The maximum elevation of the mapped region, in meters.
+        /// </param>
         /// <param name="precipitationMaps">A set of weather maps.</param>
         /// <param name="temperatureRangeMap">A temperature range map.</param>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
         /// <param name="centralMeridian">The longitude of the central meridian of the projection,
         /// in radians.</param>
         /// <param name="centralParallel">The latitude of the central parallel of the projection, in
@@ -311,18 +313,23 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <paramref name="centralParallel"/>) shown on the projection, in radians. If not
         /// provided, or if equal to zero or greater than π, indicates that the entire globe is
         /// shown.</param>
+        /// <param name="equalArea">
+        /// If <see langword="true"/> the projection will be a cylindrical equal-area projection.
+        /// Otherwise, an equirectangular projection will be used.
+        /// </param>
         /// <param name="averageElevation">The average elevation of the area. If left <see
         /// langword="null"/> it will be calculated.</param>
         public WeatherMaps(
             Planetoid planet,
             double[][] elevationMap,
+            double maxElevation,
             PrecipitationMaps[] precipitationMaps,
             FloatRange[][] temperatureRangeMap,
-            int resolution,
             double? centralMeridian = null,
             double? centralParallel = null,
             double? standardParallels = null,
             double? range = null,
+            bool equalArea = false,
             double? averageElevation = null)
         {
             if (elevationMap.Length != temperatureRangeMap.Length)
@@ -353,7 +360,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             double avgElevation;
             if (averageElevation.HasValue)
             {
-                avgElevation = averageElevation.Value * planet.MaxElevation;
+                avgElevation = averageElevation.Value * maxElevation;
             }
             else
             {
@@ -366,7 +373,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         totalElevation += elevationMap[x][y];
                     }
                 }
-                avgElevation = totalElevation * planet.MaxElevation / (XLength * YLength);
+                avgElevation = totalElevation * maxElevation / (XLength * YLength);
             }
 
             PrecipitationMaps = precipitationMaps;
@@ -460,6 +467,11 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 }
                 else
                 {
+                    var mapScaleFactor = 0.0;
+                    if (equalArea)
+                    {
+                        mapScaleFactor = Math.Cos(standardParallels ?? centralParallel ?? 0);
+                    }
                     SeaIceRangeMap = SurfaceMap.GetSurfaceMap(
                         (lat, _, x, y) =>
                         {
@@ -505,11 +517,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             }
                             return new FloatRange(freezeStart, iceMeltFinish);
                         },
-                        resolution,
+                        XLength,
+                        YLength,
+                        mapScaleFactor,
                         centralMeridian,
                         centralParallel,
                         standardParallels,
-                        range);
+                        range,
+                        equalArea);
                     SnowCoverRangeMap = SurfaceMap.GetSurfaceMap(
                         (lat, _, x, y) =>
                         {
@@ -557,11 +572,14 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             }
                             return new FloatRange(freezeStart, snowMeltFinish);
                         },
-                        resolution,
+                        XLength,
+                        YLength,
+                        mapScaleFactor,
                         centralMeridian,
                         centralParallel,
                         standardParallels,
-                        range);
+                        range,
+                        equalArea);
                 }
             }
             HumidityMap = humidityMap;

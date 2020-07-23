@@ -31,6 +31,9 @@ namespace NeverFoundry.WorldFoundry.Place
         [JsonProperty(PropertyName = "flowMap")]
         internal byte[]? _flowMap;
 
+        [JsonProperty(PropertyName = "maxFlow")]
+        internal double? _maxFlow;
+
         [JsonProperty(PropertyName = "precipitationMaps")]
         internal byte[][]? _precipitationMaps;
 
@@ -89,7 +92,8 @@ namespace NeverFoundry.WorldFoundry.Place
         [JsonIgnore]
         public bool HasHydrologyMaps
             => _depthMap != null
-            && _flowMap != null;
+            && _flowMap != null
+            && _maxFlow.HasValue;
 
         /// <summary>
         /// Whether any custom precipitation maps have been supplied for this region.
@@ -153,6 +157,9 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <param name="flowMap">
         /// A byte array containing an image representing a flow map.
         /// </param>
+        /// <param name="maxFlow">
+        /// The maximum flow rate of waterways on the flow map (if present), in m³/s.
+        /// </param>
         /// <param name="precipitationMaps">
         /// An array of byte arrays, each containing an image representing a precipitation map.
         /// </param>
@@ -193,6 +200,7 @@ namespace NeverFoundry.WorldFoundry.Place
             byte[]? depthMap,
             byte[]? elevationMap,
             byte[]? flowMap,
+            double? maxFlow,
             byte[][]? precipitationMaps,
             byte[][]? snowfallMaps,
             byte[]? temperatureMapSummer,
@@ -202,6 +210,7 @@ namespace NeverFoundry.WorldFoundry.Place
             _depthMap = depthMap;
             _elevationMap = elevationMap;
             _flowMap = flowMap;
+            _maxFlow = maxFlow;
             _precipitationMaps = precipitationMaps;
             _snowfallMaps = snowfallMaps;
             _temperatureMapSummer = temperatureMapSummer;
@@ -215,6 +224,7 @@ namespace NeverFoundry.WorldFoundry.Place
             (byte[]?)info.GetValue(nameof(_depthMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_elevationMap), typeof(byte[])),
             (byte[]?)info.GetValue(nameof(_flowMap), typeof(byte[])),
+            (double?)info.GetValue(nameof(_maxFlow), typeof(double)),
             (byte[][]?)info.GetValue(nameof(_precipitationMaps), typeof(byte[][])),
             (byte[][]?)info.GetValue(nameof(_snowfallMaps), typeof(byte[][])),
             (byte[]?)info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])),
@@ -239,6 +249,7 @@ namespace NeverFoundry.WorldFoundry.Place
             info.AddValue(nameof(_depthMap), _depthMap);
             info.AddValue(nameof(_elevationMap), _elevationMap);
             info.AddValue(nameof(_flowMap), _flowMap);
+            info.AddValue(nameof(_maxFlow), _maxFlow);
             info.AddValue(nameof(_precipitationMaps), _precipitationMaps);
             info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
             info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
@@ -346,7 +357,10 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Loads an image as the hydrology flow map for this region.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void SetFlowMap(Bitmap image)
+        /// <param name="maxFlow">
+        /// The maximum flow rate of waterways on this map, in m³/s.
+        /// </param>
+        public void SetFlowMap(Bitmap image, double maxFlow)
         {
             if (image is null)
             {
@@ -354,6 +368,7 @@ namespace NeverFoundry.WorldFoundry.Place
                 return;
             }
             _flowMap = image.ToByteArray();
+            _maxFlow = maxFlow;
         }
 
         /// <summary>
@@ -444,8 +459,8 @@ namespace NeverFoundry.WorldFoundry.Place
         internal float[][] GetDepthMap(int width, int height)
             => _depthMap.ImageToFloatSurfaceMap(width, height);
 
-        internal double[][] GetElevationMap(int width, int height)
-            => _elevationMap.ImageToDoubleSurfaceMap(width, height);
+        internal double[][] GetElevationMap(int width, int height, out double max)
+            => _elevationMap.ImageToDoubleSurfaceMap(out max, width, height);
 
         internal float[][] GetFlowMap(int width, int height)
             => _flowMap.ImageToFloatSurfaceMap(width, height);

@@ -56,6 +56,11 @@ namespace NeverFoundry.WorldFoundry.Space
         public double Inclination { get; }
 
         /// <summary>
+        /// The longitude at which periapsis would occur if <see cref="Inclination"/> were zero.
+        /// </summary>
+        public double LongitudeOfPeriapsis { get; }
+
+        /// <summary>
         /// The mean longitude of this orbit at epoch, in radians.
         /// </summary>
         public double MeanLongitude { get; }
@@ -129,6 +134,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="eccentricity">The eccentricity of this orbit.</param>
         /// <param name="inclination">The angle between the X-Z plane through the center of the
         /// object orbited, and the plane of the orbit, in radians.</param>
+        /// <param name="longitudeOfPeriapsis">
+        /// The longitude at which periapsis would occur if <see cref="Inclination"/> were zero.
+        /// </param>
         /// <param name="meanLongitude">The mean longitude of this orbit at epoch.</param>
         /// <param name="meanMotion">The mean motion of this orbit, in radians per second.</param>
         /// <param name="periapsis">The periapsis of this orbit.</param>
@@ -151,6 +159,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Vector3 orbitedPosition,
             double eccentricity,
             double inclination,
+            double longitudeOfPeriapsis,
             double meanLongitude,
             Number meanMotion,
             Number periapsis,
@@ -168,6 +177,7 @@ namespace NeverFoundry.WorldFoundry.Space
             _alpha = standardGravitationalParameter / semiMajorAxis;
             Eccentricity = eccentricity;
             Inclination = inclination;
+            LongitudeOfPeriapsis = longitudeOfPeriapsis;
             MeanLongitude = meanLongitude;
             MeanMotion = meanMotion;
             Periapsis = periapsis;
@@ -190,6 +200,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (Vector3?)info.GetValue(nameof(OrbitedPosition), typeof(Vector3)) ?? default,
             (double?)info.GetValue(nameof(Eccentricity), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(Inclination), typeof(double)) ?? default,
+            (double?)info.GetValue(nameof(LongitudeOfPeriapsis), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(MeanLongitude), typeof(double)) ?? default,
             (Number?)info.GetValue(nameof(MeanMotion), typeof(Number)) ?? default,
             (Number?)info.GetValue(nameof(Periapsis), typeof(Number)) ?? default,
@@ -417,7 +428,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
         /// of the orbit, in radians. Values will be normalized between zero and π.
         /// </param>
-        /// <param name="angleAscending">
+        /// <param name="longitudeAscending">
         /// The angle between the X-axis and the plane of the orbit (at the intersection where the
         /// orbit is rising, in radians). Values will be normalized between zero and 2π.
         /// </param>
@@ -437,7 +448,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Number periapsis,
             double eccentricity,
             double inclination,
-            double angleAscending,
+            double longitudeAscending,
             double argPeriapsis,
             double trueAnomaly) => SetOrbitAsync(
                 dataStore,
@@ -449,7 +460,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 periapsis,
                 eccentricity,
                 inclination,
-                angleAscending,
+                longitudeAscending,
                 argPeriapsis,
                 trueAnomaly);
 
@@ -477,7 +488,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
         /// of the orbit, in radians. Values will be normalized between zero and π.
         /// </param>
-        /// <param name="angleAscending">
+        /// <param name="longitudeAscending">
         /// The angle between the X-axis and the plane of the orbit (at the intersection where the
         /// orbit is rising, in radians). Values will be normalized between zero and 2π.
         /// </param>
@@ -498,7 +509,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Number periapsis,
             double eccentricity,
             double inclination,
-            double angleAscending,
+            double longitudeAscending,
             double argPeriapsis,
             double trueAnomaly)
         {
@@ -509,7 +520,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 periapsis,
                 eccentricity,
                 inclination,
-                angleAscending,
+                longitudeAscending,
                 argPeriapsis,
                 trueAnomaly);
             await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
@@ -584,12 +595,12 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var xz = new Vector3(r0.X, 0, r0.Z);
             var inclination = Number.Acos(Number.Sqrt(r0x2 + r0z2) / semiMajorAxis);
-            var angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
+            var longitudeAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
 
-            var cosineAngleAscending = Number.Cos(angleAscending);
-            var sineAngleAscending = Number.Sin(angleAscending);
+            var cosineLongitudeAscending = Number.Cos(longitudeAscending);
+            var sineLongitudeAscending = Number.Sin(longitudeAscending);
 
-            var n = new Vector3(cosineAngleAscending, sineAngleAscending, 0);
+            var n = new Vector3(cosineLongitudeAscending, sineLongitudeAscending, 0);
             var argPeriapsis = Number.Acos(Vector3.Dot(n, r0) / (n.Length() * radius));
             if (r0.Z < 0)
             {
@@ -602,8 +613,8 @@ namespace NeverFoundry.WorldFoundry.Space
             var cosineInclination = Number.Cos(inclination);
             var sineInclination = Number.Sin(inclination);
 
-            var qi = -(cosineAngleAscending * sineArgPeriapsis) - (sineAngleAscending * cosineInclination * cosineArgPeriapsis);
-            var qj = -(sineAngleAscending * sineArgPeriapsis) + (cosineAngleAscending * cosineInclination * cosineArgPeriapsis);
+            var qi = -(cosineLongitudeAscending * sineArgPeriapsis) - (sineLongitudeAscending * cosineInclination * cosineArgPeriapsis);
+            var qj = -(sineLongitudeAscending * sineArgPeriapsis) + (cosineLongitudeAscending * cosineInclination * cosineArgPeriapsis);
             var qk = sineInclination * cosineArgPeriapsis;
 
             var perifocalQ = (qi * Vector3.UnitX) + (qj * Vector3.UnitY) + (qk * Vector3.UnitZ);
@@ -611,7 +622,12 @@ namespace NeverFoundry.WorldFoundry.Space
             var alpha = standardGravitationalParameter / semiMajorAxis;
             orbitingObject.Velocity = Number.Sqrt(alpha) * perifocalQ;
 
-            var meanLongitude = (double)(angleAscending + argPeriapsis);
+            var longitudeOfPeriapsis = (double)(longitudeAscending + argPeriapsis);
+            if (orbitingObject is Planetoid planetoid)
+            {
+                longitudeOfPeriapsis -= planetoid.AxialPrecession;
+            }
+            longitudeOfPeriapsis %= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
             var period = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
 
@@ -620,7 +636,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 orbitedPosition,
                 0,
                 (double)inclination,
-                meanLongitude,
+                longitudeOfPeriapsis,
+                longitudeOfPeriapsis,
                 MathConstants.TwoPI / period,
                 periapsis,
                 r0,
@@ -719,7 +736,12 @@ namespace NeverFoundry.WorldFoundry.Space
             var cosineTrueAnomaly = (Number)Math.Cos(trueAnomaly);
             var sineTrueAnomaly = (Number)Math.Sin(trueAnomaly);
 
-            var meanLongitude = angleAscending + argumentPeriapsis;
+            var longitudeOfPeriapsis = (double)(angleAscending + argumentPeriapsis);
+            if (orbitingObject is Planetoid planetoid)
+            {
+                longitudeOfPeriapsis -= planetoid.AxialPrecession;
+            }
+            longitudeOfPeriapsis %= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
             orbitingObject.Velocity = Number.Sqrt(standardGravitationalParameter / semiLatusRectum)
                 * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
@@ -729,7 +751,10 @@ namespace NeverFoundry.WorldFoundry.Space
                 orbitedPosition,
                 eccentricity,
                 (double)inclination,
-                (double)meanLongitude,
+                longitudeOfPeriapsis,
+                radius > semiMajorAxis
+                    ? (longitudeOfPeriapsis + Math.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI
+                    : longitudeOfPeriapsis,
                 MathConstants.TwoPI / period,
                 periapsis,
                 r0,
@@ -763,7 +788,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
         /// of the orbit, in radians. Values will be normalized between zero and π.
         /// </param>
-        /// <param name="angleAscending">
+        /// <param name="longitudeAscending">
         /// The angle between the X-axis and the plane of the orbit (at the intersection where the
         /// orbit is rising, in radians). Values will be normalized between zero and 2π.
         /// </param>
@@ -783,7 +808,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Number periapsis,
             double eccentricity,
             double inclination,
-            double angleAscending,
+            double longitudeAscending,
             double argPeriapsis,
             double trueAnomaly)
         {
@@ -798,13 +823,13 @@ namespace NeverFoundry.WorldFoundry.Space
                 inclination += Math.PI;
             }
 
-            while (angleAscending >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
+            while (longitudeAscending >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
             {
-                angleAscending -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                longitudeAscending -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
-            while (angleAscending < 0)
+            while (longitudeAscending < 0)
             {
-                angleAscending += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+                longitudeAscending += MathAndScience.Constants.Doubles.MathConstants.TwoPI;
             }
 
             while (argPeriapsis >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
@@ -838,8 +863,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 : semiLatusRectum / (1 - eccentricitySquared);
 
             // Calculate the perifocal vectors
-            var cosineAngleAscending = Math.Cos(angleAscending);
-            var sineAngleAscending = Math.Sin(angleAscending);
+            var cosineAngleAscending = Math.Cos(longitudeAscending);
+            var sineAngleAscending = Math.Sin(longitudeAscending);
             var cosineArgPeriapsis = Math.Cos(argPeriapsis);
             var sineArgPeriapsis = Math.Sin(argPeriapsis);
             var cosineInclination = Math.Cos(inclination);
@@ -862,7 +887,12 @@ namespace NeverFoundry.WorldFoundry.Space
             var sineTrueAnomalyNumber = (Number)sineTrueAnomaly;
             var radius = semiLatusRectum / (1 + (eccentricity * cosineTrueAnomaly));
 
-            var meanLongitude = angleAscending + argPeriapsis;
+            var longitudeOfPeriapsis = longitudeAscending + argPeriapsis;
+            if (orbitingObject is Planetoid planetoid)
+            {
+                longitudeOfPeriapsis -= planetoid.AxialPrecession;
+            }
+            longitudeOfPeriapsis %= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
             var r0 = (radius * cosineTrueAnomalyNumber * perifocalP) + (radius * sineTrueAnomalyNumber * perifocalQ);
             orbitingObject.Position = orbitedPosition + r0;
@@ -885,7 +915,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 orbitedPosition,
                 eccentricity,
                 inclination,
-                meanLongitude,
+                longitudeOfPeriapsis,
+                (longitudeOfPeriapsis + (double)meanAnomaly) % MathAndScience.Constants.Doubles.MathConstants.TwoPI,
                 meanMotion,
                 periapsis,
                 r0,
@@ -913,7 +944,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The angle between the X-Z plane through the center of the object orbited, and the plane
         /// of the orbit, in radians. Values will be normalized between zero and π.
         /// </param>
-        /// <param name="angleAscending">
+        /// <param name="longitudeAscending">
         /// The angle between the X-axis and the plane of the orbit (at the intersection where the
         /// orbit is rising, in radians). Values will be normalized between zero and 2π.
         /// </param>
@@ -932,7 +963,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Number periapsis,
             double eccentricity,
             double inclination,
-            double angleAscending,
+            double longitudeAscending,
             double argPeriapsis,
             double trueAnomaly)
             => AssignOrbit(
@@ -942,7 +973,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 periapsis,
                 eccentricity,
                 inclination,
-                angleAscending,
+                longitudeAscending,
                 argPeriapsis,
                 trueAnomaly);
 
@@ -978,6 +1009,14 @@ namespace NeverFoundry.WorldFoundry.Space
         public override bool Equals(object? obj) => obj is Orbit orbit && Equals(orbit);
 
         /// <summary>
+        /// Gets the eccentric anomaly of the orbit at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The eccentric anomaly of the orbit, in radians.</returns>
+        public double GetEccentricAnomaly(double t)
+            => Math.Atan2(Math.Sqrt(1 - (Eccentricity * Eccentricity)) * Math.Sin(t), Eccentricity + Math.Cos(t));
+
+        /// <summary>
         /// Gets the ecliptic longitude of the orbited body from the perspective of the orbiting
         /// body at a given true anomaly.
         /// </summary>
@@ -985,7 +1024,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <returns>The ecliptic longitude of the orbited body from the perspective of the orbiting
         /// body, in radians (normalized to 0-2π).</returns>
         public double GetEclipticLongitudeAtTrueAnomaly(double t)
-            => (MeanLongitude + t + MathAndScience.Constants.Doubles.MathConstants.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            => (LongitudeOfPeriapsis + t) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         /// <summary>Returns the hash code for this instance.</summary>
         /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
@@ -1009,6 +1048,17 @@ namespace NeverFoundry.WorldFoundry.Space
             hash.Add(TrueAnomaly);
             hash.Add(V0);
             return hash.ToHashCode();
+        }
+
+        /// <summary>
+        /// Gets the mean anomaly of the orbit at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The eccentric anomaly of the orbit, in radians (normalized to 0-2π).</returns>
+        public double GetMeanAnomaly(double t)
+        {
+            var eccentricAnomaly = GetEccentricAnomaly(t);
+            return eccentricAnomaly - (Eccentricity * Math.Sin(eccentricAnomaly));
         }
 
         /// <summary>

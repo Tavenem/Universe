@@ -13,7 +13,6 @@ using NeverFoundry.WorldFoundry.SurfaceMapping;
 using NeverFoundry.WorldFoundry.WorldGrids;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -56,7 +55,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private const int MinimumRadius = 600000;
 
         private const double Second = MathAndScience.Constants.Doubles.MathConstants.PIOver180 / 3600;
-        private const double ThirtySixthPI = MathAndScience.Constants.Doubles.MathConstants.PI / 36;
+        private const double SixteenthPI = Math.PI / 16;
 
         internal static readonly Number GiantSpace = new Number(2.5, 8);
 
@@ -137,11 +136,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private double? _maxSurfaceTemperature;
         private double? _minSurfaceTemperature;
         private double _normalizedSeaLevel;
-        private int _seed1;
-        private int _seed2;
-        private int _seed3;
-        private int _seed4;
-        private int _seed5;
+        private int _seed1, _seed2, _seed3, _seed4, _seed5, _seed6;
         private double _surfaceAlbedo;
         private double? _surfaceTemperature;
 
@@ -185,9 +180,8 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// The angle between the X-axis and the orbital vector at which the first equinox occurs.
-        /// Read-only. Set by defining an <see cref="CosmicLocation.Orbit"/> and using <see
-        /// cref="SetAxialTilt(double)"/> or <see cref="SetAngleOfRotation(double)"/>.
+        /// The angle between the X-axis and the orbital vector at which the vernal equinox of the
+        /// northern hemisphere occurs. Read-only.
         /// </summary>
         public double AxialPrecession { get; private set; }
 
@@ -365,7 +359,8 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal bool HasHydrologyMaps
             => _depthMap != null
-            && _flowMap != null;
+            && _flowMap != null
+            && _maxFlow.HasValue;
 
         internal bool HasPrecipitationMap => _precipitationMaps != null;
 
@@ -390,11 +385,15 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private double? _summerSolsticeTrueAnomaly;
         internal double SummerSolsticeTrueAnomaly
-            => _summerSolsticeTrueAnomaly ??= (AxialPrecession + MathAndScience.Constants.Doubles.MathConstants.HalfPI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            => _summerSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.HalfPI
+            - (Orbit?.LongitudeOfPeriapsis ?? 0))
+            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         private double? _winterSolsticeTrueAnomaly;
         internal double WinterSolsticeTrueAnomaly
-            => _winterSolsticeTrueAnomaly ??= (AxialPrecession + MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+            => _winterSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI
+            - (Orbit?.LongitudeOfPeriapsis ?? 0))
+            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         private protected override string BaseTypeName => PlanetType switch
         {
@@ -426,19 +425,22 @@ namespace NeverFoundry.WorldFoundry.Space
         private double LapseRateDry => _lapseRateDry ??= (double)SurfaceGravity / MathAndScience.Constants.Doubles.ScienceConstants.CpDryAir;
 
         private FastNoise? _noise1;
-        private FastNoise Noise1 => _noise1 ??= new FastNoise(_seed1, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 6);
+        private FastNoise Noise1 => _noise1 ??= new FastNoise(_seed1, 0.8, FastNoise.NoiseType.SimplexFractal, octaves: 6);
 
         private FastNoise? _noise2;
-        private FastNoise Noise2 => _noise2 ??= new FastNoise(_seed2, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 5);
+        private FastNoise Noise2 => _noise2 ??= new FastNoise(_seed2, 0.6, FastNoise.NoiseType.SimplexFractal, FastNoise.FractalType.Billow, octaves: 6);
 
         private FastNoise? _noise3;
-        private FastNoise Noise3 => _noise3 ??= new FastNoise(_seed3, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 4);
+        private FastNoise Noise3 => _noise3 ??= new FastNoise(_seed3, 1.2, FastNoise.NoiseType.Simplex);
 
         private FastNoise? _noise4;
-        private FastNoise Noise4 => _noise4 ??= new FastNoise(_seed4, 0.01, FastNoise.NoiseType.SimplexFractal, octaves: 3);
+        private FastNoise Noise4 => _noise4 ??= new FastNoise(_seed4, 1.0, FastNoise.NoiseType.Simplex);
 
         private FastNoise? _noise5;
-        private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 0.004, FastNoise.NoiseType.Simplex);
+        private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
+
+        private FastNoise? _noise6;
+        private FastNoise Noise6 => _noise6 ??= new FastNoise(_seed6, 1.0, FastNoise.NoiseType.Simplex);
 
         private protected override string? TypeNamePrefix => PlanetType switch
         {
@@ -1372,11 +1374,11 @@ namespace NeverFoundry.WorldFoundry.Space
         public double GetAtmosphericPressure(Instant moment, double latitude, double longitude)
         {
             var elevation = GetElevationAt(latitude, longitude);
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
-            var greenhouseEffect = GetGreenhouseEffect();
-            var lat = GetSeasonalLatitude(latitude, trueAnomaly);
             var tempAtElevation = GetTemperatureAtElevation(
-                (_blackbodyTemperature * GetInsolationFactor(lat)) + greenhouseEffect,
+                GetSurfaceTemperature(
+                    _blackbodyTemperature,
+                    latitude,
+                    Orbit?.GetTrueAnomalyAtTime(moment) ?? 0),
                 elevation);
             return GetAtmosphericPressureFromTempAndElevation(tempAtElevation, elevation);
         }
@@ -1455,6 +1457,21 @@ namespace NeverFoundry.WorldFoundry.Space
             => (double)Shape.ContainingRadius * Math.Atan2((double)position1.Dot(position2), (double)position1.Cross(position2).Length());
 
         /// <summary>
+        /// Calculates the distance along the surface at sea level between the two points indicated
+        /// by the given normalized position vectors.
+        /// </summary>
+        /// <param name="position1">The first normalized position vector.</param>
+        /// <param name="position2">The first normalized position vector.</param>
+        /// <returns>The approximate distance between the points, in meters.</returns>
+        /// <remarks>
+        /// The distance is calculated as if the <see cref="Planetoid"/> was a sphere using a
+        /// great circle formula, which will lead to greater inaccuracy the more ellipsoidal the
+        /// shape of the <see cref="Planetoid"/>.
+        /// </remarks>
+        public double GetDistance(MathAndScience.Numerics.Doubles.Vector3 position1, MathAndScience.Numerics.Doubles.Vector3 position2)
+            => (double)Shape.ContainingRadius * Math.Atan2(position1.Dot(position2), position1.Cross(position2).Length());
+
+        /// <summary>
         /// Calculates the distance along the surface at sea level between two points.
         /// </summary>
         /// <param name="latitude1">The latitude of the first point.</param>
@@ -1495,8 +1512,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         /// <param name="position">The position at which to determine elevation.</param>
         /// <returns>The elevation at the given <paramref name="position"/>, in meters.</returns>
-        public double GetElevationAt(Vector3 position)
-            => GetNormalizedElevationAt(position) * MaxElevation;
+        public double GetElevationAt(Vector3 position) => GetElevationAt(VectorToLatitude(position), VectorToLongitude(position));
 
         /// <summary>
         /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
@@ -1507,7 +1523,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <returns>The elevation at the given <paramref name="latitude"/> and <paramref
         /// name="longitude"/>, in meters.</returns>
         public double GetElevationAt(double latitude, double longitude)
-            => GetElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
+            => GetNormalizedElevationAt(latitude, longitude) * MaxElevation;
 
         /// <summary>
         /// Gets the stored elevation map image for this region, if any.
@@ -1652,8 +1668,8 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public bool GetIsMountainous(double latitude, double longitude)
         {
-            var position = LatitudeAndLongitudeToVector(latitude, longitude);
-            var elevation = GetNormalizedElevationAt(position);
+            var position = LatitudeAndLongitudeToDoubleVector(latitude, longitude);
+            var elevation = GetNormalizedElevationAt(latitude, longitude);
 
             if (elevation < 0.035)
             {
@@ -1949,6 +1965,26 @@ namespace NeverFoundry.WorldFoundry.Space
         public double GetNormalizedElevationAt(System.Numerics.Vector3 position)
             => GetNormalizedElevationAt(position.X, position.Y, position.Z);
 
+        /// <summary>
+        /// <para>
+        /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
+        /// name="longitude"/>, as a normalized value between -1 and 1, where 1 is the maximum
+        /// elevation of the planet. Negative values are below sea level.
+        /// </para>
+        /// <para>
+        /// See also <seealso cref="MaxElevation"/>.
+        /// </para>
+        /// </summary>
+        /// <param name="latitude">The latitude at which to determine elevation.</param>
+        /// <param name="longitude">The longitude at which to determine elevation.</param>
+        /// <returns>
+        /// The elevation at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
+        /// as a normalized value between -1 and 1, where 1 is the maximum elevation of the planet.
+        /// Negative values are below sea level.
+        /// </returns>
+        public double GetNormalizedElevationAt(double latitude, double longitude)
+            => GetNormalizedElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
+
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
         /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
@@ -2004,12 +2040,15 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Determines the average precipitation at the given <paramref name="position"/> under the
         /// given conditions, over the given duration, in mm.
         /// </summary>
-        /// <param name="moment">The beginning of the period during which precipitation is to be
-        /// determined.</param>
-        /// <param name="position">The position on the planet's surface at which to determine
-        /// precipitation.</param>
-        /// <param name="proportionOfYear">The proportion of the year over which to determine
-        /// precipitation.</param>
+        /// <param name="moment">
+        /// The beginning of the period during which precipitation is to be determined.
+        /// </param>
+        /// <param name="position">
+        /// The position at which to determine precipitation.
+        /// </param>
+        /// <param name="proportionOfYear">
+        /// The proportion of the year over which to determine precipitation.
+        /// </param>
         /// <returns>
         /// <para>
         /// The average precipitation at the given <paramref name="position"/> and time of year, in
@@ -2025,6 +2064,51 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
             var seasonalLatitude = Math.Abs(GetSeasonalLatitude(VectorToLatitude(position), trueAnomaly));
+            var temp = GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly, seasonalLatitude);
+            temp = GetTemperatureAtElevation(temp, GetElevationAt(position));
+            var precipitation = GetPrecipitation(
+                (double)position.X,
+                (double)position.Y,
+                (double)position.Z,
+                seasonalLatitude,
+                (float)temp,
+                proportionOfYear,
+                out var snow);
+            return (precipitation, snow);
+        }
+
+        /// <summary>
+        /// Determines the average precipitation at the given <paramref name="latitude"/> and
+        /// <paramref name="longitude"/> under the given conditions, over the given duration, in mm.
+        /// </summary>
+        /// <param name="moment">
+        /// The beginning of the period during which precipitation is to be determined.
+        /// </param>
+        /// <param name="latitude">
+        /// The latitude at which to determine precipitation.
+        /// </param>
+        /// <param name="longitude">
+        /// The longitude at which to determine precipitation.
+        /// </param>
+        /// <param name="proportionOfYear">
+        /// The proportion of the year over which to determine precipitation.
+        /// </param>
+        /// <returns>
+        /// <para>
+        /// The average precipitation at the given <paramref name="latitude"/> and <paramref
+        /// name="longitude"/> and time of year, in mm, along with the amount of snow which falls.
+        /// </para>
+        /// <para>
+        /// Note that this amount <i>replaces</i> any precipitation that would have fallen as rain;
+        /// the return value is to be considered a water-equivalent total value which is equal to
+        /// the snow.
+        /// </para>
+        /// </returns>
+        public (double precipitation, double snow) GetPrecipitation(Instant moment, double latitude, double longitude, float proportionOfYear)
+        {
+            var position = LatitudeAndLongitudeToVector(latitude, longitude);
+            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
+            var seasonalLatitude = Math.Abs(GetSeasonalLatitude(latitude, trueAnomaly));
             var temp = GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly, seasonalLatitude);
             temp = GetTemperatureAtElevation(temp, GetElevationAt(position));
             var precipitation = GetPrecipitation(
@@ -2269,10 +2353,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="longitude">The longitude of the point.</param>
         /// <returns>The slope at the given coordinates.</returns>
         public double GetSlope(double latitude, double longitude)
-        {
-            var position = LatitudeAndLongitudeToVector(latitude, longitude);
-            return GetSlope(position, latitude, longitude, GetNormalizedElevationAt(position));
-        }
+            => GetSlope(LatitudeAndLongitudeToDoubleVector(latitude, longitude), latitude, longitude, GetNormalizedElevationAt(latitude, longitude));
 
         /// <summary>
         /// Gets the stored set of snowfall map images for this region, if any.
@@ -2318,14 +2399,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
         public double GetSurfaceTemperatureAtLatLon(Instant moment, double latitude, double longitude)
-        {
-            var greenhouseEffect = GetGreenhouseEffect();
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
-            var lat = GetSeasonalLatitude(latitude, trueAnomaly);
-            return GetTemperatureAtElevation(
-                (_blackbodyTemperature * GetInsolationFactor(lat)) + greenhouseEffect,
+            => GetTemperatureAtElevation(
+                GetSurfaceTemperature(_blackbodyTemperature, latitude, Orbit?.GetTrueAnomalyAtTime(moment) ?? 0),
                 GetElevationAt(latitude, longitude));
-        }
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -2387,7 +2463,8 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else
             {
-                return surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
+                var firstGuess = surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
+                return surfaceTemp - (elevation * GetLapseRate(firstGuess));
             }
         }
 
@@ -2491,15 +2568,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public Vector3 LatitudeAndLongitudeToVector(double latitude, double longitude)
         {
-            var cosLat = Math.Cos(latitude);
-            var rot = AxisRotation;
-            var v = MathAndScience.Numerics.Doubles.Vector3.Normalize(
-                MathAndScience.Numerics.Doubles.Vector3.Transform(
-                    new MathAndScience.Numerics.Doubles.Vector3(
-                        cosLat * Math.Sin(longitude),
-                        Math.Sin(latitude),
-                        cosLat * Math.Cos(longitude)),
-                    MathAndScience.Numerics.Doubles.Quaternion.Inverse(rot)));
+            var v = LatitudeAndLongitudeToDoubleVector(latitude, longitude);
             return new Vector3(v.X, v.Y, v.Z);
         }
 
@@ -2535,7 +2604,10 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Loads an image as the hydrology flow overlay for this region.
         /// </summary>
         /// <param name="image">The image to load.</param>
-        public void LoadFlowMap(Bitmap image)
+        /// <param name="maxFlow">
+        /// The maximum flow rate of waterways on this map, in m³/s.
+        /// </param>
+        public void LoadFlowMap(Bitmap image, double maxFlow)
         {
             if (image is null)
             {
@@ -2543,6 +2615,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 return;
             }
             _flowMap = GetByteArray(image);
+            MaxFlow = maxFlow;
         }
 
         /// <summary>
@@ -2705,15 +2778,19 @@ namespace NeverFoundry.WorldFoundry.Space
         internal float[][] GetDepthMap(int width, int height)
             => _depthMap.ImageToFloatSurfaceMap(width, height);
 
-        internal double[][] GetElevationMap(int width, int height)
+        internal double[][] GetElevationMap(int width, int height, out double max)
         {
+            max = 0;
             using var image = _elevationMap.ToImage();
             if (image is null)
             {
                 return new double[0][];
             }
-            return image.ImageToDoubleSurfaceMap(width, height);
+            return image.ImageToDoubleSurfaceMap(out max, width, height);
         }
+
+        internal double GetElevationNoiseAt(MathAndScience.Numerics.Doubles.Vector3 position)
+            => GetElevationNoiseAt(position.X, position.Y, position.Z);
 
         internal double GetElevationNoiseAt(double x, double y, double z)
         {
@@ -2722,29 +2799,29 @@ namespace NeverFoundry.WorldFoundry.Space
                 return 0;
             }
 
-            // The magnitude of the position vector is magnified to increase the surface area of the
-            // noise map, thus providing a more diverse range of results without introducing
-            // excessive noise (as increasing frequency would).
-            x *= 100;
-            y *= 100;
-            z *= 100;
-
-            // Initial noise map.
+            // Initial noise map: a simple fractal noise map.
             var baseNoise = Noise1.GetNoise(x, y, z);
 
-            // In order to avoid an appearance of excessive uniformity, with all mountains reaching
-            // the same height, distributed uniformly over the surface, the initial noise is
-            // multiplied by a second, independent noise map. The resulting map will have more
-            // randomly distributed high and low points.
-            var irregularity1 = Math.Abs(Noise2.GetNoise(x, y, z));
+            // Mountain noise map: a more ridged map.
+            var mountains = (-Noise2.GetNoise(x, y, z) - 0.25) * 4 / 3;
 
-            // This process is repeated.
-            var irregularity2 = Math.Abs(Noise3.GetNoise(x, y, z));
+            // Scale the base noise to the typical average height of continents, with a degree of
+            // randomness borrowed from the mountain noise function.
+            var scaledBaseNoise = baseNoise * (0.25 + (mountains * 0.0625));
 
-            var e = baseNoise * irregularity1 * irregularity2;
+            // Modify the mountain map to indicate mountains only in random areas, instead of
+            // uniformly across the globe.
+            //mountains *= (Noise3.GetNoise(x, y, z) + 0.25).Clamp(0, 1);
+            mountains *= (Noise3.GetNoise(x, y, z) + 1).Clamp(0, 1);
 
-            // The overall value is magnified to compensate for excessive normalization.
-            return e * 2.71;
+            // Multiply with itself to produce predominantly low values with high (and low)
+            // extremes, and scale to the typical maximum height of mountains, with a degree of
+            // randomness borrowed from the base noise function.
+            mountains = Math.CopySign(mountains * mountains * (0.525 + (baseNoise * 0.13125)), mountains);
+
+            // The value with the greatest magnitude is returned, resulting in mostly broad,
+            // low-lying areas, interrupted by occasional high mountain ranges and low trenches.
+            return scaledBaseNoise + mountains;
         }
 
         internal float[][] GetFlowMap(int width, int height)
@@ -2784,47 +2861,49 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
 
-            x *= 1000;
-            y *= 1000;
-            z *= 1000;
-
             // Noise map with smooth, broad areas. Random range ~-1-2.
-            var r1 = 0.5 + (Noise5.GetNoise(x, y, z) * 1.5);
+            var r1 = 0.5 + (Noise4.GetNoise(x, y, z) * 1.5);
 
-            // More detailed noise map. Random range of ~-1-1 adjusted to ~0.8-1.
-            var r2 = (Noise4.GetNoise(x, y, z) * 0.1) + 0.9;
+            // More detailed noise map. Random range of ~-0.9-0.9 adjusted to ~0.45-1.25.
+            var r2 = (Noise5.GetNoise(x, y, z) * 0.4) + 0.85;
 
             // Combined map is noise with broad similarity over regions, and minor local
-            // diversity.
+            // diversity. Range ~-1.05-2.1.
             var r = r1 * r2;
 
-            // Hadley cells scale by ~6 around the equator, ~-1 ±15º lat, ~1 ±40º lat, and ~-1
-            // ±75º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
+            // Hadley cells scale by ~2.25 around the equator, ~-1.1 ±15º lat, ~1.1 ±40º lat, and ~0
+            // ±86º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
             // the polar deserts.
-            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude) - ThirtySixthPI), 3);
+            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude)), 3);
             if (!_HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
             {
-                hadleyValue = Math.Cos((1.25 * Math.PI * roundedAbsLatitude) + Math.PI) + Math.Max(0, (1 / (10 * (roundedAbsLatitude + 0.015))) - 2);
+                hadleyValue = 0.25 + (2 / (1 + (2 * roundedAbsLatitude)) * Math.Cos(MathAndScience.Constants.Doubles.MathConstants.ThreePI / (roundedAbsLatitude + 0.75)));
                 _HadleyValues.Add(roundedAbsLatitude, hadleyValue);
             }
 
-            // Relative humidity is the Hadley cell value added to the random value. Range ~-2-~8.
-            var relativeHumidity = r + hadleyValue;
+            // Noise map with very smooth, broad areas. Random range of ~0.5-1.
+            var r3 = 0.75 + (Noise6.GetNoise(x, y, z) * 0.25);
+
+            // Relative humidity is the Hadley cell value added to the random value. Range ~-2.15-~4.35.
+            var relativeHumidity = r + (hadleyValue * r3);
 
             // In the range betwen 0 and 16K below freezing, the value is scaled down; below that
             // range it is cut off completely; above it is unchanged.
             relativeHumidity *= ((temperature - _LowTemp) / 16).Clamp(0, 1);
 
             // More intense in the tropics.
-            if (roundedAbsLatitude < Math.PI / 8)
+            if (roundedAbsLatitude < MathAndScience.Constants.Doubles.MathConstants.EighthPI)
             {
-                relativeHumidity += r1 * ((MathAndScience.Constants.Doubles.MathConstants.EighthPI - roundedAbsLatitude) / MathAndScience.Constants.Doubles.MathConstants.EighthPI);
+                // Range ~-3.16-~6.45.
+                relativeHumidity += r * ((MathAndScience.Constants.Doubles.MathConstants.EighthPI - roundedAbsLatitude) / MathAndScience.Constants.Doubles.MathConstants.EighthPI);
 
-                // Extreme spikes within the ITCZ.
-                if (roundedAbsLatitude < Math.PI / 16
-                    && relativeHumidity > 0)
+                // Extreme spikes within the ITCZ. Range ~-3.16-~71.
+                if (relativeHumidity > 0 && roundedAbsLatitude < SixteenthPI)
                 {
-                    relativeHumidity *= 1 + ((r2 - 0.9) * 40);
+                    relativeHumidity *= r2
+                        * (1 + ((SixteenthPI - roundedAbsLatitude) / SixteenthPI
+                        * (Math.Max(0, r2 - 0.85) / 0.4)
+                        * 11));
                 }
             }
 
@@ -2857,7 +2936,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
         {
-            var seasonalLatitude = latitude + (solarDeclination * 2 / 3);
+            var seasonalLatitude = latitude + solarDeclination;
             if (seasonalLatitude > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
             {
                 return Math.PI - seasonalLatitude;
@@ -2882,7 +2961,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         internal double GetSolarDeclination(double trueAnomaly)
-            => Orbit.HasValue ? Math.Asin(Math.Sin(AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
+            => Orbit.HasValue ? Math.Asin(Math.Sin(-AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -2907,11 +2986,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// precisely.
         /// </remarks>
         internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
-        {
-            var greenhouseEffect = GetGreenhouseEffect();
-            var temp = GetTemperatureAtTrueAnomaly(trueAnomaly);
-            return (temp * GetInsolationFactor(seasonalLatitude)) + greenhouseEffect;
-        }
+            => GetSeasonalSurfaceTemperature(GetTemperatureAtTrueAnomaly(trueAnomaly), seasonalLatitude, trueAnomaly);
 
         internal FloatRange[][] GetTemperatureMap(int width, int height)
         {
@@ -2924,18 +2999,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
         }
 
-        /// <summary>
-        /// Converts latitude and longitude to a <see cref="Vector3"/>.
-        /// </summary>
-        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
-        /// <param name="longitude">A longitude, as an angle in radians from the X-axis at 0
-        /// rotation.</param>
-        /// <returns>A normalized <see cref="Vector3"/> representing a position on the surface of
-        /// this <see cref="Planetoid"/>.</returns>
-        /// <remarks>
-        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
-        /// this calculation, but is not permanently set to such an axis.
-        /// </remarks>
         internal MathAndScience.Numerics.Doubles.Vector3 LatitudeAndLongitudeToDoubleVector(double latitude, double longitude)
         {
             var cosLat = Math.Cos(latitude);
@@ -3229,7 +3292,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var hydro = proportionInHydrosphere;
-            var hydrosphereAtmosphereRatio = GetHydrosphereAtmosphereRatio();
+            var hydrosphereAtmosphereRatio = Atmosphere.Material.IsEmpty ? 0 : GetHydrosphereAtmosphereRatio();
             hydro = Math.Max(hydro, hydrosphereAtmosphereRatio <= 0 ? vaporProportion : vaporProportion / hydrosphereAtmosphereRatio);
             if (hydro > proportionInHydrosphere)
             {
@@ -3416,7 +3479,7 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             // Convert the target average surface temperature to an estimated target equatorial
             // surface temperature, for which orbit/luminosity requirements can be calculated.
-            var targetEquatorialTemp = surfaceTemp * 1.062;
+            var targetEquatorialTemp = surfaceTemp * 1.06;
             // Use the typical average elevation to determine average surface
             // temperature, since the average temperature at sea level is not the same
             // as the average overall surface temperature.
@@ -3556,7 +3619,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 Atmosphere.ResetWater(this);
             }
 
-            var gasProportion = hydrosphereProportion * GetHydrosphereAtmosphereRatio();
+            var gasProportion = Atmosphere.Material.Mass.IsZero ? 0 : hydrosphereProportion * GetHydrosphereAtmosphereRatio();
             var previousGasProportion = vaporProportion;
 
             Hydrosphere.GetSurface().RemoveConstituent(substance);
@@ -5753,7 +5816,9 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private double GetInsolationFactor(double latitude)
             => InsolationFactor_Polar + ((InsolationFactor_Equatorial - InsolationFactor_Polar)
-            * Math.Cos(Math.Max(0, (Math.Abs(latitude) * (MathAndScience.Constants.Doubles.MathConstants.HalfPI + AxialTilt) / MathAndScience.Constants.Doubles.MathConstants.HalfPI) - AxialTilt)));
+            * (0.5 + (Math.Cos(Math.Max(0, (Math.Abs(2 * latitude)
+                * (MathAndScience.Constants.Doubles.MathConstants.HalfPI + AxialTilt)
+                / MathAndScience.Constants.Doubles.MathConstants.HalfPI) - AxialTilt)) / 2)));
 
         /// <summary>
         /// Calculates the adiabatic lapse rate for this <see cref="Planetoid"/>, after determining
@@ -5786,10 +5851,8 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             var surfaceTemp2 = surfaceTemp * surfaceTemp;
 
-            var numerator = (MathAndScience.Constants.Doubles.ScienceConstants.RSpecificDryAir * surfaceTemp2)
-                + (MathAndScience.Constants.Doubles.ScienceConstants.DeltaHvapWater * Atmosphere.WaterRatioDouble * surfaceTemp);
-            var denominator = (MathAndScience.Constants.Doubles.ScienceConstants.CpTimesRSpecificDryAir * surfaceTemp2)
-                + (MathAndScience.Constants.Doubles.ScienceConstants.DeltaHvapWaterSquared * Atmosphere.WaterRatioDouble * MathAndScience.Constants.Doubles.ScienceConstants.RSpecificRatioOfDryAirToWater);
+            var numerator = (MathAndScience.Constants.Doubles.ScienceConstants.RSpecificDryAir * surfaceTemp2) + (Atmosphere.HvE * surfaceTemp);
+            var denominator = (MathAndScience.Constants.Doubles.ScienceConstants.CpTimesRSpecificDryAir * surfaceTemp2) + Atmosphere.Hv2RsE;
 
             return (double)SurfaceGravity * (numerator / denominator);
         }
@@ -6282,20 +6345,12 @@ namespace NeverFoundry.WorldFoundry.Space
             // Get the value offset from sea level.
             var n = e - _normalizedSeaLevel;
 
-            // Skew ocean locations deeper, to avoid extended shallow shores.
-            if (n < 0 && n > -0.37)
-            {
-                // The dropoff is initially rapid.
-                n *= 9 - (Math.Abs(0.0125 + n) / (n >= -0.0125 ? 0.0015625 : 0.0359375));
-
-                // Values between the ocean shelf and sea floor are skewed even more towards the
-                // floor. Oceans are typically shallow near the shore, then become deep rapidly, and
-                // remain at about the same depth throughout, with occasional trenches.
-                if (n < -0.025)
-                {
-                    n *= 1 + ((0.37 + n) / 0.37);
-                }
-            }
+            // Skew land lower, to avoid extended mountainous regions; and ocean locations deeper,
+            // to avoid extended shallow shores. The scaling is initially sharp, and reduces towards
+            // nothing. Landmasses are typically dominated by plains, and ascend rapidly towards
+            // mountain ranges. Oceans are typically shallow near the shore, then become deep
+            // rapidly, and remain at about the same depth throughout, with occasional trenches.
+            n *= 0.5 * ((n * n) + 1);
 
             return n;
         }
@@ -6402,7 +6457,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private double GetSeasonalLatitude(double latitude, double trueAnomaly)
             => GetSeasonalLatitudeFromDeclination(latitude, GetSolarDeclination(trueAnomaly));
 
-        private double GetSlope(Vector3 position, double latitude, double longitude, double elevation)
+        private double GetSlope(MathAndScience.Numerics.Doubles.Vector3 position, double latitude, double longitude, double elevation)
         {
             // north
             var otherCoords = (lat: latitude + Second, lon: longitude);
@@ -6410,14 +6465,14 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 otherCoords = (MathAndScience.Constants.Doubles.MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             }
-            var otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
-            var otherElevation = GetNormalizedElevationAt(otherPos);
+            var otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
+            var otherElevation = GetNormalizedElevationAt(otherCoords.lat, otherCoords.lon);
             var slope = Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos);
 
             // east
             otherCoords = (lat: latitude, lon: (longitude + Second) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos);
+            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
             slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
 
             // south
@@ -6426,14 +6481,14 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 otherCoords = (-MathAndScience.Constants.Doubles.MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             }
-            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos);
+            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
             slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
 
             // west
             otherCoords = (lat: latitude, lon: (longitude - Second) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            otherPos = LatitudeAndLongitudeToVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos);
+            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
+            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
             return Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
         }
 
@@ -6457,6 +6512,26 @@ namespace NeverFoundry.WorldFoundry.Space
                 }
             }
             return null;
+        }
+
+        private double GetSurfaceTemperature(double blackbodyTemperature, double latitude, double trueAnomaly)
+            => GetSeasonalSurfaceTemperature(blackbodyTemperature, GetSeasonalLatitude(latitude, trueAnomaly), trueAnomaly);
+
+        private double GetSeasonalSurfaceTemperature(double blackbodyTemperature, double seasonalLatitude, double trueAnomaly)
+        {
+            var greenhouseEffect = GetGreenhouseEffect();
+            var temp = (blackbodyTemperature * GetInsolationFactor(seasonalLatitude)) + greenhouseEffect;
+            if (Atmosphere.Material.IsEmpty)
+            {
+                return temp;
+            }
+            // Represent the effect of atmospheric convection by resturning the average of the raw
+            // result and the equatorial result, weighted by the distance to the equator.
+            var seasonalEquatorialLatitide = GetSeasonalLatitude(0, trueAnomaly);
+            var equatorialTemp = (blackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
+            var latitudeFactor = Math.Abs(seasonalLatitude - seasonalEquatorialLatitide) / (MathAndScience.Constants.Doubles.MathConstants.HalfPI - AxialTilt) * Math.PI;
+            var weight = Math.Sin(latitudeFactor) / 3;
+            return temp.Lerp(equatorialTemp, weight);
         }
 
         /// <summary>
@@ -6616,6 +6691,7 @@ namespace NeverFoundry.WorldFoundry.Space
             _seed3 = reconstitution.GetInt(2);
             _seed4 = reconstitution.GetInt(3);
             _seed5 = reconstitution.GetInt(4);
+            _seed6 = reconstitution.GetInt(5);
 
             AxialPrecession = reconstitution.GetDouble(0);
 
@@ -7235,8 +7311,8 @@ namespace NeverFoundry.WorldFoundry.Space
                         _intIndex++;
                         int? v = _intIndex switch
                         {
-                            // _seed1-5
-                            <= 4 => _randomizer.NextInclusive(),
+                            // _seed1-6
+                            <= 5 => _randomizer.NextInclusive(),
                             _ => null,
                         };
                         if (v.HasValue)

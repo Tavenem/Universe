@@ -80,35 +80,74 @@ namespace NeverFoundry.WorldFoundry.Place
                 absolutePosition = vectorArrayConverter.Read(ref reader, typeof(Vector3[]), options);
             }
 
+            byte[]? depthMap;
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("depthMap")
-                || !reader.Read()
-                || reader.TokenType != JsonTokenType.String)
+                || !reader.Read())
             {
                 throw new JsonException();
             }
-            var depthMap = reader.GetBytesFromBase64();
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                depthMap = null;
+            }
+            else
+            {
+                depthMap = reader.GetBytesFromBase64();
+            }
 
+            byte[]? elevationMap;
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("elevationMap")
-                || !reader.Read()
-                || reader.TokenType != JsonTokenType.String)
+                || !reader.Read())
             {
                 throw new JsonException();
             }
-            var elevationMap = reader.GetBytesFromBase64();
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                elevationMap = null;
+            }
+            else
+            {
+                elevationMap = reader.GetBytesFromBase64();
+            }
 
+            byte[]? flowMap;
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("flowMap")
+                || !reader.Read())
+            {
+                throw new JsonException();
+            }
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                flowMap = null;
+            }
+            else
+            {
+                flowMap = reader.GetBytesFromBase64();
+            }
+
+            double? maxFlow;
+            if (!reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName
+                || !reader.ValueTextEquals("maxFlow")
                 || !reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
             }
-            var flowMap = reader.GetBytesFromBase64();
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                maxFlow = null;
+            }
+            else
+            {
+                maxFlow = reader.GetDouble();
+            }
 
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
@@ -146,25 +185,39 @@ namespace NeverFoundry.WorldFoundry.Place
                 snowfallMaps = byteArrayConverter.Read(ref reader, typeof(byte[][]), options);
             }
 
+            byte[]? temperatureMapSummer;
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("temperatureMapSummer")
-                || !reader.Read()
-                || reader.TokenType != JsonTokenType.String)
+                || !reader.Read())
             {
                 throw new JsonException();
             }
-            var temperatureMapSummer = reader.GetBytesFromBase64();
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                temperatureMapSummer = null;
+            }
+            else
+            {
+                temperatureMapSummer = reader.GetBytesFromBase64();
+            }
 
+            byte[]? temperatureMapWinter;
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("temperatureMapWinter")
-                || !reader.Read()
-                || reader.TokenType != JsonTokenType.String)
+                || !reader.Read())
             {
                 throw new JsonException();
             }
-            var temperatureMapWinter = reader.GetBytesFromBase64();
+            if (reader.TokenType == JsonTokenType.Null)
+            {
+                temperatureMapWinter = null;
+            }
+            else
+            {
+                temperatureMapWinter = reader.GetBytesFromBase64();
+            }
 
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.EndObject)
@@ -179,6 +232,7 @@ namespace NeverFoundry.WorldFoundry.Place
                 depthMap,
                 elevationMap,
                 flowMap,
+                maxFlow,
                 precipitationMaps,
                 snowfallMaps,
                 temperatureMapSummer,
@@ -243,6 +297,15 @@ namespace NeverFoundry.WorldFoundry.Place
             else
             {
                 writer.WriteBase64String("flowMap", value._flowMap);
+            }
+
+            if (value._maxFlow is null)
+            {
+                writer.WriteNull("maxFlow");
+            }
+            else
+            {
+                writer.WriteNumber("maxFlow", value._maxFlow.Value);
             }
 
             if (value._precipitationMaps is null)

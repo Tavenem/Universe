@@ -13,10 +13,10 @@ using System.Text;
 namespace NeverFoundry.WorldFoundry.Test
 {
     [TestClass]
-    public class TerrestrialPlanet_Tests
+    public class TerrestrialPlanetTests
     {
         private const int NumSeasons = 12;
-        private const int SurfaceMapResolution = 90;
+        private const int SurfaceMapResolution = 180;
 
         [TestMethod]
         public void EarthlikePlanet()
@@ -24,7 +24,7 @@ namespace NeverFoundry.WorldFoundry.Test
             // First run to ensure timed runs do not include any one-time initialization costs.
             var planet = Planetoid.GetPlanetForSunlikeStar(out _);
             Assert.IsNotNull(planet);
-            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            _ = planet!.GetSurfaceMaps(3, steps: 1); // minimal resolution, single step
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -41,11 +41,19 @@ namespace NeverFoundry.WorldFoundry.Test
 
             stopwatch.Restart();
 
-            var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
 
             stopwatch.Stop();
 
-            Console.WriteLine($"Surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
+            Console.WriteLine($"Equirectangular surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
+
+            stopwatch.Restart();
+
+            var maps = planet!.GetSurfaceMaps(SurfaceMapResolution, equalArea: true, steps: NumSeasons);
+
+            stopwatch.Stop();
+
+            Console.WriteLine($"Cylindrical equal-area surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
 
             var sb = new StringBuilder();
 
@@ -66,7 +74,7 @@ namespace NeverFoundry.WorldFoundry.Test
             // First run to ensure timed runs do not include any one-time initialization costs.
             var planet = Planetoid.GetPlanetForNewStar(out _, planetParams: new PlanetParams(), habitabilityRequirements: new HabitabilityRequirements());
             Assert.IsNotNull(planet);
-            _ = planet!.GetSurfaceMaps(SurfaceMapResolution, steps: NumSeasons);
+            _ = planet!.GetSurfaceMaps(3, steps: 1); // minimal resolution, single step
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -192,9 +200,14 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendFormat("  Desert (non-polar):      {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(nonPolarDesert, 2), Math.Round(nonPolarDesert - 14, 2));
             sb.AppendLine();
             var polar = (climates.TryGetValue(ClimateType.Polar, out var value) ? value : 0) * 100.0 / landCoords;
-            sb.AppendFormat("  Polar:                   {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(polar, 2), Math.Round(polar - 25, 2));
+            sb.AppendFormat("  Polar:                   {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(polar, 2), Math.Round(polar - 20, 2));
             sb.AppendLine();
             sb.AppendFormat("  Tundra:                  {0}%", Math.Round((biomes.TryGetValue(BiomeType.Tundra, out value) ? value : 0) * 100.0 / landCoords, 2));
+            sb.AppendLine();
+            var alpine = (biomes.TryGetValue(BiomeType.Alpine, out value) ? value : 0) * 100.0 / landCoords;
+            sb.AppendFormat("  Alpine:                  {0}% ({1:+0.##;-0.##;on-targ\\et})", Math.Round(alpine, 2), Math.Round(alpine - 3, 2));
+            sb.AppendLine();
+            sb.AppendFormat("  Subalpine:               {0}%", Math.Round((biomes.TryGetValue(BiomeType.Subalpine, out value) ? value : 0) * 100.0 / landCoords, 2));
             sb.AppendLine();
             var boreal = climates.TryGetValue(ClimateType.Boreal, out value) ? value : 0;
             sb.AppendFormat("  Boreal:                  {0}%", Math.Round(boreal * 100.0 / landCoords, 2));
@@ -421,26 +434,31 @@ namespace NeverFoundry.WorldFoundry.Test
                         }
                     }
                 }
-                avg = landCoords.Average(x => maps.Elevation[x.x][x.y]) * planet.MaxElevation;
+                avg = landCoords.Average(x => maps.Elevation[x.x][x.y]) * maps.MaxElevation;
             }
             else
             {
-                avg = maps.AverageElevation * planet.MaxElevation;
+                avg = maps.AverageElevation * maps.MaxElevation;
             }
 
             sb.AppendFormat("Avg Land Elevation:        {0}m", Math.Round(avg));
             sb.AppendLine();
 
             var max = 0.0;
+            var min = 0.0;
             for (var x = 0; x < maps.XLength; x++)
             {
                 for (var y = 0; y < maps.YLength; y++)
                 {
+                    min = Math.Min(min, maps.Elevation[x][y]);
                     max = Math.Max(max, maps.Elevation[x][y]);
                 }
             }
-            max *= planet.MaxElevation;
+            min *= maps.MaxElevation;
+            max *= maps.MaxElevation;
 
+            sb.AppendFormat("Min Elevation:             {0}m / {1}m", Math.Round(min), Math.Round(planet.MaxElevation));
+            sb.AppendLine();
             sb.AppendFormat("Max Elevation:             {0}m / {1}m", Math.Round(max), Math.Round(planet.MaxElevation));
             sb.AppendLine();
         }

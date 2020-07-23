@@ -108,6 +108,14 @@ namespace NeverFoundry.WorldFoundry.Climate
             }
         }
 
+        private double? _hv2RsE;
+        internal double Hv2RsE
+            => _hv2RsE ??= MathAndScience.Constants.Doubles.ScienceConstants.DeltaHvapWaterSquared * WaterRatioDouble * MathAndScience.Constants.Doubles.ScienceConstants.RSpecificRatioOfDryAirToWater;
+
+        private double? _hvE;
+        internal double HvE
+            => _hvE ??= MathAndScience.Constants.Doubles.ScienceConstants.DeltaHvapWater * WaterRatioDouble;
+
         private decimal? _waterRatio;
         internal decimal WaterRatio => _waterRatio ??= Material.Constituents.Sum(x => x.Key.Substance.GetWaterProportion() * x.Value);
 
@@ -360,7 +368,10 @@ namespace NeverFoundry.WorldFoundry.Climate
         internal void ResetPressureDependentProperties(Planetoid planet)
         {
             SetAtmosphericScaleHeight(planet);
-            Material = Material.GetClone((decimal)(GetAtmosphericMass(planet, AtmosphericPressure) / Material.Mass));
+            if (!Material.Mass.IsZero)
+            {
+                Material = Material.GetClone((decimal)(GetAtmosphericMass(planet, AtmosphericPressure) / Material.Mass));
+            }
             SetAtmosphericHeight(planet);
             Material.Shape = GetShape(planet);
             var temp = planet.GetAverageSurfaceTemperature();
@@ -397,6 +408,8 @@ namespace NeverFoundry.WorldFoundry.Climate
             _waterRatio = null;
             _waterRatioDouble = null;
             _wetness = null;
+            _hv2RsE = null;
+            _hvE = null;
             SetPrecipitation(planet);
         }
 
