@@ -37,6 +37,21 @@ namespace NeverFoundry.WorldFoundry.Place
 
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
+                || !reader.ValueTextEquals(nameof(IIdItem.IdItemTypeName))
+                || !reader.Read()
+                || reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException();
+            }
+            var idItemTypeName = reader.GetString();
+            if (string.IsNullOrEmpty(idItemTypeName)
+                || !string.Equals(idItemTypeName, SurfaceRegion.SurfaceRegionIdItemTypeName))
+            {
+                throw new JsonException();
+            }
+
+            if (!reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals(nameof(Location.Shape))
                 || !reader.Read()
                 || reader.TokenType != JsonTokenType.StartObject)
@@ -136,7 +151,7 @@ namespace NeverFoundry.WorldFoundry.Place
                 || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("maxFlow")
                 || !reader.Read()
-                || reader.TokenType != JsonTokenType.String)
+                || reader.TokenType != JsonTokenType.Number)
             {
                 throw new JsonException();
             }
@@ -227,6 +242,7 @@ namespace NeverFoundry.WorldFoundry.Place
 
             return new SurfaceRegion(
                 id,
+                idItemTypeName,
                 shape,
                 parentId,
                 depthMap,
@@ -249,6 +265,7 @@ namespace NeverFoundry.WorldFoundry.Place
             writer.WriteStartObject();
 
             writer.WriteString(nameof(IIdItem.Id), value.Id);
+            writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
 
             writer.WritePropertyName(nameof(Location.Shape));
             JsonSerializer.Serialize(writer, value.Shape, value.Shape.GetType(), options);

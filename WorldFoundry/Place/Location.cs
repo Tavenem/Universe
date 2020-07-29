@@ -45,6 +45,15 @@ namespace NeverFoundry.WorldFoundry.Place
         public Vector3[]? AbsolutePosition { get; private set; }
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string LocationIdItemTypeName = "IdItemType_Location";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public virtual string IdItemTypeName => LocationIdItemTypeName;
+
+        /// <summary>
         /// The id of the parent location which contains this instance, if any.
         /// </summary>
         public string? ParentId { get; private set; }
@@ -148,10 +157,22 @@ namespace NeverFoundry.WorldFoundry.Place
             AbsolutePosition = absolutePosition;
         }
 
+        private protected Location(
+            string id,
+            IShape shape,
+            string? parentId,
+            Vector3[]? absolutePosition) : base(id)
+        {
+            Shape = shape;
+            ParentId = parentId;
+            AbsolutePosition = absolutePosition;
+        }
+
         /// <summary>
         /// Initializes a new instance of <see cref="Location"/>.
         /// </summary>
         /// <param name="id">The unique ID of this item.</param>
+        /// <param name="idItemTypeName">The type discriminator.</param>
         /// <param name="shape">The shape of the location.</param>
         /// <param name="parentId">The ID of the location which contains this one.</param>
         /// <param name="absolutePosition">
@@ -174,7 +195,14 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </remarks>
         [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
-        public Location(string id, IShape shape, string? parentId, Vector3[]? absolutePosition) : base(id)
+        public Location(
+            string id,
+#pragma warning disable IDE0060 // Remove unused parameter: Used by deserializers.
+            string idItemTypeName,
+#pragma warning restore IDE0060 // Remove unused parameter
+            IShape shape,
+            string? parentId,
+            Vector3[]? absolutePosition) : base(id)
         {
             Shape = shape;
             ParentId = parentId;
@@ -183,6 +211,7 @@ namespace NeverFoundry.WorldFoundry.Place
 
         private Location(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
+            LocationIdItemTypeName,
             (IShape?)info.GetValue(nameof(Shape), typeof(IShape)) ?? SinglePoint.Origin,
             (string?)info.GetValue(nameof(ParentId), typeof(string)),
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])))

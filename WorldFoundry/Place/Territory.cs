@@ -27,6 +27,15 @@ namespace NeverFoundry.WorldFoundry.Place
         public IReadOnlyList<string> ChildIds { get; private set; }
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string TerritoryIdItemTypeName = "IdItemType_Territory";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => TerritoryIdItemTypeName;
+
+        /// <summary>
         /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
         public Territory() => ChildIds = ImmutableList<string>.Empty;
@@ -49,6 +58,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Initializes a new instance of <see cref="Territory"/>.
         /// </summary>
         /// <param name="id">The unique ID of this item.</param>
+        /// <param name="idItemTypeName">The type discriminator.</param>
         /// <param name="shape">The shape of the location.</param>
         /// <param name="childIds">
         /// The ids of the child locations contained within this instance.
@@ -76,6 +86,9 @@ namespace NeverFoundry.WorldFoundry.Place
         [System.Text.Json.Serialization.JsonConstructor]
         public Territory(
             string id,
+#pragma warning disable IDE0060 // Remove unused parameter: Used by deserializers.
+            string idItemTypeName,
+#pragma warning restore IDE0060 // Remove unused parameter
             IShape shape,
             IReadOnlyList<string> childIds,
             string? parentId = null,
@@ -84,6 +97,7 @@ namespace NeverFoundry.WorldFoundry.Place
 
         private Territory(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
+            TerritoryIdItemTypeName,
             (IShape?)info.GetValue(nameof(Shape), typeof(IShape)) ?? SinglePoint.Origin,
             (IReadOnlyList<string>?)info.GetValue(nameof(ChildIds), typeof(IReadOnlyList<string>)) ?? ImmutableList<string>.Empty,
             (string?)info.GetValue(nameof(ParentId), typeof(string)),

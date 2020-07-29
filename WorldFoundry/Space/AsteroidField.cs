@@ -45,6 +45,15 @@ namespace NeverFoundry.WorldFoundry.Space
         internal OrbitalParameters? _childOrbitalParameters;
         internal bool _toroidal;
 
+        /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string AsteroidFieldIdItemTypeName = "IdItemType_AsteroidField";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => AsteroidFieldIdItemTypeName;
+
         internal Number MajorRadius
         {
             get

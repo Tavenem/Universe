@@ -84,7 +84,7 @@ namespace NeverFoundry.WorldFoundry.Test
         [TestMethod]
         public void LocationTest()
         {
-            var value = new Location("Test_ID", new Sphere(new Number(10)), null, null);
+            var value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere(new Number(10)), null, null);
 
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
             Console.WriteLine(json);
@@ -99,7 +99,7 @@ namespace NeverFoundry.WorldFoundry.Test
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
-            value = new Location("Test_ID", new Sphere(new Number(10)), "Test_Parent_ID", new Vector3[] { Vector3.Zero, Vector3.UnitX });
+            value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere(new Number(10)), "Test_Parent_ID", new Vector3[] { Vector3.Zero, Vector3.UnitX });
 
             json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
             Console.WriteLine();
@@ -119,7 +119,7 @@ namespace NeverFoundry.WorldFoundry.Test
         [TestMethod]
         public void TerritoryTest()
         {
-            var value = new Territory("Test_ID", new Sphere(new Number(10)), new string[] { "Test_Child_ID" });
+            var value = new Territory("Test_ID", Territory.TerritoryIdItemTypeName, new Sphere(new Number(10)), new string[] { "Test_Child_ID" });
 
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
             Console.WriteLine(json);
@@ -134,7 +134,13 @@ namespace NeverFoundry.WorldFoundry.Test
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
-            value = new Territory("Test_ID", new Sphere(new Number(10)), new string[] { "Test_Child_ID" }, "Test_Parent_ID", new Vector3[] { Vector3.Zero, Vector3.UnitX });
+            value = new Territory(
+                "Test_ID",
+                Territory.TerritoryIdItemTypeName,
+                new Sphere(new Number(10)),
+                new string[] { "Test_Child_ID" },
+                "Test_Parent_ID",
+                new Vector3[] { Vector3.Zero, Vector3.UnitX });
 
             json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
             Console.WriteLine();
@@ -225,6 +231,7 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new SurfaceRegion(
                 "Test_ID",
+                SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
                 new byte[] { 1 },
@@ -251,6 +258,7 @@ namespace NeverFoundry.WorldFoundry.Test
 
             value = new SurfaceRegion(
                 "Test_ID",
+                SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
                 new byte[] { 1 },

@@ -38,6 +38,21 @@ namespace NeverFoundry.WorldFoundry.Space
 
             if (!reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
+                || !reader.ValueTextEquals(nameof(IIdItem.IdItemTypeName))
+                || !reader.Read()
+                || reader.TokenType != JsonTokenType.String)
+            {
+                throw new JsonException();
+            }
+            var idItemTypeName = reader.GetString();
+            if (string.IsNullOrEmpty(idItemTypeName)
+                || !string.Equals(idItemTypeName, BlackHole.BlackHoleIdItemTypeName))
+            {
+                throw new JsonException();
+            }
+
+            if (!reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName
                 || !reader.ValueTextEquals("seed")
                 || !reader.Read()
                 || !reader.TryGetUInt32(out var seed))
@@ -184,6 +199,7 @@ namespace NeverFoundry.WorldFoundry.Space
             writer.WriteStartObject();
 
             writer.WriteString(nameof(IIdItem.Id), value.Id);
+            writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
 
             writer.WriteNumber("seed", value._seed);
 

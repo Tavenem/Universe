@@ -55,6 +55,9 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             writer.WritePropertyName(nameof(IIdItem.Id));
             writer.WriteValue(location.Id);
 
+            writer.WritePropertyName(nameof(IIdItem.IdItemTypeName));
+            writer.WriteValue(location.IdItemTypeName);
+
             writer.WritePropertyName("seed");
             writer.WriteValue(location._seed);
 
@@ -120,6 +123,22 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             else
             {
                 id = idToken.Value<string>();
+            }
+
+            string idItemTypeName;
+            if (!jObj.TryGetValue(nameof(IIdItem.IdItemTypeName), out var idItemTypeNameToken)
+                || idItemTypeNameToken.Type != JTokenType.String)
+            {
+                throw new JsonException();
+            }
+            else
+            {
+                idItemTypeName = idItemTypeNameToken.Value<string>();
+            }
+            if (string.IsNullOrEmpty(idItemTypeName)
+                || !string.Equals(idItemTypeName, Star.StarIdItemTypeName))
+            {
+                throw new JsonException();
             }
 
             uint seed;

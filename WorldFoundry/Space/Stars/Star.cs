@@ -24,6 +24,15 @@ namespace NeverFoundry.WorldFoundry.Space
         private static readonly Number _MinBlueHypergiantMass = new Number(7.96, 31);
         private static readonly Number _SolarMass = new Number(6.955, 8);
 
+        /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string StarIdItemTypeName = "IdItemType_Star";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => StarIdItemTypeName;
+
         internal virtual bool IsHospitable => StarType switch
         {
             // False for brown dwarfs; their habitable zones, if any, are moving targets due to rapid

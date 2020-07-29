@@ -27,6 +27,15 @@ namespace NeverFoundry.WorldFoundry.Space
         internal static readonly Number StarSystemSpace = new Number(3.5, 16);
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string StarSystemIdItemTypeName = "IdItemType_StarSystem";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => StarSystemIdItemTypeName;
+
+        /// <summary>
         /// True if the primary <see cref="Star"/> in this system is a Population II <see
         /// cref="Star"/>; false if it is a Population I <see cref="Star"/>.
         /// </summary>

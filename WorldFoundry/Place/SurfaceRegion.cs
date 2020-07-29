@@ -126,6 +126,15 @@ namespace NeverFoundry.WorldFoundry.Place
         public bool HasWinterTemperatureMap => _temperatureMapWinter != null;
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string SurfaceRegionIdItemTypeName = "IdItemType_SurfaceRegion";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => SurfaceRegionIdItemTypeName;
+
+        /// <summary>
         /// Initializes a new instance of <see cref="SurfaceRegion"/>.
         /// </summary>
         /// <param name="planet">The planet on which this region is found.</param>
@@ -146,6 +155,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Initializes a new instance of <see cref="SurfaceRegion"/>.
         /// </summary>
         /// <param name="id">The unique ID of this item.</param>
+        /// <param name="idItemTypeName">The type discriminator.</param>
         /// <param name="shape">The shape of the location.</param>
         /// <param name="parentId">The ID of the location which contains this one.</param>
         /// <param name="depthMap">
@@ -195,6 +205,9 @@ namespace NeverFoundry.WorldFoundry.Place
         [JsonConstructor]
         public SurfaceRegion(
             string id,
+#pragma warning disable IDE0060 // Remove unused parameter: Used by deserializers.
+            string idItemTypeName,
+#pragma warning restore IDE0060 // Remove unused parameter
             IShape shape,
             string? parentId,
             byte[]? depthMap,
@@ -219,6 +232,7 @@ namespace NeverFoundry.WorldFoundry.Place
 
         private SurfaceRegion(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
+            SurfaceRegionIdItemTypeName,
             (IShape?)info.GetValue(nameof(Shape), typeof(IShape)) ?? SinglePoint.Origin,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (byte[]?)info.GetValue(nameof(_depthMap), typeof(byte[])),

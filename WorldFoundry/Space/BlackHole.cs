@@ -25,6 +25,15 @@ namespace NeverFoundry.WorldFoundry.Space
         private protected override string BaseTypeName => _supermassive ? "Supermassive Black Hole" : "Black Hole";
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string BlackHoleIdItemTypeName = "IdItemType_BlackHole";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => BlackHoleIdItemTypeName;
+
+        /// <summary>
         /// Initializes a new instance of <see cref="BlackHole"/> with the given parameters.
         /// </summary>
         /// <param name="parent">

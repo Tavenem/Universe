@@ -236,6 +236,15 @@ namespace NeverFoundry.WorldFoundry.Space
         public IMaterial Hydrosphere { get; private set; } = MathAndScience.Chemistry.Material.Empty;
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string PlanetoidIdItemTypeName = "IdItemType_Planetoid";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => PlanetoidIdItemTypeName;
+
+        /// <summary>
         /// Indicates whether this is an asteroid.
         /// </summary>
         public bool IsAsteroid => PlanetType.Asteroid.HasFlag(PlanetType);

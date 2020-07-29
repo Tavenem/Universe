@@ -43,6 +43,15 @@ namespace NeverFoundry.WorldFoundry.Space
         public string Designation => $"{TypeName} {Id}";
 
         /// <summary>
+        /// The type discriminator for this type.
+        /// </summary>
+        public const string CosmicLocationIdItemTypeName = "IdItemType_CosmicLocation";
+        /// <summary>
+        /// A built-in, read-only type discriminator.
+        /// </summary>
+        public override string IdItemTypeName => CosmicLocationIdItemTypeName;
+
+        /// <summary>
         /// The mass of this location's material, in kg.
         /// </summary>
         public Number Mass => Material.Mass;

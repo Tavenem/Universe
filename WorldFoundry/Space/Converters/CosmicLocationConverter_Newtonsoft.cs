@@ -97,6 +97,22 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 throw new JsonException();
             }
 
+            string idItemTypeName;
+            if (!jObj.TryGetValue(nameof(IIdItem.IdItemTypeName), out var idItemTypeNameToken)
+                || idItemTypeNameToken.Type != JTokenType.String)
+            {
+                throw new JsonException();
+            }
+            else
+            {
+                idItemTypeName = idItemTypeNameToken.Value<string>();
+            }
+            if (string.IsNullOrEmpty(idItemTypeName)
+                || !string.Equals(idItemTypeName, CosmicLocation.CosmicLocationIdItemTypeName))
+            {
+                throw new JsonException();
+            }
+
             string? parentId;
             if (!jObj.TryGetValue(nameof(CosmicLocation.Name), out var parentIdToken))
             {
@@ -273,6 +289,9 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
 
             writer.WritePropertyName(nameof(IIdItem.Id));
             writer.WriteValue(location.Id);
+
+            writer.WritePropertyName(nameof(IIdItem.IdItemTypeName));
+            writer.WriteValue(location.IdItemTypeName);
 
             writer.WritePropertyName("seed");
             writer.WriteValue(location._seed);
