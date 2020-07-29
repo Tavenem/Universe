@@ -238,7 +238,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string PlanetoidIdItemTypeName = "IdItemType_Planetoid";
+        public const string PlanetoidIdItemTypeName = ":Location:CosmicLocation:Planetoid:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

@@ -27,7 +27,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string BlackHoleIdItemTypeName = "IdItemType_BlackHole";
+        public const string BlackHoleIdItemTypeName = ":Location:CosmicLocation:BlackHole:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

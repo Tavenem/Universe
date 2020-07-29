@@ -27,7 +27,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string StarIdItemTypeName = "IdItemType_Star";
+        public const string StarIdItemTypeName = ":Location:CosmicLocation:Star:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

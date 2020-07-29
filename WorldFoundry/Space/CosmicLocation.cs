@@ -45,7 +45,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string CosmicLocationIdItemTypeName = "IdItemType_CosmicLocation";
+        public const string CosmicLocationIdItemTypeName = ":Location:CosmicLocation:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

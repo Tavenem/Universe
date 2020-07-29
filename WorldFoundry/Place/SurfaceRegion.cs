@@ -128,7 +128,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string SurfaceRegionIdItemTypeName = "IdItemType_SurfaceRegion";
+        public const string SurfaceRegionIdItemTypeName = ":Location:SurfaceRegion:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

@@ -29,7 +29,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string TerritoryIdItemTypeName = "IdItemType_Territory";
+        public const string TerritoryIdItemTypeName = ":Location:Territory:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>

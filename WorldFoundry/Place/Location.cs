@@ -47,7 +47,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string LocationIdItemTypeName = "IdItemType_Location";
+        public const string LocationIdItemTypeName = ":Location:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>
