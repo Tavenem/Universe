@@ -25,7 +25,7 @@ namespace NeverFoundry.WorldFoundry.Space
             if (reader.TokenType != JsonTokenType.StartObject
                 || !reader.Read()
                 || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(IIdItem.Id))
+                || !reader.ValueTextEquals("id")
                 || !reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
@@ -204,10 +204,9 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             var spectralClass = (SpectralClass)spectralClassInt;
 
-            if (!reader.Read()
-                || reader.TokenType != JsonTokenType.EndObject)
+            while (reader.TokenType != JsonTokenType.EndObject)
             {
-                throw new JsonException();
+                reader.Read();
             }
 
             return new Star(
@@ -234,7 +233,7 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             writer.WriteStartObject();
 
-            writer.WriteString(nameof(IIdItem.Id), value.Id);
+            writer.WriteString("id", value.Id);
             writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
 
             writer.WriteNumber("seed", value._seed);

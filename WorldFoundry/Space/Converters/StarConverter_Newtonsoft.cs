@@ -52,7 +52,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
 
             writer.WriteStartObject();
 
-            writer.WritePropertyName(nameof(IIdItem.Id));
+            writer.WritePropertyName("id");
             writer.WriteValue(location.Id);
 
             writer.WritePropertyName(nameof(IIdItem.IdItemTypeName));
@@ -115,7 +115,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
         internal object FromJObj(JObject jObj)
         {
             string id;
-            if (!jObj.TryGetValue(nameof(IIdItem.Id), out var idToken)
+            if (!jObj.TryGetValue("id", out var idToken)
                 || idToken.Type != JTokenType.String)
             {
                 throw new JsonException();
