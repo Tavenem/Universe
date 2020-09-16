@@ -632,7 +632,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var xResolution = elevationMap.Length;
             if (xResolution == 0)
             {
-                return new float[0][];
+                return Array.Empty<float[]>();
             }
             var yResolution = elevationMap[0].Length;
 
@@ -2776,7 +2776,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
                         if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                         {
-                            winterLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, tilt));
+                            winterLat = Math.Abs(Planetoid.GetSeasonalLatitudeFromDeclination(lat, tilt));
                             winterLatitudes.Add(lat, winterLat);
                         }
                         if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
@@ -2792,7 +2792,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
                         if (!summerLatitudes.TryGetValue(lat, out var summerLat))
                         {
-                            summerLat = Math.Abs(planet.GetSeasonalLatitudeFromDeclination(lat, -tilt));
+                            summerLat = Math.Abs(Planetoid.GetSeasonalLatitudeFromDeclination(lat, -tilt));
                             summerLatitudes.Add(lat, summerLat);
                         }
                         if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
@@ -2862,7 +2862,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             {
                                 var precipitation = planet.GetPrecipitation(
                                     planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
-                                    planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
+                                    Planetoid.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
                                     temperatureRanges[x][y].Min.Lerp(temperatureRanges[x][y].Max, lat < 0 ? 1 - proportionOfSummerAtMidpoint : proportionOfSummerAtMidpoint),
                                     proportionOfYear,
                                     out var snow);

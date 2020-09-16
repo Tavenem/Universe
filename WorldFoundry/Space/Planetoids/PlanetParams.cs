@@ -217,7 +217,7 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
                 ? albedo.Value.Clamp(0, 1)
                 : (double?)null;
             AtmosphericPressure = atmosphericPressure;
-            AtmosphericRequirements = atmosphericRequirements?.ToArray() ?? new SubstanceRequirement[0];
+            AtmosphericRequirements = atmosphericRequirements?.ToArray() ?? Array.Empty<SubstanceRequirement>();
             AxialTilt = axialTilt;
             EarthlikeAtmosphere = earthlikeAtmosphere;
             Eccentricity = eccentricity;
@@ -383,7 +383,6 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Albedo), Albedo);

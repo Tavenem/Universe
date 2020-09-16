@@ -20,7 +20,7 @@ namespace NeverFoundry.WorldFoundry
         /// <summary>
         /// A <see cref="FloatRange"/> with all values set to zero.
         /// </summary>
-        public static readonly FloatRange Zero = new FloatRange();
+        public static readonly FloatRange Zero;
 
         /// <summary>
         /// A <see cref="FloatRange"/> with the minimum set to 0, the average set to 0.5, and the
@@ -289,7 +289,6 @@ namespace NeverFoundry.WorldFoundry
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Min), Min);

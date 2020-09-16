@@ -275,7 +275,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(OrbitedMass), OrbitedMass);
@@ -524,6 +523,244 @@ namespace NeverFoundry.WorldFoundry.Space
                 argPeriapsis,
                 trueAnomaly);
             await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
+        }
+
+        /// <summary>Indicates whether the current object is equal to another object of the same type.</summary>
+        /// <param name="other">An object to compare with this object.</param>
+        /// <returns>
+        /// <see langword="true" /> if the current object is equal to the <paramref name="other" />
+        /// parameter; otherwise, <see langword="false" />.
+        /// </returns>
+        public bool Equals(Orbit other) => Apoapsis.Equals(other.Apoapsis)
+            && Eccentricity == other.Eccentricity
+            && Epoch.Equals(other.Epoch)
+            && Inclination == other.Inclination
+            && MeanLongitude == other.MeanLongitude
+            && MeanMotion.Equals(other.MeanMotion)
+            && OrbitedMass.Equals(other.OrbitedMass)
+            && OrbitedPosition.Equals(other.OrbitedPosition)
+            && Periapsis.Equals(other.Periapsis)
+            && Period.Equals(other.Period)
+            && R0.Equals(other.R0)
+            && Radius.Equals(other.Radius)
+            && SemiMajorAxis.Equals(other.SemiMajorAxis)
+            && StandardGravitationalParameter.Equals(other.StandardGravitationalParameter)
+            && TrueAnomaly == other.TrueAnomaly
+            && V0.Equals(other.V0);
+
+        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
+        /// <param name="obj">The object to compare with the current instance.</param>
+        /// <returns>
+        /// <see langword="true" /> if <paramref name="obj" /> and this instance are the same type
+        /// and represent the same value; otherwise, <see langword="false" />.
+        /// </returns>
+        public override bool Equals(object? obj) => obj is Orbit orbit && Equals(orbit);
+
+        /// <summary>
+        /// Gets the eccentric anomaly of the orbit at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The eccentric anomaly of the orbit, in radians.</returns>
+        public double GetEccentricAnomaly(double t)
+            => Math.Atan2(Math.Sqrt(1 - (Eccentricity * Eccentricity)) * Math.Sin(t), Eccentricity + Math.Cos(t));
+
+        /// <summary>
+        /// Gets the ecliptic longitude of the orbited body from the perspective of the orbiting
+        /// body at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The ecliptic longitude of the orbited body from the perspective of the orbiting
+        /// body, in radians (normalized to 0-2π).</returns>
+        public double GetEclipticLongitudeAtTrueAnomaly(double t)
+            => (LongitudeOfPeriapsis + t) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+
+        /// <summary>Returns the hash code for this instance.</summary>
+        /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
+        public override int GetHashCode()
+        {
+            var hash = new HashCode();
+            hash.Add(Apoapsis);
+            hash.Add(Eccentricity);
+            hash.Add(Epoch);
+            hash.Add(Inclination);
+            hash.Add(MeanLongitude);
+            hash.Add(MeanMotion);
+            hash.Add(OrbitedMass);
+            hash.Add(OrbitedPosition);
+            hash.Add(Periapsis);
+            hash.Add(Period);
+            hash.Add(R0);
+            hash.Add(Radius);
+            hash.Add(SemiMajorAxis);
+            hash.Add(StandardGravitationalParameter);
+            hash.Add(TrueAnomaly);
+            hash.Add(V0);
+            return hash.ToHashCode();
+        }
+
+        /// <summary>
+        /// Gets the mean anomaly of the orbit at a given true anomaly.
+        /// </summary>
+        /// <param name="t">The true anomaly.</param>
+        /// <returns>The eccentric anomaly of the orbit, in radians (normalized to 0-2π).</returns>
+        public double GetMeanAnomaly(double t)
+        {
+            var eccentricAnomaly = GetEccentricAnomaly(t);
+            return eccentricAnomaly - (Eccentricity * Math.Sin(eccentricAnomaly));
+        }
+
+        /// <summary>
+        /// Gets orbital parameters at a given time.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
+        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Number t)
+        {
+            var meanAnomaly = MeanMotion * t % MathConstants.TwoPI;
+            return ((double)((MeanLongitude + meanAnomaly) % MathConstants.TwoPI), meanAnomaly);
+        }
+
+        /// <summary>
+        /// Gets orbital parameters at a given time.
+        /// </summary>
+        /// <param name="moment">The time at which to determine orbital parameters.</param>
+        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
+        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Duration moment)
+        {
+            var t = (moment >= Epoch
+                ? moment - Epoch
+                : Epoch - moment).ToSeconds() % Period;
+            if (moment < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetMeanLongitudeAndAnomalyAtTime(t);
+        }
+
+        /// <summary>
+        /// Gets an <see cref="OrbitalParameters"/> instance which represents this orbit.
+        /// </summary>
+        /// <returns>
+        /// An <see cref="OrbitalParameters"/> instance which represents this orbit.
+        /// </returns>
+        public OrbitalParameters GetOrbitalParameters()
+        {
+            var xz = new Vector3(R0.X, 0, R0.Z);
+            var angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
+
+            // Calculate the perifocal vectors
+            var cosineAngleAscending = Number.Cos(angleAscending);
+            var sineAngleAscending = Number.Sin(angleAscending);
+            var sineInclination = Number.Sin(Inclination);
+
+            var argumentPeriapsis = Number.Atan2(R0.Z / sineInclination, (R0.X * cosineAngleAscending) + (R0.Y * sineAngleAscending) - TrueAnomaly);
+
+            return new OrbitalParameters(
+              OrbitedMass,
+              OrbitedPosition,
+              Periapsis,
+              Eccentricity,
+              Inclination,
+              (double)angleAscending,
+              (double)argumentPeriapsis,
+              TrueAnomaly);
+        }
+
+        /// <summary>
+        /// Gets orbital state vectors at a given time.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The position vector (relative to the orbited object), and the velocity
+        /// vector.</returns>
+        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Number t)
+        {
+            // Universal variable formulas; Newton's method
+
+            var sqrtSGP = Number.Sqrt(StandardGravitationalParameter);
+            var accel = Radius / V0.Length();
+            var f = 1 - (_alpha * Radius);
+
+            // Initial guess for x
+            var x = sqrtSGP * _alpha.Abs() * t;
+
+            // Find acceptable x
+            var ratio = GetUniversalVariableFormulaRatio(x, t, sqrtSGP, accel, f);
+            while (ratio.Abs() > Tolerance)
+            {
+                x -= ratio;
+                ratio = GetUniversalVariableFormulaRatio(x, t, sqrtSGP, accel, f);
+            }
+
+            var x2 = x * x;
+            var x3 = x2 * x;
+            var ax2 = _alpha * x2;
+            var ssax2 = StumpffS(ax2);
+            var scax2 = StumpffC(ax2);
+            var ssax2x3 = ssax2 * x3;
+
+            var uvf = 1 - (x2 / Radius * scax2);
+            var uvg = t - (1 / sqrtSGP * ssax2x3);
+
+            var r = (R0 * uvf) + (V0 * uvg);
+            var rLength = r.Length();
+
+            var uvfp = sqrtSGP / (rLength * Radius) * ((_alpha * ssax2x3) - x);
+            var uvfgp = 1 - (x2 / rLength * scax2);
+
+            var v = (R0 * uvfp) + (V0 * uvfgp);
+
+            return (r, v);
+        }
+
+        /// <summary>
+        /// Gets orbital state vectors at a given time.
+        /// </summary>
+        /// <param name="moment">The time at which to determine orbital state vectors.</param>
+        /// <returns>The position vector (relative to the orbited object), and the velocity
+        /// vector.</returns>
+        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Instant moment)
+        {
+            var t = (moment.Offset >= Epoch
+                ? moment.Offset - Epoch
+                : Epoch - moment.Offset).ToSeconds() % Period;
+            if (moment.Offset < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetStateVectorsAtTime(t);
+        }
+
+        /// <summary>
+        /// Gets the true anomaly of this orbit at a given time.
+        /// </summary>
+        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
+        /// epoch (time of pericenter).</param>
+        /// <returns>The true anomaly, in radians.</returns>
+        public double GetTrueAnomalyAtTime(Number t)
+        {
+            var (r, _) = GetStateVectorsAtTime(t);
+
+            var p = SemiMajorAxis * (1 - (Eccentricity * Eccentricity));
+            return (double)Number.Atan2((p / StandardGravitationalParameter).Sqrt() * Vector3.Dot(r, r), p - Radius);
+        }
+
+        /// <summary>
+        /// Gets the true anomaly of this orbit at a given time.
+        /// </summary>
+        /// <param name="moment">The moment at which to determine orbital state vectors.</param>
+        /// <returns>The true anomaly, in radians.</returns>
+        public double GetTrueAnomalyAtTime(Instant moment)
+        {
+            var t = (moment.Offset >= Epoch
+                ? moment.Offset - Epoch
+                : Epoch - moment.Offset).ToSeconds() % Period;
+            if (moment.Offset < Epoch)
+            {
+                t = Period - t;
+            }
+            return GetTrueAnomalyAtTime(t);
         }
 
         /// <summary>
@@ -977,244 +1214,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 argPeriapsis,
                 trueAnomaly);
 
-        /// <summary>Indicates whether the current object is equal to another object of the same type.</summary>
-        /// <param name="other">An object to compare with this object.</param>
-        /// <returns>
-        /// <see langword="true" /> if the current object is equal to the <paramref name="other" />
-        /// parameter; otherwise, <see langword="false" />.
-        /// </returns>
-        public bool Equals(Orbit other) => Apoapsis.Equals(other.Apoapsis)
-            && Eccentricity == other.Eccentricity
-            && Epoch.Equals(other.Epoch)
-            && Inclination == other.Inclination
-            && MeanLongitude == other.MeanLongitude
-            && MeanMotion.Equals(other.MeanMotion)
-            && OrbitedMass.Equals(other.OrbitedMass)
-            && OrbitedPosition.Equals(other.OrbitedPosition)
-            && Periapsis.Equals(other.Periapsis)
-            && Period.Equals(other.Period)
-            && R0.Equals(other.R0)
-            && Radius.Equals(other.Radius)
-            && SemiMajorAxis.Equals(other.SemiMajorAxis)
-            && StandardGravitationalParameter.Equals(other.StandardGravitationalParameter)
-            && TrueAnomaly == other.TrueAnomaly
-            && V0.Equals(other.V0);
-
-        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
-        /// <param name="obj">The object to compare with the current instance.</param>
-        /// <returns>
-        /// <see langword="true" /> if <paramref name="obj" /> and this instance are the same type
-        /// and represent the same value; otherwise, <see langword="false" />.
-        /// </returns>
-        public override bool Equals(object? obj) => obj is Orbit orbit && Equals(orbit);
-
-        /// <summary>
-        /// Gets the eccentric anomaly of the orbit at a given true anomaly.
-        /// </summary>
-        /// <param name="t">The true anomaly.</param>
-        /// <returns>The eccentric anomaly of the orbit, in radians.</returns>
-        public double GetEccentricAnomaly(double t)
-            => Math.Atan2(Math.Sqrt(1 - (Eccentricity * Eccentricity)) * Math.Sin(t), Eccentricity + Math.Cos(t));
-
-        /// <summary>
-        /// Gets the ecliptic longitude of the orbited body from the perspective of the orbiting
-        /// body at a given true anomaly.
-        /// </summary>
-        /// <param name="t">The true anomaly.</param>
-        /// <returns>The ecliptic longitude of the orbited body from the perspective of the orbiting
-        /// body, in radians (normalized to 0-2π).</returns>
-        public double GetEclipticLongitudeAtTrueAnomaly(double t)
-            => (LongitudeOfPeriapsis + t) % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-
-        /// <summary>Returns the hash code for this instance.</summary>
-        /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
-        public override int GetHashCode()
-        {
-            var hash = new HashCode();
-            hash.Add(Apoapsis);
-            hash.Add(Eccentricity);
-            hash.Add(Epoch);
-            hash.Add(Inclination);
-            hash.Add(MeanLongitude);
-            hash.Add(MeanMotion);
-            hash.Add(OrbitedMass);
-            hash.Add(OrbitedPosition);
-            hash.Add(Periapsis);
-            hash.Add(Period);
-            hash.Add(R0);
-            hash.Add(Radius);
-            hash.Add(SemiMajorAxis);
-            hash.Add(StandardGravitationalParameter);
-            hash.Add(TrueAnomaly);
-            hash.Add(V0);
-            return hash.ToHashCode();
-        }
-
-        /// <summary>
-        /// Gets the mean anomaly of the orbit at a given true anomaly.
-        /// </summary>
-        /// <param name="t">The true anomaly.</param>
-        /// <returns>The eccentric anomaly of the orbit, in radians (normalized to 0-2π).</returns>
-        public double GetMeanAnomaly(double t)
-        {
-            var eccentricAnomaly = GetEccentricAnomaly(t);
-            return eccentricAnomaly - (Eccentricity * Math.Sin(eccentricAnomaly));
-        }
-
-        /// <summary>
-        /// Gets orbital parameters at a given time.
-        /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
-        /// epoch (time of pericenter).</param>
-        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
-        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Number t)
-        {
-            var meanAnomaly = MeanMotion * t % MathConstants.TwoPI;
-            return ((double)((MeanLongitude + meanAnomaly) % MathConstants.TwoPI), meanAnomaly);
-        }
-
-        /// <summary>
-        /// Gets orbital parameters at a given time.
-        /// </summary>
-        /// <param name="moment">The time at which to determine orbital parameters.</param>
-        /// <returns>The mean longitude and mean anomaly, in radians (normalized to 0-2π).</returns>
-        public (double meanLongitude, Number meanAnomaly) GetMeanLongitudeAndAnomalyAtTime(Duration moment)
-        {
-            var t = (moment >= Epoch
-                ? moment - Epoch
-                : Epoch - moment).ToSeconds() % Period;
-            if (moment < Epoch)
-            {
-                t = Period - t;
-            }
-            return GetMeanLongitudeAndAnomalyAtTime(t);
-        }
-
-        /// <summary>
-        /// Gets an <see cref="OrbitalParameters"/> instance which represents this orbit.
-        /// </summary>
-        /// <returns>
-        /// An <see cref="OrbitalParameters"/> instance which represents this orbit.
-        /// </returns>
-        public OrbitalParameters GetOrbitalParameters()
-        {
-            var xz = new Vector3(R0.X, 0, R0.Z);
-            var angleAscending = Vector3.UnitX.Angle(xz) - MathConstants.HalfPI;
-
-            // Calculate the perifocal vectors
-            var cosineAngleAscending = Number.Cos(angleAscending);
-            var sineAngleAscending = Number.Sin(angleAscending);
-            var sineInclination = Number.Sin(Inclination);
-
-            var argumentPeriapsis = Number.Atan2(R0.Z / sineInclination, (R0.X * cosineAngleAscending) + (R0.Y * sineAngleAscending) - TrueAnomaly);
-
-            return new OrbitalParameters(
-              OrbitedMass,
-              OrbitedPosition,
-              Periapsis,
-              Eccentricity,
-              Inclination,
-              (double)angleAscending,
-              (double)argumentPeriapsis,
-              TrueAnomaly);
-        }
-
-        /// <summary>
-        /// Gets orbital state vectors at a given time.
-        /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
-        /// epoch (time of pericenter).</param>
-        /// <returns>The position vector (relative to the orbited object), and the velocity
-        /// vector.</returns>
-        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Number t)
-        {
-            // Universal variable formulas; Newton's method
-
-            var sqrtSGP = Number.Sqrt(StandardGravitationalParameter);
-            var accel = Radius / V0.Length();
-            var f = 1 - (_alpha * Radius);
-
-            // Initial guess for x
-            var x = sqrtSGP * _alpha.Abs() * t;
-
-            // Find acceptable x
-            var ratio = GetUniversalVariableFormulaRatio(x, t, sqrtSGP, accel, f);
-            while (ratio.Abs() > Tolerance)
-            {
-                x -= ratio;
-                ratio = GetUniversalVariableFormulaRatio(x, t, sqrtSGP, accel, f);
-            }
-
-            var x2 = x * x;
-            var x3 = x2 * x;
-            var ax2 = _alpha * x2;
-            var ssax2 = StumpffS(ax2);
-            var scax2 = StumpffC(ax2);
-            var ssax2x3 = ssax2 * x3;
-
-            var uvf = 1 - (x2 / Radius * scax2);
-            var uvg = t - (1 / sqrtSGP * ssax2x3);
-
-            var r = (R0 * uvf) + (V0 * uvg);
-            var rLength = r.Length();
-
-            var uvfp = sqrtSGP / (rLength * Radius) * ((_alpha * ssax2x3) - x);
-            var uvfgp = 1 - (x2 / rLength * scax2);
-
-            var v = (R0 * uvfp) + (V0 * uvfgp);
-
-            return (r, v);
-        }
-
-        /// <summary>
-        /// Gets orbital state vectors at a given time.
-        /// </summary>
-        /// <param name="moment">The time at which to determine orbital state vectors.</param>
-        /// <returns>The position vector (relative to the orbited object), and the velocity
-        /// vector.</returns>
-        public (Vector3 position, Vector3 velocity) GetStateVectorsAtTime(Instant moment)
-        {
-            var t = (moment.Offset >= Epoch
-                ? moment.Offset - Epoch
-                : Epoch - moment.Offset).ToSeconds() % Period;
-            if (moment.Offset < Epoch)
-            {
-                t = Period - t;
-            }
-            return GetStateVectorsAtTime(t);
-        }
-
-        /// <summary>
-        /// Gets the true anomaly of this orbit at a given time.
-        /// </summary>
-        /// <param name="t">The number of seconds which have elapsed since the orbit's defining
-        /// epoch (time of pericenter).</param>
-        /// <returns>The true anomaly, in radians.</returns>
-        public double GetTrueAnomalyAtTime(Number t)
-        {
-            var (r, _) = GetStateVectorsAtTime(t);
-
-            var p = SemiMajorAxis * (1 - (Eccentricity * Eccentricity));
-            return (double)Number.Atan2((p / StandardGravitationalParameter).Sqrt() * Vector3.Dot(r, r), p - Radius);
-        }
-
-        /// <summary>
-        /// Gets the true anomaly of this orbit at a given time.
-        /// </summary>
-        /// <param name="moment">The moment at which to determine orbital state vectors.</param>
-        /// <returns>The true anomaly, in radians.</returns>
-        public double GetTrueAnomalyAtTime(Instant moment)
-        {
-            var t = (moment.Offset >= Epoch
-                ? moment.Offset - Epoch
-                : Epoch - moment.Offset).ToSeconds() % Period;
-            if (moment.Offset < Epoch)
-            {
-                t = Period - t;
-            }
-            return GetTrueAnomalyAtTime(t);
-        }
-
         internal static Number GetHillSphereRadius(Number orbitingMass, Number orbitedMass, Number semiMajorAxis, double eccentricity)
             => semiMajorAxis * (1 - eccentricity) * (orbitingMass / (3 * orbitedMass)).CubeRoot();
 
@@ -1242,21 +1241,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal Number GetSphereOfInfluenceRadius(Number orbitingMass) => SemiMajorAxis * Number.Pow(orbitingMass / OrbitedMass, new Number(2) / new Number(5));
 
-        private Number GetUniversalVariableFormulaRatio(Number x, Number t, Number sqrtSGP, Number accel, Number f)
-        {
-            var x2 = x * x;
-            var x3 = x2 * x;
-            var z = _alpha * x2;
-            var ssz = StumpffS(z);
-            var scz = StumpffC(z);
-            var x2scz = x2 * scz;
-
-            var n = (accel / sqrtSGP * x2scz) + (f * x3 * ssz) + (Radius * x) - (sqrtSGP * t);
-            var d = (accel / sqrtSGP * x * (1 - (_alpha * x2 * ssz))) + (f * x2scz) + Radius;
-            return n / d;
-        }
-
-        private Number StumpffC(Number x)
+        private static Number StumpffC(Number x)
         {
             if (x.IsZero)
             {
@@ -1272,7 +1257,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private Number StumpffS(Number x)
+        private static Number StumpffS(Number x)
         {
             if (x.IsZero)
             {
@@ -1288,6 +1273,20 @@ namespace NeverFoundry.WorldFoundry.Space
                 var rootNegX = Number.Sqrt(-x);
                 return (Number.Sinh(rootNegX) - rootNegX) / rootNegX.Cube();
             }
+        }
+
+        private Number GetUniversalVariableFormulaRatio(Number x, Number t, Number sqrtSGP, Number accel, Number f)
+        {
+            var x2 = x * x;
+            var x3 = x2 * x;
+            var z = _alpha * x2;
+            var ssz = StumpffS(z);
+            var scz = StumpffC(z);
+            var x2scz = x2 * scz;
+
+            var n = (accel / sqrtSGP * x2scz) + (f * x3 * ssz) + (Radius * x) - (sqrtSGP * t);
+            var d = (accel / sqrtSGP * x * (1 - (_alpha * x2 * ssz))) + (f * x2scz) + Radius;
+            return n / d;
         }
 
         /// <summary>Indicates whether two objects are equal.</summary>

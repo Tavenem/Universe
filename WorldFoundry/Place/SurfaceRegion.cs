@@ -254,7 +254,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
@@ -297,7 +296,7 @@ namespace NeverFoundry.WorldFoundry.Place
         {
             if (_precipitationMaps is null)
             {
-                return new Bitmap[0];
+                return Array.Empty<Bitmap>();
             }
             var maps = new Bitmap[_precipitationMaps.Length];
             for (var i = 0; i < _precipitationMaps.Length; i++)
@@ -315,7 +314,7 @@ namespace NeverFoundry.WorldFoundry.Place
         {
             if (_snowfallMaps is null)
             {
-                return new Bitmap[0];
+                return Array.Empty<Bitmap>();
             }
             var maps = new Bitmap[_snowfallMaps.Length];
             for (var i = 0; i < _snowfallMaps.Length; i++)

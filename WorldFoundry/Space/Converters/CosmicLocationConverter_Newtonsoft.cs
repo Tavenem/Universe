@@ -279,7 +279,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 return;
             }
 
-            if (!(value is CosmicLocation location))
+            if (value is not CosmicLocation location)
             {
                 writer.WriteNull();
                 return;

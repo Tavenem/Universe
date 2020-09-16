@@ -125,12 +125,12 @@ namespace NeverFoundry.WorldFoundry.Space
                     var sb = new StringBuilder();
                     if (!string.IsNullOrEmpty(TypeNamePrefix))
                     {
-                        sb.Append(TypeNamePrefix).Append(" ");
+                        sb.Append(TypeNamePrefix).Append(' ');
                     }
                     sb.Append(BaseTypeName);
                     if (!string.IsNullOrEmpty(TypeNameSuffix))
                     {
-                        sb.Append(" ").Append(TypeNameSuffix);
+                        sb.Append(' ').Append(TypeNameSuffix);
                     }
                     _typeName = sb.ToString();
                 }
@@ -686,7 +686,7 @@ namespace NeverFoundry.WorldFoundry.Space
                         CosmicStructureType.Planetoid => Planetoid.GiantSpace,
                         _ => Number.Zero,
                     };
-                    position = instance.GetOpenSpace(space, children.Cast<Location>().ToList());
+                    position = instance.GetOpenSpace(space, children.Select(x => x as Location).ToList());
                 }
             }
             if (position.HasValue)
@@ -1121,7 +1121,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);

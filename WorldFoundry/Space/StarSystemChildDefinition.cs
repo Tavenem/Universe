@@ -214,7 +214,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// langword="false"/>.</returns>
         public override bool IsSatisfiedBy(ChildDefinition other)
         {
-            if (!(other is StarSystemChildDefinition ss)
+            if (other is not StarSystemChildDefinition ss
                 || (ss.StarType & StarType) == StarType.None
                 || ss.PopulationII != PopulationII
                 || ss.AllowBinary != AllowBinary)
@@ -247,7 +247,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <paramref name="location"/>; otherwise <see langword="false"/>.</returns>
         public override bool IsSatisfiedBy(CosmicLocation location)
         {
-            if (!(location is StarSystem ss))
+            if (location is not StarSystem ss)
             {
                 return false;
             }

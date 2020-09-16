@@ -46,7 +46,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
         /// <param name="serializer">The calling serializer.</param>
         public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            if (value is null || !(value is StarSystem location))
+            if (value is null || value is not StarSystem location)
             {
                 writer.WriteNull();
                 return;
@@ -325,7 +325,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
 
             if (!jObj.TryGetValue(nameof(StarSystem.StarIDs), out var starIdsToken)
                 || starIdsToken.Type != JTokenType.Array
-                || !(starIdsToken is JArray starIdsArray))
+                || starIdsToken is not JArray starIdsArray)
             {
                 throw new JsonException();
             }

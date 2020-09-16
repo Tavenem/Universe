@@ -46,7 +46,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
         /// <param name="serializer">The calling serializer.</param>
         public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            if (value is null || !(value is Planetoid location))
+            if (value is null || value is not Planetoid location)
             {
                 writer.WriteNull();
                 return;
@@ -455,7 +455,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 satelliteIds = null;
             }
             else if (satelliteIDsToken.Type != JTokenType.Array
-                || !(satelliteIDsToken is JArray satelliteIdsArray))
+                || satelliteIDsToken is not JArray satelliteIdsArray)
             {
                 throw new JsonException();
             }
@@ -474,7 +474,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 rings = null;
             }
             else if (ringsToken.Type != JTokenType.Array
-                || !(ringsToken is JArray ringsArray))
+                || ringsToken is not JArray ringsArray)
             {
                 throw new JsonException();
             }
@@ -556,7 +556,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 surfaceRegions = null;
             }
             else if (surfaceRegionsToken.Type != JTokenType.Array
-                || !(surfaceRegionsToken is JArray surfaceRegionsArray))
+                || surfaceRegionsToken is not JArray surfaceRegionsArray)
             {
                 throw new JsonException();
             }

@@ -105,8 +105,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         private HydrologyMaps(SerializationInfo info, StreamingContext context) : this(
-            (float[][]?)info.GetValue(nameof(Depth), typeof(float[,])) ?? new float[0][],
-            (float[][]?)info.GetValue(nameof(Flow), typeof(float[,])) ?? new float[0][],
+            (float[][]?)info.GetValue(nameof(Depth), typeof(float[,])) ?? Array.Empty<float[]>(),
+            (float[][]?)info.GetValue(nameof(Flow), typeof(float[,])) ?? Array.Empty<float[]>(),
             (double?)info.GetValue(nameof(MaxFlow), typeof(double)) ?? default)
         { }
 
@@ -118,7 +118,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Depth), Depth);

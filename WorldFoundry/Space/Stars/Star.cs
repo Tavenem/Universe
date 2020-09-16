@@ -131,7 +131,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     // enum labels, so this one must be converted.
                     if (LuminosityClass == LuminosityClass.Zero)
                     {
-                        sb.Append("0");
+                        sb.Append('0');
                     }
                     else if (LuminosityClass != LuminosityClass.None
                         && LuminosityClass != LuminosityClass.sd
@@ -397,7 +397,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
@@ -474,6 +473,51 @@ namespace NeverFoundry.WorldFoundry.Space
                 numTerrestrial = Math.Max(0, numPlanets - numGiants - numIceGiants);
             }
             return (numGiants, numIceGiants, numTerrestrial);
+        }
+
+        private static SpectralClass GetSpectralClassFromTemperature(Number temperature)
+        {
+            // Only applies to the standard classes (excludes W).
+            if (temperature < 500)
+            {
+                return SpectralClass.Y;
+            }
+            else if (temperature < 1300)
+            {
+                return SpectralClass.T;
+            }
+            else if (temperature < 2400)
+            {
+                return SpectralClass.L;
+            }
+            else if (temperature < 3700)
+            {
+                return SpectralClass.M;
+            }
+            else if (temperature < 5200)
+            {
+                return SpectralClass.K;
+            }
+            else if (temperature < 6000)
+            {
+                return SpectralClass.G;
+            }
+            else if (temperature < 7500)
+            {
+                return SpectralClass.F;
+            }
+            else if (temperature < 10000)
+            {
+                return SpectralClass.A;
+            }
+            else if (temperature < 30000)
+            {
+                return SpectralClass.B;
+            }
+            else
+            {
+                return SpectralClass.O;
+            }
         }
 
         private void Configure(
@@ -751,51 +795,6 @@ namespace NeverFoundry.WorldFoundry.Space
             var radius = d.IsNearlyZero() ? Number.Zero : Math.Sqrt(Luminosity / d);
             var flattening = (Number)randomizer.NormalDistributionSample(0.15, 0.05, minimum: 0);
             return new Ellipsoid(radius, radius * (1 - flattening), position);
-        }
-
-        private SpectralClass GetSpectralClassFromTemperature(Number temperature)
-        {
-            // Only applies to the standard classes (excludes W).
-            if (temperature < 500)
-            {
-                return SpectralClass.Y;
-            }
-            else if (temperature < 1300)
-            {
-                return SpectralClass.T;
-            }
-            else if (temperature < 2400)
-            {
-                return SpectralClass.L;
-            }
-            else if (temperature < 3700)
-            {
-                return SpectralClass.M;
-            }
-            else if (temperature < 5200)
-            {
-                return SpectralClass.K;
-            }
-            else if (temperature < 6000)
-            {
-                return SpectralClass.G;
-            }
-            else if (temperature < 7500)
-            {
-                return SpectralClass.F;
-            }
-            else if (temperature < 10000)
-            {
-                return SpectralClass.A;
-            }
-            else if (temperature < 30000)
-            {
-                return SpectralClass.B;
-            }
-            else
-            {
-                return SpectralClass.O;
-            }
         }
 
         private ISubstanceReference GetSubstance()

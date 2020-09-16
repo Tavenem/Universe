@@ -10,6 +10,7 @@ using NeverFoundry.WorldFoundry.Climate;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.Utilities;
 using NeverFoundry.WorldFoundry.WorldGrids;
 using System;
 using System.Collections.Generic;
@@ -1158,71 +1159,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return (planet, children);
         }
 
-        internal static Number GetSpaceForType(PlanetType type) => type switch
-        {
-            PlanetType.AsteroidC => _AsteroidSpace,
-            PlanetType.AsteroidM => _AsteroidSpace,
-            PlanetType.AsteroidS => _AsteroidSpace,
-            PlanetType.Comet => _CometSpace,
-            PlanetType.Dwarf => _DwarfSpace,
-            PlanetType.LavaDwarf => _DwarfSpace,
-            PlanetType.RockyDwarf => _DwarfSpace,
-            PlanetType.GasGiant => GiantSpace,
-            PlanetType.IceGiant => GiantSpace,
-            _ => _TerrestrialSpace,
-        };
-
-        private static byte[] GetByteArray(Bitmap image)
-        {
-            using var stream = new MemoryStream();
-            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
-            return stream.ToArray();
-        }
-
-        private static double GetDensity(Reconstitution reconstitution, PlanetType planetType)
-        {
-            if (planetType == PlanetType.GasGiant)
-            {
-                // Relatively low chance of a "puffy" giant (Saturn-like, low-density).
-                return reconstitution.GetDouble(5) <= 0.2
-                    ? reconstitution.GetDouble(6)
-                    : reconstitution.GetDouble(7);
-            }
-            if (planetType == PlanetType.IceGiant)
-            {
-                // No "puffy" ice giants.
-                return reconstitution.GetDouble(7);
-            }
-            if (planetType == PlanetType.Iron)
-            {
-                return reconstitution.GetDouble(8);
-            }
-            if (PlanetType.AnyTerrestrial.HasFlag(planetType))
-            {
-                return reconstitution.GetDouble(9);
-            }
-
-            return planetType switch
-            {
-                PlanetType.Dwarf => DensityForDwarf,
-                PlanetType.LavaDwarf => 4000,
-                PlanetType.RockyDwarf => 4000,
-                _ => 2000,
-            };
-        }
-
-        private static Number GetMaxMassForType(PlanetType planetType) => planetType switch
-        {
-            PlanetType.Dwarf => _DwarfMaxMassForType,
-            PlanetType.LavaDwarf => _DwarfMaxMassForType,
-            PlanetType.RockyDwarf => _DwarfMaxMassForType,
-            PlanetType.GasGiant => _GiantMaxMassForType,
-            PlanetType.IceGiant => _GiantMaxMassForType,
-            _ => _TerrestrialMaxMassForType,
-        };
-
-        private static Number GetRadiusForMass(Number density, Number mass) => (mass / density / MathConstants.FourThirdsPI).CubeRoot();
-
         /// <summary>
         /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
         /// instance.
@@ -2002,7 +1938,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
@@ -2139,7 +2074,7 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             if (_precipitationMaps is null)
             {
-                return new Bitmap[0];
+                return Array.Empty<Bitmap>();
             }
             var maps = new Bitmap[_precipitationMaps.Length];
             for (var i = 0; i < _precipitationMaps.Length; i++)
@@ -2372,7 +2307,7 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             if (_snowfallMaps is null)
             {
-                return new Bitmap[0];
+                return Array.Empty<Bitmap>();
             }
             var maps = new Bitmap[_snowfallMaps.Length];
             for (var i = 0; i < _snowfallMaps.Length; i++)
@@ -2784,6 +2719,34 @@ namespace NeverFoundry.WorldFoundry.Space
                 : Math.Atan2(u.X, u.Z);
         }
 
+        internal static double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
+        {
+            var seasonalLatitude = latitude + solarDeclination;
+            if (seasonalLatitude > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                return Math.PI - seasonalLatitude;
+            }
+            else if (seasonalLatitude < -MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                return -seasonalLatitude - Math.PI;
+            }
+            return seasonalLatitude;
+        }
+
+        internal static Number GetSpaceForType(PlanetType type) => type switch
+        {
+            PlanetType.AsteroidC => _AsteroidSpace,
+            PlanetType.AsteroidM => _AsteroidSpace,
+            PlanetType.AsteroidS => _AsteroidSpace,
+            PlanetType.Comet => _CometSpace,
+            PlanetType.Dwarf => _DwarfSpace,
+            PlanetType.LavaDwarf => _DwarfSpace,
+            PlanetType.RockyDwarf => _DwarfSpace,
+            PlanetType.GasGiant => GiantSpace,
+            PlanetType.IceGiant => GiantSpace,
+            _ => _TerrestrialSpace,
+        };
+
         internal float[][] GetDepthMap(int width, int height)
             => _depthMap.ImageToFloatSurfaceMap(width, height);
 
@@ -2793,7 +2756,7 @@ namespace NeverFoundry.WorldFoundry.Space
             using var image = _elevationMap.ToImage();
             if (image is null)
             {
-                return new double[0][];
+                return Array.Empty<double[]>();
             }
             return image.ImageToDoubleSurfaceMap(out max, width, height);
         }
@@ -2943,20 +2906,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return maps;
         }
 
-        internal double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
-        {
-            var seasonalLatitude = latitude + solarDeclination;
-            if (seasonalLatitude > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
-            {
-                return Math.PI - seasonalLatitude;
-            }
-            else if (seasonalLatitude < -MathAndScience.Constants.Doubles.MathConstants.HalfPI)
-            {
-                return -seasonalLatitude - Math.PI;
-            }
-            return seasonalLatitude;
-        }
-
         internal float[][][] GetSnowfallMaps(int width, int height)
         {
             var mapImages = GetSnowfallMaps();
@@ -3003,7 +2952,7 @@ namespace NeverFoundry.WorldFoundry.Space
             using var summer = GetTemperatureMapSummer();
             if (winter is null || summer is null)
             {
-                return new FloatRange[0][];
+                return Array.Empty<FloatRange[]>();
             }
             return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
         }
@@ -3038,6 +2987,714 @@ namespace NeverFoundry.WorldFoundry.Space
 
             ResetAllCachedTemperatures(stars);
         }
+
+        private static byte[] GetByteArray(Bitmap image)
+        {
+            using var stream = new MemoryStream();
+            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
+            return stream.ToArray();
+        }
+
+        private static IEnumerable<IMaterial> GetCore_Giant(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number coreProportion,
+            Number planetMass)
+        {
+            var coreMass = planetMass * coreProportion;
+
+            var coreTemp = (double)(planetShape.ContainingRadius / 3);
+
+            var innerCoreProportion = Number.Min(reconstitution.GetNumber(7), _GiantMinMassForType / coreMass);
+            var innerCoreMass = coreMass * innerCoreProportion;
+            var innerCoreRadius = planetShape.ContainingRadius * coreProportion * innerCoreProportion;
+            var innerCoreShape = new Sphere(innerCoreRadius, planetShape.Position);
+            yield return new Material(
+                Substances.All.IronNickelAlloy.GetHomogeneousReference(),
+                (double)(innerCoreMass / innerCoreShape.Volume),
+                innerCoreMass,
+                innerCoreShape,
+                coreTemp);
+
+            // Molten rock outer core.
+            var outerCoreMass = coreMass - innerCoreMass;
+            var outerCoreShape = new HollowSphere(innerCoreRadius, planetShape.ContainingRadius * coreProportion, planetShape.Position);
+            yield return new Material(
+                CelestialSubstances.ChondriticRock,
+                (double)(outerCoreMass / outerCoreShape.Volume),
+                outerCoreMass,
+                outerCoreShape,
+                coreTemp);
+        }
+
+        private static IEnumerable<IMaterial> GetCrust_Carbon(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
+        {
+            var crustMass = planetMass * crustProportion;
+
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
+
+            // Carbonaceous crust of graphite, diamond, and hydrocarbons, with trace minerals
+
+            var graphite = 1m;
+
+            var aluminium = reconstitution.GetDecimal(11);
+            var iron = reconstitution.GetDecimal(12);
+            var titanium = reconstitution.GetDecimal(13);
+
+            var chalcopyrite = reconstitution.GetDecimal(14); // copper
+            graphite -= chalcopyrite;
+            var chromite = reconstitution.GetDecimal(15);
+            graphite -= chromite;
+            var sphalerite = reconstitution.GetDecimal(16); // zinc
+            graphite -= sphalerite;
+            var galena = reconstitution.GetDecimal(17); // lead
+            graphite -= galena;
+            var uraninite = reconstitution.GetDecimal(18);
+            graphite -= uraninite;
+            var cassiterite = reconstitution.GetDecimal(19); // tin
+            graphite -= cassiterite;
+            var cinnabar = reconstitution.GetDecimal(20); // mercury
+            graphite -= cinnabar;
+            var acanthite = reconstitution.GetDecimal(21); // silver
+            graphite -= acanthite;
+            var sperrylite = reconstitution.GetDecimal(22); // platinum
+            graphite -= sperrylite;
+            var gold = reconstitution.GetDecimal(23);
+            graphite -= gold;
+
+            var bauxite = aluminium * 1.57m;
+            graphite -= bauxite;
+
+            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
+            var hematite = hematiteIron * 2.88m;
+            graphite -= hematite;
+            var magnetite = (iron - hematiteIron) * 4.14m;
+            graphite -= magnetite;
+
+            var ilmenite = titanium * 2.33m;
+            graphite -= ilmenite;
+
+            var coal = graphite * reconstitution.GetDecimal(25);
+            graphite -= coal * 2;
+            var oil = graphite * reconstitution.GetDecimal(26);
+            graphite -= oil;
+            var gas = graphite * reconstitution.GetDecimal(27);
+            graphite -= gas;
+            var diamond = graphite * reconstitution.GetDecimal(28);
+            graphite -= diamond;
+
+            var components = new List<(ISubstanceReference, decimal)>();
+            if (graphite > 0)
+            {
+                components.Add((Substances.All.AmorphousCarbon.GetHomogeneousReference(), graphite));
+            }
+            if (coal > 0)
+            {
+                components.Add((Substances.All.Anthracite.GetReference(), coal));
+                components.Add((Substances.All.BituminousCoal.GetReference(), coal));
+            }
+            if (oil > 0)
+            {
+                components.Add((Substances.All.Petroleum.GetReference(), oil));
+            }
+            if (gas > 0)
+            {
+                components.Add((Substances.All.NaturalGas.GetReference(), gas));
+            }
+            if (diamond > 0)
+            {
+                components.Add((Substances.All.Diamond.GetHomogeneousReference(), diamond));
+            }
+
+            if (chalcopyrite > 0)
+            {
+                components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
+            }
+            if (chromite > 0)
+            {
+                components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
+            }
+            if (sphalerite > 0)
+            {
+                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
+            }
+            if (galena > 0)
+            {
+                components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
+            }
+            if (uraninite > 0)
+            {
+                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
+            }
+            if (cassiterite > 0)
+            {
+                components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
+            }
+            if (cinnabar > 0)
+            {
+                components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
+            }
+            if (acanthite > 0)
+            {
+                components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
+            }
+            if (sperrylite > 0)
+            {
+                components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
+            }
+            if (gold > 0)
+            {
+                components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
+            }
+            if (bauxite > 0)
+            {
+                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
+            }
+            if (hematite > 0)
+            {
+                components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
+            }
+            if (magnetite > 0)
+            {
+                components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
+            }
+            if (ilmenite > 0)
+            {
+                components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
+            }
+
+            yield return new Material(
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape,
+                null,
+                components.ToArray());
+        }
+
+        private static IEnumerable<IMaterial> GetCrust_LavaDwarf(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
+        {
+            var crustMass = planetMass * crustProportion;
+
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
+
+            // rocky crust
+            // 50% chance of dust
+            var dust = Math.Max(0, reconstitution.GetDecimal(5));
+            var rock = 1 - dust;
+
+            var components = new List<(ISubstanceReference, decimal)>();
+            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
+            {
+                components.Add((material, proportion * rock));
+            }
+            if (dust > 0)
+            {
+                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
+            }
+            yield return new Material(
+                components,
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape);
+        }
+
+        private static IEnumerable<IMaterial> GetCrust_RockyDwarf(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
+        {
+            var crustMass = planetMass * crustProportion;
+
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
+
+            // rocky crust
+            // 50% chance of dust
+            var dust = Math.Max(0, reconstitution.GetDecimal(5));
+            var rock = 1 - dust;
+
+            var components = new List<(ISubstanceReference, decimal)>();
+            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
+            {
+                components.Add((material, proportion * rock));
+            }
+            if (dust > 0)
+            {
+                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
+            }
+            yield return new Material(
+                components,
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape);
+        }
+
+        private static IEnumerable<IMaterial> GetCrust_Terrestrial(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number crustProportion,
+            Number planetMass)
+        {
+            var crustMass = planetMass * crustProportion;
+
+            var shape = new HollowSphere(
+                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
+                planetShape.ContainingRadius,
+                planetShape.Position);
+
+            // Rocky crust with trace minerals
+
+            var rock = 1m;
+
+            var aluminium = reconstitution.GetDecimal(11);
+            var iron = reconstitution.GetDecimal(12);
+            var titanium = reconstitution.GetDecimal(13);
+
+            var chalcopyrite = reconstitution.GetDecimal(14); // copper
+            rock -= chalcopyrite;
+            var chromite = reconstitution.GetDecimal(15);
+            rock -= chromite;
+            var sphalerite = reconstitution.GetDecimal(16); // zinc
+            rock -= sphalerite;
+            var galena = reconstitution.GetDecimal(17); // lead
+            rock -= galena;
+            var uraninite = reconstitution.GetDecimal(18);
+            rock -= uraninite;
+            var cassiterite = reconstitution.GetDecimal(19); // tin
+            rock -= cassiterite;
+            var cinnabar = reconstitution.GetDecimal(20); // mercury
+            rock -= cinnabar;
+            var acanthite = reconstitution.GetDecimal(21); // silver
+            rock -= acanthite;
+            var sperrylite = reconstitution.GetDecimal(22); // platinum
+            rock -= sperrylite;
+            var gold = reconstitution.GetDecimal(23);
+            rock -= gold;
+
+            var bauxite = aluminium * 1.57m;
+            rock -= bauxite;
+
+            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
+            var hematite = hematiteIron * 2.88m;
+            rock -= hematite;
+            var magnetite = (iron - hematiteIron) * 4.14m;
+            rock -= magnetite;
+
+            var ilmenite = titanium * 2.33m;
+            rock -= ilmenite;
+
+            var components = new List<(ISubstanceReference, decimal)>();
+            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
+            {
+                components.Add((material, proportion * rock));
+            }
+
+            if (chalcopyrite > 0)
+            {
+                components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
+            }
+            if (chromite > 0)
+            {
+                components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
+            }
+            if (sphalerite > 0)
+            {
+                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
+            }
+            if (galena > 0)
+            {
+                components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
+            }
+            if (uraninite > 0)
+            {
+                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
+            }
+            if (cassiterite > 0)
+            {
+                components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
+            }
+            if (cinnabar > 0)
+            {
+                components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
+            }
+            if (acanthite > 0)
+            {
+                components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
+            }
+            if (sperrylite > 0)
+            {
+                components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
+            }
+            if (gold > 0)
+            {
+                components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
+            }
+            if (bauxite > 0)
+            {
+                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
+            }
+            if (hematite > 0)
+            {
+                components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
+            }
+            if (magnetite > 0)
+            {
+                components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
+            }
+            if (ilmenite > 0)
+            {
+                components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
+            }
+
+            yield return new Material(
+                (double)(crustMass / shape.Volume),
+                crustMass,
+                shape,
+                null,
+                components.ToArray());
+        }
+
+        private static double GetDensity(Reconstitution reconstitution, PlanetType planetType)
+        {
+            if (planetType == PlanetType.GasGiant)
+            {
+                // Relatively low chance of a "puffy" giant (Saturn-like, low-density).
+                return reconstitution.GetDouble(5) <= 0.2
+                    ? reconstitution.GetDouble(6)
+                    : reconstitution.GetDouble(7);
+            }
+            if (planetType == PlanetType.IceGiant)
+            {
+                // No "puffy" ice giants.
+                return reconstitution.GetDouble(7);
+            }
+            if (planetType == PlanetType.Iron)
+            {
+                return reconstitution.GetDouble(8);
+            }
+            if (PlanetType.AnyTerrestrial.HasFlag(planetType))
+            {
+                return reconstitution.GetDouble(9);
+            }
+
+            return planetType switch
+            {
+                PlanetType.Dwarf => DensityForDwarf,
+                PlanetType.LavaDwarf => 4000,
+                PlanetType.RockyDwarf => 4000,
+                _ => 2000,
+            };
+        }
+
+        private static IEnumerable<IMaterial> GetMantle_Carbon(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
+        {
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
+
+            var innerTemp = coreTemp;
+
+            var innerBoundary = planetShape.ContainingRadius;
+            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
+
+            var mantleMass = planetMass * mantleProportion;
+
+            // Molten silicon carbide lower mantle
+            var lowerLayer = Number.Max(0, reconstitution.GetNumber(8)) / mantleProportion;
+            if (lowerLayer.IsPositive)
+            {
+                var lowerLayerMass = mantleMass * lowerLayer;
+
+                var lowerLayerBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
+                var lowerLayerShape = new HollowSphere(
+                    innerBoundary,
+                    lowerLayerBoundary,
+                    planetShape.Position);
+                innerBoundary = lowerLayerBoundary;
+
+                var lowerLayerBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)lowerLayer);
+                var lowerLayerTemp = (lowerLayerBoundaryTemp + innerTemp) / 2;
+                innerTemp = lowerLayerTemp;
+
+                yield return new Material(
+                    Substances.All.SiliconCarbide.GetHomogeneousReference(),
+                    (double)(lowerLayerMass / lowerLayerShape.Volume),
+                    lowerLayerMass,
+                    lowerLayerShape,
+                    lowerLayerTemp);
+            }
+
+            // Diamond upper layer
+            var upperLayerProportion = 1 - lowerLayer;
+
+            var upperLayerMass = mantleMass * upperLayerProportion;
+
+            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
+            var upperLayerShape = new HollowSphere(
+                innerBoundary,
+                upperLayerBoundary,
+                planetShape.Position);
+
+            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
+
+            yield return new Material(
+                Substances.All.Diamond.GetHomogeneousReference(),
+                (double)(upperLayerMass / upperLayerShape.Volume),
+                upperLayerMass,
+                upperLayerShape,
+                upperLayerTemp);
+        }
+
+        private static IEnumerable<IMaterial> GetMantle_Giant(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
+        {
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)mantleBoundaryDepth * 1.15;
+
+            var innerTemp = coreTemp;
+
+            var innerBoundary = planetShape.ContainingRadius;
+            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
+
+            var mantleMass = planetMass * mantleProportion;
+
+            // Metallic hydrogen lower mantle
+            var metalH = Number.Max(Number.Zero, reconstitution.GetNumber(8)) / mantleProportion;
+            if (metalH.IsPositive)
+            {
+                var metalHMass = mantleMass * metalH;
+
+                var metalHBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
+                var metalHShape = new HollowSphere(
+                    innerBoundary,
+                    metalHBoundary,
+                    planetShape.Position);
+                innerBoundary = metalHBoundary;
+
+                var metalHBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)metalH);
+                var metalHTemp = (metalHBoundaryTemp + innerTemp) / 2;
+                innerTemp = metalHTemp;
+
+                yield return new Material(
+                    Substances.All.MetallicHydrogen.GetHomogeneousReference(),
+                    (double)(metalHMass / metalHShape.Volume),
+                    metalHMass,
+                    metalHShape,
+                    metalHTemp);
+            }
+
+            // Supercritical fluid upper layer (blends seamlessly with lower atmosphere)
+            var upperLayerProportion = 1 - metalH;
+
+            var upperLayerMass = mantleMass * upperLayerProportion;
+
+            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
+            var upperLayerShape = new HollowSphere(
+                innerBoundary,
+                upperLayerBoundary,
+                planetShape.Position);
+
+            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
+
+            var uLP = (decimal)upperLayerProportion;
+            var water = uLP;
+            var fluidH = water * 0.71m;
+            water -= fluidH;
+            var fluidHe = water * 0.24m;
+            water -= fluidHe;
+            var ne = reconstitution.GetDecimal(6) * water;
+            water -= ne;
+            var ch4 = reconstitution.GetDecimal(7) * water;
+            water = Math.Max(0, water - ch4);
+            var nh4 = reconstitution.GetDecimal(8) * water;
+            water = Math.Max(0, water - nh4);
+            var c2h6 = reconstitution.GetDecimal(9) * water;
+            water = Math.Max(0, water - c2h6);
+
+            var components = new List<(ISubstanceReference, decimal)>()
+            {
+                (Substances.All.Hydrogen.GetHomogeneousReference(), 0.71m),
+                (Substances.All.Helium.GetHomogeneousReference(), 0.24m),
+                (Substances.All.Neon.GetHomogeneousReference(), ne),
+            };
+            if (ch4 > 0)
+            {
+                components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
+            }
+            if (nh4 > 0)
+            {
+                components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
+            }
+            if (c2h6 > 0)
+            {
+                components.Add((Substances.All.Ethane.GetHomogeneousReference(), c2h6));
+            }
+            if (water > 0)
+            {
+                components.Add((Substances.All.Water.GetHomogeneousReference(), water));
+            }
+
+            yield return new Material(
+                (double)(upperLayerMass / upperLayerShape.Volume),
+                upperLayerMass,
+                upperLayerShape,
+                upperLayerTemp,
+                components.ToArray());
+        }
+
+        private static IEnumerable<IMaterial> GetMantle_IceGiant(
+            Reconstitution reconstitution,
+            IShape planetShape,
+            Number mantleProportion,
+            Number crustProportion,
+            Number planetMass,
+            IShape coreShape,
+            double coreTemp)
+        {
+            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
+            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
+
+            var innerTemp = coreTemp;
+
+            var innerBoundary = planetShape.ContainingRadius;
+            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
+
+            var mantleMass = planetMass * mantleProportion;
+
+            var diamond = 1m;
+            var water = Math.Max(0, reconstitution.GetDecimal(6) * diamond);
+            diamond -= water;
+            var nh4 = Math.Max(0, reconstitution.GetDecimal(7) * diamond);
+            diamond -= nh4;
+            var ch4 = Math.Max(0, reconstitution.GetDecimal(8) * diamond);
+            diamond -= ch4;
+
+            // Liquid diamond mantle
+            if (diamond > 0)
+            {
+                var diamondMass = mantleMass * (Number)diamond;
+
+                var diamondBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
+                var diamondShape = new HollowSphere(
+                    innerBoundary,
+                    diamondBoundary,
+                    planetShape.Position);
+                innerBoundary = diamondBoundary;
+
+                var diamondBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)diamond);
+                var diamondTemp = (diamondBoundaryTemp + innerTemp) / 2;
+                innerTemp = diamondTemp;
+
+                yield return new Material(
+                    Substances.All.Diamond.GetHomogeneousReference(),
+                    (double)(diamondMass / diamondShape.Volume),
+                    diamondMass,
+                    diamondShape,
+                    diamondTemp);
+            }
+
+            // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
+            var upperLayerProportion = 1 - diamond;
+
+            var upperLayerMass = mantleMass * (Number)upperLayerProportion;
+
+            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
+            var upperLayerShape = new HollowSphere(
+                innerBoundary,
+                upperLayerBoundary,
+                planetShape.Position);
+
+            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
+
+            var components = new List<(ISubstanceReference, decimal)>();
+            if (ch4 > 0 || nh4 > 0)
+            {
+                components.Add((Substances.All.Water.GetHomogeneousReference(), water));
+                if (ch4 > 0)
+                {
+                    components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
+                }
+                if (nh4 > 0)
+                {
+                    components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
+                }
+            }
+            else
+            {
+                components.Add((Substances.All.Water.GetHomogeneousReference(), 1));
+            }
+
+            yield return new Material(
+                (double)(upperLayerMass / upperLayerShape.Volume),
+                upperLayerMass,
+                upperLayerShape,
+                upperLayerTemp,
+                components.ToArray());
+        }
+
+        private static Number GetMass(PlanetType planetType, Number semiMajorAxis, Number? maxMass, double gravity, IShape? shape)
+        {
+            var min = Number.Zero;
+            if (!PlanetType.AnyDwarf.HasFlag(planetType))
+            {
+                // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
+                // at which the planet would be able to do so at this orbital distance. We set the
+                // minimum at two orders of magnitude more than this (planets in our solar system
+                // all have masses above 5 orders of magnitude more). Note that since lambda is
+                // proportional to the square of mass, it is multiplied by 10 to obtain a difference
+                // of 2 orders of magnitude, rather than by 100.
+                var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
+                min = Number.Max(min, sternLevisonLambdaMass * 10);
+                if (min > maxMass && maxMass.HasValue)
+                {
+                    min = maxMass.Value; // sanity check; may result in a "planet" which *can't* clear its neighborhood
+                }
+            }
+
+            var mass = shape is null ? Number.Zero : gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
+            return Number.Max(min, maxMass.HasValue ? Number.Min(maxMass.Value, mass) : mass);
+        }
+
+        private static Number GetMaxMassForType(PlanetType planetType) => planetType switch
+        {
+            PlanetType.Dwarf => _DwarfMaxMassForType,
+            PlanetType.LavaDwarf => _DwarfMaxMassForType,
+            PlanetType.RockyDwarf => _DwarfMaxMassForType,
+            PlanetType.GasGiant => _GiantMaxMassForType,
+            PlanetType.IceGiant => _GiantMaxMassForType,
+            _ => _TerrestrialMaxMassForType,
+        };
+
+        private static Number GetRadiusForMass(Number density, Number mass) => (mass / density / MathConstants.FourThirdsPI).CubeRoot();
 
         private int AddResource(ISubstanceReference substance, decimal proportion, bool isVein, bool isPerturbation = false, int? seed = null)
         {
@@ -4627,7 +5284,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // Calculate ozone based on level of free oxygen.
             var o3 = o2 * 4.5e-5m;
             var ozone = Substances.All.Ozone.GetHomogeneousReference();
-            if (!(Atmosphere.Material is Composite lc) || lc.Components.Count < 3)
+            if (Atmosphere.Material is not Composite lc || lc.Components.Count < 3)
             {
                 Atmosphere.DifferentiateTroposphere(); // First ensure troposphere is differentiated.
                 (Atmosphere.Material as Composite)?.CopyComponent(1, 0.01m);
@@ -5270,38 +5927,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 coreConstituents);
         }
 
-        private IEnumerable<IMaterial> GetCore_Giant(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number coreProportion,
-            Number planetMass)
-        {
-            var coreMass = planetMass * coreProportion;
-
-            var coreTemp = (double)(planetShape.ContainingRadius / 3);
-
-            var innerCoreProportion = Number.Min(reconstitution.GetNumber(7), _GiantMinMassForType / coreMass);
-            var innerCoreMass = coreMass * innerCoreProportion;
-            var innerCoreRadius = planetShape.ContainingRadius * coreProportion * innerCoreProportion;
-            var innerCoreShape = new Sphere(innerCoreRadius, planetShape.Position);
-            yield return new Material(
-                Substances.All.IronNickelAlloy.GetHomogeneousReference(),
-                (double)(innerCoreMass / innerCoreShape.Volume),
-                innerCoreMass,
-                innerCoreShape,
-                coreTemp);
-
-            // Molten rock outer core.
-            var outerCoreMass = coreMass - innerCoreMass;
-            var outerCoreShape = new HollowSphere(innerCoreRadius, planetShape.ContainingRadius * coreProportion, planetShape.Position);
-            yield return new Material(
-                CelestialSubstances.ChondriticRock,
-                (double)(outerCoreMass / outerCoreShape.Volume),
-                outerCoreMass,
-                outerCoreShape,
-                coreTemp);
-        }
-
         private IEnumerable<IMaterial> GetCrust(
             Reconstitution reconstitution,
             IShape planetShape,
@@ -5416,350 +6041,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 (double)(crustMass / shape.Volume),
                 crustMass,
                 shape);
-        }
-
-        private IEnumerable<IMaterial> GetCrust_Carbon(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number crustProportion,
-            Number planetMass)
-        {
-            var crustMass = planetMass * crustProportion;
-
-            var shape = new HollowSphere(
-                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-                planetShape.ContainingRadius,
-                planetShape.Position);
-
-            // Carbonaceous crust of graphite, diamond, and hydrocarbons, with trace minerals
-
-            var graphite = 1m;
-
-            var aluminium = reconstitution.GetDecimal(11);
-            var iron = reconstitution.GetDecimal(12);
-            var titanium = reconstitution.GetDecimal(13);
-
-            var chalcopyrite = reconstitution.GetDecimal(14); // copper
-            graphite -= chalcopyrite;
-            var chromite = reconstitution.GetDecimal(15);
-            graphite -= chromite;
-            var sphalerite = reconstitution.GetDecimal(16); // zinc
-            graphite -= sphalerite;
-            var galena = reconstitution.GetDecimal(17); // lead
-            graphite -= galena;
-            var uraninite = reconstitution.GetDecimal(18);
-            graphite -= uraninite;
-            var cassiterite = reconstitution.GetDecimal(19); // tin
-            graphite -= cassiterite;
-            var cinnabar = reconstitution.GetDecimal(20); // mercury
-            graphite -= cinnabar;
-            var acanthite = reconstitution.GetDecimal(21); // silver
-            graphite -= acanthite;
-            var sperrylite = reconstitution.GetDecimal(22); // platinum
-            graphite -= sperrylite;
-            var gold = reconstitution.GetDecimal(23);
-            graphite -= gold;
-
-            var bauxite = aluminium * 1.57m;
-            graphite -= bauxite;
-
-            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
-            var hematite = hematiteIron * 2.88m;
-            graphite -= hematite;
-            var magnetite = (iron - hematiteIron) * 4.14m;
-            graphite -= magnetite;
-
-            var ilmenite = titanium * 2.33m;
-            graphite -= ilmenite;
-
-            var coal = graphite * reconstitution.GetDecimal(25);
-            graphite -= coal * 2;
-            var oil = graphite * reconstitution.GetDecimal(26);
-            graphite -= oil;
-            var gas = graphite * reconstitution.GetDecimal(27);
-            graphite -= gas;
-            var diamond = graphite * reconstitution.GetDecimal(28);
-            graphite -= diamond;
-
-            var components = new List<(ISubstanceReference, decimal)>();
-            if (graphite > 0)
-            {
-                components.Add((Substances.All.AmorphousCarbon.GetHomogeneousReference(), graphite));
-            }
-            if (coal > 0)
-            {
-                components.Add((Substances.All.Anthracite.GetReference(), coal));
-                components.Add((Substances.All.BituminousCoal.GetReference(), coal));
-            }
-            if (oil > 0)
-            {
-                components.Add((Substances.All.Petroleum.GetReference(), oil));
-            }
-            if (gas > 0)
-            {
-                components.Add((Substances.All.NaturalGas.GetReference(), gas));
-            }
-            if (diamond > 0)
-            {
-                components.Add((Substances.All.Diamond.GetHomogeneousReference(), diamond));
-            }
-
-            if (chalcopyrite > 0)
-            {
-                components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
-            }
-            if (chromite > 0)
-            {
-                components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
-            }
-            if (sphalerite > 0)
-            {
-                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
-            }
-            if (galena > 0)
-            {
-                components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
-            }
-            if (uraninite > 0)
-            {
-                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
-            }
-            if (cassiterite > 0)
-            {
-                components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
-            }
-            if (cinnabar > 0)
-            {
-                components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
-            }
-            if (acanthite > 0)
-            {
-                components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
-            }
-            if (sperrylite > 0)
-            {
-                components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
-            }
-            if (gold > 0)
-            {
-                components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-            }
-            if (bauxite > 0)
-            {
-                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
-            }
-            if (hematite > 0)
-            {
-                components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
-            }
-            if (magnetite > 0)
-            {
-                components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
-            }
-            if (ilmenite > 0)
-            {
-                components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
-            }
-
-            yield return new Material(
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape,
-                null,
-                components.ToArray());
-        }
-
-        private IEnumerable<IMaterial> GetCrust_LavaDwarf(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number crustProportion,
-            Number planetMass)
-        {
-            var crustMass = planetMass * crustProportion;
-
-            var shape = new HollowSphere(
-                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-                planetShape.ContainingRadius,
-                planetShape.Position);
-
-            // rocky crust
-            // 50% chance of dust
-            var dust = Math.Max(0, reconstitution.GetDecimal(5));
-            var rock = 1 - dust;
-
-            var components = new List<(ISubstanceReference, decimal)>();
-            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
-            {
-                components.Add((material, proportion * rock));
-            }
-            if (dust > 0)
-            {
-                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
-            }
-            yield return new Material(
-                components,
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape);
-        }
-
-        private IEnumerable<IMaterial> GetCrust_RockyDwarf(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number crustProportion,
-            Number planetMass)
-        {
-            var crustMass = planetMass * crustProportion;
-
-            var shape = new HollowSphere(
-                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-                planetShape.ContainingRadius,
-                planetShape.Position);
-
-            // rocky crust
-            // 50% chance of dust
-            var dust = Math.Max(0, reconstitution.GetDecimal(5));
-            var rock = 1 - dust;
-
-            var components = new List<(ISubstanceReference, decimal)>();
-            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
-            {
-                components.Add((material, proportion * rock));
-            }
-            if (dust > 0)
-            {
-                components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
-            }
-            yield return new Material(
-                components,
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape);
-        }
-
-        private IEnumerable<IMaterial> GetCrust_Terrestrial(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number crustProportion,
-            Number planetMass)
-        {
-            var crustMass = planetMass * crustProportion;
-
-            var shape = new HollowSphere(
-                planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-                planetShape.ContainingRadius,
-                planetShape.Position);
-
-            // Rocky crust with trace minerals
-
-            var rock = 1m;
-
-            var aluminium = reconstitution.GetDecimal(11);
-            var iron = reconstitution.GetDecimal(12);
-            var titanium = reconstitution.GetDecimal(13);
-
-            var chalcopyrite = reconstitution.GetDecimal(14); // copper
-            rock -= chalcopyrite;
-            var chromite = reconstitution.GetDecimal(15);
-            rock -= chromite;
-            var sphalerite = reconstitution.GetDecimal(16); // zinc
-            rock -= sphalerite;
-            var galena = reconstitution.GetDecimal(17); // lead
-            rock -= galena;
-            var uraninite = reconstitution.GetDecimal(18);
-            rock -= uraninite;
-            var cassiterite = reconstitution.GetDecimal(19); // tin
-            rock -= cassiterite;
-            var cinnabar = reconstitution.GetDecimal(20); // mercury
-            rock -= cinnabar;
-            var acanthite = reconstitution.GetDecimal(21); // silver
-            rock -= acanthite;
-            var sperrylite = reconstitution.GetDecimal(22); // platinum
-            rock -= sperrylite;
-            var gold = reconstitution.GetDecimal(23);
-            rock -= gold;
-
-            var bauxite = aluminium * 1.57m;
-            rock -= bauxite;
-
-            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
-            var hematite = hematiteIron * 2.88m;
-            rock -= hematite;
-            var magnetite = (iron - hematiteIron) * 4.14m;
-            rock -= magnetite;
-
-            var ilmenite = titanium * 2.33m;
-            rock -= ilmenite;
-
-            var components = new List<(ISubstanceReference, decimal)>();
-            foreach (var (material, proportion) in CelestialSubstances.DryPlanetaryCrustConstituents)
-            {
-                components.Add((material, proportion * rock));
-            }
-
-            if (chalcopyrite > 0)
-            {
-                components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
-            }
-            if (chromite > 0)
-            {
-                components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
-            }
-            if (sphalerite > 0)
-            {
-                components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
-            }
-            if (galena > 0)
-            {
-                components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
-            }
-            if (uraninite > 0)
-            {
-                components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
-            }
-            if (cassiterite > 0)
-            {
-                components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
-            }
-            if (cinnabar > 0)
-            {
-                components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
-            }
-            if (acanthite > 0)
-            {
-                components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
-            }
-            if (sperrylite > 0)
-            {
-                components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
-            }
-            if (gold > 0)
-            {
-                components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-            }
-            if (bauxite > 0)
-            {
-                components.Add((Substances.All.Bauxite.GetReference(), bauxite));
-            }
-            if (hematite > 0)
-            {
-                components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
-            }
-            if (magnetite > 0)
-            {
-                components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
-            }
-            if (ilmenite > 0)
-            {
-                components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
-            }
-
-            yield return new Material(
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape,
-                null,
-                components.ToArray());
         }
 
         /// <summary>
@@ -5932,287 +6213,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 mantleMass,
                 shape,
                 mantleTemp);
-        }
-
-        private IEnumerable<IMaterial> GetMantle_Carbon(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number mantleProportion,
-            Number crustProportion,
-            Number planetMass,
-            IShape coreShape,
-            double coreTemp)
-        {
-            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
-
-            var innerTemp = coreTemp;
-
-            var innerBoundary = planetShape.ContainingRadius;
-            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-            var mantleMass = planetMass * mantleProportion;
-
-            // Molten silicon carbide lower mantle
-            var lowerLayer = Number.Max(0, reconstitution.GetNumber(8)) / mantleProportion;
-            if (lowerLayer.IsPositive)
-            {
-                var lowerLayerMass = mantleMass * lowerLayer;
-
-                var lowerLayerBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-                var lowerLayerShape = new HollowSphere(
-                    innerBoundary,
-                    lowerLayerBoundary,
-                    planetShape.Position);
-                innerBoundary = lowerLayerBoundary;
-
-                var lowerLayerBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)lowerLayer);
-                var lowerLayerTemp = (lowerLayerBoundaryTemp + innerTemp) / 2;
-                innerTemp = lowerLayerTemp;
-
-                yield return new Material(
-                    Substances.All.SiliconCarbide.GetHomogeneousReference(),
-                    (double)(lowerLayerMass / lowerLayerShape.Volume),
-                    lowerLayerMass,
-                    lowerLayerShape,
-                    lowerLayerTemp);
-            }
-
-            // Diamond upper layer
-            var upperLayerProportion = 1 - lowerLayer;
-
-            var upperLayerMass = mantleMass * upperLayerProportion;
-
-            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-            var upperLayerShape = new HollowSphere(
-                innerBoundary,
-                upperLayerBoundary,
-                planetShape.Position);
-
-            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-            yield return new Material(
-                Substances.All.Diamond.GetHomogeneousReference(),
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
-                upperLayerShape,
-                upperLayerTemp);
-        }
-
-        private IEnumerable<IMaterial> GetMantle_Giant(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number mantleProportion,
-            Number crustProportion,
-            Number planetMass,
-            IShape coreShape,
-            double coreTemp)
-        {
-            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-            var mantleBoundaryTemp = (double)mantleBoundaryDepth * 1.15;
-
-            var innerTemp = coreTemp;
-
-            var innerBoundary = planetShape.ContainingRadius;
-            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-            var mantleMass = planetMass * mantleProportion;
-
-            // Metallic hydrogen lower mantle
-            var metalH = Number.Max(Number.Zero, reconstitution.GetNumber(8)) / mantleProportion;
-            if (metalH.IsPositive)
-            {
-                var metalHMass = mantleMass * metalH;
-
-                var metalHBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-                var metalHShape = new HollowSphere(
-                    innerBoundary,
-                    metalHBoundary,
-                    planetShape.Position);
-                innerBoundary = metalHBoundary;
-
-                var metalHBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)metalH);
-                var metalHTemp = (metalHBoundaryTemp + innerTemp) / 2;
-                innerTemp = metalHTemp;
-
-                yield return new Material(
-                    Substances.All.MetallicHydrogen.GetHomogeneousReference(),
-                    (double)(metalHMass / metalHShape.Volume),
-                    metalHMass,
-                    metalHShape,
-                    metalHTemp);
-            }
-
-            // Supercritical fluid upper layer (blends seamlessly with lower atmosphere)
-            var upperLayerProportion = 1 - metalH;
-
-            var upperLayerMass = mantleMass * upperLayerProportion;
-
-            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-            var upperLayerShape = new HollowSphere(
-                innerBoundary,
-                upperLayerBoundary,
-                planetShape.Position);
-
-            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-            var uLP = (decimal)upperLayerProportion;
-            var water = uLP;
-            var fluidH = water * 0.71m;
-            water -= fluidH;
-            var fluidHe = water * 0.24m;
-            water -= fluidHe;
-            var ne = reconstitution.GetDecimal(6) * water;
-            water -= ne;
-            var ch4 = reconstitution.GetDecimal(7) * water;
-            water = Math.Max(0, water - ch4);
-            var nh4 = reconstitution.GetDecimal(8) * water;
-            water = Math.Max(0, water - nh4);
-            var c2h6 = reconstitution.GetDecimal(9) * water;
-            water = Math.Max(0, water - c2h6);
-
-            var components = new List<(ISubstanceReference, decimal)>()
-            {
-                (Substances.All.Hydrogen.GetHomogeneousReference(), 0.71m),
-                (Substances.All.Helium.GetHomogeneousReference(), 0.24m),
-                (Substances.All.Neon.GetHomogeneousReference(), ne),
-            };
-            if (ch4 > 0)
-            {
-                components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-            }
-            if (nh4 > 0)
-            {
-                components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
-            }
-            if (c2h6 > 0)
-            {
-                components.Add((Substances.All.Ethane.GetHomogeneousReference(), c2h6));
-            }
-            if (water > 0)
-            {
-                components.Add((Substances.All.Water.GetHomogeneousReference(), water));
-            }
-
-            yield return new Material(
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
-                upperLayerShape,
-                upperLayerTemp,
-                components.ToArray());
-        }
-
-        private IEnumerable<IMaterial> GetMantle_IceGiant(
-            Reconstitution reconstitution,
-            IShape planetShape,
-            Number mantleProportion,
-            Number crustProportion,
-            Number planetMass,
-            IShape coreShape,
-            double coreTemp)
-        {
-            var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-            var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new Number(115, -2));
-
-            var innerTemp = coreTemp;
-
-            var innerBoundary = planetShape.ContainingRadius;
-            var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-            var mantleMass = planetMass * mantleProportion;
-
-            var diamond = 1m;
-            var water = Math.Max(0, reconstitution.GetDecimal(6) * diamond);
-            diamond -= water;
-            var nh4 = Math.Max(0, reconstitution.GetDecimal(7) * diamond);
-            diamond -= nh4;
-            var ch4 = Math.Max(0, reconstitution.GetDecimal(8) * diamond);
-            diamond -= ch4;
-
-            // Liquid diamond mantle
-            if (diamond > 0)
-            {
-                var diamondMass = mantleMass * (Number)diamond;
-
-                var diamondBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-                var diamondShape = new HollowSphere(
-                    innerBoundary,
-                    diamondBoundary,
-                    planetShape.Position);
-                innerBoundary = diamondBoundary;
-
-                var diamondBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)diamond);
-                var diamondTemp = (diamondBoundaryTemp + innerTemp) / 2;
-                innerTemp = diamondTemp;
-
-                yield return new Material(
-                    Substances.All.Diamond.GetHomogeneousReference(),
-                    (double)(diamondMass / diamondShape.Volume),
-                    diamondMass,
-                    diamondShape,
-                    diamondTemp);
-            }
-
-            // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
-            var upperLayerProportion = 1 - diamond;
-
-            var upperLayerMass = mantleMass * (Number)upperLayerProportion;
-
-            var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-            var upperLayerShape = new HollowSphere(
-                innerBoundary,
-                upperLayerBoundary,
-                planetShape.Position);
-
-            var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-            var components = new List<(ISubstanceReference, decimal)>();
-            if (ch4 > 0 || nh4 > 0)
-            {
-                components.Add((Substances.All.Water.GetHomogeneousReference(), water));
-                if (ch4 > 0)
-                {
-                    components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-                }
-                if (nh4 > 0)
-                {
-                    components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
-                }
-            }
-            else
-            {
-                components.Add((Substances.All.Water.GetHomogeneousReference(), 1));
-            }
-
-            yield return new Material(
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
-                upperLayerShape,
-                upperLayerTemp,
-                components.ToArray());
-        }
-
-        private Number GetMass(PlanetType planetType, Number semiMajorAxis, Number? maxMass, double gravity, IShape? shape)
-        {
-            var min = Number.Zero;
-            if (!PlanetType.AnyDwarf.HasFlag(planetType))
-            {
-                // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
-                // at which the planet would be able to do so at this orbital distance. We set the
-                // minimum at two orders of magnitude more than this (planets in our solar system
-                // all have masses above 5 orders of magnitude more). Note that since lambda is
-                // proportional to the square of mass, it is multiplied by 10 to obtain a difference
-                // of 2 orders of magnitude, rather than by 100.
-                var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
-                min = Number.Max(min, sternLevisonLambdaMass * 10);
-                if (min > maxMass && maxMass.HasValue)
-                {
-                    min = maxMass.Value; // sanity check; may result in a "planet" which *can't* clear its neighborhood
-                }
-            }
-
-            var mass = shape is null ? Number.Zero : gravity * shape.ContainingRadius * shape.ContainingRadius / ScienceConstants.G;
-            return Number.Max(min, maxMass.HasValue ? Number.Min(maxMass.Value, mass) : mass);
         }
 
         private void GenerateMaterial(

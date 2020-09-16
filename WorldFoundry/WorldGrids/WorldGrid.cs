@@ -69,8 +69,8 @@ namespace NeverFoundry.WorldFoundry.WorldGrids
         /// <param name="size">The desired <see cref="GridSize"/> (level of detail).</param>
         public WorldGrid(Planetoid planet, byte size)
         {
-            Corners = new Corner[0];
-            Tiles = new Tile[0];
+            Corners = Array.Empty<Corner>();
+            Tiles = Array.Empty<Tile>();
             SubdivideGrid(planet, size);
         }
 

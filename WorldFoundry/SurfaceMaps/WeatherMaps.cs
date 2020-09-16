@@ -587,20 +587,20 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
         private WeatherMaps(SerializationInfo info, StreamingContext context) : this(
             (BiomeType?)info.GetValue(nameof(Biome), typeof(BiomeType)) ?? BiomeType.None,
-            (BiomeType[][]?)info.GetValue(nameof(BiomeMap), typeof(BiomeType[][])) ?? new BiomeType[0][],
+            (BiomeType[][]?)info.GetValue(nameof(BiomeMap), typeof(BiomeType[][])) ?? Array.Empty<BiomeType[]>(),
             (ClimateType?)info.GetValue(nameof(Climate), typeof(ClimateType)) ?? ClimateType.None,
-            (ClimateType[][]?)info.GetValue(nameof(ClimateMap), typeof(ClimateType[][])) ?? new ClimateType[0][],
+            (ClimateType[][]?)info.GetValue(nameof(ClimateMap), typeof(ClimateType[][])) ?? Array.Empty<ClimateType[]>(),
             (EcologyType?)info.GetValue(nameof(Ecology), typeof(EcologyType)) ?? EcologyType.None,
-            (EcologyType[][]?)info.GetValue(nameof(EcologyMap), typeof(EcologyType[][])) ?? new EcologyType[0][],
+            (EcologyType[][]?)info.GetValue(nameof(EcologyMap), typeof(EcologyType[][])) ?? Array.Empty<EcologyType[]>(),
             (HumidityType?)info.GetValue(nameof(Humidity), typeof(HumidityType)) ?? HumidityType.None,
-            (HumidityType[][]?)info.GetValue(nameof(HumidityMap), typeof(HumidityType[][])) ?? new HumidityType[0][],
+            (HumidityType[][]?)info.GetValue(nameof(HumidityMap), typeof(HumidityType[][])) ?? Array.Empty<HumidityType[]>(),
             (FloatRange?)info.GetValue(nameof(TotalPrecipitation), typeof(FloatRange)) ?? default,
             (FloatRange?)info.GetValue(nameof(TotalSnowfall), typeof(FloatRange)) ?? default,
-            (FloatRange[][]?)info.GetValue(nameof(SeaIceRangeMap), typeof(FloatRange[][])) ?? new FloatRange[0][],
-            (FloatRange[][]?)info.GetValue(nameof(SnowCoverRangeMap), typeof(FloatRange[][])) ?? new FloatRange[0][],
-            (PrecipitationMaps[]?)info.GetValue(nameof(PrecipitationMaps), typeof(PrecipitationMaps[])) ?? new PrecipitationMaps[0],
-            (FloatRange[][]?)info.GetValue(nameof(TemperatureRangeMap), typeof(FloatRange[][])) ?? new FloatRange[0][],
-            (float[][]?)info.GetValue(nameof(TotalPrecipitationMap), typeof(float[][])) ?? new float[0][])
+            (FloatRange[][]?)info.GetValue(nameof(SeaIceRangeMap), typeof(FloatRange[][])) ?? Array.Empty<FloatRange[]>(),
+            (FloatRange[][]?)info.GetValue(nameof(SnowCoverRangeMap), typeof(FloatRange[][])) ?? Array.Empty<FloatRange[]>(),
+            (PrecipitationMaps[]?)info.GetValue(nameof(PrecipitationMaps), typeof(PrecipitationMaps[])) ?? Array.Empty<PrecipitationMaps>(),
+            (FloatRange[][]?)info.GetValue(nameof(TemperatureRangeMap), typeof(FloatRange[][])) ?? Array.Empty<FloatRange[]>(),
+            (float[][]?)info.GetValue(nameof(TotalPrecipitationMap), typeof(float[][])) ?? Array.Empty<float[]>())
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -611,7 +611,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Biome), Biome);

@@ -151,7 +151,7 @@ namespace NeverFoundry.WorldFoundry.Climate
 
             planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
             var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
-            SetGreenhouseFactor(constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
+            SetGreenhouseFactor(constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
             planet.GreenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
             var greenhouseEffect = planet.GetGreenhouseEffect();
             var temperature = tIF + greenhouseEffect;
@@ -167,7 +167,7 @@ namespace NeverFoundry.WorldFoundry.Climate
                 mass,
                 shape,
                 temperature,
-                constituents ?? new (ISubstanceReference substance, decimal proportion)[0]);
+                constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
 
             SetPrecipitation(planet);
         }
@@ -205,7 +205,6 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Material), Material);

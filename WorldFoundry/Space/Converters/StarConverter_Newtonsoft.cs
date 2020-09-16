@@ -44,7 +44,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
         /// <param name="serializer">The calling serializer.</param>
         public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
         {
-            if (value is null || !(value is Star location))
+            if (value is null || value is not Star location)
             {
                 writer.WriteNull();
                 return;

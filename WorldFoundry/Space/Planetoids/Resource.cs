@@ -1,6 +1,7 @@
 ﻿using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
+using NeverFoundry.WorldFoundry.Utilities;
 using System;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
@@ -84,11 +85,16 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
             (int?)info.GetValue(nameof(Seed), typeof(int)) ?? default)
         { }
 
-        /// <summary>Indicates whether this instance and a specified object are equal.</summary>
-        /// <param name="other">The <see cref="Resource"/> instance to compare with the current
-        /// instance.</param>
-        /// <returns><see langword="true"/> if <paramref name="other"/> and this instance represent
-        /// the same value; otherwise, <see langword="false"/>.</returns>
+        /// <summary>
+        /// Indicates whether this instance and a specified object are equal.
+        /// </summary>
+        /// <param name="other">
+        /// The <see cref="Resource"/> instance to compare with the current instance.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="other"/> and this instance represent the same
+        /// value; otherwise, <see langword="false"/>.
+        /// </returns>
         public bool Equals(Resource other)
             => Substance == other.Substance
             && _proportion == other._proportion
@@ -122,7 +128,6 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Substance), Substance);
@@ -156,5 +161,35 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
             }
             return Math.Max(0, (v + (double)_proportion) / (double)(1 + _proportion));
         }
+
+        /// <summary>
+        /// Indicates whether two instances are equal.
+        /// </summary>
+        /// <param name="left">
+        /// The first <see cref="Resource"/> instance to compare.
+        /// </param>
+        /// <param name="right">
+        /// The second <see cref="Resource"/> instance to compare.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the instances represent the same value; otherwise, <see
+        /// langword="false"/>.
+        /// </returns>
+        public static bool operator ==(Resource left, Resource right) => left.Equals(right);
+
+        /// <summary>
+        /// Indicates whether two instances are unequal.
+        /// </summary>
+        /// <param name="left">
+        /// The first <see cref="Resource"/> instance to compare.
+        /// </param>
+        /// <param name="right">
+        /// The second <see cref="Resource"/> instance to compare.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the instances represent different values; otherwise, <see
+        /// langword="false"/>.
+        /// </returns>
+        public static bool operator !=(Resource left, Resource right) => !(left == right);
     }
 }

@@ -15,7 +15,7 @@ namespace NeverFoundry.WorldFoundry.Space
             _seed = Randomizer.Instance.NextUIntInclusive();
             ReconstitutePlanetaryNebulaInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
-            if (!(child is Star star)
+            if (child is not Star star
                 || star.StarType != StarType.WhiteDwarf)
             {
                 return new Star(StarType.WhiteDwarf, this, Vector3.Zero);

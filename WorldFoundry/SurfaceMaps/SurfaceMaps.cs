@@ -303,7 +303,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         private SurfaceMaps(SerializationInfo info, StreamingContext context) : this(
-            (double[][]?)info.GetValue(nameof(Elevation), typeof(double[][])) ?? new double[0][],
+            (double[][]?)info.GetValue(nameof(Elevation), typeof(double[][])) ?? Array.Empty<double[]>(),
             (double?)info.GetValue(nameof(AverageElevation), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(MaxElevation), typeof(double)) ?? default,
             (WeatherMaps?)info.GetValue(nameof(WeatherMaps), typeof(WeatherMaps)) ?? default,
@@ -318,7 +318,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Elevation), Elevation);

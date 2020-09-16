@@ -46,7 +46,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             max = 0;
             if (image is null)
             {
-                return new double[0][];
+                return Array.Empty<double[]>();
             }
             max = -1;
 
@@ -142,7 +142,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             if (image is null)
             {
-                return new float[0][];
+                return Array.Empty<float[]>();
             }
 
             var img = image;
@@ -236,7 +236,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             if (imageMin is null && imageMax is null)
             {
-                return new FloatRange[0][];
+                return Array.Empty<FloatRange[]>();
             }
 
             if (imageMin is null)
@@ -416,7 +416,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             if (imageMin is null && imageMax is null)
             {
-                return new FloatRange[0][];
+                return Array.Empty<FloatRange[]>();
             }
 
             if (imageMin is null)
@@ -1040,7 +1040,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var bytes = new byte[length];
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
 
-            var hillShadeMap = new float[0][];
+            var hillShadeMap = Array.Empty<float[]>();
             if (applyHillShadingToLand || applyHillShadingToOcean)
             {
                 hillShadeMap = SurfaceMap.GetHillShadeMap(elevationMap, hillScaleFactor, hillScaleIsRelative);
@@ -1214,7 +1214,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var bytes = new byte[length];
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
 
-            var hillShadeMap = new float[0][];
+            var hillShadeMap = Array.Empty<float[]>();
             if (applyHillShadingToLand || applyHillShadingToOcean)
             {
                 hillShadeMap = SurfaceMap.GetHillShadeMap(elevationMap, hillScaleFactor, hillScaleIsRelative);
@@ -1376,7 +1376,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var bytes = new byte[length];
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
 
-            var hillShadeMap = new float[0][];
+            var hillShadeMap = Array.Empty<float[]>();
             if (applyHillShadingToLand || applyHillShadingToOcean)
             {
                 hillShadeMap = SurfaceMap.GetHillShadeMap(elevationMap, hillScaleFactor, hillScaleIsRelative);
@@ -1518,7 +1518,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             var bytes = new byte[length];
             System.Runtime.InteropServices.Marshal.Copy(data.Scan0, bytes, 0, length);
 
-            var hillShadeMap = new float[0][];
+            var hillShadeMap = Array.Empty<float[]>();
             if (applyHillShadingToLand || applyHillShadingToOcean)
             {
                 hillShadeMap = SurfaceMap.GetHillShadeMap(elevationMap, hillScaleFactor, hillScaleIsRelative);
@@ -1743,7 +1743,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             if (image is null)
             {
-                return new byte[0];
+                return Array.Empty<byte>();
             }
 
             using var stream = new MemoryStream();

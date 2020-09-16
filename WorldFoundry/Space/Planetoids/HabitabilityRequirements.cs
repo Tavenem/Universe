@@ -164,7 +164,6 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(AtmosphericRequirements), AtmosphericRequirements);

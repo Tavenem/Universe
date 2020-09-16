@@ -334,6 +334,51 @@ namespace NeverFoundry.WorldFoundry.Place
         }
 
         /// <summary>
+        /// Attempts to find an open space within a location, with the given radius, in a random
+        /// direction, as close as possible to the given point.
+        /// </summary>
+        /// <param name="position">
+        /// The position closest to which an open space is to be found.
+        /// </param>
+        /// <param name="radius">The radius of the space to find.</param>
+        /// <param name="children">The current children of the location.</param>
+        /// <returns>
+        /// The center point of an open space within the location with the given radius; or <see langword="null"/> if
+        /// no such open position could be found.
+        /// </returns>
+        public static Vector3? GetNearestOpenSpace(Vector3 position, Number radius, List<Location> children)
+        {
+            var insanityCheck = 0;
+            Vector3? pos;
+            var distance = Number.Zero;
+            do
+            {
+                var rot = Randomizer.Instance.NextQuaternionNumber();
+                var direction = Vector3.UnitX.Transform(rot);
+                pos = position + (direction.Normalize() * distance);
+                var shape = new Sphere(radius, pos.Value);
+                var any = false;
+                foreach (var child in children)
+                {
+                    if (child.Shape.Intersects(shape))
+                    {
+                        any = true;
+                        break;
+                    }
+                }
+                if (any)
+                {
+                    pos = null;
+                    distance += radius;
+                }
+                insanityCheck++;
+            } while (!pos.HasValue && insanityCheck < 1000);
+            return pos.HasValue
+                ? position + pos.Value
+                : (Vector3?)null;
+        }
+
+        /// <summary>
         /// Determines whether the specified <see cref="Location"/> is contained within the current
         /// instance.
         /// </summary>
@@ -584,51 +629,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <returns>The hash code for this instance.</returns>
         public override int GetHashCode() => Id.GetHashCode();
 
-        /// <summary>
-        /// Attempts to find an open space within this location, with the given radius, in a random
-        /// direction, as close as possible to the given point.
-        /// </summary>
-        /// <param name="position">
-        /// The position closest to which an open space is to be found.
-        /// </param>
-        /// <param name="radius">The radius of the space to find.</param>
-        /// <param name="children">The current children of this location.</param>
-        /// <returns>
-        /// The center point of an open space within this location with the given radius; or <see langword="null"/> if
-        /// no such open position could be found.
-        /// </returns>
-        public Vector3? GetNearestOpenSpace(Vector3 position, Number radius, List<Location> children)
-        {
-            var insanityCheck = 0;
-            Vector3? pos;
-            var distance = Number.Zero;
-            do
-            {
-                var rot = Randomizer.Instance.NextQuaternionNumber();
-                var direction = Vector3.UnitX.Transform(rot);
-                pos = position + (direction.Normalize() * distance);
-                var shape = new Sphere(radius, pos.Value);
-                var any = false;
-                foreach (var child in children)
-                {
-                    if (child.Shape.Intersects(shape))
-                    {
-                        any = true;
-                        break;
-                    }
-                }
-                if (any)
-                {
-                    pos = null;
-                    distance += radius;
-                }
-                insanityCheck++;
-            } while (!pos.HasValue && insanityCheck < 1000);
-            return pos.HasValue
-                ? position + pos.Value
-                : (Vector3?)null;
-        }
-
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
         /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
@@ -637,7 +637,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);

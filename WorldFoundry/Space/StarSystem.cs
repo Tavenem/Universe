@@ -309,7 +309,7 @@ namespace NeverFoundry.WorldFoundry.Space
                         CosmicStructureType.BlackHole => BlackHole.BlackHoleSpace,
                         _ => Number.Zero,
                     };
-                    position = instance.GetOpenSpace(space, children.Cast<Location>().ToList());
+                    position = instance.GetOpenSpace(space, children.Select(x => x as Location).ToList());
                 }
             }
             if (position.HasValue)
@@ -366,7 +366,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
@@ -414,6 +413,405 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         /// <param name="id">The ID of the star to remove.</param>
         public void RemoveStar(string id) => StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Remove(id);
+
+        /// <summary>
+        /// Single-planet orbital distance may follow a log-normal distribution, with the peak at 0.3
+        /// AU (this does not conform to current observations exactly, but extreme biases in current
+        /// observations make adequate overall distributions difficult to guess, and the
+        /// approximation used is judged reasonably close). In multi-planet systems, migration and
+        /// resonances result in a more widely-distributed system.
+        /// </summary>
+        /// <param name="star">The <see cref="Star"/> around which the planet will orbit.</param>
+        /// <param name="isGiant">Whether this is to be a giant planet (including ice giants).</param>
+        /// <param name="minTerrestrialPeriapsis">The minimum periapsis for a terrestrial planet.</param>
+        /// <param name="minGiantPeriapsis">The minimum periapsis for a giant planet.</param>
+        /// <param name="maxApoapsis">The maximum apoapsis.</param>
+        /// <param name="innerPlanet">The current innermost planet.</param>
+        /// <param name="outerPlanet">The current outermost planet.</param>
+        /// <param name="medianOrbit">The median orbit among the current planets.</param>
+        /// <param name="totalGiants">The number of giant planets this <see cref="StarSystem"/> is to have.</param>
+        /// <returns>The chosen periapsis, or null if no valid orbit is available.</returns>
+        private static Number? ChoosePlanetPeriapsis(
+            Star star,
+            bool isGiant,
+            Number minTerrestrialPeriapsis,
+            Number minGiantPeriapsis,
+            Number? maxApoapsis,
+            Planetoid? innerPlanet,
+            Planetoid? outerPlanet,
+            Number medianOrbit,
+            int totalGiants)
+        {
+            Number? periapsis = null;
+
+            // If this is the first planet, the orbit is selected based on the number of giants the
+            // system is to have.
+            if (innerPlanet is null)
+            {
+                // Evaluates to ~0.3 AU if there is only 1 giant, ~5 AU if there are 4 giants (as
+                // would be the case for the Solar system), and ~8 AU if there are 6 giants.
+                var mean = 7.48e11 - ((4 - Math.Max(1, totalGiants)) * 2.34e11);
+                var min = isGiant ? (double)minGiantPeriapsis : (double)minTerrestrialPeriapsis;
+                var max = maxApoapsis.HasValue ? (double)maxApoapsis.Value : (double?)null;
+                if (!max.HasValue || min < max)
+                {
+                    periapsis = min > mean * 1.25
+                        ? min
+                        : Randomizer.Instance.NormalDistributionSample(mean, mean / 3, min, max);
+                }
+            }
+            // If there are already any planets and this planet is a giant, it is placed in a higher
+            // orbit, never a lower one.
+            else if (innerPlanet != null && isGiant)
+            {
+                // Forces reassignment to a higher orbit below.
+                periapsis = medianOrbit;
+            }
+            // Terrestrial planets may be in either lower or higher orbits, with lower ones being
+            // more likely.
+            else if (Randomizer.Instance.NextDouble() <= 0.75)
+            {
+                periapsis = medianOrbit / 2;
+            }
+            else
+            {
+                periapsis = medianOrbit;
+            }
+
+            if (outerPlanet != null)
+            {
+                var otherMass = isGiant ? new Number(1.25, 28) : new Number(3, 25);
+                if (periapsis < medianOrbit)
+                {
+                    // Inner orbital spacing is by an average of 21.7 mutual Hill radii, with a
+                    // standard deviation of 9.5. An average planetary mass is used for the
+                    // calculation since the planet hasn't been generated yet, which should produce
+                    // reasonable values.
+                    var spacing = innerPlanet!.GetMutualHillSphereRadius(otherMass)
+                        * Randomizer.Instance.NormalDistributionSample(21.7, 9.5, minimum: 1);
+                    periapsis = innerPlanet.Orbit!.Value.Periapsis - spacing;
+                    if (periapsis < (isGiant ? minGiantPeriapsis : minTerrestrialPeriapsis))
+                    {
+                        periapsis = medianOrbit; // Force reassignment below.
+                    }
+                }
+                if (periapsis >= medianOrbit)
+                {
+                    // For all terrestrial planets, and giant planets within a 200 day period,
+                    // orbital spacing is by an average of 21.7 mutual Hill radii, with a standard
+                    // deviation of 9.5. An average planetary mass is used for the calculation since
+                    // the planet hasn't been generated yet, which should produce reasonable values.
+                    var outerPeriod = (double)outerPlanet.Orbit!.Value.Period;
+                    if (!isGiant || outerPeriod <= 1.728e7)
+                    {
+                        var spacing = outerPlanet.GetMutualHillSphereRadius(otherMass)
+                            * Randomizer.Instance.NormalDistributionSample(21.7, 9.5, minimum: 1);
+                        periapsis = outerPlanet.Orbit.Value.Apoapsis + spacing;
+                        if (periapsis > maxApoapsis)
+                        {
+                            return null;
+                        }
+                    }
+                    // Beyond 200 days, a Gaussian distribution of mean-motion resonance with a mean
+                    // of 2.2 is used to determine orbital spacing for giant planets.
+                    else
+                    {
+                        var newPeriod = (Number)Randomizer.Instance.NormalDistributionSample(outerPeriod * 2.2, outerPeriod);
+
+                        // Assuming no eccentricity and an average mass, calculate a periapsis from
+                        // the selected period, but set their mutual Hill sphere radius as a minimum separation.
+                        periapsis = Number.Max(outerPlanet.Orbit.Value.Apoapsis
+                            + outerPlanet.GetMutualHillSphereRadius(otherMass),
+                            ((newPeriod / MathConstants.TwoPI).Square() * ScienceConstants.G * (star.Mass + otherMass)).CubeRoot());
+                    }
+                }
+            }
+
+            return periapsis;
+        }
+
+        private static int GenerateNumCompanions(Star primary)
+        {
+            var chance = Randomizer.Instance.NextDouble();
+            if (primary.StarType == StarType.BrownDwarf)
+            {
+                return 0;
+            }
+            else if (primary.StarType == StarType.WhiteDwarf)
+            {
+                if (chance <= 4.0 / 9.0)
+                {
+                    return 1;
+                }
+            }
+            else if (primary.IsGiant || primary.StarType == StarType.Neutron)
+            {
+                if (chance <= 0.0625)
+                {
+                    return 2;
+                }
+                else if (chance <= 0.4375)
+                {
+                    return 1;
+                }
+            }
+            else
+            {
+                switch (primary.SpectralClass)
+                {
+                    case SpectralClass.A:
+                        if (chance <= 0.065)
+                        {
+                            return 2;
+                        }
+                        else if (chance <= 0.435)
+                        {
+                            return 1;
+                        }
+                        break;
+                    case SpectralClass.B:
+                        if (chance <= 0.8)
+                        {
+                            return 1;
+                        }
+                        break;
+                    case SpectralClass.O:
+                        if (chance <= 2.0 / 3.0)
+                        {
+                            return 1;
+                        }
+                        break;
+                    default:
+                        if (chance <= 0.01)
+                        {
+                            return 3;
+                        }
+                        else if (chance <= 0.03)
+                        {
+                            return 2;
+                        }
+                        else if (chance <= 0.3)
+                        {
+                            return 1;
+                        }
+                        break;
+                }
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Planets can orbit stably in a multiple-star system between the stars in a range up to
+        /// ~33% of an orbiting star's Hill sphere, and ~33% of the distance to an orbited star's
+        /// nearest orbiting star's Hill sphere. Alternatively, planets may orbit beyond the sphere
+        /// of influence of a close companion, provided they are still not beyond the limits towards
+        /// further orbiting stars.
+        /// </summary>
+        /// <param name="stars">The stars in the system.</param>
+        /// <param name="star">The <see cref="Star"/> whose apses' limits are to be calculated.</param>
+        private static (Number? minPeriapsis, Number? maxApoapsis) GetApsesLimits(List<Star> stars, Star star)
+        {
+            Number? maxApoapsis = null;
+            Number? minPeriapsis = null;
+            if (star.Orbit != null)
+            {
+                maxApoapsis = star.GetHillSphereRadius() * 1 / 3;
+            }
+
+            foreach (var entity in stars)
+            {
+                if (!entity.Orbit.HasValue || entity.Orbit.Value.OrbitedPosition != star.Position)
+                {
+                    continue;
+                }
+
+                // If a star is orbiting within ~100 AU, it is considered too close for planets to
+                // orbit in between, and orbits are only considered around them as a pair.
+                if (entity.Orbit!.Value.Periapsis <= new Number(1.5, 13))
+                {
+                    minPeriapsis = entity.GetHillSphereRadius() * 20;
+                    // Clear the maxApoapsis if it's within this outer orbit.
+                    if (maxApoapsis.HasValue && maxApoapsis < minPeriapsis)
+                    {
+                        maxApoapsis = null;
+                    }
+                }
+                else
+                {
+                    var candidateMaxApoapsis = (entity.Orbit.Value.Periapsis - entity.GetHillSphereRadius()) * Number.Third;
+                    if (maxApoapsis.HasValue && maxApoapsis.Value < candidateMaxApoapsis)
+                    {
+                        candidateMaxApoapsis = maxApoapsis.Value;
+                    }
+                    if (!minPeriapsis.HasValue || candidateMaxApoapsis > minPeriapsis)
+                    {
+                        maxApoapsis = candidateMaxApoapsis;
+                    }
+                }
+            }
+
+            return (minPeriapsis, maxApoapsis);
+        }
+
+        /// <summary>
+        /// Generates a close period. Close periods are about 100 days, in a normal distribution
+        /// constrained to 3-sigma.
+        /// </summary>
+        private static Number GetClosePeriod()
+        {
+            var count = 0;
+            double value;
+            const int mu = 36000;
+            const double sigma = 1.732e7;
+            const double min = mu - (3 * sigma);
+            const double max = mu + (3 * sigma);
+            // loop rather than constraining to limits in order to avoid over-representing the limits
+            do
+            {
+                value = Randomizer.Instance.NormalDistributionSample(mu, sigma);
+                if (value >= min && value <= max)
+                {
+                    return value;
+                }
+                count++;
+            } while (count < 100); // sanity check; should not be reached due to the nature of a normal distribution
+            return value;
+        }
+
+        private static SpectralClass GetSpectralClassForCompanionStar(Star primary)
+        {
+            var chance = Randomizer.Instance.NextDouble();
+            if (primary.SpectralClass == SpectralClass.O)
+            {
+                if (chance <= 0.2133)
+                {
+                    return SpectralClass.O; // 80%
+                }
+                else if (chance <= 0.4267)
+                {
+                    return SpectralClass.B; // 80%
+                }
+                else if (chance <= 0.5734)
+                {
+                    return SpectralClass.A; // 55%
+                }
+                else if (chance <= 0.7201)
+                {
+                    return SpectralClass.F; // 55%
+                }
+                else if (chance <= 0.8268)
+                {
+                    return SpectralClass.G; // 40%
+                }
+                else if (chance <= 0.9335)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else if (primary.SpectralClass == SpectralClass.B)
+            {
+                if (chance <= 0.2712)
+                {
+                    return SpectralClass.B; // 80%
+                }
+                else if (chance <= 0.4576)
+                {
+                    return SpectralClass.A; // 55%
+                }
+                else if (chance <= 0.6440)
+                {
+                    return SpectralClass.F; // 55%
+                }
+                else if (chance <= 0.7796)
+                {
+                    return SpectralClass.G; // 40%
+                }
+                else if (chance <= 0.9152)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else if (primary.SpectralClass == SpectralClass.A)
+            {
+                if (chance <= 0.2558)
+                {
+                    return SpectralClass.A; // 55%
+                }
+                else if (chance <= 0.5116)
+                {
+                    return SpectralClass.F; // 55%
+                }
+                else if (chance <= 0.6976)
+                {
+                    return SpectralClass.G; // 40%
+                }
+                else if (chance <= 0.8836)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else if (primary.SpectralClass == SpectralClass.F)
+            {
+                if (chance <= 0.3438)
+                {
+                    return SpectralClass.F; // 55%
+                }
+                else if (chance <= 0.5938)
+                {
+                    return SpectralClass.G; // 40%
+                }
+                else if (chance <= 0.8438)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else if (primary.SpectralClass == SpectralClass.G)
+            {
+                if (chance <= 0.3810)
+                {
+                    return SpectralClass.G; // 40%
+                }
+                else if (chance <= 0.7619)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else if (primary.SpectralClass == SpectralClass.K)
+            {
+                if (chance <= 0.6154)
+                {
+                    return SpectralClass.K; // 40%
+                }
+                else
+                {
+                    return SpectralClass.M; // 25%
+                }
+            }
+            else
+            {
+                return SpectralClass.M;
+            }
+        }
 
         private (Star star, Number totalApoapsis)? AddCompanionStar(
             List<(Star star, Number totalApoapsis)> companions,
@@ -615,122 +1013,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return companions;
         }
 
-        /// <summary>
-        /// Single-planet orbital distance may follow a log-normal distribution, with the peak at 0.3
-        /// AU (this does not conform to current observations exactly, but extreme biases in current
-        /// observations make adequate overall distributions difficult to guess, and the
-        /// approximation used is judged reasonably close). In multi-planet systems, migration and
-        /// resonances result in a more widely-distributed system.
-        /// </summary>
-        /// <param name="star">The <see cref="Star"/> around which the planet will orbit.</param>
-        /// <param name="isGiant">Whether this is to be a giant planet (including ice giants).</param>
-        /// <param name="minTerrestrialPeriapsis">The minimum periapsis for a terrestrial planet.</param>
-        /// <param name="minGiantPeriapsis">The minimum periapsis for a giant planet.</param>
-        /// <param name="maxApoapsis">The maximum apoapsis.</param>
-        /// <param name="innerPlanet">The current innermost planet.</param>
-        /// <param name="outerPlanet">The current outermost planet.</param>
-        /// <param name="medianOrbit">The median orbit among the current planets.</param>
-        /// <param name="totalGiants">The number of giant planets this <see cref="StarSystem"/> is to have.</param>
-        /// <returns>The chosen periapsis, or null if no valid orbit is available.</returns>
-        private Number? ChoosePlanetPeriapsis(
-            Star star,
-            bool isGiant,
-            Number minTerrestrialPeriapsis,
-            Number minGiantPeriapsis,
-            Number? maxApoapsis,
-            Planetoid? innerPlanet,
-            Planetoid? outerPlanet,
-            Number medianOrbit,
-            int totalGiants)
-        {
-            Number? periapsis = null;
-
-            // If this is the first planet, the orbit is selected based on the number of giants the
-            // system is to have.
-            if (innerPlanet is null)
-            {
-                // Evaluates to ~0.3 AU if there is only 1 giant, ~5 AU if there are 4 giants (as
-                // would be the case for the Solar system), and ~8 AU if there are 6 giants.
-                var mean = 7.48e11 - ((4 - Math.Max(1, totalGiants)) * 2.34e11);
-                var min = isGiant ? (double)minGiantPeriapsis : (double)minTerrestrialPeriapsis;
-                var max = maxApoapsis.HasValue ? (double)maxApoapsis.Value : (double?)null;
-                if (!max.HasValue || min < max)
-                {
-                    periapsis = min > mean * 1.25
-                        ? min
-                        : Randomizer.Instance.NormalDistributionSample(mean, mean / 3, min, max);
-                }
-            }
-            // If there are already any planets and this planet is a giant, it is placed in a higher
-            // orbit, never a lower one.
-            else if (innerPlanet != null && isGiant)
-            {
-                // Forces reassignment to a higher orbit below.
-                periapsis = medianOrbit;
-            }
-            // Terrestrial planets may be in either lower or higher orbits, with lower ones being
-            // more likely.
-            else if (Randomizer.Instance.NextDouble() <= 0.75)
-            {
-                periapsis = medianOrbit / 2;
-            }
-            else
-            {
-                periapsis = medianOrbit;
-            }
-
-            if (outerPlanet != null)
-            {
-                var otherMass = isGiant ? new Number(1.25, 28) : new Number(3, 25);
-                if (periapsis < medianOrbit)
-                {
-                    // Inner orbital spacing is by an average of 21.7 mutual Hill radii, with a
-                    // standard deviation of 9.5. An average planetary mass is used for the
-                    // calculation since the planet hasn't been generated yet, which should produce
-                    // reasonable values.
-                    var spacing = innerPlanet!.GetMutualHillSphereRadius(otherMass)
-                        * Randomizer.Instance.NormalDistributionSample(21.7, 9.5, minimum: 1);
-                    periapsis = innerPlanet.Orbit!.Value.Periapsis - spacing;
-                    if (periapsis < (isGiant ? minGiantPeriapsis : minTerrestrialPeriapsis))
-                    {
-                        periapsis = medianOrbit; // Force reassignment below.
-                    }
-                }
-                if (periapsis >= medianOrbit)
-                {
-                    // For all terrestrial planets, and giant planets within a 200 day period,
-                    // orbital spacing is by an average of 21.7 mutual Hill radii, with a standard
-                    // deviation of 9.5. An average planetary mass is used for the calculation since
-                    // the planet hasn't been generated yet, which should produce reasonable values.
-                    var outerPeriod = (double)outerPlanet.Orbit!.Value.Period;
-                    if (!isGiant || outerPeriod <= 1.728e7)
-                    {
-                        var spacing = outerPlanet.GetMutualHillSphereRadius(otherMass)
-                            * Randomizer.Instance.NormalDistributionSample(21.7, 9.5, minimum: 1);
-                        periapsis = outerPlanet.Orbit.Value.Apoapsis + spacing;
-                        if (periapsis > maxApoapsis)
-                        {
-                            return null;
-                        }
-                    }
-                    // Beyond 200 days, a Gaussian distribution of mean-motion resonance with a mean
-                    // of 2.2 is used to determine orbital spacing for giant planets.
-                    else
-                    {
-                        var newPeriod = (Number)Randomizer.Instance.NormalDistributionSample(outerPeriod * 2.2, outerPeriod);
-
-                        // Assuming no eccentricity and an average mass, calculate a periapsis from
-                        // the selected period, but set their mutual Hill sphere radius as a minimum separation.
-                        periapsis = Number.Max(outerPlanet.Orbit.Value.Apoapsis
-                            + outerPlanet.GetMutualHillSphereRadius(otherMass),
-                            ((newPeriod / MathConstants.TwoPI).Square() * ScienceConstants.G * (star.Mass + otherMass)).CubeRoot());
-                    }
-                }
-            }
-
-            return periapsis;
-        }
-
         private List<CosmicLocation> Configure(
             CosmicLocation? parent,
             Vector3 position,
@@ -866,76 +1148,6 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             return null;
-        }
-
-        private int GenerateNumCompanions(Star primary)
-        {
-            var chance = Randomizer.Instance.NextDouble();
-            if (primary.StarType == StarType.BrownDwarf)
-            {
-                return 0;
-            }
-            else if (primary.StarType == StarType.WhiteDwarf)
-            {
-                if (chance <= 4.0 / 9.0)
-                {
-                    return 1;
-                }
-            }
-            else if (primary.IsGiant || primary.StarType == StarType.Neutron)
-            {
-                if (chance <= 0.0625)
-                {
-                    return 2;
-                }
-                else if (chance <= 0.4375)
-                {
-                    return 1;
-                }
-            }
-            else
-            {
-                switch (primary.SpectralClass)
-                {
-                    case SpectralClass.A:
-                        if (chance <= 0.065)
-                        {
-                            return 2;
-                        }
-                        else if (chance <= 0.435)
-                        {
-                            return 1;
-                        }
-                        break;
-                    case SpectralClass.B:
-                        if (chance <= 0.8)
-                        {
-                            return 1;
-                        }
-                        break;
-                    case SpectralClass.O:
-                        if (chance <= 2.0 / 3.0)
-                        {
-                            return 1;
-                        }
-                        break;
-                    default:
-                        if (chance <= 0.01)
-                        {
-                            return 3;
-                        }
-                        else if (chance <= 0.03)
-                        {
-                            return 2;
-                        }
-                        else if (chance <= 0.3)
-                        {
-                            return 1;
-                        }
-                        break;
-                }
-            }
-            return 0;
         }
 
         private List<CosmicLocation> GeneratePlanet(
@@ -1182,84 +1394,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return addedChildren;
         }
 
-        /// <summary>
-        /// Planets can orbit stably in a multiple-star system between the stars in a range up to
-        /// ~33% of an orbiting star's Hill sphere, and ~33% of the distance to an orbited star's
-        /// nearest orbiting star's Hill sphere. Alternatively, planets may orbit beyond the sphere
-        /// of influence of a close companion, provided they are still not beyond the limits towards
-        /// further orbiting stars.
-        /// </summary>
-        /// <param name="stars">The stars in the system.</param>
-        /// <param name="star">The <see cref="Star"/> whose apses' limits are to be calculated.</param>
-        private (Number? minPeriapsis, Number? maxApoapsis) GetApsesLimits(List<Star> stars, Star star)
-        {
-            Number? maxApoapsis = null;
-            Number? minPeriapsis = null;
-            if (star.Orbit != null)
-            {
-                maxApoapsis = star.GetHillSphereRadius() * 1 / 3;
-            }
-
-            foreach (var entity in stars)
-            {
-                if (!entity.Orbit.HasValue || entity.Orbit.Value.OrbitedPosition != star.Position)
-                {
-                    continue;
-                }
-
-                // If a star is orbiting within ~100 AU, it is considered too close for planets to
-                // orbit in between, and orbits are only considered around them as a pair.
-                if (entity.Orbit!.Value.Periapsis <= new Number(1.5, 13))
-                {
-                    minPeriapsis = entity.GetHillSphereRadius() * 20;
-                    // Clear the maxApoapsis if it's within this outer orbit.
-                    if (maxApoapsis.HasValue && maxApoapsis < minPeriapsis)
-                    {
-                        maxApoapsis = null;
-                    }
-                }
-                else
-                {
-                    var candidateMaxApoapsis = (entity.Orbit.Value.Periapsis - entity.GetHillSphereRadius()) * Number.Third;
-                    if (maxApoapsis.HasValue && maxApoapsis.Value < candidateMaxApoapsis)
-                    {
-                        candidateMaxApoapsis = maxApoapsis.Value;
-                    }
-                    if (!minPeriapsis.HasValue || candidateMaxApoapsis > minPeriapsis)
-                    {
-                        maxApoapsis = candidateMaxApoapsis;
-                    }
-                }
-            }
-
-            return (minPeriapsis, maxApoapsis);
-        }
-
-        /// <summary>
-        /// Generates a close period. Close periods are about 100 days, in a normal distribution
-        /// constrained to 3-sigma.
-        /// </summary>
-        private Number GetClosePeriod()
-        {
-            var count = 0;
-            double value;
-            const int mu = 36000;
-            const double sigma = 1.732e7;
-            const double min = mu - (3 * sigma);
-            const double max = mu + (3 * sigma);
-            // loop rather than constraining to limits in order to avoid over-representing the limits
-            do
-            {
-                value = Randomizer.Instance.NormalDistributionSample(mu, sigma);
-                if (value >= min && value <= max)
-                {
-                    return value;
-                }
-                count++;
-            } while (count < 100); // sanity check; should not be reached due to the nature of a normal distribution
-            return value;
-        }
-
         private Planetoid? GetPlanet(
             Star star,
             List<Star> stars,
@@ -1349,141 +1483,6 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             return planet;
-        }
-
-        private SpectralClass GetSpectralClassForCompanionStar(Star primary)
-        {
-            var chance = Randomizer.Instance.NextDouble();
-            if (primary.SpectralClass == SpectralClass.O)
-            {
-                if (chance <= 0.2133)
-                {
-                    return SpectralClass.O; // 80%
-                }
-                else if (chance <= 0.4267)
-                {
-                    return SpectralClass.B; // 80%
-                }
-                else if (chance <= 0.5734)
-                {
-                    return SpectralClass.A; // 55%
-                }
-                else if (chance <= 0.7201)
-                {
-                    return SpectralClass.F; // 55%
-                }
-                else if (chance <= 0.8268)
-                {
-                    return SpectralClass.G; // 40%
-                }
-                else if (chance <= 0.9335)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else if (primary.SpectralClass == SpectralClass.B)
-            {
-                if (chance <= 0.2712)
-                {
-                    return SpectralClass.B; // 80%
-                }
-                else if (chance <= 0.4576)
-                {
-                    return SpectralClass.A; // 55%
-                }
-                else if (chance <= 0.6440)
-                {
-                    return SpectralClass.F; // 55%
-                }
-                else if (chance <= 0.7796)
-                {
-                    return SpectralClass.G; // 40%
-                }
-                else if (chance <= 0.9152)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else if (primary.SpectralClass == SpectralClass.A)
-            {
-                if (chance <= 0.2558)
-                {
-                    return SpectralClass.A; // 55%
-                }
-                else if (chance <= 0.5116)
-                {
-                    return SpectralClass.F; // 55%
-                }
-                else if (chance <= 0.6976)
-                {
-                    return SpectralClass.G; // 40%
-                }
-                else if (chance <= 0.8836)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else if (primary.SpectralClass == SpectralClass.F)
-            {
-                if (chance <= 0.3438)
-                {
-                    return SpectralClass.F; // 55%
-                }
-                else if (chance <= 0.5938)
-                {
-                    return SpectralClass.G; // 40%
-                }
-                else if (chance <= 0.8438)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else if (primary.SpectralClass == SpectralClass.G)
-            {
-                if (chance <= 0.3810)
-                {
-                    return SpectralClass.G; // 40%
-                }
-                else if (chance <= 0.7619)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else if (primary.SpectralClass == SpectralClass.K)
-            {
-                if (chance <= 0.6154)
-                {
-                    return SpectralClass.K; // 40%
-                }
-                else
-                {
-                    return SpectralClass.M; // 25%
-                }
-            }
-            else
-            {
-                return SpectralClass.M;
-            }
         }
 
         private void Reconstitute(Vector3 position, Number radius, Number mass, double? temperature) => Material = new Material(

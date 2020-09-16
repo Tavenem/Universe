@@ -135,8 +135,8 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         private PrecipitationMaps(SerializationInfo info, StreamingContext context) : this(
-            (float[][]?)info.GetValue(nameof(PrecipitationMap), typeof(float[][])) ?? new float[0][],
-            (float[][]?)info.GetValue(nameof(SnowfallMap), typeof(float[][])) ?? new float[0][])
+            (float[][]?)info.GetValue(nameof(PrecipitationMap), typeof(float[][])) ?? Array.Empty<float[]>(),
+            (float[][]?)info.GetValue(nameof(SnowfallMap), typeof(float[][])) ?? Array.Empty<float[]>())
         { }
 
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
@@ -147,7 +147,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// serialization.</param>
         /// <exception cref="System.Security.SecurityException">The caller does not have the
         /// required permission.</exception>
-        [SecurityPermission(SecurityAction.Demand, SerializationFormatter = true)]
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(PrecipitationMap), PrecipitationMap);
