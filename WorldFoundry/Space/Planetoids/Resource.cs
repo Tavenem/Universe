@@ -4,7 +4,6 @@ using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.WorldFoundry.Utilities;
 using System;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space.Planetoids
 {

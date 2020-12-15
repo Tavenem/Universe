@@ -300,7 +300,7 @@ namespace NeverFoundry.WorldFoundry.Space
             writer.WriteString("id", value.Id);
             writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
 
-            writer.WriteNumber("seed", value._seed);
+            writer.WriteNumber("seed", value.Seed);
 
             writer.WriteNumber(nameof(CosmicLocation.StructureType), (int)value.StructureType);
 

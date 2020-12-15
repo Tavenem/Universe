@@ -61,7 +61,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             writer.WriteValue(location.IdItemTypeName);
 
             writer.WritePropertyName("seed");
-            writer.WriteValue(location._seed);
+            writer.WriteValue(location.Seed);
 
             writer.WritePropertyName(nameof(Planetoid.PlanetType));
             writer.WriteValue((int)location.PlanetType);
@@ -167,111 +167,50 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 serializer.Serialize(writer, location._habitabilityRequirements, typeof(HabitabilityRequirements));
             }
 
-            writer.WritePropertyName("SurfaceRegions");
-            if (location._surfaceRegions is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                serializer.Serialize(writer, location._surfaceRegions, typeof(List<SurfaceRegion>));
-            }
+            writer.WritePropertyName("ElevationMapPath");
+            writer.WriteValue(location._elevationMapPath);
 
-            writer.WritePropertyName("DepthMap");
-            if (location._depthMap is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(location._depthMap);
-            }
-
-            writer.WritePropertyName("ElevationMap");
-            if (location._elevationMap is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(location._elevationMap);
-            }
-
-            writer.WritePropertyName("FlowMap");
-            if (location._flowMap is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(location._flowMap);
-            }
-
-            writer.WritePropertyName("PrecipitationMaps");
-            if (location._precipitationMaps is null)
+            writer.WritePropertyName("PrecipitationMapPaths");
+            if (location._precipitationMapPaths is null)
             {
                 writer.WriteNull();
             }
             else
             {
                 writer.WriteStartArray();
-                foreach (var item in location._precipitationMaps)
+                foreach (var item in location._precipitationMapPaths)
                 {
                     writer.WriteValue(item);
                 }
                 writer.WriteEndArray();
             }
 
-            writer.WritePropertyName("SnowfallMaps");
-            if (location._snowfallMaps is null)
+            writer.WritePropertyName("SnowfallMapPaths");
+            if (location._snowfallMapPaths is null)
             {
                 writer.WriteNull();
             }
             else
             {
                 writer.WriteStartArray();
-                foreach (var item in location._snowfallMaps)
+                foreach (var item in location._snowfallMapPaths)
                 {
                     writer.WriteValue(item);
                 }
                 writer.WriteEndArray();
             }
 
-            writer.WritePropertyName("TemperatureMapSummer");
-            if (location._temperatureMapSummer is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(location._temperatureMapSummer);
-            }
+            writer.WritePropertyName("TemperatureMapSummerPath");
+            writer.WriteValue(location._temperatureMapSummerPath);
 
-            writer.WritePropertyName("TemperatureMapWinter");
-            if (location._temperatureMapWinter is null)
-            {
-                writer.WriteNull();
-            }
-            else
-            {
-                writer.WriteValue(location._temperatureMapWinter);
-            }
-
-            writer.WritePropertyName("MaxFlow");
-            if (location._maxFlow.HasValue)
-            {
-                writer.WriteValue(location._maxFlow.Value);
-            }
-            else
-            {
-                writer.WriteNull();
-            }
+            writer.WritePropertyName("TemperatureMapWinterPath");
+            writer.WriteValue(location._temperatureMapWinterPath);
 
             writer.WriteEndObject();
         }
 
         [return: MaybeNull]
-        internal object FromJObj(JObject jObj)
+        internal static object FromJObj(JObject jObj)
         {
             string id;
             if (!jObj.TryGetValue("id", out var idToken)
@@ -319,7 +258,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             var planetType = (PlanetType)planetTypeToken.Value<int>();
 
             string? parentId;
-            if (!jObj.TryGetValue(nameof(CosmicLocation.Name), out var parentIdToken))
+            if (!jObj.TryGetValue(nameof(CosmicLocation.ParentId), out var parentIdToken))
             {
                 throw new JsonException();
             }
@@ -546,135 +485,82 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 habitabilityRequirements = habitabilityRequirementsToken.ToObject<HabitabilityRequirements>();
             }
 
-            if (!jObj.TryGetValue("SurfaceRegions", out var surfaceRegionsToken))
+            if (!jObj.TryGetValue("ElevationMapPath", out var elevationMapToken))
             {
                 throw new JsonException();
             }
-            List<SurfaceRegion>? surfaceRegions;
-            if (surfaceRegionsToken.Type == JTokenType.Null)
-            {
-                surfaceRegions = null;
-            }
-            else if (surfaceRegionsToken.Type != JTokenType.Array
-                || surfaceRegionsToken is not JArray surfaceRegionsArray)
-            {
-                throw new JsonException();
-            }
-            else
-            {
-                surfaceRegions = surfaceRegionsArray.ToObject<List<SurfaceRegion>>();
-            }
-
-            if (!jObj.TryGetValue("DepthMap", out var depthMapToken))
-            {
-                throw new JsonException();
-            }
-            byte[]? depthMap;
-            if (depthMapToken.Type == JTokenType.Null)
-            {
-                depthMap = null;
-            }
-            else
-            {
-                depthMap = depthMapToken.ToObject<byte[]>();
-            }
-
-            if (!jObj.TryGetValue("ElevationMap", out var elevationMapToken))
-            {
-                throw new JsonException();
-            }
-            byte[]? elevationMap;
+            string? elevationMapPath;
             if (elevationMapToken.Type == JTokenType.Null)
             {
-                elevationMap = null;
+                elevationMapPath = null;
+            }
+            else if (elevationMapToken.Type == JTokenType.String)
+            {
+                elevationMapPath = elevationMapToken.Value<string>();
             }
             else
             {
-                elevationMap = elevationMapToken.ToObject<byte[]>();
+                throw new JsonException();
             }
 
-            if (!jObj.TryGetValue("FlowMap", out var flowMapToken))
+            if (!jObj.TryGetValue("PrecipitationMapPaths", out var precipitationMapsToken))
             {
                 throw new JsonException();
             }
-            byte[]? flowMap;
-            if (flowMapToken.Type == JTokenType.Null)
-            {
-                flowMap = null;
-            }
-            else
-            {
-                flowMap = flowMapToken.ToObject<byte[]>();
-            }
-
-            if (!jObj.TryGetValue("PrecipitationMaps", out var precipitationMapsToken))
-            {
-                throw new JsonException();
-            }
-            byte[][]? precipitationMaps;
+            string?[]? precipitationMapPaths;
             if (precipitationMapsToken.Type == JTokenType.Null)
             {
-                precipitationMaps = null;
+                precipitationMapPaths = null;
             }
             else
             {
-                precipitationMaps = precipitationMapsToken.ToObject<byte[][]>();
+                precipitationMapPaths = precipitationMapsToken.ToObject<string?[]>();
             }
 
-            if (!jObj.TryGetValue("SnowfallMaps", out var snowfallMapsToken))
+            if (!jObj.TryGetValue("SnowfallMapPaths", out var snowfallMapsToken))
             {
                 throw new JsonException();
             }
-            byte[][]? snowfallMaps;
+            string?[]? snowfallMapPaths;
             if (snowfallMapsToken.Type == JTokenType.Null)
             {
-                snowfallMaps = null;
+                snowfallMapPaths = null;
             }
             else
             {
-                snowfallMaps = snowfallMapsToken.ToObject<byte[][]>();
+                snowfallMapPaths = snowfallMapsToken.ToObject<string?[]>();
             }
 
-            if (!jObj.TryGetValue("TemperatureMapSummer", out var temperatureMapSummerToken))
+            if (!jObj.TryGetValue("TemperatureMapSummerPath", out var temperatureMapSummerToken))
             {
                 throw new JsonException();
             }
-            byte[]? temperatureMapSummer;
+            string? temperatureMapSummerPath;
             if (temperatureMapSummerToken.Type == JTokenType.Null)
             {
-                temperatureMapSummer = null;
+                temperatureMapSummerPath = null;
+            }
+            else if (temperatureMapSummerToken.Type == JTokenType.String)
+            {
+                temperatureMapSummerPath = temperatureMapSummerToken.Value<string>();
             }
             else
             {
-                temperatureMapSummer = temperatureMapSummerToken.ToObject<byte[]>();
+                throw new JsonException();
             }
 
-            if (!jObj.TryGetValue("TemperatureMapWinter", out var temperatureMapWinterToken))
+            if (!jObj.TryGetValue("TemperatureMapWinterPath", out var temperatureMapWinterToken))
             {
                 throw new JsonException();
             }
-            byte[]? temperatureMapWinter;
+            string? temperatureMapWinterPath;
             if (temperatureMapWinterToken.Type == JTokenType.Null)
             {
-                temperatureMapWinter = null;
+                temperatureMapWinterPath = null;
             }
-            else
+            else if (temperatureMapWinterToken.Type == JTokenType.String)
             {
-                temperatureMapWinter = temperatureMapWinterToken.ToObject<byte[]>();
-            }
-
-            double? maxFlow;
-            if (!jObj.TryGetValue("MaxFlow", out var maxFlowToken))
-            {
-                throw new JsonException();
-            }
-            if (maxFlowToken.Type == JTokenType.Null)
-            {
-                maxFlow = null;
-            }
-            else if (maxFlowToken.Type == JTokenType.Float)
-            {
-                maxFlow = maxFlowToken.Value<double>();
+                temperatureMapWinterPath = temperatureMapWinterToken.Value<string>();
             }
             else
             {
@@ -703,15 +589,11 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                 earthlike,
                 planetParams,
                 habitabilityRequirements,
-                surfaceRegions,
-                depthMap,
-                elevationMap,
-                flowMap,
-                precipitationMaps,
-                snowfallMaps,
-                temperatureMapSummer,
-                temperatureMapWinter,
-                maxFlow);
+                elevationMapPath,
+                precipitationMapPaths,
+                snowfallMapPaths,
+                temperatureMapSummerPath,
+                temperatureMapWinterPath);
         }
     }
 }

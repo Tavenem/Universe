@@ -8,11 +8,11 @@ namespace NeverFoundry.WorldFoundry.Space
 {
     public partial class CosmicLocation
     {
-        private protected static readonly Number _PlanetaryNebulaSpace = new Number(9.5, 15);
+        private protected static readonly Number _PlanetaryNebulaSpace = new(9.5, 15);
 
         private Star? ConfigurePlanetaryNebulaInstance(Vector3 position, double? ambientTemperature = null, CosmicLocation? child = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             ReconstitutePlanetaryNebulaInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
             if (child is not Star star
@@ -25,7 +25,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstitutePlanetaryNebulaInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var mass = randomizer.NextNumber(new Number(1.99, 29), new Number(1.99, 30)); // ~0.1–1 solar mass.
 

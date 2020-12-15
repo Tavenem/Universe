@@ -9,12 +9,12 @@ namespace NeverFoundry.WorldFoundry.Space
 {
     public partial class CosmicLocation
     {
-        private protected static readonly Number _GalaxyGroupMass = new Number(2, 44); // General average; 1.0e14 solar masses
-        private protected static readonly Number _GalaxyGroupSpace = new Number(3, 23);
+        private protected static readonly Number _GalaxyGroupMass = new(2, 44); // General average; 1.0e14 solar masses
+        private protected static readonly Number _GalaxyGroupSpace = new(3, 23);
 
         private List<CosmicLocation> ConfigureGalaxyGroupInstance(Vector3 position, double? ambientTemperature = null, CosmicLocation? child = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             ReconstituteGalaxyGroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
             var amount = Randomizer.Instance.Next(1, 6);
@@ -46,7 +46,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteGalaxyGroupInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var radius = randomizer.NextNumber(new Number(1.5, 23), new Number(3, 23)); // ~500–1000 kpc
 

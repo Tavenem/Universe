@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space.Planetoids
 {
@@ -61,17 +60,17 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// <summary>
         /// The approximate planetary radius of Earth, in meters.
         /// </summary>
-        public static readonly Number EarthRadius = new Number(6371000);
+        public static readonly Number EarthRadius = new(6371000);
 
         /// <summary>
         /// The approximate period of revolution of Earth, in seconds.
         /// </summary>
-        public static readonly Number EarthRevolutionPeriod = new Number(31558150);
+        public static readonly Number EarthRevolutionPeriod = new(31558150);
 
         /// <summary>
         /// The approximate period of rotation of Earth, in seconds.
         /// </summary>
-        public static readonly Number EarthRotationalPeriod = new Number(86164);
+        public static readonly Number EarthRotationalPeriod = new(86164);
 
         /// <summary>
         /// <para>
@@ -302,7 +301,7 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
             double? surfaceGravity = null,
             double? surfaceTemperature = null,
             decimal? waterRatio = null,
-            decimal? waterVaporRatio = null) => new PlanetParams(
+            decimal? waterVaporRatio = null) => new(
                 albedo ?? EarthAlbedo,
                 atmosphericPressure ?? EarthAtmosphericPressure,
                 atmosphericRequirements ?? Atmosphere.HumanBreathabilityRequirements,

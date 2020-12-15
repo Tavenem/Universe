@@ -9,17 +9,17 @@ namespace NeverFoundry.WorldFoundry.Space
 {
     public partial class CosmicLocation
     {
-        private static readonly Number _HIIRegionChildDensity = new Number(6, -50);
-        private static readonly List<ChildDefinition> _HIIRegionChildDefinitions = new List<ChildDefinition>
+        private static readonly Number _HIIRegionChildDensity = new(6, -50);
+        private static readonly List<ChildDefinition> _HIIRegionChildDefinitions = new()
         {
             new StarSystemChildDefinition(_HIIRegionChildDensity * new Number(9998, -4), SpectralClass.B, LuminosityClass.V),
             new StarSystemChildDefinition(_HIIRegionChildDensity * new Number(2, -4), SpectralClass.O, LuminosityClass.V),
         };
-        private protected static readonly Number _NebulaSpace = new Number(5.5, 18);
+        private protected static readonly Number _NebulaSpace = new(5.5, 18);
 
         private void ConfigureNebulaInstance(Vector3 position, double? ambientTemperature = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             ReconstituteNebulaInstance(
                 position,
                 StructureType == CosmicStructureType.HIIRegion
@@ -29,7 +29,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteNebulaInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
             // which the dust clouds and filaments roughly fit.

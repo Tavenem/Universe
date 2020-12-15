@@ -145,7 +145,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// reference frame as the orbiting object.
         /// </param>
         public static OrbitalParameters GetCircular(Number orbitedMass, Vector3 orbitedPosition)
-            => new OrbitalParameters(
+            => new(
                 orbitedMass,
                 orbitedPosition,
                 Number.Zero,
@@ -168,7 +168,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The eccentricity of this orbit.
         /// </param>
         public static OrbitalParameters GetFromEccentricity(Number orbitedMass, Vector3 orbitedPosition, double eccentricity)
-            => new OrbitalParameters(
+            => new(
                 orbitedMass,
                 orbitedPosition,
                 Number.Zero,

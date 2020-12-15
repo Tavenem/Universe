@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -34,8 +33,6 @@ namespace NeverFoundry.WorldFoundry.Space
     [System.Text.Json.Serialization.JsonConverter(typeof(CosmicLocationConverter))]
     public partial class CosmicLocation : Location
     {
-        internal uint _seed;
-
         /// <summary>
         /// A string that uniquely identifies this <see cref="CosmicLocation"/> for display
         /// purposes. Includes a description of its type, and its <see cref="IIdItem.Id"/>.
@@ -74,6 +71,12 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
         /// </summary>
         public Orbit? Orbit { get; internal set; }
+
+        /// <summary>
+        /// A value which deterministically allows this <see cref="CosmicLocation"/> to be
+        /// regenerated, given identical values for its other properties.
+        /// </summary>
+        public uint Seed { get; private protected set; }
 
         /// <summary>
         /// The shape of this location.
@@ -199,7 +202,7 @@ namespace NeverFoundry.WorldFoundry.Space
             Vector3 velocity,
             Orbit? orbit) : base(id, parentId, absolutePosition)
         {
-            _seed = seed;
+            Seed = seed;
             StructureType = structureType;
             Name = name;
             Orbit = orbit;
@@ -307,7 +310,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private CosmicLocation(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (CosmicStructureType?)info.GetValue(nameof(StructureType), typeof(CosmicStructureType)) ?? CosmicStructureType.Universe,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
@@ -1124,7 +1127,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(StructureType), StructureType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -1342,7 +1345,7 @@ namespace NeverFoundry.WorldFoundry.Space
         internal Number GetRocheLimit(Number orbitingDensity)
             => new Number(8947, -4) * (Mass / orbitingDensity).CubeRoot();
 
-        internal virtual ValueTask ResetOrbitAsync(IDataStore dataStore) => new ValueTask();
+        internal virtual ValueTask ResetOrbitAsync(IDataStore dataStore) => new();
 
         private protected override void AssignPosition(Vector3 position)
             => Position = position;

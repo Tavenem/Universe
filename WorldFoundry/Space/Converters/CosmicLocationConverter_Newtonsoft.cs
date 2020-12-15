@@ -68,15 +68,15 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
                     if (structureType == CosmicStructureType.AsteroidField
                         || structureType == CosmicStructureType.OortCloud)
                     {
-                        return new AsteroidFieldConverter().FromJObj(jObj);
+                        return AsteroidFieldConverter.FromJObj(jObj);
                     }
                     if (structureType == CosmicStructureType.BlackHole)
                     {
-                        return new BlackHoleConverter().FromJObj(jObj);
+                        return BlackHoleConverter.FromJObj(jObj);
                     }
                     if (structureType == CosmicStructureType.StarSystem)
                     {
-                        return new StarSystemConverter().FromJObj(jObj);
+                        return StarSystemConverter.FromJObj(jObj);
                     }
                 }
                 else
@@ -86,11 +86,11 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             }
             else if (jObj.TryGetValue(nameof(Star.StarType), out _))
             {
-                return new StarConverter().FromJObj(jObj);
+                return StarConverter.FromJObj(jObj);
             }
             else if (jObj.TryGetValue(nameof(Planetoid.PlanetType), out _))
             {
-                return new PlanetoidConverter().FromJObj(jObj);
+                return PlanetoidConverter.FromJObj(jObj);
             }
             else
             {
@@ -294,7 +294,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             writer.WriteValue(location.IdItemTypeName);
 
             writer.WritePropertyName("seed");
-            writer.WriteValue(location._seed);
+            writer.WriteValue(location.Seed);
 
             writer.WritePropertyName(nameof(CosmicLocation.StructureType));
             writer.WriteValue((int)location.StructureType);

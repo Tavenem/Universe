@@ -9,20 +9,20 @@ namespace NeverFoundry.WorldFoundry.Space
     public partial class CosmicLocation
     {
         // ~100000 galaxies total
-        private static readonly List<ChildDefinition> _SuperclusterChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _SuperclusterChildDefinitions = new()
         {
             new ChildDefinition(_GalaxyClusterSpace, new Number(2.563, -77), CosmicStructureType.GalaxyCluster),
             new ChildDefinition(_GalaxyGroupSpace, new Number(5.126, -77), CosmicStructureType.GalaxyGroup),
         };
-        private protected static readonly Number _SuperclusterSpace = new Number(9.4607, 25);
+        private protected static readonly Number _SuperclusterSpace = new(9.4607, 25);
 
         private void ConfigureSuperclusterInstance(Vector3 position, double? ambientTemperature = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             ReconstituteSuperclusterInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
         }
 
-        private IShape GetSuperclusterShape(Vector3 position, Randomizer randomizer)
+        private static IShape GetSuperclusterShape(Vector3 position, Randomizer randomizer)
         {
             // May be filaments (narrow in two dimensions), or walls/sheets (narrow in one dimension).
             var majorAxis = randomizer.NextNumber(new Number(9.4607, 23), new Number(9.4607, 25));
@@ -65,7 +65,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteSuperclusterInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var mass = randomizer.NextNumber(new Number(2, 46), new Number(2, 47)); // General average; 1.0e16–1.0e17 solar masses
 

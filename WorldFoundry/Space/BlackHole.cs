@@ -5,7 +5,6 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using System;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -17,8 +16,8 @@ namespace NeverFoundry.WorldFoundry.Space
     [System.Text.Json.Serialization.JsonConverter(typeof(BlackHoleConverter))]
     public class BlackHole : CosmicLocation
     {
-        internal static readonly Number BlackHoleSpace = new Number(60000);
-        internal static readonly Number SupermassiveBlackHoleThreshold = new Number(1, 33);
+        internal static readonly Number BlackHoleSpace = new(60000);
+        internal static readonly Number SupermassiveBlackHoleThreshold = new(1, 33);
 
         internal readonly bool _supermassive;
 
@@ -114,7 +113,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private BlackHole(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
             (string?)info.GetValue(nameof(Name), typeof(string)),
@@ -135,7 +134,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(StructureType), StructureType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -152,13 +151,13 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void Configure(Vector3 position)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             Reconstitute(position);
         }
 
         private void Reconstitute(Vector3 position)
         {
-            var mass = GetBlackHoleMassForSeed(_seed, _supermassive);
+            var mass = GetBlackHoleMassForSeed(Seed, _supermassive);
 
             Material = new Material(
                 Substances.All.Fuzzball.GetReference(),

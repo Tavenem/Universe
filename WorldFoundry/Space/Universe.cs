@@ -9,11 +9,11 @@ namespace NeverFoundry.WorldFoundry.Space
     {
         private protected const double UniverseAmbientTemperature = 2.73;
 
-        private static readonly List<ChildDefinition> _UniverseChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _UniverseChildDefinitions = new()
         {
             new ChildDefinition(_SuperclusterSpace, new Number(5.8, -26), CosmicStructureType.Supercluster),
         };
-        private static readonly Sphere _UniverseShape = new Sphere(new Number(1.89214, 33));
+        private static readonly Sphere _UniverseShape = new(new Number(1.89214, 33));
 
         private void ConfigureUniverseInstance() => ReconstituteUniverseInstance();
 

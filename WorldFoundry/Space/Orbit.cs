@@ -7,7 +7,6 @@ using NeverFoundry.MathAndScience.Time;
 using Newtonsoft.Json;
 using System;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Space

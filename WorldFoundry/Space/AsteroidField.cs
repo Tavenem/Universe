@@ -7,7 +7,6 @@ using NeverFoundry.WorldFoundry.Space.Planetoids;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -19,11 +18,11 @@ namespace NeverFoundry.WorldFoundry.Space
     [System.Text.Json.Serialization.JsonConverter(typeof(AsteroidFieldConverter))]
     public class AsteroidField : CosmicLocation
     {
-        internal static readonly Number AsteroidFieldSpace = new Number(3.15, 12);
-        internal static readonly Number OortCloudSpace = new Number(7.5, 15);
+        internal static readonly Number AsteroidFieldSpace = new(3.15, 12);
+        internal static readonly Number OortCloudSpace = new(7.5, 15);
 
-        private static readonly Number _AsteroidFieldChildDensity = new Number(13, -31);
-        private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions = new List<ChildDefinition>
+        private static readonly Number _AsteroidFieldChildDensity = new(13, -31);
+        private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions = new()
         {
             new PlanetChildDefinition(_AsteroidFieldChildDensity * new Number(74, -2), PlanetType.AsteroidC),
             new PlanetChildDefinition(_AsteroidFieldChildDensity * new Number(14, -2), PlanetType.AsteroidS),
@@ -33,8 +32,8 @@ namespace NeverFoundry.WorldFoundry.Space
             new PlanetChildDefinition(_AsteroidFieldChildDensity * new Number(1, -10), PlanetType.RockyDwarf),
         };
 
-        private static readonly Number _OortCloudChildDensity = new Number(8.31, -38);
-        private static readonly List<ChildDefinition> _OortCloudChildDefinitions = new List<ChildDefinition>
+        private static readonly Number _OortCloudChildDensity = new(8.31, -38);
+        private static readonly List<ChildDefinition> _OortCloudChildDefinitions = new()
         {
             new PlanetChildDefinition(_OortCloudChildDensity * new Number(85, -2), PlanetType.Comet),
             new PlanetChildDefinition(_OortCloudChildDensity * new Number(11, -2), PlanetType.AsteroidC),
@@ -207,7 +206,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private AsteroidField(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (CosmicStructureType?)info.GetValue(nameof(StructureType), typeof(CosmicStructureType)) ?? CosmicStructureType.AsteroidField,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
@@ -351,7 +350,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(StructureType), StructureType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -385,7 +384,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 minorRadius ??= Number.Zero;
             }
 
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             Reconstitute(
                 position,
                 parent?.Material.Temperature ?? UniverseAmbientTemperature,
@@ -408,7 +407,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 return;
             }
 
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var shape = _toroidal
                 ? new Torus(majorRadius, minorRadius, position)

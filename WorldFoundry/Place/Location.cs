@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Place
@@ -706,7 +705,7 @@ namespace NeverFoundry.WorldFoundry.Place
         public async Task SetParentAsync(IDataStore dataStore, Location? parent)
         {
             AssignParent(parent);
-            await ResetPosition(dataStore);
+            await ResetPosition(dataStore).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -865,6 +864,6 @@ namespace NeverFoundry.WorldFoundry.Place
                 .ToArray();
         }
 
-        private protected virtual ValueTask ResetPosition(IDataStore dataStore) => new ValueTask();
+        private protected virtual ValueTask ResetPosition(IDataStore dataStore) => new();
     }
 }

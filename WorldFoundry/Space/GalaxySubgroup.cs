@@ -9,13 +9,13 @@ namespace NeverFoundry.WorldFoundry.Space
     public partial class CosmicLocation
     {
         // ~15 dwarf galaxies orbiting a major galaxy; ~50 galaxies total in a group
-        private static readonly List<ChildDefinition> _GalaxySubgroupChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _GalaxySubgroupChildDefinitions = new()
         {
             new ChildDefinition(_DwarfGalaxySpace, new Number(1.25, -69), CosmicStructureType.DwarfGalaxy),
             new ChildDefinition(_GlobularClusterSpace, new Number(3.75, -69), CosmicStructureType.GlobularCluster), // ~3x
         };
-        private protected static readonly Number _GalaxySubgroupMass = new Number(3.333, 43); // General average; ~6 in a ~1.0e14 solar mass group
-        private protected static readonly Number _GalaxySubgroupSpace = new Number(5, 22);
+        private protected static readonly Number _GalaxySubgroupMass = new(3.333, 43); // General average; ~6 in a ~1.0e14 solar mass group
+        private protected static readonly Number _GalaxySubgroupSpace = new(5, 22);
 
         internal OrbitalParameters? GetGalaxySubgroupChildOrbit() => OrbitalParameters.GetFromEccentricity(
             Mass,
@@ -24,7 +24,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private CosmicLocation? ConfigureGalaxySubgroupInstance(Vector3 position, out List<CosmicLocation> children, double? ambientTemperature = null, CosmicLocation? child = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
             ReconstituteGalaxySubgroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
             if (child is null || !(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(child.StructureType))
@@ -40,7 +40,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteGalaxySubgroupInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var radius = randomizer.NextNumber(new Number(6.25, 22), new Number(1.25, 23)); // ~6 in a ~500–1000 kpc group
 

@@ -8,7 +8,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Climate
 {
@@ -20,8 +19,8 @@ namespace NeverFoundry.WorldFoundry.Climate
     {
         internal const int SnowToRainRatio = 13;
 
-        // The approximate value of 0.05 + e^1.25. Used to calculate MaxPrecipitation.
-        private const double ExpFiveFourthsPlusOneTwentieth = 3.5403429574618413761305460296723;
+        // The approximate value of 2 * (0.05 + e^1.25). Used to calculate MaxPrecipitation.
+        private const double MaxPrecipitationFactor = 7.0806859149236827522610920593445;
 
         private const double StandardHeightDensity = 124191.6;
 
@@ -66,27 +65,27 @@ namespace NeverFoundry.WorldFoundry.Climate
         public double AtmosphericScaleHeight { get; private set; }
 
         /// <summary>
+        /// The average precipitation expected to be produced by this atmosphere, in mm/hr.
+        /// </summary>
+        public double AveragePrecipitation { get; private set; }
+
+        /// <summary>
         /// The physical makeup of this atmosphere.
         /// </summary>
         public IMaterial Material { get; private set; }
 
         private double? _maxPrecipitation;
         /// <summary>
-        /// The maximum annual precipitation expected to be produced by this atmosphere, in mm.
+        /// The maximum precipitation expected to be produced by this atmosphere, in mm/hr.
         /// </summary>
         public double MaxPrecipitation
-            => _maxPrecipitation ??= AveragePrecipitation * ExpFiveFourthsPlusOneTwentieth;
+            => _maxPrecipitation ??= AveragePrecipitation * MaxPrecipitationFactor;
 
         private double? _maxSnowfall;
         /// <summary>
         /// The maximum annual snowfall expected to be produced by this atmosphere, in mm.
         /// </summary>
         public double MaxSnowfall => _maxSnowfall ??= MaxPrecipitation * SnowToRainRatio;
-
-        /// <summary>
-        /// The average annual precipitation expected to be produced by this atmosphere.
-        /// </summary>
-        internal double AveragePrecipitation { get; private set; }
 
         private double? _greenhouseFactor;
         /// <summary>
@@ -169,7 +168,7 @@ namespace NeverFoundry.WorldFoundry.Climate
                 temperature,
                 constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
 
-            SetPrecipitation(planet);
+            SetPrecipitation();
         }
 
         private Atmosphere(
@@ -382,7 +381,7 @@ namespace NeverFoundry.WorldFoundry.Climate
                     material.Density = Material.Density;
                 }
             }
-            SetPrecipitation(planet);
+            SetPrecipitation();
         }
 
         internal void ResetTemperatureDependentProperties(Planetoid planet)
@@ -399,17 +398,17 @@ namespace NeverFoundry.WorldFoundry.Climate
                     material.Density = Material.Density;
                 }
             }
-            SetPrecipitation(planet);
+            SetPrecipitation();
         }
 
-        internal void ResetWater(Planetoid planet)
+        internal void ResetWater()
         {
             _waterRatio = null;
             _waterRatioDouble = null;
             _wetness = null;
             _hv2RsE = null;
             _hvE = null;
-            SetPrecipitation(planet);
+            SetPrecipitation();
         }
 
         internal void SetAtmosphericPressure(double value) => AtmosphericPressure = value;
@@ -489,11 +488,10 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// made.</param>
         private IShape GetShape(Planetoid planet) => new HollowSphere(planet.Shape.ContainingRadius, AtmosphericHeight);
 
-        private void SetPrecipitation(Planetoid planet)
+        private void SetPrecipitation()
         {
             _precipitationFactor = Wetness * Material.Density * AtmosphericHeight / StandardHeightDensity;
-            // An average "year" is a standard astronomical year of 31557600 seconds.
-            AveragePrecipitation = _precipitationFactor * 990 * (planet.Orbit.HasValue ? (double)planet.Orbit.Value.Period / 31557600 : 1);
+            AveragePrecipitation = _precipitationFactor * 0.11293634496919917864476386036961; // 990 mm/yr
             _maxPrecipitation = null;
             _maxSnowfall = null;
         }

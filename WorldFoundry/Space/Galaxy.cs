@@ -10,10 +10,10 @@ namespace NeverFoundry.WorldFoundry.Space
 {
     public partial class CosmicLocation
     {
-        private protected static readonly Number _DwarfGalaxySpace = new Number(2.5, 18);
-        private protected static readonly Number _GalaxySpace = new Number(2.5, 22);
+        private protected static readonly Number _DwarfGalaxySpace = new(2.5, 18);
+        private protected static readonly Number _GalaxySpace = new(2.5, 22);
 
-        private static readonly Number _GalaxySystemDensity = new Number(2.75, -73);
+        private static readonly Number _GalaxySystemDensity = new(2.75, -73);
         private static readonly Number _GalaxyRogueDensity = _GalaxySystemDensity * 3;
         private static readonly Number _GalaxyMainSequenceDensity = _GalaxySystemDensity * new Number(9096, -4);
         private static readonly Number _GalaxyRedDensity = _GalaxyMainSequenceDensity * new Number(7645, -4);
@@ -25,7 +25,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private static readonly Number _GalaxyBlueGiantDensity = _GalaxyGiantDensity * new Number(35, -3);
         private static readonly Number _GalaxyYellowGiantDensity = _GalaxyGiantDensity * new Number(2, -2);
 
-        private static readonly List<ChildDefinition> _GalaxyChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _GalaxyChildDefinitions = new()
         {
             new PlanetChildDefinition(_GalaxyRogueDensity * 5 / 12, PlanetType.GasGiant),
             new PlanetChildDefinition(_GalaxyRogueDensity * new Number(25, -2), PlanetType.IceGiant),
@@ -85,7 +85,7 @@ namespace NeverFoundry.WorldFoundry.Space
             new ChildDefinition(_NebulaSpace, _GalaxySystemDensity * new Number(4, -10), CosmicStructureType.HIIRegion),
         };
 
-        private static readonly List<ChildDefinition> _EllipticalGalaxyChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _EllipticalGalaxyChildDefinitions = new()
         {
             new PlanetChildDefinition(_GalaxyRogueDensity * 5 / 12, PlanetType.GasGiant),
             new PlanetChildDefinition(_GalaxyRogueDensity * new Number(25, -2), PlanetType.IceGiant),
@@ -132,12 +132,12 @@ namespace NeverFoundry.WorldFoundry.Space
                 && (!(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType)
                 || child.Mass > BlackHole.SupermassiveBlackHoleThreshold))
             {
-                _seed = child._seed;
+                Seed = child.Seed;
             }
             else
             {
                 var core = new BlackHole(this, Vector3.Zero, null, supermassive: (CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType));
-                _seed = core?._seed ?? Randomizer.Instance.NextUIntInclusive();
+                Seed = core?.Seed ?? Randomizer.Instance.NextUIntInclusive();
                 newCore = core;
             }
 
@@ -148,7 +148,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteGalaxyInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             Number radius;
             Number axis;
@@ -178,7 +178,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // multiplied due to the abundance of dark matter.
             var darkMatterMultiplier = randomizer.NextNumber(5, 15);
 
-            var coreMass = BlackHole.GetBlackHoleMassForSeed(_seed, supermassive: true);
+            var coreMass = BlackHole.GetBlackHoleMassForSeed(Seed, supermassive: true);
 
             var mass = ((shape.Volume * _GalaxySystemDensity * new Number(1, 30)) + coreMass) * darkMatterMultiplier;
 

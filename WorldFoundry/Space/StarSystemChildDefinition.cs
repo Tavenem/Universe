@@ -200,7 +200,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// cref="Sunlike"/> set to <see langword="true"/>.
         /// </summary>
         public static StarSystemChildDefinition GetNewSunlike()
-            => new StarSystemChildDefinition(true);
+            => new(true);
 
         /// <summary>
         /// Determines whether this <see cref="ChildDefinition"/> instance's parameters are
@@ -294,7 +294,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// A new <see cref="StarSystem"/> as defined by this <see
         /// cref="StarSystemChildDefinition"/>.
         /// </returns>
-        public StarSystem? GetStarSystem(CosmicLocation? parent, Vector3 position, out List<CosmicLocation> children) => new StarSystem(
+        public StarSystem? GetStarSystem(CosmicLocation? parent, Vector3 position, out List<CosmicLocation> children) => new(
             parent,
             position,
             out children,

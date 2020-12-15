@@ -83,7 +83,7 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// <returns>
         /// A new <see cref="Planetoid"/> as defined by this <see cref="PlanetChildDefinition"/>.
         /// </returns>
-        public Planetoid? GetPlanet(CosmicLocation? parent, List<Star> stars, Vector3 position, out List<Planetoid> satellites) => new Planetoid(
+        public Planetoid? GetPlanet(CosmicLocation? parent, List<Star> stars, Vector3 position, out List<Planetoid> satellites) => new(
             PlanetType,
             parent,
             null,

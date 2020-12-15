@@ -4,7 +4,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Text.Json.Serialization;
 
 namespace NeverFoundry.WorldFoundry
@@ -26,7 +25,7 @@ namespace NeverFoundry.WorldFoundry
         /// A <see cref="FloatRange"/> with the minimum set to 0, the average set to 0.5, and the
         /// maximum set to 1.
         /// </summary>
-        public static readonly FloatRange ZeroToOne = new FloatRange(0, 1);
+        public static readonly FloatRange ZeroToOne = new(0, 1);
 
         /// <summary>
         /// The average value.
@@ -49,6 +48,14 @@ namespace NeverFoundry.WorldFoundry
         public float Min { get; }
 
         /// <summary>
+        /// The range of values. (Max-Min, or 1-Min+Max when Min>Max)
+        /// </summary>
+        [JsonIgnore]
+        public float Range => Min > Max
+            ? 1 - Min + Max
+            : Max - Min;
+
+        /// <summary>
         /// Initializes a new instance of <see cref="FloatRange"/> with  set to the same value.
         /// </summary>
         /// <param name="value">The value to set for all three properties (<see cref="Average"/>,
@@ -60,7 +67,7 @@ namespace NeverFoundry.WorldFoundry
         /// </summary>
         /// <param name="min">The value at which <see cref="Min"/> is to be set.</param>
         /// <param name="max">The value at which <see cref="Max"/> is to be set.</param>
-        public FloatRange(float min, float max) : this(min, min + ((max - min) / 2), max) { }
+        public FloatRange(float min, float max) : this(min, (min + max) / 2, max) { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="FloatRange"/>.

@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space.Planetoids
 {
@@ -33,7 +32,7 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// </para>
         /// </remarks>
         public static readonly HabitabilityRequirements HumanHabitabilityRequirements =
-            new HabitabilityRequirements(
+            new(
                 Atmosphere.HumanBreathabilityRequirements,
                 minimumTemperature: 236,
                 maximumTemperature: 308,

@@ -9,11 +9,11 @@ namespace NeverFoundry.WorldFoundry.Space
 {
     public partial class CosmicLocation
     {
-        private protected static readonly Number _GlobularClusterSpace = new Number(2.1, 7);
+        private protected static readonly Number _GlobularClusterSpace = new(2.1, 7);
 
-        private static readonly Number _GlobularClusterChildDensity = new Number(1.3, -17);
+        private static readonly Number _GlobularClusterChildDensity = new(1.3, -17);
 
-        private static readonly Number _GlobularClusterSystemDensity = new Number(1.5, -70);
+        private static readonly Number _GlobularClusterSystemDensity = new(1.5, -70);
         private static readonly Number _GlobularClusterMainSequenceDensity = _GlobularClusterSystemDensity * new Number(9096, -4);
         private static readonly Number _GlobularClusterRedDensity = _GlobularClusterMainSequenceDensity * new Number(7645, -4);
         private static readonly Number _GlobularClusterKDensity = _GlobularClusterMainSequenceDensity * new Number(121, -3);
@@ -24,7 +24,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private static readonly Number _GlobularClusterBlueGiantDensity = _GlobularClusterGiantDensity * new Number(35, -3);
         private static readonly Number _GlobularClusterYellowGiantDensity = _GlobularClusterGiantDensity * new Number(2, -2);
 
-        private static readonly List<ChildDefinition> _GlobularClusterChildDefinitions = new List<ChildDefinition>
+        private static readonly List<ChildDefinition> _GlobularClusterChildDefinitions = new()
         {
             new StarSystemChildDefinition(_GlobularClusterSystemDensity / 6, StarType.BrownDwarf, populationII: true),
 
@@ -79,12 +79,12 @@ namespace NeverFoundry.WorldFoundry.Space
             CosmicLocation? newCore = null;
             if (child is not null && child.StructureType == CosmicStructureType.BlackHole)
             {
-                _seed = child._seed;
+                Seed = child.Seed;
             }
             else
             {
                 var core = new BlackHole(this, Vector3.Zero);
-                _seed = core?._seed ?? Randomizer.Instance.NextUIntInclusive();
+                Seed = core?.Seed ?? Randomizer.Instance.NextUIntInclusive();
                 newCore = core;
             }
 
@@ -95,7 +95,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ReconstituteGlobularClusterInstance(Vector3 position, double? temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var radius = Randomizer.Instance.NextNumber(new Number(8, 6), new Number(2.1, 7));
             var axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 1);
@@ -105,7 +105,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // multiplied due to the abundance of dark matter.
             var darkMatterMultiplier = randomizer.NextNumber(5, 15);
 
-            var coreMass = BlackHole.GetBlackHoleMassForSeed(_seed, supermassive: false);
+            var coreMass = BlackHole.GetBlackHoleMassForSeed(Seed, supermassive: false);
 
             var mass = ((shape.Volume * _GlobularClusterChildDensity * new Number(1, 30)) + coreMass) * darkMatterMultiplier;
 

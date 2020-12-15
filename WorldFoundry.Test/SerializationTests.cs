@@ -20,7 +20,8 @@ namespace NeverFoundry.WorldFoundry.Test
     public class SerializationTests
     {
         private static readonly Newtonsoft.Json.JsonSerializerSettings _JsonSerializerSettings
-            = new Newtonsoft.Json.JsonSerializerSettings { TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto };
+            = new()
+            { TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto };
 
         [TestMethod]
         public void FloatRangeTest()
@@ -234,14 +235,12 @@ namespace NeverFoundry.WorldFoundry.Test
                 SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
-                new byte[] { 1 },
-                new byte[] { 2 },
-                new byte[] { 3 },
-                3,
-                new byte[][] { new byte[] { 4 } },
-                new byte[][] { new byte[] { 5 } },
-                new byte[] { 6 },
-                new byte[] { 7 });
+                null,
+                null,
+                null,
+                null,
+                null,
+                null);
 
             var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
             Console.WriteLine(json);
@@ -261,14 +260,11 @@ namespace NeverFoundry.WorldFoundry.Test
                 SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
-                new byte[] { 1 },
-                new byte[] { 2 },
-                new byte[] { 3 },
-                3,
-                new byte[][] { new byte[] { 4 } },
-                new byte[][] { new byte[] { 5 } },
-                new byte[] { 6 },
-                new byte[] { 7 },
+                null,
+                null,
+                null,
+                null,
+                null,
                 new Vector3[] { Vector3.Zero, Vector3.UnitX });
 
             json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
@@ -430,72 +426,6 @@ namespace NeverFoundry.WorldFoundry.Test
         }
 
         [TestMethod]
-        public void SurfaceMappingTest()
-        {
-            var planet = Planetoid.GetPlanetForSunlikeStar(out _);
-            Assert.IsNotNull(planet);
-
-            var maps = planet!.GetSurfaceMaps(90, steps: 12);
-
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(maps, _JsonSerializerSettings);
-
-            stopwatch.Stop();
-
-            var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Size (Newtonsoft): {BytesToString(bytes.Length)}");
-            Console.WriteLine($"Serialization time (Newtonsoft): {stopwatch.Elapsed}");
-            //Console.WriteLine();
-            //Console.WriteLine("JSON (Newtonsoft):");
-            //Console.WriteLine(json);
-
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<SurfaceMaps>(json);
-
-            stopwatch.Stop();
-
-            Assert.AreEqual(maps.AverageElevation, deserialized.AverageElevation);
-            Assert.IsTrue(AreEqual(maps.Elevation, deserialized.Elevation));
-            AssertHydrologyMapsEqual(maps.HydrologyMaps, deserialized.HydrologyMaps);
-            AssertWeatherMapsEqual(maps.WeatherMaps, deserialized.WeatherMaps);
-
-            Console.WriteLine($"Deserialization time (Newtonsoft): {stopwatch.Elapsed}");
-
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            json = System.Text.Json.JsonSerializer.Serialize(maps);
-
-            stopwatch.Stop();
-
-            bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine();
-            Console.WriteLine($"Size (System.Text.Json): {BytesToString(bytes.Length)}");
-            Console.WriteLine($"Serialization time (System.Text.Json): {stopwatch.Elapsed}");
-            //Console.WriteLine();
-            //Console.WriteLine("JSON (System.Text.Json):");
-            //Console.WriteLine(json);
-
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<SurfaceMaps>(json);
-
-            stopwatch.Stop();
-
-            Assert.AreEqual(maps.AverageElevation, deserialized.AverageElevation);
-            Assert.IsTrue(AreEqual(maps.Elevation, deserialized.Elevation));
-            AssertHydrologyMapsEqual(maps.HydrologyMaps, deserialized.HydrologyMaps);
-            AssertWeatherMapsEqual(maps.WeatherMaps, deserialized.WeatherMaps);
-
-            Console.WriteLine($"Deserialization time (System.Text.Json): {stopwatch.Elapsed}");
-        }
-
-        [TestMethod]
         public async Task EntireUniverseTestAsync()
         {
             var dataStore = new InMemoryDataStore();
@@ -555,69 +485,6 @@ namespace NeverFoundry.WorldFoundry.Test
             Assert.IsTrue(children.SequenceEqual(deserialized!));
 
             Console.WriteLine($"Deserialization time (System.Text.Json): {stopwatch.Elapsed}");
-        }
-
-        private static bool AreEqual<T>(T[][] first, T[][] second)
-        {
-            if (first.Length != second.Length)
-            {
-                return false;
-            }
-            for (var x = 0; x < first.Length; x++)
-            {
-                if (first[x].Length != second[x].Length)
-                {
-                    return false;
-                }
-                for (var y = 0; y < first[x].Length; y++)
-                {
-                    if (first[x][y]?.Equals(second[x][y]) != true)
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        private static void AssertHydrologyMapsEqual(HydrologyMaps first, HydrologyMaps second)
-        {
-            Assert.IsTrue(AreEqual(first.Depth, second.Depth));
-            Assert.IsTrue(AreEqual(first.Flow, second.Flow));
-        }
-
-        private static void AssertPrecipitationMapsEqual(PrecipitationMaps first, PrecipitationMaps second)
-        {
-            Assert.AreEqual(first.Precipitation, second.Precipitation);
-            Assert.IsTrue(AreEqual(first.PrecipitationMap, second.PrecipitationMap));
-            Assert.AreEqual(first.Snowfall, second.Snowfall);
-            Assert.IsTrue(AreEqual(first.SnowfallMap, second.SnowfallMap));
-        }
-
-        private static void AssertWeatherMapsEqual(WeatherMaps first, WeatherMaps second)
-        {
-            Assert.AreEqual(first.Biome, second.Biome);
-            Assert.IsTrue(AreEqual(first.BiomeMap, second.BiomeMap));
-            Assert.AreEqual(first.Climate, second.Climate);
-            Assert.IsTrue(AreEqual(first.ClimateMap, second.ClimateMap));
-            Assert.AreEqual(first.Ecology, second.Ecology);
-            Assert.IsTrue(AreEqual(first.EcologyMap, second.EcologyMap));
-            Assert.AreEqual(first.Humidity, second.Humidity);
-            Assert.IsTrue(AreEqual(first.HumidityMap, second.HumidityMap));
-            Assert.IsTrue(AreEqual(first.SeaIceRangeMap, second.SeaIceRangeMap));
-            Assert.AreEqual(first.Seasons, second.Seasons);
-            Assert.IsTrue(AreEqual(first.SnowCoverRangeMap, second.SnowCoverRangeMap));
-            Assert.AreEqual(first.TemperatureRange, second.TemperatureRange);
-            Assert.IsTrue(AreEqual(first.TemperatureRangeMap, second.TemperatureRangeMap));
-            Assert.AreEqual(first.TotalPrecipitation, second.TotalPrecipitation);
-            Assert.IsTrue(AreEqual(first.TotalPrecipitationMap, second.TotalPrecipitationMap));
-            Assert.AreEqual(first.TotalSnowfall, second.TotalSnowfall);
-            Assert.IsTrue(AreEqual(first.TotalSnowfallMap, second.TotalSnowfallMap));
-            Assert.AreEqual(first.PrecipitationMaps.Length, second.PrecipitationMaps.Length);
-            for (var i = 0; i < first.PrecipitationMaps.Length; i++)
-            {
-                AssertPrecipitationMapsEqual(first.PrecipitationMaps[i], second.PrecipitationMaps[i]);
-            }
         }
 
         private static string BytesToString(int numBytes)

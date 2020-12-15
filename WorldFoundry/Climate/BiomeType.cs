@@ -3,9 +3,8 @@
 namespace NeverFoundry.WorldFoundry.Climate
 {
     /// <summary>
-    /// Describes the general biome of a location (a less specific grouping than a
-    /// <see cref="ClimateType"/>-<see cref="EcologyType"/> combination). A <see
-    /// cref="FlagsAttribute"/> <see cref="Enum"/>.
+    /// Describes the general biome of a location. A <see cref="FlagsAttribute"/> <see
+    /// cref="Enum"/>.
     /// </summary>
     public enum BiomeType
     {

@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Place

@@ -28,7 +28,7 @@ namespace NeverFoundry.WorldFoundry.Climate
                 case ClimateType.Subpolar:
                     return elevation >= 0.15 ? BiomeType.Subalpine : BiomeType.Tundra;
                 case ClimateType.Boreal:
-                    if (humidityType <= HumidityType.Perarid)
+                    if (humidityType <= HumidityType.Arid)
                     {
                         return BiomeType.LichenWoodland;
                     }
@@ -54,7 +54,7 @@ namespace NeverFoundry.WorldFoundry.Climate
                     {
                         return BiomeType.HotDesert;
                     }
-                    else if (humidityType <= HumidityType.Semiarid)
+                    else if (humidityType <= HumidityType.Arid)
                     {
                         return BiomeType.Shrubland;
                     }
@@ -104,47 +104,47 @@ namespace NeverFoundry.WorldFoundry.Climate
         /// <summary>
         /// Gets the <see cref="BiomeType"/> associated with the given conditions.
         /// </summary>
-        /// <param name="temperature">An average annual surface temperature, in K.</param>
-        /// <param name="annualPrecipitation">An amount of annual precipitation, in mm.</param>
+        /// <param name="temperature">The annual surface temperature, in K.</param>
+        /// <param name="precipitation">A rate of precipitation, in mm/hr.</param>
         /// <param name="elevation">The elevation of the location above sea level.</param>
         /// <returns>The <see cref="BiomeType"/> associated with the given conditions.</returns>
-        public static BiomeType GetBiomeType(double temperature, double annualPrecipitation, double elevation)
-            => GetBiomeType(GetClimateType(temperature), GetHumidityType(annualPrecipitation), elevation);
+        public static BiomeType GetBiomeType(FloatRange temperature, double precipitation, double elevation)
+            => GetBiomeType(GetClimateType(temperature), GetHumidityType(precipitation), elevation);
 
         /// <summary>
-        /// Gets the <see cref="ClimateType"/> associated with the given average annual surface
-        /// temperature.
+        /// Gets the <see cref="ClimateType"/> associated with the given maximum, and average annual
+        /// surface temperature.
         /// </summary>
-        /// <param name="temperature">An average annual surface temperature, in K.</param>
-        /// <returns>The <see cref="ClimateType"/> associated with the given average annual surface
-        /// temperature.</returns>
-        public static ClimateType GetClimateType(double temperature)
+        /// <param name="temperature">The annual surface temperature, in K.</param>
+        /// <returns>
+        /// The <see cref="ClimateType"/> associated with the given average annual surface
+        /// temperature.
+        /// </returns>
+        public static ClimateType GetClimateType(FloatRange temperature)
         {
-            if (temperature <= Substances.All.Water.MeltingPoint + 1.5)
+            if (temperature.Max < Substances.All.Water.MeltingPoint)
             {
                 return ClimateType.Polar;
             }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 3)
+            else if (temperature.Max < 280.15)
             {
                 return ClimateType.Subpolar;
             }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 6)
+            else if (temperature.Min <= 263.15 && temperature.Max < 288.15)
             {
                 return ClimateType.Boreal;
             }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 12)
+            else if (temperature.Min <= 283.15)
             {
-                return ClimateType.CoolTemperate;
+                return temperature.Max <= 295.15
+                    ? ClimateType.CoolTemperate
+                    : ClimateType.WarmTemperate;
             }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 18)
-            {
-                return ClimateType.WarmTemperate;
-            }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 24)
+            else if (temperature.Min < 291.15)
             {
                 return ClimateType.Subtropical;
             }
-            else if (temperature <= Substances.All.Water.MeltingPoint + 68)
+            else if (temperature.Average <= 341.15)
             {
                 return ClimateType.Tropical;
             }
@@ -155,232 +155,39 @@ namespace NeverFoundry.WorldFoundry.Climate
         }
 
         /// <summary>
-        /// Gets the <see cref="EcologyType"/> associated with the given conditions.
-        /// </summary>
-        /// <param name="climateType">The climate type of the location.</param>
-        /// <param name="humidityType">The humidity type of the location.</param>
-        /// <param name="elevation">The elevation of the location above sea level.</param>
-        /// <returns>The <see cref="EcologyType"/> associated with the given conditions.</returns>
-        public static EcologyType GetEcologyType(ClimateType climateType, HumidityType humidityType, double elevation)
-        {
-            if (elevation <= 0)
-            {
-                return EcologyType.Sea;
-            }
-
-            switch (climateType)
-            {
-                case ClimateType.Polar:
-                    if (humidityType <= HumidityType.Perarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else
-                    {
-                        return EcologyType.Ice;
-                    }
-                case ClimateType.Subpolar:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.DryTundra;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.MoistTundra;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.WetTundra;
-                    }
-                    else
-                    {
-                        return EcologyType.RainTundra;
-                    }
-                case ClimateType.Boreal:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.DryScrub;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.MoistForest;
-                    }
-                    else if (humidityType == HumidityType.Semiarid)
-                    {
-                        return EcologyType.WetForest;
-                    }
-                    else
-                    {
-                        return EcologyType.RainForest;
-                    }
-                case ClimateType.CoolTemperate:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.DesertScrub;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.Steppe;
-                    }
-                    else if (humidityType == HumidityType.Semiarid)
-                    {
-                        return EcologyType.MoistForest;
-                    }
-                    else if (humidityType == HumidityType.Subhumid)
-                    {
-                        return EcologyType.WetForest;
-                    }
-                    else
-                    {
-                        return EcologyType.RainForest;
-                    }
-                case ClimateType.WarmTemperate:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.DesertScrub;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.ThornScrub;
-                    }
-                    else if (humidityType == HumidityType.Semiarid)
-                    {
-                        return EcologyType.DryForest;
-                    }
-                    else if (humidityType == HumidityType.Subhumid)
-                    {
-                        return EcologyType.MoistForest;
-                    }
-                    else if (humidityType == HumidityType.Humid)
-                    {
-                        return EcologyType.WetForest;
-                    }
-                    else
-                    {
-                        return EcologyType.RainForest;
-                    }
-                case ClimateType.Subtropical:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.DesertScrub;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.ThornWoodland;
-                    }
-                    else if (humidityType == HumidityType.Semiarid)
-                    {
-                        return EcologyType.DryForest;
-                    }
-                    else if (humidityType == HumidityType.Subhumid)
-                    {
-                        return EcologyType.MoistForest;
-                    }
-                    else if (humidityType == HumidityType.Humid)
-                    {
-                        return EcologyType.WetForest;
-                    }
-                    else
-                    {
-                        return EcologyType.RainForest;
-                    }
-                case ClimateType.Tropical:
-                    if (humidityType == HumidityType.Superarid)
-                    {
-                        return EcologyType.Desert;
-                    }
-                    else if (humidityType == HumidityType.Perarid)
-                    {
-                        return EcologyType.DesertScrub;
-                    }
-                    else if (humidityType == HumidityType.Arid)
-                    {
-                        return EcologyType.ThornWoodland;
-                    }
-                    else if (humidityType == HumidityType.Semiarid)
-                    {
-                        return EcologyType.VeryDryForest;
-                    }
-                    else if (humidityType == HumidityType.Subhumid)
-                    {
-                        return EcologyType.DryForest;
-                    }
-                    else if (humidityType == HumidityType.Humid)
-                    {
-                        return EcologyType.MoistForest;
-                    }
-                    else if (humidityType == HumidityType.Perhumid)
-                    {
-                        return EcologyType.WetForest;
-                    }
-                    else
-                    {
-                        return EcologyType.RainForest;
-                    }
-                default:
-                    return EcologyType.Desert;
-            }
-        }
-
-        /// <summary>
-        /// Gets the <see cref="EcologyType"/> associated with the given conditions.
-        /// </summary>
-        /// <param name="temperature">An average annual surface temperature, in K.</param>
-        /// <param name="annualPrecipitation">An amount of annual precipitation, in mm.</param>
-        /// <param name="elevation">The elevation of the location above sea level.</param>
-        /// <returns>The <see cref="EcologyType"/> associated with the given conditions.</returns>
-        public static EcologyType GetEcologyType(double temperature, double annualPrecipitation, double elevation)
-            => GetEcologyType(GetClimateType(temperature), GetHumidityType(annualPrecipitation), elevation);
-
-        /// <summary>
         /// Gets the <see cref="HumidityType"/> associated with the given amount of precipitation.
         /// </summary>
-        /// <param name="annualPrecipitation">An amount of annual precipitation, in mm.</param>
-        /// <returns>The <see cref="HumidityType"/> associated with the given amount of
-        /// precipitation.</returns>
-        public static HumidityType GetHumidityType(double annualPrecipitation)
+        /// <param name="precipitation">A rate of precipitation, in mm/hr.</param>
+        /// <returns>
+        /// The <see cref="HumidityType"/> associated with the given amount of precipitation.
+        /// </returns>
+        public static HumidityType GetHumidityType(double precipitation)
         {
-            if (annualPrecipitation < 125)
+            if (precipitation < 0.01425963951631302760666210358202) // 125 mm/yr
             {
                 return HumidityType.Superarid;
             }
-            else if (annualPrecipitation < 250)
+            else if (precipitation < 0.02851927903262605521332420716404) // 250 mm/yr
             {
                 return HumidityType.Perarid;
             }
-            else if (annualPrecipitation < 500)
+            else if (precipitation < 0.05703855806525211042664841432809) // 500 mm/yr
             {
                 return HumidityType.Arid;
             }
-            else if (annualPrecipitation < 1000)
+            else if (precipitation < 0.11407711613050422085329682865617) // 1000 mm/yr
             {
                 return HumidityType.Semiarid;
             }
-            else if (annualPrecipitation < 2000)
+            else if (precipitation < 0.22815423226100844170659365731234) // 2000 mm/yr
             {
                 return HumidityType.Subhumid;
             }
-            else if (annualPrecipitation < 4000)
+            else if (precipitation < 0.45630846452201688341318731462469) // 4000 mm/yr
             {
                 return HumidityType.Humid;
             }
-            else if (annualPrecipitation < 8000)
+            else if (precipitation < 0.91261692904403376682637462924937) // 8000 mm/yr
             {
                 return HumidityType.Perhumid;
             }

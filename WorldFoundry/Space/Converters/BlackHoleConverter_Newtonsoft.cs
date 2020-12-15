@@ -58,7 +58,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
             writer.WriteValue(location.IdItemTypeName);
 
             writer.WritePropertyName("seed");
-            writer.WriteValue(location._seed);
+            writer.WriteValue(location.Seed);
 
             writer.WritePropertyName(nameof(CosmicLocation.StructureType));
             writer.WriteValue((int)location.StructureType);
@@ -102,7 +102,7 @@ namespace NeverFoundry.WorldFoundry.Space.NewtonsoftJson
         }
 
         [return: MaybeNull]
-        internal object FromJObj(JObject jObj)
+        internal static object FromJObj(JObject jObj)
         {
             string id;
             if (!jObj.TryGetValue("id", out var idToken)

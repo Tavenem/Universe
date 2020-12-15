@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -24,7 +23,7 @@ namespace NeverFoundry.WorldFoundry.Space
     [System.Text.Json.Serialization.JsonConverter(typeof(StarSystemConverter))]
     public class StarSystem : CosmicLocation
     {
-        internal static readonly Number StarSystemSpace = new Number(3.5, 16);
+        internal static readonly Number StarSystemSpace = new(3.5, 16);
 
         /// <summary>
         /// The type discriminator for this type.
@@ -198,7 +197,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private StarSystem(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (StarType?)info.GetValue(nameof(StarType), typeof(StarType)) ?? StarType.None,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
@@ -369,7 +368,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(StarType), StarType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -639,7 +638,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 else
                 {
                     var candidateMaxApoapsis = (entity.Orbit.Value.Periapsis - entity.GetHillSphereRadius()) * Number.Third;
-                    if (maxApoapsis.HasValue && maxApoapsis.Value < candidateMaxApoapsis)
+                    if (maxApoapsis < candidateMaxApoapsis)
                     {
                         candidateMaxApoapsis = maxApoapsis.Value;
                     }

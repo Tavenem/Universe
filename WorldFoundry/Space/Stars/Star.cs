@@ -7,7 +7,6 @@ using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.WorldFoundry.Space.Stars;
 using System;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -21,8 +20,8 @@ namespace NeverFoundry.WorldFoundry.Space
     [System.Text.Json.Serialization.JsonConverter(typeof(StarConverter))]
     public class Star : CosmicLocation
     {
-        private static readonly Number _MinBlueHypergiantMass = new Number(7.96, 31);
-        private static readonly Number _SolarMass = new Number(6.955, 8);
+        private static readonly Number _MinBlueHypergiantMass = new(7.96, 31);
+        private static readonly Number _SolarMass = new(6.955, 8);
 
         /// <summary>
         /// The type discriminator for this type.
@@ -288,7 +287,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private Star(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (StarType?)info.GetValue(nameof(StarType), typeof(StarType)) ?? StarType.MainSequence,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
@@ -400,7 +399,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(StarType), StarType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -526,7 +525,7 @@ namespace NeverFoundry.WorldFoundry.Space
             LuminosityClass? luminosityClass = null,
             bool populationII = false)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
 
             if (spectralClass.HasValue)
             {
@@ -620,7 +619,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ConfigureSunlike(Vector3 position)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            Seed = Randomizer.Instance.NextUIntInclusive();
 
             SpectralClass = SpectralClass.G;
             LuminosityClass = LuminosityClass.V;
@@ -980,7 +979,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void Reconstitute(Vector3 position, double temperature)
         {
-            var randomizer = new Randomizer(_seed);
+            var randomizer = new Randomizer(Seed);
 
             var substance = GetSubstance();
 

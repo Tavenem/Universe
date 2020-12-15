@@ -11,15 +11,16 @@ using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
 using NeverFoundry.WorldFoundry.Utilities;
-using NeverFoundry.WorldFoundry.WorldGrids;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
+using System.Data;
 using System.Linq;
 using System.Runtime.Serialization;
-using System.Security.Permissions;
 using System.Threading.Tasks;
+using Number = NeverFoundry.MathAndScience.Numerics.Number;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -29,7 +30,7 @@ namespace NeverFoundry.WorldFoundry.Space
     [Serializable]
     [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.PlanetoidConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(PlanetoidConverter))]
-    public class Planetoid : CosmicLocation
+    public class Planetoid : CosmicLocation, IDisposable
     {
         internal const double DefaultTerrestrialMaxDensity = 6000;
         internal const int GiantMaxDensity = 1650;
@@ -46,6 +47,8 @@ namespace NeverFoundry.WorldFoundry.Space
 
         // polar latitude = ~1.476
         private const double CosPolarLatitude = 0.095;
+        private const int DefaultMapResolution = 320;
+        private const int DefaultSeasons = 4;
         private const int DensityForDwarf = 2000;
         private const int GiantMinDensity = 1100;
         private const int GiantSubMinDensity = 600;
@@ -55,55 +58,49 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         private const int MinimumRadius = 600000;
 
-        private const double Second = MathAndScience.Constants.Doubles.MathConstants.PIOver180 / 3600;
-        private const double SixteenthPI = Math.PI / 16;
+        private const double ArcticLatitudeRange = Math.PI / 16;
+        private const double ArcticLatitude = MathAndScience.Constants.Doubles.MathConstants.HalfPI - ArcticLatitudeRange;
+        private const double FifthPI = Math.PI / 5;
+        private const double EighthPI = Math.PI / 8;
 
-        internal static readonly Number GiantSpace = new Number(2.5, 8);
+        internal static readonly Number GiantSpace = new(2.5, 8);
 
-        private static readonly Number _AsteroidSpace = new Number(400000);
-        private static readonly Number _CometSpace = new Number(25000);
+        private static readonly Number _AsteroidSpace = new(400000);
+        private static readonly Number _CometSpace = new(25000);
 
         /// <summary>
         /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
         /// </summary>
-        private static readonly Number _DwarfMinMassForType = new Number(3.4, 20);
+        private static readonly Number _DwarfMinMassForType = new(3.4, 20);
 
-        private static readonly Number _DwarfSpace = new Number(1.5, 6);
+        private static readonly Number _DwarfSpace = new(1.5, 6);
 
         /// <summary>
         /// Below this limit the planet will not have sufficient mass to retain hydrogen, and will
         /// be a terrestrial planet.
         /// </summary>
-        private static readonly Number _GiantMinMassForType = new Number(6, 25);
-
-        /// <summary>
-        /// Hadley values are a pure function of latitude, and do not vary with any property of the
-        /// planet, atmosphere, or season. Since the calculation is relatively expensive, retrieved
-        /// values can be stored for the lifetime of the program for future retrieval for the same
-        /// (or very similar) location.
-        /// </summary>
-        private static readonly Dictionary<double, double> _HadleyValues = new Dictionary<double, double>();
+        private static readonly Number _GiantMinMassForType = new(6, 25);
 
         private static readonly Number _IcyRingDensity = 300;
-        private static readonly double _LowTemp = (Substances.All.Water.MeltingPoint ?? 0) - 16;
+        private static readonly double _LowTemp = (Substances.All.Water.MeltingPoint ?? 0) - 48;
 
         /// <summary>
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
         /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
         /// </summary>
-        private static readonly Number _DwarfMaxMassForType = new Number(6, 25);
+        private static readonly Number _DwarfMaxMassForType = new(6, 25);
 
         /// <summary>
         /// At around this limit the planet will have sufficient mass to sustain fusion, and become
         /// a brown dwarf.
         /// </summary>
-        private static readonly Number _GiantMaxMassForType = new Number(2.5, 28);
+        private static readonly Number _GiantMaxMassForType = new(2.5, 28);
 
         /// <summary>
         /// At around this limit the planet will have sufficient mass to retain hydrogen, and become
         /// a giant.
         /// </summary>
-        private static readonly Number _TerrestrialMaxMassForType = new Number(6, 25);
+        private static readonly Number _TerrestrialMaxMassForType = new(6, 25);
 
         private static readonly Number _RockyRingDensity = 1380;
 
@@ -111,33 +108,36 @@ namespace NeverFoundry.WorldFoundry.Space
         /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
         /// systems, a calculated value for clearing the neighborhood is used instead.
         /// </summary>
-        private static readonly Number _TerrestrialMinMassForType = new Number(2, 22);
+        private static readonly Number _TerrestrialMinMassForType = new(2, 22);
 
-        private static readonly Number _TerrestrialSpace = new Number(1.75, 7);
+        private static readonly Number _TerrestrialSpace = new(1.75, 7);
 
         internal readonly bool _earthlike;
         internal readonly HabitabilityRequirements? _habitabilityRequirements;
         internal readonly PlanetParams? _planetParams;
 
         internal double _blackbodyTemperature;
-        internal byte[]? _depthMap;
-        internal byte[]? _elevationMap;
-        internal byte[]? _flowMap;
-        internal byte[][]? _precipitationMaps;
+        internal Image? _elevationMap;
+        internal string? _elevationMapPath;
+        internal double _normalizedSeaLevel;
+        internal Image?[]? _precipitationMaps;
+        internal string?[]? _precipitationMapPaths;
         internal List<string>? _satelliteIDs;
-        internal byte[][]? _snowfallMaps;
+        internal Image?[]? _snowfallMaps;
+        internal string?[]? _snowfallMapPaths;
         internal double _surfaceTemperatureAtApoapsis;
         internal double _surfaceTemperatureAtPeriapsis;
-        internal byte[]? _temperatureMapSummer;
-        internal byte[]? _temperatureMapWinter;
+        internal Image? _temperatureMapSummer;
+        internal string? _temperatureMapSummerPath;
+        internal Image? _temperatureMapWinter;
+        internal string? _temperatureMapWinterPath;
 
-        private double? _averagePolarSurfaceTemperature;
         private double? _averageSurfaceTemperature;
+        private bool _disposedValue;
         private double? _diurnalTemperatureVariation;
         private double? _maxSurfaceTemperature;
         private double? _minSurfaceTemperature;
-        private double _normalizedSeaLevel;
-        private int _seed1, _seed2, _seed3, _seed4, _seed5, _seed6;
+        private int _seed1, _seed2, _seed3, _seed4, _seed5;
         private double _surfaceAlbedo;
         private double? _surfaceTemperature;
 
@@ -186,6 +186,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public double AxialPrecession { get; private set; }
 
+        private double? _axialTilt;
         /// <summary>
         /// The axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in radians.
         /// Values greater than π/2 indicate clockwise rotation. Read-only; set with <see
@@ -195,7 +196,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
         /// rotation.
         /// </remarks>
-        public double AxialTilt => Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
+        public double AxialTilt => _axialTilt ??= Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
 
         /// <summary>
         /// A <see cref="System.Numerics.Vector3"/> which represents the axis of this <see
@@ -296,16 +297,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public double MaxElevation => _maxElevation ??= (IsGiant || PlanetType == PlanetType.Ocean ? 0 : 200000 / (double)SurfaceGravity);
 
-        internal double? _maxFlow;
-        /// <summary>
-        /// The maximum flow rate of waterways on this planetoid, in m³/s.
-        /// </summary>
-        public double MaxFlow
-        {
-            get => _maxFlow ?? 350000;
-            set => _maxFlow = value.IsNearlyEqualTo(350000) ? (double?)null : value;
-        }
-
         /// <summary>
         /// The type of <see cref="Planetoid"/>.
         /// </summary>
@@ -329,7 +320,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public Number RotationalPeriod { get; private set; }
 
-        private readonly List<Resource> _resources = new List<Resource>();
+        private readonly List<Resource> _resources = new();
         /// <summary>
         /// The resources of this <see cref="Planetoid"/>.
         /// </summary>
@@ -350,13 +341,6 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        internal List<SurfaceRegion>? _surfaceRegions;
-        /// <summary>
-        /// The collection of <see cref="SurfaceRegion"/> instances which describe the surface of
-        /// this <see cref="Planetoid"/>.
-        /// </summary>
-        public IEnumerable<SurfaceRegion> SurfaceRegions => _surfaceRegions ?? Enumerable.Empty<SurfaceRegion>();
-
         /// <summary>
         /// The total temperature of this <see cref="Planetoid"/>, not including atmosphereic
         /// effects, averaged over its orbit, in K.
@@ -366,11 +350,6 @@ namespace NeverFoundry.WorldFoundry.Space
         internal double? GreenhouseEffect { get; set; }
 
         internal bool HasElevationMap => _elevationMap != null;
-
-        internal bool HasHydrologyMaps
-            => _depthMap != null
-            && _flowMap != null
-            && _maxFlow.HasValue;
 
         internal bool HasPrecipitationMap => _precipitationMaps != null;
 
@@ -449,9 +428,6 @@ namespace NeverFoundry.WorldFoundry.Space
         private FastNoise? _noise5;
         private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
 
-        private FastNoise? _noise6;
-        private FastNoise Noise6 => _noise6 ??= new FastNoise(_seed6, 1.0, FastNoise.NoiseType.Simplex);
-
         private protected override string? TypeNamePrefix => PlanetType switch
         {
             PlanetType.LavaDwarf => "Lava",
@@ -519,6 +495,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// If <see langword="true"/>, indicates that this <see cref="Planetoid"/> is being
         /// generated as a satellite of another.
         /// </param>
+        /// <param name="seed">
+        /// A value used to seed the random generator.
+        /// </param>
         public Planetoid(
             PlanetType planetType,
             CosmicLocation? parent,
@@ -529,7 +508,8 @@ namespace NeverFoundry.WorldFoundry.Space
             OrbitalParameters? orbit = null,
             PlanetParams? planetParams = null,
             HabitabilityRequirements? habitabilityRequirements = null,
-            bool satellite = false) : base(parent?.Id, CosmicStructureType.Planetoid)
+            bool satellite = false,
+            uint? seed = null) : base(parent?.Id, CosmicStructureType.Planetoid)
         {
             PlanetType = planetType;
             _planetParams = planetParams;
@@ -547,7 +527,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 star = Randomizer.Instance.Next(stars);
             }
 
-            satellites = Configure(parent, stars, star, position, satellite, orbit);
+            satellites = Configure(parent, stars, star, position, satellite, orbit, seed);
 
             if (parent is not null && !orbit.HasValue && !Orbit.HasValue)
             {
@@ -599,15 +579,11 @@ namespace NeverFoundry.WorldFoundry.Space
             bool earthlike,
             PlanetParams? planetParams,
             HabitabilityRequirements? habitabilityRequirements,
-            List<SurfaceRegion>? surfaceRegions,
-            byte[]? depthMap,
-            byte[]? elevationMap,
-            byte[]? flowMap,
-            byte[][]? precipitationMaps,
-            byte[][]? snowfallMaps,
-            byte[]? temperatureMapSummer,
-            byte[]? temperatureMapWinter,
-            double? maxFlow)
+            string? elevationMapPath,
+            string?[]? precipitationMapPaths,
+            string?[]? snowfallMapPaths,
+            string? temperatureMapSummerPath,
+            string? temperatureMapWinterPath)
             : base(
                 id,
                 seed,
@@ -630,32 +606,30 @@ namespace NeverFoundry.WorldFoundry.Space
             _earthlike = earthlike;
             _planetParams = earthlike ? PlanetParams.Earthlike : planetParams;
             _habitabilityRequirements = earthlike ? HabitabilityRequirements.HumanHabitabilityRequirements : habitabilityRequirements;
-            _surfaceRegions = surfaceRegions;
-            _depthMap = depthMap;
-            _elevationMap = elevationMap;
-            _flowMap = flowMap;
-            _precipitationMaps = precipitationMaps;
-            _snowfallMaps = snowfallMaps;
-            _temperatureMapSummer = temperatureMapSummer;
-            _temperatureMapWinter = temperatureMapWinter;
-            _maxFlow = maxFlow;
+            _elevationMapPath = elevationMapPath;
+            _precipitationMapPaths = precipitationMapPaths;
+            _snowfallMapPaths = snowfallMapPaths;
+            _temperatureMapSummerPath = temperatureMapSummerPath;
+            _temperatureMapWinterPath = temperatureMapWinterPath;
 
             AverageBlackbodyTemperature = Orbit.HasValue
                 ? ((_surfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (_surfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
                 : _blackbodyTemperature;
 
-            var reconstitution = ReconstituteMaterial(
+            var rehydrator = GetRehydrator(seed);
+            ReconstituteMaterial(
+                rehydrator,
                 position,
                 temperature,
                 Orbit?.SemiMajorAxis ?? 0);
-            ReconstituteHydrosphere(reconstitution);
-            GenerateAtmosphere(reconstitution);
-            GenerateResources(reconstitution);
+            ReconstituteHydrosphere(rehydrator);
+            GenerateAtmosphere(rehydrator);
+            GenerateResources(rehydrator);
         }
 
         private Planetoid(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(_seed), typeof(uint)) ?? default,
+            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
             (PlanetType?)info.GetValue(nameof(PlanetType), typeof(PlanetType)) ?? PlanetType.Comet,
             (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
             (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
@@ -675,15 +649,11 @@ namespace NeverFoundry.WorldFoundry.Space
             (bool?)info.GetValue(nameof(_earthlike), typeof(bool)) ?? default,
             (PlanetParams?)info.GetValue(nameof(_planetParams), typeof(PlanetParams?)),
             (HabitabilityRequirements?)info.GetValue(nameof(_habitabilityRequirements), typeof(HabitabilityRequirements?)),
-            (List<SurfaceRegion>?)info.GetValue(nameof(SurfaceRegions), typeof(List<SurfaceRegion>)),
-            (byte[]?)info.GetValue(nameof(_depthMap), typeof(byte[])) ?? default,
-            (byte[]?)info.GetValue(nameof(_elevationMap), typeof(byte[])) ?? default,
-            (byte[]?)info.GetValue(nameof(_flowMap), typeof(byte[])) ?? default,
-            (byte[][]?)info.GetValue(nameof(_precipitationMaps), typeof(byte[][])) ?? default,
-            (byte[][]?)info.GetValue(nameof(_snowfallMaps), typeof(byte[][])) ?? default,
-            (byte[]?)info.GetValue(nameof(_temperatureMapSummer), typeof(byte[])) ?? default,
-            (byte[]?)info.GetValue(nameof(_temperatureMapWinter), typeof(byte[])) ?? default,
-            (double?)info.GetValue(nameof(_maxFlow), typeof(double?)))
+            (string?)info.GetValue(nameof(_elevationMapPath), typeof(string)),
+            (string?[]?)info.GetValue(nameof(_precipitationMapPaths), typeof(string?[])),
+            (string?[]?)info.GetValue(nameof(_snowfallMapPaths), typeof(string?[])),
+            (string?)info.GetValue(nameof(_temperatureMapSummerPath), typeof(string)),
+            (string?)info.GetValue(nameof(_temperatureMapWinterPath), typeof(string)))
         { }
 
         /// <summary>
@@ -834,13 +804,17 @@ namespace NeverFoundry.WorldFoundry.Space
         /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
         /// habiltability requirements will be used.
         /// </param>
+        /// <param name="seed">
+        /// A value used to seed the random generator.
+        /// </param>
         /// <returns>A planet with the given parameters.</returns>
         public static Planetoid? GetPlanetForSunlikeStar(
             out List<CosmicLocation> children,
             PlanetType planetType = PlanetType.Terrestrial,
             OrbitalParameters? orbit = null,
             PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
+            HabitabilityRequirements? habitabilityRequirements = null,
+            uint? seed = null)
         {
             var pParams = planetParams ?? PlanetParams.Earthlike;
             var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
@@ -867,7 +841,9 @@ namespace NeverFoundry.WorldFoundry.Space
                     out childSatellites,
                     orbit,
                     pParams,
-                    requirements);
+                    requirements,
+                    false,
+                    seed);
                 sanityCheck++;
                 if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
                 {
@@ -1159,97 +1135,617 @@ namespace NeverFoundry.WorldFoundry.Space
             return (planet, children);
         }
 
-        /// <summary>
-        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
-        /// instance.
-        /// </summary>
-        /// <param name="value">A <see cref="SurfaceRegion"/> instance.</param>
-        /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(SurfaceRegion value)
+        internal static double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude, double axialTilt)
         {
-            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(value);
-            return this;
+            if (proportionOfYear > 0.5)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+            proportionOfYear *= 2;
+            if (latitude < 0)
+            {
+                proportionOfYear = 1 - proportionOfYear;
+            }
+
+            var absLat = Math.Abs(latitude);
+            if (absLat < axialTilt)
+            {
+                var maximum = 1 - ((axialTilt - absLat) / (axialTilt * 2));
+                proportionOfYear = 1 - (Math.Abs(proportionOfYear - maximum) / maximum);
+            }
+
+            return proportionOfYear;
         }
 
         /// <summary>
-        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
-        /// instance.
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting
+        /// unmanaged resources.
         /// </summary>
-        /// <param name="position">The normalized position vector of the center of the
-        /// region.</param>
-        /// <param name="latitudeRange">
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    _elevationMap?.Dispose();
+                    _temperatureMapSummer?.Dispose();
+                    _temperatureMapWinter?.Dispose();
+
+                    if (_precipitationMaps is not null)
+                    {
+                        for (var i = 0; i < _precipitationMaps.Length; i++)
+                        {
+                            _precipitationMaps[i]?.Dispose();
+                        }
+                    }
+
+                    if (_snowfallMaps is not null)
+                    {
+                        for (var i = 0; i < _snowfallMaps.Length; i++)
+                        {
+                            _snowfallMaps[i]?.Dispose();
+                        }
+                    }
+                }
+
+                _disposedValue = true;
+            }
+        }
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting
+        /// unmanaged resources.
+        /// </summary>
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Stores an image as the elevation map for this planet.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
         /// <para>
-        /// The range of latitudes encompassed by this region, as an angle (in radians).
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
         /// </para>
         /// <para>
-        /// Maximum value is π (a full hemisphere, which produces the full globe when combined with
-        /// the 2:1 aspect ratio of the equirectangular projection).
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
         /// </para>
         /// </param>
-        /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(Vector3 position, Number latitudeRange)
+        public async Task AssignElevationMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
         {
-            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(this, position, latitudeRange));
-            return this;
+            if (image is null)
+            {
+                _elevationMap = null;
+                _elevationMapPath = null;
+                return;
+            }
+            if (mapLoader is null)
+            {
+                _elevationMap = image;
+                _elevationMapPath = null;
+            }
+            else
+            {
+                _elevationMapPath = await mapLoader.SaveAsync(image, Id, "elevation").ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(_elevationMapPath))
+                {
+                    _elevationMap = image;
+                }
+            }
         }
 
         /// <summary>
-        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
-        /// instance.
+        /// Stores an image as a precipitation map for this planet, adding it to any existing
+        /// collection.
         /// </summary>
-        /// <param name="latitude">The latitude of the center of the region.</param>
-        /// <param name="longitude">The longitude of the center of the region.</param>
-        /// <param name="latitudeRange">
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
         /// <para>
-        /// The range of latitudes encompassed by this region, as an angle (in radians).
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
         /// </para>
         /// <para>
-        /// Maximum value is π (a full hemisphere, which produces the full globe when combined with
-        /// the 2:1 aspect ratio of the equirectangular projection).
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
         /// </para>
         /// </param>
-        /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(double latitude, double longitude, Number latitudeRange)
+        public async Task AssignPrecipitationMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
         {
-            var position = LatitudeAndLongitudeToVector(latitude, longitude);
-            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(
-                this,
-                new Vector3(
-                    position.X,
-                    position.Y,
-                    position.Z),
-                latitudeRange));
-            return this;
+            if (image is null)
+            {
+                _precipitationMaps = null;
+                _precipitationMapPaths = null;
+                return;
+            }
+
+            if (mapLoader is not null)
+            {
+                var path = await mapLoader.SaveAsync(image, Id, $"precipitation_{(_precipitationMaps?.Length ?? -1) + 1}").ConfigureAwait(false);
+                if (string.IsNullOrEmpty(path))
+                {
+                    return;
+                }
+                else if (_precipitationMapPaths is null)
+                {
+                    _precipitationMapPaths = new string?[] { path };
+                }
+                else
+                {
+                    var old = _precipitationMapPaths;
+                    _precipitationMapPaths = new string?[old.Length + 1];
+                    Array.Copy(old, _precipitationMapPaths, old.Length);
+                    _precipitationMapPaths[old.Length] = path;
+                }
+            }
+
+            if (_precipitationMaps is null)
+            {
+                _precipitationMaps = new Image?[] { image };
+            }
+            else
+            {
+                var old = _precipitationMaps;
+                _precipitationMaps = new Image?[old.Length + 1];
+                Array.Copy(old, _precipitationMaps, old.Length);
+                _precipitationMaps[old.Length] = image;
+            }
         }
 
         /// <summary>
-        /// Adds a <see cref="SurfaceRegion"/> instance to this instance's collection. Returns this
-        /// instance.
+        /// Stores a set of images as the precipitation maps for this planet.
         /// </summary>
-        /// <param name="latitude1">The latitude of the northwest corner of the region.</param>
-        /// <param name="longitude1">The longitude of the northwest corner of the region.</param>
-        /// <param name="latitude2">The latitude of the southeast corner of the region.</param>
-        /// <param name="longitude2">The longitude of the southeast corner of the region.</param>
-        /// <returns>This instance.</returns>
-        public Planetoid AddSurfaceRegion(double latitude1, double longitude1, double latitude2, double longitude2)
+        /// <param name="images">
+        /// The images to load. The set is presumed to be evenly spaced over the course of a year.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignPrecipitationMapsAsync(IEnumerable<Image> images, ISurfaceMapLoader? mapLoader = null)
         {
-            var latitudeRange = latitude1 - latitude2;
-            var centerLat = latitude1 + ((latitude1 - latitude2) / 2);
-            var centerLon = longitude1 + ((longitude1 - longitude2) / 2);
-            var position = LatitudeAndLongitudeToVector(centerLat, centerLon);
-            (_surfaceRegions ??= new List<SurfaceRegion>()).Add(new SurfaceRegion(
-                this,
-                new Vector3(
-                    position.X,
-                    position.Y,
-                    position.Z),
-                Math.Abs(latitudeRange)));
-            return this;
+            var list = images.ToList();
+            if (list.Count == 0)
+            {
+                _precipitationMaps = null;
+                _precipitationMapPaths = null;
+                return;
+            }
+            _precipitationMaps = new Image?[list.Count];
+            if (mapLoader is null)
+            {
+                _precipitationMapPaths = null;
+            }
+            else
+            {
+                _precipitationMapPaths = new string?[list.Count];
+            }
+            for (var i = 0; i < list.Count; i++)
+            {
+                if (mapLoader is null)
+                {
+                    _precipitationMaps[i] = list[i];
+                }
+                else
+                {
+                    var path = await mapLoader.SaveAsync(list[i], Id, $"precipitation_{i}").ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        _precipitationMaps[i] = list[i];
+                        _precipitationMapPaths![i] = path;
+                    }
+                }
+            }
         }
 
         /// <summary>
+        /// Stores an image as a snowfall map for this planet, adding it to any existing
+        /// collection.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignSnowfallMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (image is null)
+            {
+                _snowfallMaps = null;
+                _snowfallMapPaths = null;
+                return;
+            }
+
+            if (mapLoader is not null)
+            {
+                var path = await mapLoader.SaveAsync(image, Id, $"snowfall_{(_snowfallMaps?.Length ?? -1) + 1}").ConfigureAwait(false);
+                if (string.IsNullOrEmpty(path))
+                {
+                    return;
+                }
+                else if (_snowfallMapPaths is null)
+                {
+                    _snowfallMapPaths = new string?[] { path };
+                }
+                else
+                {
+                    var old = _snowfallMapPaths;
+                    _snowfallMapPaths = new string?[old.Length + 1];
+                    Array.Copy(old, _snowfallMapPaths, old.Length);
+                    _snowfallMapPaths[old.Length] = path;
+                }
+            }
+
+            if (_snowfallMaps is null)
+            {
+                _snowfallMaps = new Image?[] { image };
+            }
+            else
+            {
+                var old = _snowfallMaps;
+                _snowfallMaps = new Image?[old.Length + 1];
+                Array.Copy(old, _snowfallMaps, old.Length);
+                _snowfallMaps[old.Length] = image;
+            }
+        }
+
+        /// <summary>
+        /// Stores a set of images as the snowfall maps for this planet.
+        /// </summary>
+        /// <param name="images">
+        /// The images to load. The set is presumed to be evenly spaced over the course of a year.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignSnowfallMapsAsync(IEnumerable<Image> images, ISurfaceMapLoader? mapLoader = null)
+        {
+            var list = images.ToList();
+            if (list.Count == 0)
+            {
+                _snowfallMaps = null;
+                _snowfallMapPaths = null;
+                return;
+            }
+            _snowfallMaps = new Image?[list.Count];
+            if (mapLoader is null)
+            {
+                _snowfallMapPaths = null;
+            }
+            else
+            {
+                _snowfallMapPaths = new string?[list.Count];
+            }
+            for (var i = 0; i < list.Count; i++)
+            {
+                if (mapLoader is null)
+                {
+                    _snowfallMaps[i] = list[i];
+                }
+                else
+                {
+                    var path = await mapLoader.SaveAsync(list[i], Id, $"snowfall_{i}").ConfigureAwait(false);
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        _snowfallMaps[i] = list[i];
+                        _snowfallMapPaths![i] = path;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stores an image as the temperature map for this planet, applying the same map to both
+        /// summer and winter.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignTemperatureMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (image is null)
+            {
+                _temperatureMapSummer = null;
+                _temperatureMapSummerPath = null;
+                _temperatureMapWinter = null;
+                _temperatureMapWinterPath = null;
+                return;
+            }
+
+            if (mapLoader is null)
+            {
+                _temperatureMapSummer = image;
+                _temperatureMapSummerPath = null;
+                _temperatureMapWinter = _temperatureMapSummer;
+                _temperatureMapWinterPath = null;
+            }
+            else
+            {
+                _temperatureMapSummerPath = await mapLoader.SaveAsync(image, Id, "temperature_summer").ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
+                {
+                    _temperatureMapSummer = image;
+                    _temperatureMapWinter = _temperatureMapSummer;
+                    _temperatureMapWinterPath = _temperatureMapSummerPath;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stores an image as the temperature map for this planet at the summer solstice.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignTemperatureMapSummerAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (image is null)
+            {
+                _temperatureMapSummer = null;
+                _temperatureMapSummerPath = null;
+                return;
+            }
+
+            if (mapLoader is null)
+            {
+                _temperatureMapSummer = image;
+                _temperatureMapSummerPath = null;
+            }
+            else
+            {
+                _temperatureMapSummerPath = await mapLoader.SaveAsync(image, Id, "temperature_summer").ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
+                {
+                    _temperatureMapSummer = image;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stores an image as the temperature map for this planet at the winter solstice.
+        /// </summary>
+        /// <param name="image">The image to load.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
+        /// image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> the image will not be stored, and will only be available while
+        /// this region persists in memory.
+        /// </para>
+        /// </param>
+        public async Task AssignTemperatureMapWinterAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (image is null)
+            {
+                _temperatureMapWinter = null;
+                _temperatureMapWinterPath = null;
+                return;
+            }
+
+            if (mapLoader is null)
+            {
+                _temperatureMapWinter = image;
+                _temperatureMapWinterPath = null;
+            }
+            else
+            {
+                _temperatureMapWinterPath = await mapLoader.SaveAsync(image, Id, "temperature_winter").ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
+                {
+                    _temperatureMapWinter = image;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clears the elevation map for this planet, and removes it from storage.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to remove the
+        /// image.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the image was removed; or <see langword="false"/> if the
+        /// operation fails.
+        /// </returns>
+        public async Task<bool> ClearElevationMapAsync(ISurfaceMapLoader mapLoader)
+        {
+            if (string.IsNullOrEmpty(_elevationMapPath))
+            {
+                return true;
+            }
+            var success = await mapLoader.RemoveAsync(_elevationMapPath).ConfigureAwait(false);
+            if (success)
+            {
+                _elevationMapPath = null;
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Clears all this planet's map images, and removes them from storage.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if the images were all removed; or <see langword="false"/> if the
+        /// operation fails for any iamge.
+        /// </returns>
+        public async Task<bool> ClearMapsAsync(ISurfaceMapLoader mapLoader)
+        {
+            var elevationSuccess = ClearElevationMapAsync(mapLoader);
+            var precipitationSuccess = ClearPrecipitationMapsAsync(mapLoader);
+            var snowfallSuccess = ClearSnowfallMapsAsync(mapLoader);
+            var temperatureSuccess = ClearTemperatureMapAsync(mapLoader);
+            var successes = await Task.WhenAll(elevationSuccess, precipitationSuccess, snowfallSuccess, temperatureSuccess)
+                .ConfigureAwait(false);
+            return successes.All(x => x);
+        }
+
+        /// <summary>
+        /// Clears the set of precipitation map images for this planet, and removes them from
+        /// storage.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the images were removed; or <see langword="false"/> if the
+        /// operation fails for any image.
+        /// </returns>
+        public async Task<bool> ClearPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
+        {
+            if (_precipitationMapPaths is null)
+            {
+                return true;
+            }
+            var success = true;
+            for (var i = 0; i < _precipitationMapPaths.Length; i++)
+            {
+                if (string.IsNullOrEmpty(_precipitationMapPaths[i]))
+                {
+                    continue;
+                }
+                var mapSuccess = await mapLoader.RemoveAsync(_precipitationMapPaths[i]).ConfigureAwait(false);
+                if (mapSuccess)
+                {
+                    _precipitationMapPaths[i] = null;
+                }
+                success &= mapSuccess;
+            }
+            if (success)
+            {
+                _precipitationMapPaths = null;
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Clears the set of images as the snowfall maps for this planet, and removes them from
+        /// storage.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the images were removed; or <see langword="false"/> if the
+        /// operation fails for any image.
+        /// </returns>
+        public async Task<bool> ClearSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
+        {
+            if (_snowfallMapPaths is null)
+            {
+                return true;
+            }
+            var success = true;
+            for (var i = 0; i < _snowfallMapPaths.Length; i++)
+            {
+                if (string.IsNullOrEmpty(_snowfallMapPaths[i]))
+                {
+                    continue;
+                }
+                var mapSuccess = await mapLoader.RemoveAsync(_snowfallMapPaths[i]).ConfigureAwait(false);
+                if (mapSuccess)
+                {
+                    _snowfallMapPaths[i] = null;
+                }
+                success &= mapSuccess;
+            }
+            if (success)
+            {
+                _snowfallMapPaths = null;
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// Clears the temperature map(s) for this planet, and removes them from storage.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        /// <returns>
+        /// <see langword="true"/> if the image(s) were removed; or <see langword="false"/> if the
+        /// operation fails for any image.
+        /// </returns>
+        public async Task<bool> ClearTemperatureMapAsync(ISurfaceMapLoader mapLoader)
+        {
+            var success = true;
+            if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
+            {
+                success = await mapLoader.RemoveAsync(_temperatureMapSummerPath).ConfigureAwait(false);
+                if (success)
+                {
+                    _temperatureMapSummerPath = null;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
+            {
+                var mapSuccess = await mapLoader.RemoveAsync(_temperatureMapWinterPath).ConfigureAwait(false);
+                if (mapSuccess)
+                {
+                    _temperatureMapWinterPath = null;
+                }
+                success &= mapSuccess;
+            }
+            return success;
+        }
+
+        /// <summary>
+        /// <para>
         /// Removes this location and all contained children, as well as all satellites, from the
         /// given data store.
+        /// </para>
+        /// <para>
+        /// Note: for planets, it may be necessary to call <see
+        /// cref="ClearMapsAsync(ISurfaceMapLoader)"/> prior to deletion, in order to ensure that
+        /// any stored maps are also removed.
+        /// </para>
         /// </summary>
         public override async Task<bool> DeleteAsync(IDataStore dataStore)
         {
@@ -1268,11 +1764,33 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="latitude">The latitude of the object.</param>
         /// <param name="longitude">The longitude of the object.</param>
         /// <param name="altitude">The altitude of the object.</param>
+        /// <param name="surface">
+        /// If <see langword="true"/> the determination is made for a location
+        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
+        /// made for an elevation above the surface.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
         /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        public double GetAtmosphericDensity(Instant moment, double latitude, double longitude, double altitude)
+        public async Task<double> GetAtmosphericDensityAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            double altitude,
+            bool surface = true,
+            ISurfaceMapLoader? mapLoader = null)
         {
-            var surfaceTemp = GetSurfaceTemperatureAtLatLon(moment, latitude, longitude);
-            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude);
+            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
+                .ConfigureAwait(false);
+            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude, surface);
             return Atmosphere.GetAtmosphericDensity(this, tempAtElevation, altitude);
         }
 
@@ -1285,6 +1803,21 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="longitude">The longitude of the object.</param>
         /// <param name="altitude">The altitude of the object.</param>
         /// <param name="speed">The speed of the object, in m/s.</param>
+        /// <param name="surface">
+        /// If <see langword="true"/> the determination is made for a location
+        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
+        /// made for an elevation above the surface.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
         /// <returns>The atmospheric drag on the object at the specified height, in N.</returns>
         /// <remarks>
         /// 0.47 is an arbitrary drag coefficient (that of a sphere in a fluid with a Reynolds
@@ -1292,10 +1825,18 @@ namespace NeverFoundry.WorldFoundry.Space
         /// is accepted since the level of detailed information needed to calculate this value
         /// accurately is not desired in this library.
         /// </remarks>
-        public double GetAtmosphericDrag(Instant moment, double latitude, double longitude, double altitude, double speed)
+        public async Task<double> GetAtmosphericDragAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            double altitude,
+            double speed,
+            bool surface = true,
+            ISurfaceMapLoader? mapLoader = null)
         {
-            var surfaceTemp = GetSurfaceTemperatureAtLatLon(moment, latitude, longitude);
-            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude);
+            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
+                .ConfigureAwait(false);
+            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude, surface);
             return Atmosphere.GetAtmosphericDrag(this, tempAtElevation, altitude, speed);
         }
 
@@ -1307,6 +1848,21 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="latitude">The latitude at which to determine atmospheric pressure.</param>
         /// <param name="longitude">The longitude at which to determine atmospheric
         /// pressure.</param>
+        /// <param name="surface">
+        /// If <see langword="true"/> the determination is made for a location
+        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
+        /// made for an elevation above the surface.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
         /// <returns>The atmospheric pressure at the specified height, in kPa.</returns>
         /// <remarks>
         /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the
@@ -1316,75 +1872,40 @@ namespace NeverFoundry.WorldFoundry.Space
         /// mass of air on Earth, which is clearly not correct for other atmospheres, but is
         /// considered "close enough" for the purposes of this library.
         /// </remarks>
-        public double GetAtmosphericPressure(Instant moment, double latitude, double longitude)
+        public async Task<double> GetAtmosphericPressureAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            bool surface = true,
+            ISurfaceMapLoader? mapLoader = null)
         {
-            var elevation = GetElevationAt(latitude, longitude);
-            var tempAtElevation = GetTemperatureAtElevation(
-                GetSurfaceTemperature(
-                    _blackbodyTemperature,
-                    latitude,
-                    Orbit?.GetTrueAnomalyAtTime(moment) ?? 0),
-                elevation);
+            var elevation = await GetElevationAtAsync(latitude, longitude, mapLoader).ConfigureAwait(false);
+            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
+                .ConfigureAwait(false);
+            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, elevation, surface);
             return GetAtmosphericPressureFromTempAndElevation(tempAtElevation, elevation);
         }
 
         /// <summary>
-        /// Get the average surface temperature of this <see cref="Planetoid"/> near its poles
-        /// throughout its orbit (or at its current position, if it is not in orbit), in K.
-        /// </summary>
-        public double GetAveragePolarSurfaceTemperature()
-        {
-            _averagePolarSurfaceTemperature ??= GetAverageTemperature(true);
-            return _averagePolarSurfaceTemperature.Value;
-        }
-
-        /// <summary>
+        /// <para>
         /// The average surface temperature of the <see cref="Planetoid"/> near its equator
         /// throughout its orbit (or at its current position, if it is not in orbit), in K.
+        /// </para>
+        /// <para>
+        /// Note that this is a calculated value, and does not take any custom temperature maps into
+        /// account.
+        /// </para>
         /// </summary>
         public double GetAverageSurfaceTemperature()
         {
-            _averageSurfaceTemperature ??= GetAverageTemperature();
+            if (!_averageSurfaceTemperature.HasValue)
+            {
+                var avgBlackbodyTemp = AverageBlackbodyTemperature;
+                var greenhouseEffect = GetGreenhouseEffect();
+                _averageSurfaceTemperature = (avgBlackbodyTemp * InsolationFactor_Equatorial) + greenhouseEffect;
+            }
             return _averageSurfaceTemperature.Value;
         }
-
-        /// <summary>
-        /// Determines the smallest child <see cref="SurfaceRegion"/> at any level of this
-        /// instance's descendant hierarchy which contains the specified <paramref
-        /// name="position"/>.
-        /// </summary>
-        /// <param name="position">The position whose smallest containing <see
-        /// cref="SurfaceRegion"/> is to be determined.</param>
-        /// <returns>
-        /// The smallest <see cref="SurfaceRegion"/> at any level of this instance's descendant
-        /// hierarchy which contains the specified <paramref name="position"/>, or <see
-        /// langword="null"/>, if no region contains the position.
-        /// </returns>
-        public SurfaceRegion? GetContainingSurfaceRegion(Vector3 position)
-            => SurfaceRegions.Where(x => x.Shape.IsPointWithin(position))
-            .ItemWithMin(x => x.Shape.ContainingRadius);
-
-        /// <summary>
-        /// Determines the smallest child <see cref="SurfaceRegion"/> at any level of this
-        /// instance's descendant hierarchy which fully contains the specified <see
-        /// cref="Location"/> within its containing radius.
-        /// </summary>
-        /// <param name="other">The <see cref="Location"/> whose smallest containing <see
-        /// cref="SurfaceRegion"/> is to be determined.</param>
-        /// <returns>
-        /// The smallest <see cref="SurfaceRegion"/> at any level of this instance's descendant
-        /// hierarchy which fully contains the specified <see cref="Location"/> within its
-        /// containing radius, or <see langword="null"/>, if no region contains the position.
-        /// </returns>
-        public SurfaceRegion? GetContainingSurfaceRegion(Location other)
-            => SurfaceRegions.Where(x => Vector3.Distance(x.Position, other.Position) <= x.Shape.ContainingRadius - other.Shape.ContainingRadius)
-            .ItemWithMin(x => x.Shape.ContainingRadius);
-
-        /// <summary>
-        /// Gets the stored hydrology depth map image for this region, if any.
-        /// </summary>
-        /// <returns>The stored hydrology depth map image for this region, if any.</returns>
-        public Bitmap? GetDepthMap() => _depthMap.ToImage();
 
         /// <summary>
         /// Calculates the distance along the surface at sea level between the two points indicated
@@ -1453,39 +1974,135 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Gets the elevation at the given <paramref name="position"/>, in meters.
-        /// </summary>
-        /// <param name="position">The position at which to determine elevation.</param>
-        /// <returns>The elevation at the given <paramref name="position"/>, in meters.</returns>
-        public double GetElevationAt(Vector3 position) => GetElevationAt(VectorToLatitude(position), VectorToLongitude(position));
-
-        /// <summary>
         /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
         /// name="longitude"/>, in meters.
         /// </summary>
         /// <param name="latitude">The latitude at which to determine elevation.</param>
         /// <param name="longitude">The longitude at which to determine elevation.</param>
-        /// <returns>The elevation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, in meters.</returns>
-        public double GetElevationAt(double latitude, double longitude)
-            => GetNormalizedElevationAt(latitude, longitude) * MaxElevation;
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The elevation at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
+        /// in meters.
+        /// </returns>
+        public async Task<double> GetElevationAtAsync(double latitude, double longitude, ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetElevationMapAsync(mapLoader)
+                .ConfigureAwait(false);
+            return map.GetElevation(this, latitude, longitude, MapProjectionOptions.Default);
+        }
 
         /// <summary>
-        /// Gets the stored elevation map image for this region, if any.
+        /// Gets the elevation at the given <paramref name="position"/>, in meters.
         /// </summary>
-        /// <returns>The stored elevation map image for this region, if any.</returns>
-        public Bitmap? GetElevationMap() => _elevationMap.ToImage();
+        /// <param name="position">The longitude at which to determine elevation.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The elevation at the given <paramref name="position"/>, in meters.
+        /// </returns>
+        public Task<double> GetElevationAtAsync(Vector3 position, ISurfaceMapLoader? mapLoader = null)
+            => GetElevationAtAsync(VectorToLatitude(position), VectorToLongitude(position), mapLoader);
 
         /// <summary>
-        /// Gets the stored hydrology flow map image for this region, if any.
+        /// Gets the stored elevation map image for this planet, if any.
         /// </summary>
-        /// <returns>The stored hydrology flow map image for this region, if any.</returns>
-        public Bitmap? GetFlowMap() => _flowMap.ToImage();
+        /// <returns>The stored elevation map image for this planet, if any.</returns>
+        public Image? GetElevationMap() => _elevationMap;
+
+        /// <summary>
+        /// Gets or generates an elevation map image for this planet.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>An elevation map image for this planet.</returns>
+        /// <remarks>
+        /// If a map exists, it will be returned at its native resolution. If one does not already
+        /// exist, a new one will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetElevationMapAsync(ISurfaceMapLoader? mapLoader = null)
+        {
+            if (_elevationMap is null && HasElevationMap && mapLoader is not null)
+            {
+                await LoadElevationMapAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_elevationMap is null)
+            {
+                _elevationMap = SurfaceMapImage.GenerateElevationMap(this, DefaultMapResolution);
+                if (mapLoader is not null)
+                {
+                    await AssignElevationMapAsync(_elevationMap, mapLoader).ConfigureAwait(false);
+                }
+            }
+            return _elevationMap.CloneAs<L16>();
+        }
+
+        /// <summary>
+        /// Produces an elevation map projection.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of elevation. Pixel luminosity indicates elevation relative to <see
+        /// cref="MaxElevation"/>, with values below the midpoint indicating elevations below the
+        /// mean surface.
+        /// </returns>
+        public async Task<Image<L16>> GetElevationMapProjectionAsync(
+            int resolution,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetElevationMapAsync(mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
 
         /// <summary>
         /// Gets the greenhouse effect of this planet's atmosphere.
         /// </summary>
-        /// <returns></returns>
+        /// <returns>The greenhouse effect of this planet's atmosphere, in K.</returns>
         public double GetGreenhouseEffect()
         {
             GreenhouseEffect ??= GetGreenhouseEffect(InsolationFactor_Equatorial, Atmosphere.GreenhouseFactor);
@@ -1596,40 +2213,6 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             return lux;
-        }
-
-        /// <summary>
-        /// Determines if the given position is mountainous (see Remarks).
-        /// </summary>
-        /// <param name="latitude">The latitude of the position to check.</param>
-        /// <param name="longitude">The longitude of the position to check.</param>
-        /// <returns><see langword="true"/> if the given position is mountainous; otherwise
-        /// <see langword="false"/>.</returns>
-        /// <remarks>
-        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
-        /// elevation of this planet, or a maximum elevation greater than 5% of the maximum and a
-        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
-        /// slope greater than 0.0875.
-        /// </remarks>
-        public bool GetIsMountainous(double latitude, double longitude)
-        {
-            var position = LatitudeAndLongitudeToDoubleVector(latitude, longitude);
-            var elevation = GetNormalizedElevationAt(latitude, longitude);
-
-            if (elevation < 0.035)
-            {
-                return false;
-            }
-            if (elevation > 0.085)
-            {
-                return true;
-            }
-            var slope = GetSlope(position, latitude, longitude, elevation);
-            if (elevation > 0.05)
-            {
-                return slope > 0.035;
-            }
-            return slope > 0.0875;
         }
 
         /// <summary>
@@ -1836,7 +2419,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
+        /// <para>
         /// Gets the approximate maximum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// </para>
+        /// <para>
+        /// Note that this is a calculated value, and does not take any custom temperature maps into
+        /// account.
+        /// </para>
         /// </summary>
         /// <remarks>
         /// Gets the equatorial temperature at periapsis, or at the current position if not in orbit.
@@ -1852,7 +2441,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
+        /// <para>
         /// Gets the approximate minimum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// </para>
+        /// <para>
+        /// Note that this is a calculated value, and does not take any custom temperature maps into
+        /// account.
+        /// </para>
         /// </summary>
         /// <remarks>
         /// Gets the polar temperature at apoapsis, or at the current position if not in orbit.
@@ -1868,68 +2463,6 @@ namespace NeverFoundry.WorldFoundry.Space
             return _minSurfaceTemperature.Value;
         }
 
-        /// <summary>
-        /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.
-        /// <seealso cref="MaxElevation"/>
-        /// </summary>
-        /// <param name="position">A normalized position vector representing a direction from the
-        /// center of the <see cref="Planetoid"/>.</param>
-        /// <returns>The elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.</returns>
-        public double GetNormalizedElevationAt(Vector3 position)
-            => GetNormalizedElevationAt((double)position.X, (double)position.Y, (double)position.Z);
-
-        /// <summary>
-        /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.
-        /// <seealso cref="MaxElevation"/>
-        /// </summary>
-        /// <param name="position">A normalized position vector representing a direction from the
-        /// center of the <see cref="Planetoid"/>.</param>
-        /// <returns>The elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.</returns>
-        public double GetNormalizedElevationAt(MathAndScience.Numerics.Doubles.Vector3 position)
-            => GetNormalizedElevationAt(position.X, position.Y, position.Z);
-
-        /// <summary>
-        /// Gets the elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.
-        /// <seealso cref="MaxElevation"/>
-        /// </summary>
-        /// <param name="position">A normalized position vector representing a direction from the
-        /// center of the <see cref="Planetoid"/>.</param>
-        /// <returns>The elevation at the given <paramref name="position"/>, as a normalized value
-        /// between -1 and 1, where 1 is the maximum elevation of the planet. Negative values are
-        /// below sea level.</returns>
-        public double GetNormalizedElevationAt(System.Numerics.Vector3 position)
-            => GetNormalizedElevationAt(position.X, position.Y, position.Z);
-
-        /// <summary>
-        /// <para>
-        /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, as a normalized value between -1 and 1, where 1 is the maximum
-        /// elevation of the planet. Negative values are below sea level.
-        /// </para>
-        /// <para>
-        /// See also <seealso cref="MaxElevation"/>.
-        /// </para>
-        /// </summary>
-        /// <param name="latitude">The latitude at which to determine elevation.</param>
-        /// <param name="longitude">The longitude at which to determine elevation.</param>
-        /// <returns>
-        /// The elevation at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
-        /// as a normalized value between -1 and 1, where 1 is the maximum elevation of the planet.
-        /// Negative values are below sea level.
-        /// </returns>
-        public double GetNormalizedElevationAt(double latitude, double longitude)
-            => GetNormalizedElevationAt(LatitudeAndLongitudeToVector(latitude, longitude));
-
         /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
         /// serialize the target object.</summary>
         /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
@@ -1941,7 +2474,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public override void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(_seed), _seed);
+            info.AddValue(nameof(Seed), Seed);
             info.AddValue(nameof(PlanetType), PlanetType);
             info.AddValue(nameof(ParentId), ParentId);
             info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
@@ -1969,119 +2502,508 @@ namespace NeverFoundry.WorldFoundry.Space
                 info.AddValue(nameof(_planetParams), _planetParams);
                 info.AddValue(nameof(_habitabilityRequirements), _habitabilityRequirements);
             }
-            info.AddValue(nameof(SurfaceRegions), _surfaceRegions);
-            info.AddValue(nameof(_depthMap), _depthMap);
-            info.AddValue(nameof(_elevationMap), _elevationMap);
-            info.AddValue(nameof(_flowMap), _flowMap);
-            info.AddValue(nameof(_precipitationMaps), _precipitationMaps);
-            info.AddValue(nameof(_snowfallMaps), _snowfallMaps);
-            info.AddValue(nameof(_temperatureMapSummer), _temperatureMapSummer);
-            info.AddValue(nameof(_temperatureMapWinter), _temperatureMapWinter);
-            info.AddValue(nameof(_maxFlow), _maxFlow);
+            info.AddValue(nameof(_elevationMapPath), _elevationMapPath);
+            info.AddValue(nameof(_precipitationMapPaths), _precipitationMapPaths);
+            info.AddValue(nameof(_snowfallMapPaths), _snowfallMapPaths);
+            info.AddValue(nameof(_temperatureMapSummerPath), _temperatureMapSummerPath);
+            info.AddValue(nameof(_temperatureMapWinterPath), _temperatureMapWinterPath);
         }
 
         /// <summary>
-        /// Determines the average precipitation at the given <paramref name="position"/> under the
-        /// given conditions, over the given duration, in mm.
+        /// Gets the precipitation at the given <paramref name="latitude"/> and <paramref
+        /// name="longitude"/>, at the given time, in mm/hr.
         /// </summary>
         /// <param name="moment">
-        /// The beginning of the period during which precipitation is to be determined.
+        /// The moment at which precipitation is to be determined.
+        /// </param>
+        /// <param name="latitude">The latitude at which to determine precipitation.</param>
+        /// <param name="longitude">The longitude at which to determine precipitation.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map images.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The precipitation at the given <paramref name="latitude"/> and <paramref
+        /// name="longitude"/>, in mm/hr.
+        /// </returns>
+        public async Task<double> GetPrecipitationAtAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetPrecipitationMapAsync(
+                GetProportionOfYearAtTime(moment),
+                DefaultSeasons,
+                mapLoader)
+                .ConfigureAwait(false);
+            return map.GetPrecipitation(this, latitude, longitude, MapProjectionOptions.Default);
+        }
+
+        /// <summary>
+        /// Gets the precipitation at the given <paramref name="position"/>, at the given time, in
+        /// mm/hr.
+        /// </summary>
+        /// <param name="moment">
+        /// The moment at which precipitation is to be determined.
         /// </param>
         /// <param name="position">
         /// The position at which to determine precipitation.
         /// </param>
-        /// <param name="proportionOfYear">
-        /// The proportion of the year over which to determine precipitation.
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map images.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
+        /// will be generated and kept in memory only.
+        /// </para>
         /// </param>
         /// <returns>
-        /// <para>
-        /// The average precipitation at the given <paramref name="position"/> and time of year, in
-        /// mm, along with the amount of snow which falls.
-        /// </para>
-        /// <para>
-        /// Note that this amount <i>replaces</i> any precipitation that would have fallen as rain;
-        /// the return value is to be considered a water-equivalent total value which is equal to
-        /// the snow.
-        /// </para>
+        /// The precipitation at the given <paramref name="position"/>, in mm/hr.
         /// </returns>
-        public (double precipitation, double snow) GetPrecipitation(Instant moment, Vector3 position, float proportionOfYear)
+        public Task<double> GetPrecipitationAtAsync(
+            Instant moment,
+            Vector3 position,
+            ISurfaceMapLoader? mapLoader = null)
         {
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
-            var seasonalLatitude = Math.Abs(GetSeasonalLatitude(VectorToLatitude(position), trueAnomaly));
-            var temp = GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly, seasonalLatitude);
-            temp = GetTemperatureAtElevation(temp, GetElevationAt(position));
-            var precipitation = GetPrecipitation(
-                (double)position.X,
-                (double)position.Y,
-                (double)position.Z,
-                seasonalLatitude,
-                (float)temp,
-                proportionOfYear,
-                out var snow);
-            return (precipitation, snow);
+            var latitude = VectorToLatitude(position);
+            var longitude = VectorToLongitude(position);
+            return GetPrecipitationAtAsync(moment, latitude, longitude, mapLoader);
         }
 
         /// <summary>
-        /// Determines the average precipitation at the given <paramref name="latitude"/> and
-        /// <paramref name="longitude"/> under the given conditions, over the given duration, in mm.
+        /// Gets or generates a precipitation map image for this planet.
         /// </summary>
-        /// <param name="moment">
-        /// The beginning of the period during which precipitation is to be determined.
-        /// </param>
-        /// <param name="latitude">
-        /// The latitude at which to determine precipitation.
-        /// </param>
-        /// <param name="longitude">
-        /// The longitude at which to determine precipitation.
-        /// </param>
-        /// <param name="proportionOfYear">
-        /// The proportion of the year over which to determine precipitation.
-        /// </param>
-        /// <returns>
+        /// <param name="steps">
         /// <para>
-        /// The average precipitation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/> and time of year, in mm, along with the amount of snow which falls.
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// averaging them into a single image.
         /// </para>
         /// <para>
-        /// Note that this amount <i>replaces</i> any precipitation that would have fallen as rain;
-        /// the return value is to be considered a water-equivalent total value which is equal to
-        /// the snow.
+        /// If stored maps exist, they will be used and this parameter will be ignored.
         /// </para>
-        /// </returns>
-        public (double precipitation, double snow) GetPrecipitation(Instant moment, double latitude, double longitude, float proportionOfYear)
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>A precipitation map image for this planet.</returns>
+        /// <remarks>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetPrecipitationMapAsync(int steps = 1, ISurfaceMapLoader? mapLoader = null)
         {
-            var position = LatitudeAndLongitudeToVector(latitude, longitude);
-            var trueAnomaly = Orbit?.GetTrueAnomalyAtTime(moment) ?? 0;
-            var seasonalLatitude = Math.Abs(GetSeasonalLatitude(latitude, trueAnomaly));
-            var temp = GetSurfaceTemperatureAtTrueAnomaly(trueAnomaly, seasonalLatitude);
-            temp = GetTemperatureAtElevation(temp, GetElevationAt(position));
-            var precipitation = GetPrecipitation(
-                (double)position.X,
-                (double)position.Y,
-                (double)position.Z,
-                seasonalLatitude,
-                (float)temp,
-                proportionOfYear,
-                out var snow);
-            return (precipitation, snow);
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            {
+                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_precipitationMaps is null
+                || _precipitationMaps.Length == 0
+                || _precipitationMaps.Any(x => x is null))
+            {
+                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
+                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
+                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
+                _precipitationMaps = precipitationMaps;
+                if (mapLoader is not null)
+                {
+                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
+                }
+                if (_snowfallMaps is null && !HasSnowfallMap)
+                {
+                    _snowfallMaps = snowfallMaps;
+                    if (mapLoader is not null)
+                    {
+                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
+                    }
+                }
+            }
+            return SurfaceMapImage.AverageImages(_precipitationMaps!);
         }
 
         /// <summary>
-        /// Gets the stored set of precipitation map images for this region, if any.
+        /// Produces a precipitation map projection.
         /// </summary>
-        /// <returns>The stored set of precipitation map images for this region, if any.</returns>
-        public Bitmap[] GetPrecipitationMaps()
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere), before averaging
+        /// them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of precipitation. Pixel luminosity indicates precipitation in mm/hr,
+        /// relative to the <see cref="Atmosphere.MaxPrecipitation"/> of this planet's <see
+        /// cref="Atmosphere"/>.
+        /// </returns>
+        public async Task<Image<L16>> GetPrecipitationMapProjectionAsync(
+            int resolution,
+            int steps = 1,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetPrecipitationMapAsync(steps, mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Gets or generates a precipitation map image for this planet at the given proportion of a
+        /// year.
+        /// </summary>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// interpolating them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A precipitation map image for this planet at the given proportion of a year. Pixel
+        /// luminosity indicates precipitation in mm/hr, relative to the <see
+        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </para>
+        /// <para>
+        /// Note: if you will be getting multiple images, it is more efficient to use the <see
+        /// cref="GetPrecipitationMapsAsync(int, ISurfaceMapLoader?)"/> method to get the
+        /// entire set at once.
+        /// </para>
+        /// </remarks>
+        public async Task<Image<L16>> GetPrecipitationMapAsync(double proportionOfYear, int steps = 1, ISurfaceMapLoader? mapLoader = null)
+        {
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            {
+                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_precipitationMaps is null
+                || _precipitationMaps.Length == 0
+                || _precipitationMaps.Any(x => x is null))
+            {
+                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
+                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
+                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
+                _precipitationMaps = precipitationMaps;
+                if (mapLoader is not null)
+                {
+                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
+                }
+                if (_snowfallMaps is null && !HasSnowfallMap)
+                {
+                    _snowfallMaps = snowfallMaps;
+                    if (mapLoader is not null)
+                    {
+                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
+                    }
+                }
+            }
+            var proportionPerSeason = 1.0 / steps;
+            var proportionPerMap = 1.0 / _precipitationMaps.Length;
+            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _precipitationMaps.Length - 1);
+            var nextSeason = season == _precipitationMaps.Length - 1
+                ? 0
+                : season + 1;
+            var weight = proportionOfYear % proportionPerMap;
+            if (weight.IsNearlyZero())
+            {
+                return _precipitationMaps[season]!.CloneAs<L16>();
+            }
+            else
+            {
+                return SurfaceMapImage.InterpolateImages(
+                    _precipitationMaps[season]!,
+                    _precipitationMaps[nextSeason]!,
+                    weight);
+            }
+        }
+
+        /// <summary>
+        /// Produces a precipitation map projection at the given proportion of a year.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// interpolating them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of precipitation at the given proportion of a year. Pixel luminosity
+        /// indicates precipitation in mm/hr, relative to the <see
+        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// Note: if you will be getting multiple images, it is more efficient to use the <see
+        /// cref="GetPrecipitationMapsProjectionAsync(int, int, MapProjectionOptions?,
+        /// ISurfaceMapLoader?)"/> method to get the entire set at once.
+        /// </remarks>
+        public async Task<Image<L16>> GetPrecipitationMapProjectionAsync(
+            int resolution,
+            double proportionOfYear,
+            int steps = 1,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetPrecipitationMapAsync(proportionOfYear, steps, mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Gets the stored set of precipitation map images for this planet, if any.
+        /// </summary>
+        /// <returns>The stored set of precipitation map images for this planet, if any.</returns>
+        public Image?[] GetPrecipitationMaps()
         {
             if (_precipitationMaps is null)
             {
-                return Array.Empty<Bitmap>();
+                return Array.Empty<Image?>();
             }
-            var maps = new Bitmap[_precipitationMaps.Length];
+            var maps = new Image?[_precipitationMaps.Length];
             for (var i = 0; i < _precipitationMaps.Length; i++)
             {
-                maps[i] = _precipitationMaps[i].ToImage()!;
+                maps[i] = _precipitationMaps[i];
             }
             return maps;
+        }
+
+        /// <summary>
+        /// Gets or generates a set of precipitation map images for this planet.
+        /// </summary>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere).
+        /// </para>
+        /// <para>
+        /// If stored maps exist but in a different number, they will be interpolated.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A set of precipitation map images for this planet. Pixel luminosity indicates
+        /// precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of
+        /// this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>[]> GetPrecipitationMapsAsync(int steps, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (steps == 1)
+            {
+                var map = await GetPrecipitationMapAsync(steps, mapLoader).ConfigureAwait(false);
+                return new[] { map };
+            }
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            {
+                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_precipitationMaps is null
+                || _precipitationMaps.Length == 0
+                || _precipitationMaps.Any(x => x is null))
+            {
+                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
+                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
+                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
+                _precipitationMaps = precipitationMaps;
+                if (mapLoader is not null)
+                {
+                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
+                }
+                if (_snowfallMaps is null && !HasSnowfallMap)
+                {
+                    _snowfallMaps = snowfallMaps;
+                    if (mapLoader is not null)
+                    {
+                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
+                    }
+                }
+            }
+            var maps = new Image<L16>[steps];
+            if (_precipitationMaps.Length == steps)
+            {
+                for (var i = 0; i < steps; i++)
+                {
+                    maps[i] = _precipitationMaps[i]!.CloneAs<L16>();
+                }
+                return maps;
+            }
+            var proportionOfYear = 0.0;
+            var proportionPerSeason = 1.0 / steps;
+            var proportionPerMap = 1.0 / _precipitationMaps.Length;
+            for (var i = 0; i < steps; i++)
+            {
+                var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _precipitationMaps.Length - 1);
+                var nextSeason = season == _precipitationMaps.Length - 1
+                    ? 0
+                    : season + 1;
+                var weight = proportionOfYear % proportionPerMap;
+                if (weight.IsNearlyZero())
+                {
+                    maps[i] = _precipitationMaps[season]!.CloneAs<L16>();
+                }
+                else
+                {
+                    maps[i] = SurfaceMapImage.InterpolateImages(
+                        _precipitationMaps[season]!,
+                        _precipitationMaps[nextSeason]!,
+                        weight);
+                }
+                proportionOfYear += proportionPerSeason;
+            }
+            return maps;
+        }
+
+        /// <summary>
+        /// Produces a set of precipitation map projections.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere).
+        /// </para>
+        /// <para>
+        /// If stored maps exist but in a different number, they will be interpolated.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A set of projected maps of precipitation. Pixel luminosity indicates precipitation in
+        /// mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of this planet's <see
+        /// cref="Atmosphere"/>.
+        /// </returns>
+        public async Task<Image<L16>[]> GetPrecipitationMapsProjectionAsync(
+            int resolution,
+            int steps,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            var maps = await GetPrecipitationMapsAsync(steps, mapLoader).ConfigureAwait(false);
+            var newMaps = new Image<L16>[maps.Length];
+            for (var i = 0; i < steps; i++)
+            {
+                newMaps[i] = SurfaceMapImage.GetMapImage(
+                    maps[i],
+                    resolution,
+                    options);
+                maps[i].Dispose();
+            }
+            return newMaps;
         }
 
         /// <summary>
@@ -2155,8 +3077,8 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </param>
         /// <param name="moment">The time at which to make the calculation.</param>
         /// <param name="satellite">A natural satellite of this body. If the specified body is not
-        /// one of this one's satellites, the return value will always be <c>(0.0, <see
-        /// langword="false"/>)</c>.</param>
+        /// one of this one's satellites, the return value will always be <code>(0.0, <see
+        /// langword="false"/>)</code>.</param>
         /// <returns>
         /// <para>
         /// The proportion of the satellite which is currently illuminated, and a boolean value
@@ -2256,13 +3178,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Determines the proportion of a year, with 0 indicating winter, and 1 indicating summer,
-        /// at the given <paramref name="moment"/>.
+        /// Determines the proportion of the seasonal cycle, with 0 indicating winter, and 1
+        /// indicating summer, at the given <paramref name="moment"/>.
         /// </summary>
         /// <param name="moment">The time at which to make the calculation.</param>
         /// <param name="latitude">Used to determine hemisphere.</param>
-        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
-        /// at the given <paramref name="moment"/>.</returns>
+        /// <returns>The proportion of the seasonal cycle, with 0 indicating winter, and 1
+        /// indicating summer, at the given <paramref name="moment"/>.</returns>
         public double GetSeasonalProportionAtTime(Instant moment, double latitude)
         {
             var proportionOfYear = GetProportionOfYearAtTime(moment);
@@ -2275,8 +3197,31 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 proportionOfYear = 1 - proportionOfYear;
             }
+
+            if (latitude < AxialTilt)
+            {
+                var maximum = (AxialTilt - latitude) / (AxialTilt * 2);
+                var range = 1 - maximum;
+                proportionOfYear = Math.Abs(maximum - proportionOfYear) / range;
+            }
+
             return proportionOfYear;
         }
+
+        /// <summary>
+        /// Determines the proportion of the seasonal cycle, with 0 indicating winter, and 1
+        /// indicating summer, from the given proportion of a full year, starting and ending at
+        /// midwinter.
+        /// </summary>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year, starting and ending at midwinter, at which to make the
+        /// calculation.
+        /// </param>
+        /// <param name="latitude">Used to determine hemisphere.</param>
+        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given proportion of a full year, starting and ending at midwinter.</returns>
+        public double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude)
+            => GetSeasonalProportionFromAnnualProportion(proportionOfYear, latitude, AxialTilt);
 
         /// <summary>
         /// Determines the current season at the given <paramref name="moment"/>.
@@ -2289,36 +3234,485 @@ namespace NeverFoundry.WorldFoundry.Space
             => (uint)Math.Floor(GetProportionOfYearAtTime(moment) * numSeasons);
 
         /// <summary>
-        /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
-        /// point to the point 1 arc-second away in the cardinal direction which is at the steepest
-        /// angle.
+        /// Gets the snowfall at the given <paramref name="latitude"/> and <paramref
+        /// name="longitude"/>, at the given time, in mm/hr.
         /// </summary>
-        /// <param name="latitude">The latitude of the point.</param>
-        /// <param name="longitude">The longitude of the point.</param>
-        /// <returns>The slope at the given coordinates.</returns>
-        public double GetSlope(double latitude, double longitude)
-            => GetSlope(LatitudeAndLongitudeToDoubleVector(latitude, longitude), latitude, longitude, GetNormalizedElevationAt(latitude, longitude));
+        /// <param name="moment">
+        /// The moment at which snowfall is to be determined.
+        /// </param>
+        /// <param name="latitude">The latitude at which to determine snowfall.</param>
+        /// <param name="longitude">The longitude at which to determine snowfall.</param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map images.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The snowfall at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
+        /// in mm/hr.
+        /// </returns>
+        public async Task<double> GetSnowfallAtAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetSnowfallMapAsync(
+                GetProportionOfYearAtTime(moment),
+                DefaultSeasons,
+                mapLoader)
+                .ConfigureAwait(false);
+            return map.GetSnowfall(this, latitude, longitude, MapProjectionOptions.Default);
+        }
 
         /// <summary>
-        /// Gets the stored set of snowfall map images for this region, if any.
+        /// Gets the snowfall at the given <paramref name="position"/>, at the given time, in mm/hr.
         /// </summary>
-        /// <returns>The stored set of snowfall map images for this region, if any.</returns>
-        public Bitmap[] GetSnowfallMaps()
+        /// <param name="moment">
+        /// The moment at which snowfall is to be determined.
+        /// </param>
+        /// <param name="position">
+        /// The position at which to determine snowfall.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map images.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// The snowfall at the given <paramref name="position"/>, in mm/hr.
+        /// </returns>
+        public Task<double> GetSnowfallAtAsync(
+            Instant moment,
+            Vector3 position,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            var latitude = VectorToLatitude(position);
+            var longitude = VectorToLongitude(position);
+            return GetSnowfallAtAsync(moment, latitude, longitude, mapLoader);
+        }
+
+        /// <summary>
+        /// Gets or generates a snowfall map image for this planet.
+        /// </summary>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// averaging them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A snowfall map image for this planet. Pixel luminosity indicates snowfall in mm/hr,
+        /// relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
+        /// cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetSnowfallMapAsync(int steps = 1, ISurfaceMapLoader? mapLoader = null)
+        {
+            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
+            var map = SurfaceMapImage.AverageImages(maps);
+            for (var i = 0; i < maps.Length; i++)
+            {
+                maps[i].Dispose();
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// Produces a snowfall map projection.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere), before averaging
+        /// them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of snowfall. Pixel luminosity indicates precipitation in mm/hr, relative
+        /// to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        public async Task<Image<L16>> GetSnowfallMapProjectionAsync(
+            int resolution,
+            int steps = 1,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetSnowfallMapAsync(steps, mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Gets or generates a snowfall map image for this planet at the given proportion of a
+        /// year.
+        /// </summary>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// interpolating them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A snowfall map image for this planet at the given proportion of a year. Pixel luminosity
+        /// indicates snowfall in mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/> of
+        /// this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </para>
+        /// <para>
+        /// Note: if you will be getting multiple images, it is more efficient to use the <see
+        /// cref="GetSnowfallMapsAsync(int, ISurfaceMapLoader?)"/> method to get the entire set
+        /// at once.
+        /// </para>
+        /// </remarks>
+        public async Task<Image<L16>> GetSnowfallMapAsync(double proportionOfYear, int steps = 1, ISurfaceMapLoader? mapLoader = null)
+        {
+            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
+            var proportionPerMap = 1.0 / maps.Length;
+            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, maps.Length - 1);
+            var nextSeason = season == maps.Length - 1
+                ? 0
+                : season + 1;
+            var weight = proportionOfYear % proportionPerMap;
+            var map = weight.IsNearlyZero()
+                ? maps[season]!.CloneAs<L16>()
+                : SurfaceMapImage.InterpolateImages(maps[season]!, maps[nextSeason]!, weight);
+            for (var i = 0; i < maps.Length; i++)
+            {
+                maps[i].Dispose();
+            }
+            return map;
+        }
+
+        /// <summary>
+        /// Produces a snowfall map projection at the given proportion of a year.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
+        /// year, starting and ending at the winter solstice in the northern hemisphere), before
+        /// interpolating them into a single image.
+        /// </para>
+        /// <para>
+        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of snowfall at the given proportion of a year. Pixel luminosity
+        /// indicates precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/>
+        /// of this planet's <see cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// Note: if you will be getting multiple images, it is more efficient to use the <see
+        /// cref="GetSnowfallMapProjectionsAsync(int, int, MapProjectionOptions?,
+        /// ISurfaceMapLoader?)"/> method to get the entire set at once.
+        /// </remarks>
+        public async Task<Image<L16>> GetSnowfallMapProjectionAsync(
+            int resolution,
+            double proportionOfYear,
+            int steps = 1,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetSnowfallMapAsync(proportionOfYear, steps, mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Gets the stored set of snowfall map images for this planet, if any.
+        /// </summary>
+        /// <returns>The stored set of snowfall map images for this planet, if any.</returns>
+        public Image?[] GetSnowfallMaps()
         {
             if (_snowfallMaps is null)
             {
-                return Array.Empty<Bitmap>();
+                return Array.Empty<Image?>();
             }
-            var maps = new Bitmap[_snowfallMaps.Length];
+            var maps = new Image?[_snowfallMaps.Length];
             for (var i = 0; i < _snowfallMaps.Length; i++)
             {
-                maps[i] = _snowfallMaps[i].ToImage()!;
+                maps[i] = _snowfallMaps[i];
             }
             return maps;
         }
 
         /// <summary>
-        /// Gets the current surface temperature of the <see cref="Planetoid"/> at its equator, in K.
+        /// Gets or generates a set of snowfall map images for this planet.
+        /// </summary>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere).
+        /// </para>
+        /// <para>
+        /// If stored maps exist but in a different number, they will be interpolated.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A set of snowfall map images for this planet. Pixel luminosity indicates snowfall in
+        /// mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
+        /// cref="Atmosphere"/>.
+        /// </returns>
+        /// <remarks>
+        /// If maps exist, they will be returned at their native resolutions. If maps do not already
+        /// exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>[]> GetSnowfallMapsAsync(int steps, ISurfaceMapLoader? mapLoader = null)
+        {
+            if (steps == 1)
+            {
+                var map = await GetSnowfallMapAsync(steps, mapLoader).ConfigureAwait(false);
+                return new[] { map };
+            }
+            if ((_snowfallMaps is null || _snowfallMaps.Length == 0) && HasSnowfallMap && mapLoader is not null)
+            {
+                await LoadSnowfallMapsAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_snowfallMaps is null
+                || _snowfallMaps.Length == 0
+                || _snowfallMaps.Any(x => x is null))
+            {
+                if (_precipitationMaps is not null
+                    && _precipitationMaps.Length > 0
+                    && !_precipitationMaps.Any(x => x is null))
+                {
+                    var propYear = 0.0;
+                    var propPerSeason = 1.0 / steps;
+                    _snowfallMaps = new Image[_precipitationMaps.Length];
+                    for (var i = 0; i < _precipitationMaps.Length; i++)
+                    {
+                        using var tImg = await GetTemperatureMapAsync(propYear, mapLoader).ConfigureAwait(false);
+                        using var img = _precipitationMaps[i]!.CloneAs<L16>();
+                        _snowfallMaps[i] = img.GetSnowfallMap(tImg);
+                        propYear += propPerSeason;
+                    }
+                    if (mapLoader is not null)
+                    {
+                        await AssignSnowfallMapsAsync(_snowfallMaps!, mapLoader).ConfigureAwait(false);
+                    }
+                }
+                else
+                {
+                    var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
+                    var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
+                    var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
+                    _snowfallMaps = snowfallMaps;
+                    if (mapLoader is not null)
+                    {
+                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
+                    }
+                    if (_precipitationMaps is null && !HasPrecipitationMap)
+                    {
+                        _precipitationMaps = precipitationMaps;
+                        if (mapLoader is not null)
+                        {
+                            await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
+                        }
+                    }
+                }
+            }
+            var maps = new Image<L16>[steps];
+            if (_snowfallMaps.Length == steps)
+            {
+                for (var i = 0; i < steps; i++)
+                {
+                    maps[i] = _snowfallMaps[i]!.CloneAs<L16>();
+                }
+                return maps;
+            }
+            var proportionOfYear = 0.0;
+            var proportionPerSeason = 1.0 / steps;
+            var proportionPerMap = 1.0 / _snowfallMaps.Length;
+            for (var i = 0; i < steps; i++)
+            {
+                var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _snowfallMaps.Length - 1);
+                var nextSeason = season == _snowfallMaps.Length - 1
+                    ? 0
+                    : season + 1;
+                var weight = proportionOfYear % proportionPerMap;
+                if (weight.IsNearlyZero())
+                {
+                    maps[i] = _snowfallMaps[season]!.CloneAs<L16>();
+                }
+                else
+                {
+                    maps[i] = SurfaceMapImage.InterpolateImages(_snowfallMaps[season]!, _snowfallMaps[nextSeason]!, weight);
+                }
+                proportionOfYear += proportionPerSeason;
+            }
+            return maps;
+        }
+
+        /// <summary>
+        /// Produces a set of snowfall map projections.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="steps">
+        /// <para>
+        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
+        /// starting and ending at the winter solstice in the northern hemisphere).
+        /// </para>
+        /// <para>
+        /// If stored maps exist but in a different number, they will be interpolated.
+        /// </para>
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A set of projected maps of snowfall. Pixel luminosity indicates snowfall in mm/hr,
+        /// relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
+        /// cref="Atmosphere"/>.
+        /// </returns>
+        public async Task<Image<L16>[]> GetSnowfallMapProjectionsAsync(
+            int resolution,
+            int steps,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
+            var newMaps = new Image<L16>[maps.Length];
+            for (var i = 0; i < steps; i++)
+            {
+                newMaps[i] = SurfaceMapImage.GetMapImage(
+                    maps[i],
+                    resolution,
+                    options);
+                maps[i].Dispose();
+            }
+            return newMaps;
+        }
+
+        /// <summary>
+        /// <para>
+        /// Gets the surface temperature of the <see cref="Planetoid"/> at its equator, based on its
+        /// current position, in K.
+        /// </para>
+        /// <para>
+        /// Note that this is a calculated value, and does not take any custom temperature maps into
+        /// account.
+        /// </para>
         /// </summary>
         public double GetSurfaceTemperature()
         {
@@ -2331,59 +3725,112 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Calculates the effective surface temperature at the given surface position, including
-        /// greenhouse effects, in K.
+        /// Calculates the surface temperature at the given position, in K.
         /// </summary>
         /// <param name="moment">The time at which to make the calculation.</param>
         /// <param name="latitude">
-        /// The latitude at which temperature will be calculated.
+        /// The latitude at which to calculate the temperature, in radians.
         /// </param>
         /// <param name="longitude">
-        /// The longitude at which temperature will be calculated.
+        /// The latitude at which to calculate the temperature, in radians.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAtLatLon(Instant moment, double latitude, double longitude)
-            => GetTemperatureAtElevation(
-                GetSurfaceTemperature(_blackbodyTemperature, latitude, Orbit?.GetTrueAnomalyAtTime(moment) ?? 0),
-                GetElevationAt(latitude, longitude));
+        public async Task<double> GetSurfaceTemperatureAsync(
+            Instant moment,
+            double latitude,
+            double longitude,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetTemperatureMapAsync(
+                GetProportionOfYearAtTime(moment),
+                mapLoader)
+                .ConfigureAwait(false);
+            return map.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
+        }
 
         /// <summary>
-        /// Calculates the effective surface temperature at the given surface position, including
-        /// greenhouse effects, in K.
+        /// Calculates the surface temperature at the given position, in K.
         /// </summary>
         /// <param name="moment">The time at which to make the calculation.</param>
         /// <param name="position">
         /// The surface position at which temperature will be calculated.
         /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public double GetSurfaceTemperatureAtSurfacePosition(Instant moment, Vector3 position)
-            => GetSurfaceTemperatureAtLatLon(moment, VectorToLatitude(position), VectorToLongitude(position));
+        public Task<double> GetSurfaceTemperatureAsync(Instant moment, Vector3 position, ISurfaceMapLoader? mapLoader = null)
+            => GetSurfaceTemperatureAsync(moment, VectorToLatitude(position), VectorToLongitude(position), mapLoader);
 
         /// <summary>
         /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
-        /// <paramref name="elevation"/>, from winter to summer, in K.
+        /// <paramref name="longitude"/>, in K.
         /// </summary>
-        /// <param name="latitude">The latitude at which to calculate the temperature range, in
-        /// radians.</param>
-        /// <param name="elevation">The elevation at which to calculate the temperature range, in
-        /// meters.</param>
-        /// <returns>A <see cref="FloatRange"/> giving the range of temperatures at the given
-        /// <paramref name="latitude"/> and <paramref name="elevation"/>, from winter to summer, in
-        /// K.</returns>
-        public FloatRange GetSurfaceTemperatureRangeAt(double latitude, double elevation)
+        /// <param name="latitude">
+        /// The latitude at which to calculate the temperature range, in radians.
+        /// </param>
+        /// <param name="longitude">
+        /// The latitude at which to calculate the temperature range, in radians.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
+        /// map image.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
+        /// will be generated and kept in memory only.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A <see cref="FloatRange"/> giving the range of temperatures at the given <paramref
+        /// name="latitude"/> and <paramref name="longitude"/>, in K.
+        /// </returns>
+        public async Task<FloatRange> GetSurfaceTemperatureAsync(
+            double latitude,
+            double longitude,
+            ISurfaceMapLoader? mapLoader = null)
         {
-            var temp = GetSurfaceTemperatureAtTrueAnomaly(WinterSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, -AxialTilt));
-            var min = GetTemperatureAtElevation(temp, elevation);
-            temp = GetSurfaceTemperatureAtTrueAnomaly(SummerSolsticeTrueAnomaly, GetSeasonalLatitudeFromDeclination(latitude, AxialTilt));
-            var max = GetTemperatureAtElevation(temp, elevation);
-            return new FloatRange((float)min, (float)max);
+            using var winterMap = await GetTemperatureMapWinterAsync(
+                mapLoader)
+                .ConfigureAwait(false);
+            using var summerMap = await GetTemperatureMapWinterAsync(
+                mapLoader)
+                .ConfigureAwait(false);
+            var winterTemperature = winterMap.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
+            var summerTemperature = winterMap.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
+            return new FloatRange(
+                (float)Math.Min(winterTemperature, summerTemperature),
+                (float)Math.Max(winterTemperature, summerTemperature));
         }
 
         /// <summary>
-        /// Calculates the temperature of this <see cref="Planetoid"/> at the given elevation, in K.
+        /// Adjusts the given surface temperature for elevation.
         /// </summary>
         /// <param name="surfaceTemp">The surface temperature at the location, in K.</param>
         /// <param name="elevation">The elevation, in meters.</param>
+        /// <param name="surface">
+        /// If <see langword="true"/> the determination is made for a location
+        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
+        /// made for an elevation above the surface.
+        /// </param>
         /// <returns>
         /// The temperature of this <see cref="Planetoid"/> at the given elevation, in K.
         /// </returns>
@@ -2393,7 +3840,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// exoplanetary atmospheres, so a simplified formula is used, which should be "close enough"
         /// for low elevations.
         /// </remarks>
-        public double GetTemperatureAtElevation(double surfaceTemp, double elevation)
+        public double GetTemperatureAtElevation(double surfaceTemp, double elevation, bool surface = true)
         {
             // When outside the atmosphere, use the black body temperature, ignoring atmospheric effects.
             if (elevation >= Atmosphere.AtmosphericHeight)
@@ -2407,24 +3854,368 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else
             {
-                var firstGuess = surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
-                return surfaceTemp - (elevation * GetLapseRate(firstGuess));
+                var value = surfaceTemp - (elevation * GetLapseRate(surfaceTemp));
+                value = surfaceTemp - (elevation * GetLapseRate(value));
+
+                if (!surface
+                    || Atmosphere.Material.IsEmpty
+                    || MaxElevation.IsNearlyZero())
+                {
+                    return value;
+                }
+
+                // Represent the effect of near-surface atmospheric convection by resturning the
+                // average of the raw surface temperature and the result, weighted by the elevation.
+                var weight = Math.Min(1, elevation * 4 / MaxElevation);
+
+                return surfaceTemp.Lerp(value, weight);
             }
         }
 
         /// <summary>
-        /// Gets the stored temperature map image for this region at the summer solstice, if any.
+        /// Gets or generates a temperature map image for this planet.
         /// </summary>
-        /// <returns>The stored temperature map image for this region at the summer solstice, if
-        /// any.</returns>
-        public Bitmap? GetTemperatureMapSummer() => (_temperatureMapSummer ?? _temperatureMapWinter).ToImage();
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A temperature map image for this planet. Pixel luminosity indicates temperature relative
+        /// to 5000K.
+        /// </returns>
+        /// <remarks>
+        /// If maps exist, the result will be at the maximum of their native resolutions. If maps do
+        /// not already exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetTemperatureMapAsync(ISurfaceMapLoader? mapLoader = null)
+        {
+            if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
+                && HasTemperatureMap
+                && mapLoader is not null)
+            {
+                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_temperatureMapWinter is null || _temperatureMapSummer is null)
+            {
+                var elevationMap = await GetElevationMapAsync(mapLoader)
+                    .ConfigureAwait(false);
+                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
+                if (mapLoader is not null)
+                {
+                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
+                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
+                }
+            }
+            return SurfaceMapImage.GenerateTemperatureMap(_temperatureMapWinter, _temperatureMapSummer);
+        }
 
         /// <summary>
-        /// Gets the stored temperature map image for this region at the winter solstice, if any.
+        /// Gets or generates a temperature map image for this planet at the given proportion of a
+        /// year.
         /// </summary>
-        /// <returns>The stored temperature map image for this region at the winter solstice, if
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A temperature map image for this planet at the given proportion of a year. Pixel
+        /// luminosity indicates temperature relative to 5000K.
+        /// </returns>
+        /// <remarks>
+        /// If maps exist, the result will be at the maximum of their native resolutions. If maps do
+        /// not already exist, new ones will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetTemperatureMapAsync(double proportionOfYear, ISurfaceMapLoader? mapLoader = null)
+        {
+            if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
+                && HasTemperatureMap
+                && mapLoader is not null)
+            {
+                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_temperatureMapWinter is null || _temperatureMapSummer is null)
+            {
+                var elevationMap = await GetElevationMapAsync(mapLoader)
+                    .ConfigureAwait(false);
+                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
+                if (mapLoader is not null)
+                {
+                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
+                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
+                }
+            }
+            return SurfaceMapImage.InterpolateImages(_temperatureMapWinter, _temperatureMapSummer, proportionOfYear);
+        }
+
+        /// <summary>
+        /// Produces a temperature map projection.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of temperature. Pixel luminosity indicates temperature relative to
+        /// 5000K.
+        /// </returns>
+        public async Task<Image<L16>> GetTemperatureMapProjectionAsync(
+            int resolution,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetTemperatureMapAsync(mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Produces a temperature map projection at the given proportion of a year.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year at which the map is to be generated, assuming a year
+        /// begins and ends at the winter solstice in the northern hemisphere.
+        /// </param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of temperature at the given proportion of a year. Pixel luminosity
+        /// indicates temperature relative to 5000K.
+        /// </returns>
+        public async Task<Image<L16>> GetTemperatureMapProjectionAsync(
+            int resolution,
+            double proportionOfYear,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetTemperatureMapAsync(proportionOfYear, mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Produces a temperature map projection of the summer solstice in the northern hemisphere.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of temperature at the summer solstice in the northern hemisphere. Pixel
+        /// luminosity indicates temperature relative to 5000K.
+        /// </returns>
+        public async Task<Image<L16>> GetTemperatureMapProjectionSummerAsync(
+            int resolution,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Produces a temperature map projection of the winter solstice in the northern hemisphere.
+        /// </summary>
+        /// <param name="resolution">The vertical resolution of the projection.</param>
+        /// <param name="options">
+        /// <para>
+        /// The map projection options used.
+        /// </para>
+        /// <para>
+        /// If left <see langword="null"/> an equirectangular projection of the full globe is
+        /// produced.
+        /// </para>
+        /// </param>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
+        /// saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A projected map of temperature at the winter solstice in the northern hemisphere. Pixel
+        /// luminosity indicates temperature relative to 5000K.
+        /// </returns>
+        public async Task<Image<L16>> GetTemperatureMapProjectionWinterAsync(
+            int resolution,
+            MapProjectionOptions? options = null,
+            ISurfaceMapLoader? mapLoader = null)
+        {
+            using var map = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
+            return SurfaceMapImage.GetMapImage(
+                map,
+                resolution,
+                options);
+        }
+
+        /// <summary>
+        /// Gets the stored temperature map image for this planet at the summer solstice of the
+        /// northern hemisphere, if any.
+        /// </summary>
+        /// <returns>
+        /// The stored temperature map image for this planet at the summer solstice of the northern
+        /// hemisphere, if any.
+        /// </returns>
+        public Image? GetTemperatureMapSummer() => _temperatureMapSummer ?? _temperatureMapWinter;
+
+        /// <summary>
+        /// Gets or generates a temperature map image for this planet at the summer solstice in the
+        /// northern hemisphere.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A temperature map image for this planet at the summer solstice in the northern
+        /// hemisphere. Pixel luminosity indicates temperature relative to 5000K.
+        /// </returns>
+        /// <remarks>
+        /// If a map exists, it will be returned at its native resolution. If a map does not already
+        /// exist, a new one will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetTemperatureMapSummerAsync(ISurfaceMapLoader? mapLoader = null)
+        {
+            if (_temperatureMapSummer is null && HasTemperatureMap && mapLoader is not null)
+            {
+                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_temperatureMapSummer is null)
+            {
+                var elevationMap = await GetElevationMapAsync(mapLoader)
+                    .ConfigureAwait(false);
+                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
+                if (mapLoader is not null)
+                {
+                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
+                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
+                }
+            }
+            return _temperatureMapSummer.CloneAs<L16>();
+        }
+
+        /// <summary>
+        /// Gets the stored temperature map image for this planet at the winter solstice, if any.
+        /// </summary>
+        /// <returns>The stored temperature map image for this planet at the winter solstice, if
         /// any.</returns>
-        public Bitmap? GetTemperatureMapWinter() => (_temperatureMapWinter ?? _temperatureMapSummer).ToImage();
+        public Image? GetTemperatureMapWinter() => _temperatureMapWinter ?? _temperatureMapSummer;
+
+        /// <summary>
+        /// Gets or generates a temperature map image for this planet at the winter solstice in the
+        /// northern hemisphere.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// <para>
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
+        /// </para>
+        /// <para>
+        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
+        /// be saved.
+        /// </para>
+        /// </param>
+        /// <returns>
+        /// A temperature map image for this planet at the winter solstice in the northern
+        /// hemisphere. Pixel luminosity indicates temperature relative to 5000K.
+        /// </returns>
+        /// <remarks>
+        /// If a map exists, it will be returned at its native resolution. If a map does not already
+        /// exist, a new one will be generated at a default resolution.
+        /// </remarks>
+        public async Task<Image<L16>> GetTemperatureMapWinterAsync(ISurfaceMapLoader? mapLoader = null)
+        {
+            if (_temperatureMapWinter is null && HasTemperatureMap && mapLoader is not null)
+            {
+                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
+            }
+            if (_temperatureMapWinter is null)
+            {
+                var elevationMap = await GetElevationMapAsync(mapLoader)
+                    .ConfigureAwait(false);
+                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
+                if (mapLoader is not null)
+                {
+                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
+                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
+                }
+            }
+            return _temperatureMapWinter.CloneAs<L16>();
+        }
 
         /// <summary>
         /// Determines if the planet is habitable by a species with the given requirements. Does not
@@ -2517,136 +4308,92 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Loads an image as the hydrology depth overlay for this region.
+        /// Loads the elevation map for this planet from storage.
         /// </summary>
-        /// <param name="image">The image to load.</param>
-        public void LoadDepthMap(Bitmap image)
-        {
-            if (image is null)
-            {
-                _depthMap = null;
-                return;
-            }
-            _depthMap = GetByteArray(image);
-        }
-
-        /// <summary>
-        /// Loads an image as the elevation overlay for this region.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        public void LoadElevationMap(Bitmap image)
-        {
-            if (image is null)
-            {
-                _elevationMap = null;
-                return;
-            }
-            _elevationMap = GetByteArray(image);
-        }
-
-        /// <summary>
-        /// Loads an image as the hydrology flow overlay for this region.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="maxFlow">
-        /// The maximum flow rate of waterways on this map, in m³/s.
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
         /// </param>
-        public void LoadFlowMap(Bitmap image, double maxFlow)
+        public async Task LoadElevationMapAsync(ISurfaceMapLoader mapLoader)
         {
-            if (image is null)
+            if (!string.IsNullOrEmpty(_elevationMapPath))
             {
-                _flowMap = null;
-                return;
+                _elevationMap = await mapLoader.LoadAsync(_elevationMapPath).ConfigureAwait(false);
             }
-            _flowMap = GetByteArray(image);
-            MaxFlow = maxFlow;
         }
 
         /// <summary>
-        /// Loads a set of images as the precipitation overlays for this region.
+        /// Loads a set of images as the precipitation maps for this planet from storage.
         /// </summary>
-        /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
-        /// course of a year.</param>
-        public void LoadPrecipitationMaps(IEnumerable<Bitmap> images)
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        public async Task LoadPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
         {
-            if (images?.Any() != true)
+            if (_precipitationMapPaths is null)
             {
-                _precipitationMaps = null;
                 return;
             }
-            _precipitationMaps = images.Select(GetByteArray).ToArray();
+            _precipitationMaps = new Image?[_precipitationMapPaths.Length];
+            for (var i = 0; i < _precipitationMapPaths.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(_precipitationMapPaths[i]))
+                {
+                    _precipitationMaps[i] = await mapLoader.LoadAsync(_precipitationMapPaths[i]).ConfigureAwait(false);
+                }
+            }
         }
 
         /// <summary>
-        /// Loads a set of images as the snowfall overlays for this region.
+        /// Loads a set of images as the snowfall maps for this planet from storage.
         /// </summary>
-        /// <param name="images">The images to load. The set is presumed to be evenly spaced over the
-        /// course of a year.</param>
-        public void LoadSnowfallMaps(IEnumerable<Bitmap> images)
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        public async Task LoadSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
         {
-            if (images?.Any() != true)
+            if (_snowfallMapPaths is null)
             {
-                _snowfallMaps = null;
                 return;
             }
-            _snowfallMaps = images.Select(GetByteArray).ToArray();
+            _snowfallMaps = new Image?[_snowfallMapPaths.Length];
+            for (var i = 0; i < _snowfallMapPaths.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(_snowfallMapPaths[i]))
+                {
+                    _snowfallMaps[i] = await mapLoader.LoadAsync(_snowfallMapPaths[i]).ConfigureAwait(false);
+                }
+            }
         }
 
         /// <summary>
-        /// Loads an image as the temperature overlay for this region, applying the same map to both
-        /// summer and winter.
+        /// Loads the temperature map(s) for this planet from storage.
         /// </summary>
-        /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMap(Bitmap image)
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        public async Task LoadTemperatureMapAsync(ISurfaceMapLoader mapLoader)
         {
-            if (image is null)
+            if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
             {
-                _temperatureMapSummer = null;
-                _temperatureMapWinter = null;
-                return;
+                _temperatureMapSummer = await mapLoader.LoadAsync(_temperatureMapSummerPath).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(_temperatureMapWinterPath))
+                {
+                    _temperatureMapWinter = _temperatureMapSummer;
+                }
             }
-            _temperatureMapSummer = GetByteArray(image);
-            _temperatureMapWinter = _temperatureMapSummer;
-        }
 
-        /// <summary>
-        /// Loads an image as the temperature overlay for this region at the summer solstice.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMapSummer(Bitmap image)
-        {
-            if (image is null)
+            if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
             {
-                _temperatureMapSummer = null;
-                return;
+                _temperatureMapWinter = await mapLoader.LoadAsync(_temperatureMapWinterPath).ConfigureAwait(false);
+                if (_temperatureMapSummer is null)
+                {
+                    _temperatureMapSummer = _temperatureMapWinter;
+                }
             }
-            _temperatureMapSummer = GetByteArray(image);
-        }
-
-        /// <summary>
-        /// Loads an image as the temperature overlay for this region at the winter solstice.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        public void LoadTemperatureMapWinter(Bitmap image)
-        {
-            if (image is null)
-            {
-                _temperatureMapWinter = null;
-                return;
-            }
-            _temperatureMapWinter = GetByteArray(image);
-        }
-
-        /// <summary>
-        /// Removes a <see cref="SurfaceRegion"/> instance from this instance's collection, if
-        /// found. Returns this instance.
-        /// </summary>
-        /// <param name="value">A <see cref="SurfaceRegion"/> instance.</param>
-        /// <returns>This instance.</returns>
-        public Planetoid RemoveSurfaceRegion(SurfaceRegion value)
-        {
-            _surfaceRegions?.Remove(value);
-            return this;
         }
 
         /// <summary>
@@ -2747,58 +4494,6 @@ namespace NeverFoundry.WorldFoundry.Space
             _ => _TerrestrialSpace,
         };
 
-        internal float[][] GetDepthMap(int width, int height)
-            => _depthMap.ImageToFloatSurfaceMap(width, height);
-
-        internal double[][] GetElevationMap(int width, int height, out double max)
-        {
-            max = 0;
-            using var image = _elevationMap.ToImage();
-            if (image is null)
-            {
-                return Array.Empty<double[]>();
-            }
-            return image.ImageToDoubleSurfaceMap(out max, width, height);
-        }
-
-        internal double GetElevationNoiseAt(MathAndScience.Numerics.Doubles.Vector3 position)
-            => GetElevationNoiseAt(position.X, position.Y, position.Z);
-
-        internal double GetElevationNoiseAt(double x, double y, double z)
-        {
-            if (MaxElevation.IsNearlyZero())
-            {
-                return 0;
-            }
-
-            // Initial noise map: a simple fractal noise map.
-            var baseNoise = Noise1.GetNoise(x, y, z);
-
-            // Mountain noise map: a more ridged map.
-            var mountains = (-Noise2.GetNoise(x, y, z) - 0.25) * 4 / 3;
-
-            // Scale the base noise to the typical average height of continents, with a degree of
-            // randomness borrowed from the mountain noise function.
-            var scaledBaseNoise = baseNoise * (0.25 + (mountains * 0.0625));
-
-            // Modify the mountain map to indicate mountains only in random areas, instead of
-            // uniformly across the globe.
-            //mountains *= (Noise3.GetNoise(x, y, z) + 0.25).Clamp(0, 1);
-            mountains *= (Noise3.GetNoise(x, y, z) + 1).Clamp(0, 1);
-
-            // Multiply with itself to produce predominantly low values with high (and low)
-            // extremes, and scale to the typical maximum height of mountains, with a degree of
-            // randomness borrowed from the base noise function.
-            mountains = Math.CopySign(mountains * mountains * (0.525 + (baseNoise * 0.13125)), mountains);
-
-            // The value with the greatest magnitude is returned, resulting in mostly broad,
-            // low-lying areas, interrupted by occasional high mountain ranges and low trenches.
-            return scaledBaseNoise + mountains;
-        }
-
-        internal float[][] GetFlowMap(int width, int height)
-            => _flowMap.ImageToFloatSurfaceMap(width, height);
-
         internal double GetInsolationFactor(Number atmosphereMass, double atmosphericScaleHeight, bool polar = false)
             => (double)Number.Pow(1320000
                 * atmosphereMass
@@ -2824,99 +4519,27 @@ namespace NeverFoundry.WorldFoundry.Space
         internal Number GetMutualHillSphereRadius(Number otherMass)
             => Orbit?.GetMutualHillSphereRadius(Mass, otherMass) ?? Number.Zero;
 
-        internal double GetPrecipitation(MathAndScience.Numerics.Doubles.Vector3 position, double seasonalLatitude, float temperature, float proportionOfYear, out double snow)
-            => GetPrecipitation(position.X, position.Y, position.Z, seasonalLatitude, temperature, proportionOfYear, out snow);
+        internal double GetElevationNoise(Vector3 position)
+            => GetElevationNoise((double)position.X, (double)position.Y, (double)position.Z);
 
-        internal double GetPrecipitation(double x, double y, double z, double seasonalLatitude, float temperature, float proportionOfYear, out double snow)
-        {
-            snow = 0;
+        internal double GetElevationNoise(MathAndScience.Numerics.Doubles.Vector3 position)
+            => GetElevationNoise(position.X, position.Y, position.Z);
 
-            var avgPrecipitation = Atmosphere.AveragePrecipitation * proportionOfYear;
+        internal double GetPrecipitationNoise(
+            Vector3 position,
+            double latitude,
+            double seasonalLatitude,
+            double temperature,
+            out double snow)
+            => GetPrecipitationNoise((double)position.X, (double)position.Y, (double)position.Z, latitude, seasonalLatitude, temperature, out snow);
 
-            // Noise map with smooth, broad areas. Random range ~-1-2.
-            var r1 = 0.5 + (Noise4.GetNoise(x, y, z) * 1.5);
-
-            // More detailed noise map. Random range of ~-0.9-0.9 adjusted to ~0.45-1.25.
-            var r2 = (Noise5.GetNoise(x, y, z) * 0.4) + 0.85;
-
-            // Combined map is noise with broad similarity over regions, and minor local
-            // diversity. Range ~-1.05-2.1.
-            var r = r1 * r2;
-
-            // Hadley cells scale by ~2.25 around the equator, ~-1.1 ±15º lat, ~1.1 ±40º lat, and ~0
-            // ±86º lat; this creates the ITCZ, the subtropical deserts, the temperate zone, and
-            // the polar deserts.
-            var roundedAbsLatitude = Math.Round(Math.Max(0, Math.Abs(seasonalLatitude)), 3);
-            if (!_HadleyValues.TryGetValue(roundedAbsLatitude, out var hadleyValue))
-            {
-                hadleyValue = 0.25 + (2 / (1 + (2 * roundedAbsLatitude)) * Math.Cos(MathAndScience.Constants.Doubles.MathConstants.ThreePI / (roundedAbsLatitude + 0.75)));
-                _HadleyValues.Add(roundedAbsLatitude, hadleyValue);
-            }
-
-            // Noise map with very smooth, broad areas. Random range of ~0.5-1.
-            var r3 = 0.75 + (Noise6.GetNoise(x, y, z) * 0.25);
-
-            // Relative humidity is the Hadley cell value added to the random value. Range ~-2.15-~4.35.
-            var relativeHumidity = r + (hadleyValue * r3);
-
-            // In the range betwen 0 and 16K below freezing, the value is scaled down; below that
-            // range it is cut off completely; above it is unchanged.
-            relativeHumidity *= ((temperature - _LowTemp) / 16).Clamp(0, 1);
-
-            // More intense in the tropics.
-            if (roundedAbsLatitude < MathAndScience.Constants.Doubles.MathConstants.EighthPI)
-            {
-                // Range ~-3.16-~6.45.
-                relativeHumidity += r * ((MathAndScience.Constants.Doubles.MathConstants.EighthPI - roundedAbsLatitude) / MathAndScience.Constants.Doubles.MathConstants.EighthPI);
-
-                // Extreme spikes within the ITCZ. Range ~-3.16-~71.
-                if (relativeHumidity > 0 && roundedAbsLatitude < SixteenthPI)
-                {
-                    relativeHumidity *= r2
-                        * (1 + ((SixteenthPI - roundedAbsLatitude) / SixteenthPI
-                        * (Math.Max(0, r2 - 0.85) / 0.4)
-                        * 11));
-                }
-            }
-
-            if (relativeHumidity <= 0)
-            {
-                return 0;
-            }
-
-            var precipitation = avgPrecipitation * relativeHumidity;
-
-            if (temperature <= Substances.All.Water.MeltingPoint)
-            {
-                snow = precipitation * Atmosphere.SnowToRainRatio;
-            }
-
-            return precipitation;
-        }
-
-        internal float[][][] GetPrecipitationMaps(int width, int height)
-        {
-            var mapImages = GetPrecipitationMaps();
-            var maps = new float[mapImages.Length][][];
-            for (var i = 0; i < mapImages.Length; i++)
-            {
-                maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
-                mapImages[i].Dispose();
-            }
-            return maps;
-        }
-
-        internal float[][][] GetSnowfallMaps(int width, int height)
-        {
-            var mapImages = GetSnowfallMaps();
-            var maps = new float[mapImages.Length][][];
-            for (var i = 0; i < mapImages.Length; i++)
-            {
-                maps[i] = mapImages[i].ImageToFloatSurfaceMap(width, height);
-                mapImages[i].Dispose();
-            }
-            return maps;
-        }
+        internal double GetPrecipitationNoise(
+            MathAndScience.Numerics.Doubles.Vector3 position,
+            double latitude,
+            double seasonalLatitude,
+            double temperature,
+            out double snow)
+            => GetPrecipitationNoise(position.X, position.Y, position.Z, latitude, seasonalLatitude, temperature, out snow);
 
         internal double GetSolarDeclination(double trueAnomaly)
             => Orbit.HasValue ? Math.Asin(Math.Sin(-AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
@@ -2944,18 +4567,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// precisely.
         /// </remarks>
         internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
-            => GetSeasonalSurfaceTemperature(GetTemperatureAtTrueAnomaly(trueAnomaly), seasonalLatitude, trueAnomaly);
-
-        internal FloatRange[][] GetTemperatureMap(int width, int height)
-        {
-            using var winter = GetTemperatureMapWinter();
-            using var summer = GetTemperatureMapSummer();
-            if (winter is null || summer is null)
-            {
-                return Array.Empty<FloatRange[]>();
-            }
-            return winter.ImagesToFloatRangeSurfaceMap(summer, width, height);
-        }
+            => GetSeasonalSurfaceTemperature(GetTemperatureAtTrueAnomaly(trueAnomaly), seasonalLatitude);
 
         internal MathAndScience.Numerics.Doubles.Vector3 LatitudeAndLongitudeToDoubleVector(double latitude, double longitude)
         {
@@ -2972,6 +4584,8 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal override async ValueTask ResetOrbitAsync(IDataStore dataStore)
         {
+            _axialTilt = null;
+
             var stars = new List<Star>();
             if (Orbit.HasValue)
             {
@@ -2988,15 +4602,8 @@ namespace NeverFoundry.WorldFoundry.Space
             ResetAllCachedTemperatures(stars);
         }
 
-        private static byte[] GetByteArray(Bitmap image)
-        {
-            using var stream = new MemoryStream();
-            image.Save(stream, System.Drawing.Imaging.ImageFormat.Bmp);
-            return stream.ToArray();
-        }
-
         private static IEnumerable<IMaterial> GetCore_Giant(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number coreProportion,
             Number planetMass)
@@ -3005,7 +4612,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var coreTemp = (double)(planetShape.ContainingRadius / 3);
 
-            var innerCoreProportion = Number.Min(reconstitution.GetNumber(7), _GiantMinMassForType / coreMass);
+            var innerCoreProportion = Number.Min(rehydrator.NextNumber(12, new Number(2, -2), new Number(2, -1)), _GiantMinMassForType / coreMass);
             var innerCoreMass = coreMass * innerCoreProportion;
             var innerCoreRadius = planetShape.ContainingRadius * coreProportion * innerCoreProportion;
             var innerCoreShape = new Sphere(innerCoreRadius, planetShape.Position);
@@ -3028,7 +4635,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetCrust_Carbon(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number crustProportion,
             Number planetMass)
@@ -3044,35 +4651,35 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var graphite = 1m;
 
-            var aluminium = reconstitution.GetDecimal(11);
-            var iron = reconstitution.GetDecimal(12);
-            var titanium = reconstitution.GetDecimal(13);
+            var aluminium = (decimal)rehydrator.NormalDistributionSample(14, 0.026, 4e-3, minimum: 0);
+            var iron = (decimal)rehydrator.NormalDistributionSample(15, 1.67e-2, 2.75e-3, minimum: 0);
+            var titanium = (decimal)rehydrator.NormalDistributionSample(16, 5.7e-3, 9e-4, minimum: 0);
 
-            var chalcopyrite = reconstitution.GetDecimal(14); // copper
+            var chalcopyrite = (decimal)rehydrator.NormalDistributionSample(17, 1.1e-3, 1.8e-4, minimum: 0); // copper
             graphite -= chalcopyrite;
-            var chromite = reconstitution.GetDecimal(15);
+            var chromite = (decimal)rehydrator.NormalDistributionSample(18, 5.5e-4, 9e-5, minimum: 0);
             graphite -= chromite;
-            var sphalerite = reconstitution.GetDecimal(16); // zinc
+            var sphalerite = (decimal)rehydrator.NormalDistributionSample(19, 8.1e-5, 1.3e-5, minimum: 0); // zinc
             graphite -= sphalerite;
-            var galena = reconstitution.GetDecimal(17); // lead
+            var galena = (decimal)rehydrator.NormalDistributionSample(20, 2e-5, 3.3e-6, minimum: 0); // lead
             graphite -= galena;
-            var uraninite = reconstitution.GetDecimal(18);
+            var uraninite = (decimal)rehydrator.NormalDistributionSample(21, 7.15e-6, 1.1e-6, minimum: 0);
             graphite -= uraninite;
-            var cassiterite = reconstitution.GetDecimal(19); // tin
+            var cassiterite = (decimal)rehydrator.NormalDistributionSample(22, 6.7e-6, 1.1e-6, minimum: 0); // tin
             graphite -= cassiterite;
-            var cinnabar = reconstitution.GetDecimal(20); // mercury
+            var cinnabar = (decimal)rehydrator.NormalDistributionSample(23, 1.35e-7, 2.3e-8, minimum: 0); // mercury
             graphite -= cinnabar;
-            var acanthite = reconstitution.GetDecimal(21); // silver
+            var acanthite = (decimal)rehydrator.NormalDistributionSample(24, 5e-8, 8.3e-9, minimum: 0); // silver
             graphite -= acanthite;
-            var sperrylite = reconstitution.GetDecimal(22); // platinum
+            var sperrylite = (decimal)rehydrator.NormalDistributionSample(25, 1.17e-8, 2e-9, minimum: 0); // platinum
             graphite -= sperrylite;
-            var gold = reconstitution.GetDecimal(23);
+            var gold = (decimal)rehydrator.NormalDistributionSample(26, 2.75e-9, 4.6e-10, minimum: 0);
             graphite -= gold;
 
             var bauxite = aluminium * 1.57m;
             graphite -= bauxite;
 
-            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
+            var hematiteIron = iron * 3 / 4 * (decimal)rehydrator.NormalDistributionSample(27, 1, 0.167, minimum: 0);
             var hematite = hematiteIron * 2.88m;
             graphite -= hematite;
             var magnetite = (iron - hematiteIron) * 4.14m;
@@ -3081,13 +4688,13 @@ namespace NeverFoundry.WorldFoundry.Space
             var ilmenite = titanium * 2.33m;
             graphite -= ilmenite;
 
-            var coal = graphite * reconstitution.GetDecimal(25);
+            var coal = graphite * (decimal)rehydrator.NormalDistributionSample(28, 0.25, 0.042, minimum: 0);
             graphite -= coal * 2;
-            var oil = graphite * reconstitution.GetDecimal(26);
+            var oil = graphite * (decimal)rehydrator.NormalDistributionSample(29, 0.25, 0.042, minimum: 0);
             graphite -= oil;
-            var gas = graphite * reconstitution.GetDecimal(27);
+            var gas = graphite * (decimal)rehydrator.NormalDistributionSample(30, 0.25, 0.042, minimum: 0);
             graphite -= gas;
-            var diamond = graphite * reconstitution.GetDecimal(28);
+            var diamond = graphite * (decimal)rehydrator.NormalDistributionSample(31, 0.125, 0.021, minimum: 0);
             graphite -= diamond;
 
             var components = new List<(ISubstanceReference, decimal)>();
@@ -3179,7 +4786,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetCrust_LavaDwarf(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number crustProportion,
             Number planetMass)
@@ -3193,7 +4800,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // rocky crust
             // 50% chance of dust
-            var dust = Math.Max(0, reconstitution.GetDecimal(5));
+            var dust = Math.Max(0, rehydrator.NextDecimal(13, -0.5m, 0.5m));
             var rock = 1 - dust;
 
             var components = new List<(ISubstanceReference, decimal)>();
@@ -3213,7 +4820,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetCrust_RockyDwarf(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number crustProportion,
             Number planetMass)
@@ -3227,7 +4834,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // rocky crust
             // 50% chance of dust
-            var dust = Math.Max(0, reconstitution.GetDecimal(5));
+            var dust = Math.Max(0, rehydrator.NextDecimal(13, -0.5m, 0.5m));
             var rock = 1 - dust;
 
             var components = new List<(ISubstanceReference, decimal)>();
@@ -3247,7 +4854,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetCrust_Terrestrial(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number crustProportion,
             Number planetMass)
@@ -3263,35 +4870,35 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var rock = 1m;
 
-            var aluminium = reconstitution.GetDecimal(11);
-            var iron = reconstitution.GetDecimal(12);
-            var titanium = reconstitution.GetDecimal(13);
+            var aluminium = (decimal)rehydrator.NormalDistributionSample(12, 0.026, 4e-3, minimum: 0);
+            var iron = (decimal)rehydrator.NormalDistributionSample(13, 1.67e-2, 2.75e-3, minimum: 0);
+            var titanium = (decimal)rehydrator.NormalDistributionSample(14, 5.7e-3, 9e-4, minimum: 0);
 
-            var chalcopyrite = reconstitution.GetDecimal(14); // copper
+            var chalcopyrite = (decimal)rehydrator.NormalDistributionSample(15, 1.1e-3, 1.8e-4, minimum: 0); // copper
             rock -= chalcopyrite;
-            var chromite = reconstitution.GetDecimal(15);
+            var chromite = (decimal)rehydrator.NormalDistributionSample(16, 5.5e-4, 9e-5, minimum: 0);
             rock -= chromite;
-            var sphalerite = reconstitution.GetDecimal(16); // zinc
+            var sphalerite = (decimal)rehydrator.NormalDistributionSample(17, 8.1e-5, 1.3e-5, minimum: 0); // zinc
             rock -= sphalerite;
-            var galena = reconstitution.GetDecimal(17); // lead
+            var galena = (decimal)rehydrator.NormalDistributionSample(18, 2e-5, 3.3e-6, minimum: 0); // lead
             rock -= galena;
-            var uraninite = reconstitution.GetDecimal(18);
+            var uraninite = (decimal)rehydrator.NormalDistributionSample(19, 7.15e-6, 1.1e-6, minimum: 0);
             rock -= uraninite;
-            var cassiterite = reconstitution.GetDecimal(19); // tin
+            var cassiterite = (decimal)rehydrator.NormalDistributionSample(20, 6.7e-6, 1.1e-6, minimum: 0); // tin
             rock -= cassiterite;
-            var cinnabar = reconstitution.GetDecimal(20); // mercury
+            var cinnabar = (decimal)rehydrator.NormalDistributionSample(21, 1.35e-7, 2.3e-8, minimum: 0); // mercury
             rock -= cinnabar;
-            var acanthite = reconstitution.GetDecimal(21); // silver
+            var acanthite = (decimal)rehydrator.NormalDistributionSample(22, 5e-8, 8.3e-9, minimum: 0); // silver
             rock -= acanthite;
-            var sperrylite = reconstitution.GetDecimal(22); // platinum
+            var sperrylite = (decimal)rehydrator.NormalDistributionSample(23, 1.17e-8, 2e-9, minimum: 0); // platinum
             rock -= sperrylite;
-            var gold = reconstitution.GetDecimal(23);
+            var gold = (decimal)rehydrator.NormalDistributionSample(24, 2.75e-9, 4.6e-10, minimum: 0);
             rock -= gold;
 
             var bauxite = aluminium * 1.57m;
             rock -= bauxite;
 
-            var hematiteIron = iron * 3 / 4 * reconstitution.GetDecimal(24);
+            var hematiteIron = iron * 3 / 4 * (decimal)rehydrator.NormalDistributionSample(25, 1, 0.167, minimum: 0);
             var hematite = hematiteIron * 2.88m;
             rock -= hematite;
             var magnetite = (iron - hematiteIron) * 4.14m;
@@ -3371,27 +4978,27 @@ namespace NeverFoundry.WorldFoundry.Space
                 components.ToArray());
         }
 
-        private static double GetDensity(Reconstitution reconstitution, PlanetType planetType)
+        private static double GetDensity(Rehydrator rehydrator, PlanetType planetType)
         {
             if (planetType == PlanetType.GasGiant)
             {
                 // Relatively low chance of a "puffy" giant (Saturn-like, low-density).
-                return reconstitution.GetDouble(5) <= 0.2
-                    ? reconstitution.GetDouble(6)
-                    : reconstitution.GetDouble(7);
+                return rehydrator.NextDouble(7) <= 0.2
+                    ? rehydrator.NextDouble(8, GiantSubMinDensity, GiantMinDensity)
+                    : rehydrator.NextDouble(8, GiantMinDensity, GiantMaxDensity);
             }
             if (planetType == PlanetType.IceGiant)
             {
                 // No "puffy" ice giants.
-                return reconstitution.GetDouble(7);
+                return rehydrator.NextDouble(7, GiantMinDensity, GiantMaxDensity);
             }
             if (planetType == PlanetType.Iron)
             {
-                return reconstitution.GetDouble(8);
+                return rehydrator.NextDouble(7, 5250, 8000);
             }
             if (PlanetType.AnyTerrestrial.HasFlag(planetType))
             {
-                return reconstitution.GetDouble(9);
+                return rehydrator.NextDouble(8, 3750, DefaultTerrestrialMaxDensity);
             }
 
             return planetType switch
@@ -3404,7 +5011,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetMantle_Carbon(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number mantleProportion,
             Number crustProportion,
@@ -3423,7 +5030,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var mantleMass = planetMass * mantleProportion;
 
             // Molten silicon carbide lower mantle
-            var lowerLayer = Number.Max(0, reconstitution.GetNumber(8)) / mantleProportion;
+            var lowerLayer = Number.Max(0, rehydrator.NextNumber(13, -Number.Deci, new Number(55, -2))) / mantleProportion;
             if (lowerLayer.IsPositive)
             {
                 var lowerLayerMass = mantleMass * lowerLayer;
@@ -3469,7 +5076,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetMantle_Giant(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number mantleProportion,
             Number crustProportion,
@@ -3488,7 +5095,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var mantleMass = planetMass * mantleProportion;
 
             // Metallic hydrogen lower mantle
-            var metalH = Number.Max(Number.Zero, reconstitution.GetNumber(8)) / mantleProportion;
+            var metalH = Number.Max(Number.Zero, rehydrator.NextNumber(13, -Number.Deci, new Number(55, -2))) / mantleProportion;
             if (metalH.IsPositive)
             {
                 var metalHMass = mantleMass * metalH;
@@ -3525,19 +5132,18 @@ namespace NeverFoundry.WorldFoundry.Space
 
             var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
 
-            var uLP = (decimal)upperLayerProportion;
-            var water = uLP;
+            var water = (decimal)upperLayerProportion;
             var fluidH = water * 0.71m;
             water -= fluidH;
             var fluidHe = water * 0.24m;
             water -= fluidHe;
-            var ne = reconstitution.GetDecimal(6) * water;
+            var ne = rehydrator.NextDecimal(14) * water;
             water -= ne;
-            var ch4 = reconstitution.GetDecimal(7) * water;
+            var ch4 = rehydrator.NextDecimal(15) * water;
             water = Math.Max(0, water - ch4);
-            var nh4 = reconstitution.GetDecimal(8) * water;
+            var nh4 = rehydrator.NextDecimal(16) * water;
             water = Math.Max(0, water - nh4);
-            var c2h6 = reconstitution.GetDecimal(9) * water;
+            var c2h6 = rehydrator.NextDecimal(17) * water;
             water = Math.Max(0, water - c2h6);
 
             var components = new List<(ISubstanceReference, decimal)>()
@@ -3572,7 +5178,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private static IEnumerable<IMaterial> GetMantle_IceGiant(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number mantleProportion,
             Number crustProportion,
@@ -3591,11 +5197,11 @@ namespace NeverFoundry.WorldFoundry.Space
             var mantleMass = planetMass * mantleProportion;
 
             var diamond = 1m;
-            var water = Math.Max(0, reconstitution.GetDecimal(6) * diamond);
+            var water = Math.Max(0, rehydrator.NextDecimal(13) * diamond);
             diamond -= water;
-            var nh4 = Math.Max(0, reconstitution.GetDecimal(7) * diamond);
+            var nh4 = Math.Max(0, rehydrator.NextDecimal(14) * diamond);
             diamond -= nh4;
-            var ch4 = Math.Max(0, reconstitution.GetDecimal(8) * diamond);
+            var ch4 = Math.Max(0, rehydrator.NextDecimal(15) * diamond);
             diamond -= ch4;
 
             // Liquid diamond mantle
@@ -3712,7 +5318,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private double CalculateGasPhaseMix(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             HomogeneousReference substance,
             double surfaceTemp,
             double adjustedAtmosphericPressure)
@@ -3748,7 +5354,7 @@ namespace NeverFoundry.WorldFoundry.Space
             else if (proportionInHydrosphere > 0)
             {
                 EvaporateAtmosphericComponent(
-                    reconstitution,
+                    rehydrator,
                     sub,
                     proportionInHydrosphere,
                     vaporProportion,
@@ -3757,13 +5363,13 @@ namespace NeverFoundry.WorldFoundry.Space
 
             if (isWater && _planetParams?.EarthlikeAtmosphere != true)
             {
-                CheckCO2Reduction(reconstitution, vaporPressure);
+                CheckCO2Reduction(rehydrator, vaporPressure);
             }
 
             return adjustedAtmosphericPressure;
         }
 
-        private double CalculatePhases(Reconstitution reconstitution, int counter, double adjustedAtmosphericPressure)
+        private double CalculatePhases(Rehydrator rehydrator, int counter, double adjustedAtmosphericPressure)
         {
             var surfaceTemp = GetAverageSurfaceTemperature();
 
@@ -3773,25 +5379,25 @@ namespace NeverFoundry.WorldFoundry.Space
             // to form precipitation.
 
             var methane = Substances.All.Methane.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, methane, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, methane, surfaceTemp, adjustedAtmosphericPressure);
 
             var carbonMonoxide = Substances.All.CarbonMonoxide.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure);
 
             var carbonDioxide = Substances.All.CarbonDioxide.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure);
 
             var nitrogen = Substances.All.Nitrogen.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, nitrogen, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, nitrogen, surfaceTemp, adjustedAtmosphericPressure);
 
             var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, oxygen, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, oxygen, surfaceTemp, adjustedAtmosphericPressure);
 
             // No need to check for ozone, since it is only added to atmospheres on planets with
             // liquid surface water, which means temperatures too high for liquid or solid ozone.
 
             var sulphurDioxide = Substances.All.SulphurDioxide.GetHomogeneousReference();
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure);
 
             // Water is handled differently, since the planet may already have surface water.
             if (counter > 0) // Not performed on first pass, since it was already done.
@@ -3802,7 +5408,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     || Hydrosphere.Contains(seawater)
                     || Atmosphere.Material.Contains(water))
                 {
-                    adjustedAtmosphericPressure = CalculateGasPhaseMix(reconstitution, water, surfaceTemp, adjustedAtmosphericPressure);
+                    adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, water, surfaceTemp, adjustedAtmosphericPressure);
                 }
             }
 
@@ -3827,14 +5433,14 @@ namespace NeverFoundry.WorldFoundry.Space
                 // which may lead to some inaccuracies, but should avoid over-repetition for small changes.
                 if (counter < 10 && Math.Abs(surfaceTemp - GetAverageSurfaceTemperature()) > 5)
                 {
-                    adjustedAtmosphericPressure = CalculatePhases(reconstitution, counter + 1, adjustedAtmosphericPressure);
+                    adjustedAtmosphericPressure = CalculatePhases(rehydrator, counter + 1, adjustedAtmosphericPressure);
                 }
             }
 
             return adjustedAtmosphericPressure;
         }
 
-        private void CheckCO2Reduction(Reconstitution reconstitution, double vaporPressure)
+        private void CheckCO2Reduction(Rehydrator rehydrator, double vaporPressure)
         {
             // At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
             // carbon-silicate cycle.
@@ -3847,7 +5453,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 var co2 = air?.GetProportion(carbonDioxide) ?? 0;
                 if (co2 >= 1e-3m) // reduce CO2 if not already trace
                 {
-                    co2 = reconstitution.GetDecimal(62);
+                    co2 = rehydrator.NextDecimal(62, 15e-6m, 0.001m);
 
                     // Replace most of the CO2 with inert gases.
                     var nitrogen = Substances.All.Nitrogen.GetHomogeneousReference();
@@ -3856,24 +5462,24 @@ namespace NeverFoundry.WorldFoundry.Space
 
                     // Some portion of the N2 may be Ar instead.
                     var argon = Substances.All.Argon.GetHomogeneousReference();
-                    var ar = Math.Max(Atmosphere.Material.GetProportion(argon), n2 * reconstitution.GetDecimal(63));
+                    var ar = Math.Max(Atmosphere.Material.GetProportion(argon), n2 * rehydrator.NextDecimal(63, -0.02m, 0.04m));
                     Atmosphere.Material.AddConstituent(argon, ar);
                     n2 -= ar;
 
                     // An even smaller fraction may be Kr.
                     var krypton = Substances.All.Krypton.GetHomogeneousReference();
-                    var kr = Math.Max(Atmosphere.Material.GetProportion(krypton), n2 * reconstitution.GetDecimal(64));
+                    var kr = Math.Max(Atmosphere.Material.GetProportion(krypton), n2 * rehydrator.NextDecimal(64, -25e-5m, 0.0005m));
                     Atmosphere.Material.AddConstituent(krypton, kr);
                     n2 -= kr;
 
                     // An even smaller fraction may be Xe or Ne.
                     var xenon = Substances.All.Xenon.GetHomogeneousReference();
-                    var xe = Math.Max(Atmosphere.Material.GetProportion(xenon), n2 * reconstitution.GetDecimal(65));
+                    var xe = Math.Max(Atmosphere.Material.GetProportion(xenon), n2 * rehydrator.NextDecimal(65, -18e-6m, 35e-6m));
                     Atmosphere.Material.AddConstituent(xenon, xe);
                     n2 -= xe;
 
                     var neon = Substances.All.Neon.GetHomogeneousReference();
-                    var ne = Math.Max(Atmosphere.Material.GetProportion(neon), n2 * reconstitution.GetDecimal(66));
+                    var ne = Math.Max(Atmosphere.Material.GetProportion(neon), n2 * rehydrator.NextDecimal(66, -18e-6m, 35e-6m));
                     Atmosphere.Material.AddConstituent(neon, ne);
                     n2 -= ne;
 
@@ -3909,7 +5515,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
                 if (substance.Equals(water))
                 {
-                    Atmosphere.ResetWater(this);
+                    Atmosphere.ResetWater();
                 }
             }
             else
@@ -3936,7 +5542,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
                     if (substance.Equals(water))
                     {
-                        Atmosphere.ResetWater(this);
+                        Atmosphere.ResetWater();
 
                         // For water, also add a corresponding amount of oxygen, if it's not already present.
                         if (_planetParams?.EarthlikeAtmosphere != true && PlanetType != PlanetType.Carbon)
@@ -3972,9 +5578,10 @@ namespace NeverFoundry.WorldFoundry.Space
             Star? star,
             Vector3 position,
             bool satellite,
-            OrbitalParameters? orbit)
+            OrbitalParameters? orbit,
+            uint? seed = null)
         {
-            _seed = Randomizer.Instance.NextUIntInclusive();
+            var rehydrator = GetRehydrator(seed);
 
             IsInhospitable = stars.Any(x => !x.IsHospitable);
 
@@ -3989,15 +5596,15 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.Comet)
             {
-                eccentricity = Randomizer.Instance.NextDouble();
+                eccentricity = rehydrator.NextDouble(33);
             }
             else if (IsAsteroid)
             {
-                eccentricity = Randomizer.Instance.NextDouble(0.4);
+                eccentricity = rehydrator.NextDouble(33, 0.4);
             }
             else
             {
-                eccentricity = Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05);
+                eccentricity = rehydrator.PositiveNormalDistributionSample(33, 0, 0.05);
             }
 
             Number semiMajorAxis;
@@ -4028,7 +5635,8 @@ namespace NeverFoundry.WorldFoundry.Space
                 semiMajorAxis = distance * ((1 + eccentricity) / (1 - eccentricity));
             }
 
-            var reconstitution = ReconstituteMaterial(
+            ReconstituteMaterial(
+                rehydrator,
                 position,
                 parent?.Material.Temperature ?? UniverseAmbientTemperature,
                 semiMajorAxis);
@@ -4046,7 +5654,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     // Invent an orbit age. Precision isn't important here, and some inaccuracy and
                     // inconsistency between satellites is desirable. The age of the Solar system is used
                     // as an arbitrary norm.
-                    var years = Randomizer.Instance.LogisticDistributionSample(0, 1) * new Number(4.6, 9);
+                    var years = rehydrator.LogisticDistributionSample(34, 0, 1) * new Number(4.6, 9);
 
                     var rigidity = PlanetType == PlanetType.Comet ? new Number(4, 9) : new Number(3, 10);
                     if (Number.Pow(years / new Number(6, 11)
@@ -4062,15 +5670,17 @@ namespace NeverFoundry.WorldFoundry.Space
                 if (!rotationalPeriodSet)
                 {
                     var rotationalPeriodLimit = IsTerrestrial ? new Number(6500000) : new Number(100000);
-                    if (Randomizer.Instance.NextDouble() <= 0.05) // low chance of an extreme period
+                    if (rehydrator.NextDouble(35) <= 0.05) // low chance of an extreme period
                     {
-                        RotationalPeriod = Randomizer.Instance.NextNumber(
+                        RotationalPeriod = rehydrator.NextNumber(
+                            36,
                             rotationalPeriodLimit,
                             IsTerrestrial ? new Number(22000000) : new Number(1100000));
                     }
                     else
                     {
-                        RotationalPeriod = Randomizer.Instance.NextNumber(
+                        RotationalPeriod = rehydrator.NextNumber(
+                            36,
                             IsTerrestrial ? new Number(40000) : new Number(8000),
                             rotationalPeriodLimit);
                     }
@@ -4078,6 +5688,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             GenerateOrbit(
+                rehydrator,
                 orbit,
                 star,
                 eccentricity,
@@ -4100,45 +5711,43 @@ namespace NeverFoundry.WorldFoundry.Space
                 }
                 AngleOfRotation = axialTilt;
             }
-            else if (Randomizer.Instance.NextDouble() <= 0.2) // low chance of an extreme tilt
+            else if (rehydrator.NextDouble(42) <= 0.2) // low chance of an extreme tilt
             {
-                AngleOfRotation = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.QuarterPI, Math.PI);
+                AngleOfRotation = rehydrator.NextDouble(43, MathAndScience.Constants.Doubles.MathConstants.QuarterPI, Math.PI);
             }
             else
             {
-                AngleOfRotation = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.QuarterPI);
+                AngleOfRotation = rehydrator.NextDouble(43, MathAndScience.Constants.Doubles.MathConstants.QuarterPI);
             }
             SetAxis();
 
             SetTemperatures(stars);
 
-            var surfaceTemp = ReconstituteHydrosphere(reconstitution);
+            var surfaceTemp = ReconstituteHydrosphere(rehydrator);
 
             if (star is not null
                 && (_planetParams?.SurfaceTemperature.HasValue == true
                 || _habitabilityRequirements?.MinimumTemperature.HasValue == true
                 || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
             {
-                CorrectSurfaceTemperature(reconstitution, stars, star, surfaceTemp);
+                CorrectSurfaceTemperature(rehydrator, stars, star, surfaceTemp);
             }
             else
             {
-                GenerateAtmosphere(reconstitution);
+                GenerateAtmosphere(rehydrator);
             }
 
-            GenerateResources(reconstitution);
+            GenerateResources(rehydrator);
 
-            var satellites = satellite
+            var index = SetRings(rehydrator);
+
+            return satellite
                 ? new List<Planetoid>()
-                : GenerateSatellites(parent, stars);
-
-            SetRings();
-
-            return satellites;
+                : GenerateSatellites(rehydrator, parent, stars, index);
         }
 
         private void CorrectSurfaceTemperature(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             List<Star> stars,
             Star star,
             double surfaceTemp)
@@ -4201,7 +5810,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 else
                 {
                     var semiMajorAxis = GetDistanceForTemperature(star, currentTargetTemp - Temperature) / (1 + (Orbit!.Value.Eccentricity * Orbit.Value.Eccentricity / 2));
-                    GenerateOrbit(star, Orbit.Value.Eccentricity, semiMajorAxis, Orbit.Value.TrueAnomaly);
+                    GenerateOrbit(rehydrator, star, Orbit.Value.Eccentricity, semiMajorAxis, Orbit.Value.TrueAnomaly);
                 }
                 ResetAllCachedTemperatures(stars);
 
@@ -4210,7 +5819,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
                 if (newAtmosphere)
                 {
-                    GenerateAtmosphere(reconstitution);
+                    GenerateAtmosphere(rehydrator);
                     newAtmosphere = false;
                 }
 
@@ -4267,7 +5876,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private void EvaporateAtmosphericComponent(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IHomogeneous substance,
             decimal hydrosphereProportion,
             decimal vaporProportion,
@@ -4282,7 +5891,7 @@ namespace NeverFoundry.WorldFoundry.Space
             if (substance.Equals(water))
             {
                 Hydrosphere = Hydrosphere.GetHomogenized();
-                Atmosphere.ResetWater(this);
+                Atmosphere.ResetWater();
             }
 
             var gasProportion = Atmosphere.Material.Mass.IsZero ? 0 : hydrosphereProportion * GetHydrosphereAtmosphereRatio();
@@ -4306,7 +5915,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 // It is presumed that photodissociation will eventually reduce the amount of water
                 // vapor to a trace gas (the H2 will be lost due to atmospheric escape, and the
                 // oxygen will be lost to surface oxidation).
-                var waterVapor = Math.Min(gasProportion, reconstitution.GetDecimal(67));
+                var waterVapor = Math.Min(gasProportion, rehydrator.NextDecimal(61, 0.001m));
                 gasProportion = waterVapor;
 
                 var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
@@ -4421,7 +6030,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 (water, waterProportion));
         }
 
-        private void GenerateAtmosphere_Dwarf(Reconstitution reconstitution)
+        private void GenerateAtmosphere_Dwarf(Rehydrator rehydrator)
         {
             // Atmosphere is based solely on the volatile ices present.
             var crust = Material.GetSurface();
@@ -4474,7 +6083,7 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh3));
             }
-            Atmosphere = new Atmosphere(this, reconstitution.GetDouble(12), components.ToArray());
+            Atmosphere = new Atmosphere(this, rehydrator.NextDouble(47, 2.5), components.ToArray());
 
             var ice = Atmosphere.Material.GetOverallDoubleValue(x =>
                 (double)x.SeparateByPhase(
@@ -4492,25 +6101,25 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private void GenerateAtmosphere_Giant(Reconstitution reconstitution)
+        private void GenerateAtmosphere_Giant(Rehydrator rehydrator)
         {
-            var trace = reconstitution.GetDecimal(29);
+            var trace = rehydrator.NextDecimal(47, 0.025m);
 
-            var h = reconstitution.GetDecimal(30);
+            var h = rehydrator.NextDecimal(48, 0.75m, 0.97m);
             var he = 1 - h - trace;
 
-            var ch4 = reconstitution.GetDecimal(31) * trace;
+            var ch4 = rehydrator.NextDecimal(49) * trace;
             trace -= ch4;
 
             // 50% chance not to have each of these components
-            var c2h6 = Math.Max(0, reconstitution.GetDecimal(32));
+            var c2h6 = Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
             var traceTotal = c2h6;
-            var nh3 = Math.Max(0, reconstitution.GetDecimal(33));
+            var nh3 = Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
             traceTotal += nh3;
-            var waterVapor = Math.Max(0, reconstitution.GetDecimal(34));
+            var waterVapor = Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
             traceTotal += waterVapor;
 
-            var nh4sh = reconstitution.GetDecimal(35);
+            var nh4sh = rehydrator.NextDecimal(53);
             traceTotal += nh4sh;
 
             var ratio = trace / traceTotal;
@@ -4544,14 +6153,14 @@ namespace NeverFoundry.WorldFoundry.Space
             Atmosphere = new Atmosphere(this, 1000, components.ToArray());
         }
 
-        private void GenerateAtmosphere_SmallBody(Reconstitution reconstitution)
+        private void GenerateAtmosphere_SmallBody(Rehydrator rehydrator)
         {
             var dust = 1.0m;
 
-            var water = reconstitution.GetDecimal(29);
+            var water = rehydrator.NextDecimal(47, 0.75m, 0.9m);
             dust -= water;
 
-            var co = reconstitution.GetDecimal(30);
+            var co = rehydrator.NextDecimal(48, 0.05m, 0.15m);
             dust -= co;
 
             if (dust < 0)
@@ -4560,19 +6169,19 @@ namespace NeverFoundry.WorldFoundry.Space
                 dust += 0.1m;
             }
 
-            var co2 = reconstitution.GetDecimal(31);
+            var co2 = rehydrator.NextDecimal(49, 0.01m);
             dust -= co2;
 
-            var nh3 = reconstitution.GetDecimal(32);
+            var nh3 = rehydrator.NextDecimal(50, 0.01m);
             dust -= nh3;
 
-            var ch4 = reconstitution.GetDecimal(33);
+            var ch4 = rehydrator.NextDecimal(51, 0.01m);
             dust -= ch4;
 
-            var h2s = reconstitution.GetDecimal(34);
+            var h2s = rehydrator.NextDecimal(52, 0.01m);
             dust -= h2s;
 
-            var so2 = reconstitution.GetDecimal(35);
+            var so2 = rehydrator.NextDecimal(53, 0.001m);
             dust -= so2;
 
             Atmosphere = new Atmosphere(
@@ -4588,34 +6197,34 @@ namespace NeverFoundry.WorldFoundry.Space
                 (Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
         }
 
-        private void GenerateAtmosphere(Reconstitution reconstitution)
+        private void GenerateAtmosphere(Rehydrator rehydrator)
         {
             if (PlanetType == PlanetType.Comet
                 || IsAsteroid)
             {
-                GenerateAtmosphere_SmallBody(reconstitution);
+                GenerateAtmosphere_SmallBody(rehydrator);
                 return;
             }
 
             if (IsGiant)
             {
-                GenerateAtmosphere_Giant(reconstitution);
+                GenerateAtmosphere_Giant(rehydrator);
                 return;
             }
 
             if (!IsTerrestrial)
             {
-                GenerateAtmosphere_Dwarf(reconstitution);
+                GenerateAtmosphere_Dwarf(rehydrator);
                 return;
             }
 
             if (AverageBlackbodyTemperature >= GetTempForThinAtmosphere())
             {
-                GenerateAtmosphereTrace(reconstitution);
+                GenerateAtmosphereTrace(rehydrator);
             }
             else
             {
-                GenerateAtmosphereThick(reconstitution);
+                GenerateAtmosphereThick(rehydrator);
             }
 
             var adjustedAtmosphericPressure = Atmosphere.AtmosphericPressure;
@@ -4649,7 +6258,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     surfaceTemp = AverageBlackbodyTemperature;
                 }
                 adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                    reconstitution,
+                    rehydrator,
                     water,
                     surfaceTemp,
                     adjustedAtmosphericPressure);
@@ -4661,17 +6270,17 @@ namespace NeverFoundry.WorldFoundry.Space
 
                 // Recalculate the phases of water based on the new temperature.
                 adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                    reconstitution,
+                    rehydrator,
                     water,
                     GetAverageSurfaceTemperature(),
                     adjustedAtmosphericPressure);
 
                 // If life alters the greenhouse potential, temperature and water phase must be
                 // recalculated once again.
-                if (GenerateLife(reconstitution))
+                if (GenerateLife(rehydrator))
                 {
                     adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                        reconstitution,
+                        rehydrator,
                         water,
                         GetAverageSurfaceTemperature(),
                         adjustedAtmosphericPressure);
@@ -4700,7 +6309,7 @@ namespace NeverFoundry.WorldFoundry.Space
                             : requirement.MinimumProportion);
                     if (requirement.Substance.Equals(water))
                     {
-                        Atmosphere.ResetWater(this);
+                        Atmosphere.ResetWater();
                     }
                     modified = true;
                 }
@@ -4711,7 +6320,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 ResetCachedTemperatures();
             }
 
-            adjustedAtmosphericPressure = CalculatePhases(reconstitution, 0, adjustedAtmosphericPressure);
+            adjustedAtmosphericPressure = CalculatePhases(rehydrator, 0, adjustedAtmosphericPressure);
             FractionHydrophere(GetAverageSurfaceTemperature());
 
             if (_planetParams?.AtmosphericPressure.HasValue != true && _habitabilityRequirements is null)
@@ -4729,7 +6338,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private void GenerateAtmosphereThick(Reconstitution reconstitution)
+        private void GenerateAtmosphereThick(Rehydrator rehydrator)
         {
             double pressure;
             if (_planetParams?.AtmosphericPressure.HasValue == true)
@@ -4743,7 +6352,24 @@ namespace NeverFoundry.WorldFoundry.Space
             else if (_habitabilityRequirements?.MinimumPressure.HasValue == true
                 || _habitabilityRequirements?.MaximumPressure.HasValue == true)
             {
-                pressure = reconstitution.GetDouble(13);
+                // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
+                if (_habitabilityRequirements.HasValue
+                    && _habitabilityRequirements.Value.MinimumPressure.HasValue)
+                {
+                    if (!_habitabilityRequirements.Value.MaximumPressure.HasValue)
+                    {
+                        pressure = _habitabilityRequirements.Value.MinimumPressure.Value
+                            + Math.Abs(rehydrator.NormalDistributionSample(47, 0, _habitabilityRequirements.Value.MinimumPressure.Value / 3));
+                    }
+                    else
+                    {
+                        pressure = rehydrator.NextDouble(47, _habitabilityRequirements.Value.MinimumPressure ?? 0, _habitabilityRequirements.Value.MaximumPressure.Value);
+                    }
+                }
+                else
+                {
+                    pressure = 0;
+                }
             }
             else
             {
@@ -4752,11 +6378,11 @@ namespace NeverFoundry.WorldFoundry.Space
                 // of their atmospheres over long periods.
                 if (Mass >= 1.5e24 || HasMagnetosphere)
                 {
-                    mass = Mass / reconstitution.GetDouble(14);
+                    mass = Mass / rehydrator.NormalDistributionSample(47, 1158568, 38600, minimum: 579300, maximum: 1737900);
                 }
                 else
                 {
-                    mass = Mass / reconstitution.GetDouble(15);
+                    mass = Mass / rehydrator.NormalDistributionSample(47, 7723785, 258000, minimum: 3862000, maximum: 11586000);
                 }
 
                 pressure = (double)(mass * SurfaceGravity / (1000 * MathConstants.FourPI * RadiusSquared));
@@ -4764,17 +6390,17 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
             // atmospheric escape.
-            var h = _planetParams?.EarthlikeAtmosphere == true ? 3.8e-8m : reconstitution.GetDecimal(42);
-            var he = _planetParams?.EarthlikeAtmosphere == true ? 7.24e-6m : reconstitution.GetDecimal(43);
+            var h = _planetParams?.EarthlikeAtmosphere == true ? 3.8e-8m : rehydrator.NextDecimal(48, 1e-8m, 2e-7m);
+            var he = _planetParams?.EarthlikeAtmosphere == true ? 7.24e-6m : rehydrator.NextDecimal(49, 2.6e-7m, 1e-5m);
 
             // 50% chance not to have these components at all.
-            var ch4 = _planetParams?.EarthlikeAtmosphere == true ? 2.9e-6m : Math.Max(0, reconstitution.GetDecimal(44));
+            var ch4 = _planetParams?.EarthlikeAtmosphere == true ? 2.9e-6m : Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
             var traceTotal = ch4;
 
-            var co = _planetParams?.EarthlikeAtmosphere == true ? 2.5e-7m : Math.Max(0, reconstitution.GetDecimal(45));
+            var co = _planetParams?.EarthlikeAtmosphere == true ? 2.5e-7m : Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
             traceTotal += co;
 
-            var so2 = _planetParams?.EarthlikeAtmosphere == true ? 1e-7m : Math.Max(0, reconstitution.GetDecimal(46));
+            var so2 = _planetParams?.EarthlikeAtmosphere == true ? 1e-7m : Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
             traceTotal += so2;
 
             decimal trace;
@@ -4788,7 +6414,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else
             {
-                trace = reconstitution.GetDecimal(47);
+                trace = rehydrator.NextDecimal(53, 1e-6m, 2.5e-4m);
             }
             if (_planetParams?.EarthlikeAtmosphere != true)
             {
@@ -4800,7 +6426,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             // CO2 makes up the bulk of a thick atmosphere by default (although the presence of water
             // may change this later).
-            var co2 = _planetParams?.EarthlikeAtmosphere == true ? 5.3e-4m : reconstitution.GetDecimal(48) - trace;
+            var co2 = _planetParams?.EarthlikeAtmosphere == true ? 5.3e-4m : rehydrator.NextDecimal(54, 0.97m, 0.99m) - trace;
 
             // If there is water on the surface, the water in the air will be determined based on
             // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
@@ -4814,7 +6440,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
                 if (CanHaveWater && !surfaceWater)
                 {
-                    waterVapor = Math.Max(0, reconstitution.GetDecimal(49));
+                    waterVapor = Math.Max(0, rehydrator.NextDecimal(55, -0.05m, 0.001m));
                 }
             }
 
@@ -4828,7 +6454,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 }
                 else if (surfaceWater)
                 {
-                    o2 = reconstitution.GetDecimal(50);
+                    o2 = rehydrator.NextDecimal(56, 0.002m);
                 }
             }
 
@@ -4840,15 +6466,15 @@ namespace NeverFoundry.WorldFoundry.Space
             var n2 = 1 - (h + he + co2 + waterVapor + o2 + o3 + trace);
 
             // Some portion of the N2 may be Ar instead.
-            var ar = _planetParams?.EarthlikeAtmosphere == true ? 1.288e-3m : Math.Max(0, n2 * reconstitution.GetDecimal(51));
+            var ar = _planetParams?.EarthlikeAtmosphere == true ? 1.288e-3m : Math.Max(0, n2 * rehydrator.NextDecimal(57, -0.02m, 0.04m));
             n2 -= ar;
             // An even smaller fraction may be Kr.
-            var kr = _planetParams?.EarthlikeAtmosphere == true ? 3.3e-6m : Math.Max(0, n2 * reconstitution.GetDecimal(52));
+            var kr = _planetParams?.EarthlikeAtmosphere == true ? 3.3e-6m : Math.Max(0, n2 * rehydrator.NextDecimal(58, -2.5e-4m, 5.0e-4m));
             n2 -= kr;
             // An even smaller fraction may be Xe or Ne.
-            var xe = _planetParams?.EarthlikeAtmosphere == true ? 8.7e-8m : Math.Max(0, n2 * reconstitution.GetDecimal(53));
+            var xe = _planetParams?.EarthlikeAtmosphere == true ? 8.7e-8m : Math.Max(0, n2 * rehydrator.NextDecimal(59, -1.8e-5m, 3.5e-5m));
             n2 -= xe;
-            var ne = _planetParams?.EarthlikeAtmosphere == true ? 1.267e-5m : Math.Max(0, n2 * reconstitution.GetDecimal(54));
+            var ne = _planetParams?.EarthlikeAtmosphere == true ? 1.267e-5m : Math.Max(0, n2 * rehydrator.NextDecimal(60, -1.8e-5m, 3.5e-5m));
             n2 -= ne;
 
             var components = new List<(ISubstanceReference, decimal)>()
@@ -4897,38 +6523,38 @@ namespace NeverFoundry.WorldFoundry.Space
             Atmosphere = new Atmosphere(this, pressure, components.ToArray());
         }
 
-        private void GenerateAtmosphereTrace(Reconstitution reconstitution)
+        private void GenerateAtmosphereTrace(Rehydrator rehydrator)
         {
             // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
             // atmospheric escape.
-            var h = reconstitution.GetDecimal(29);
-            var he = reconstitution.GetDecimal(30);
+            var h = rehydrator.NextDecimal(47, 5e-8m, 2e-7m);
+            var he = rehydrator.NextDecimal(48, 2.6e-7m, 1e-5m);
 
             // 50% chance not to have these components at all.
-            var ch4 = Math.Max(0, reconstitution.GetDecimal(31));
+            var ch4 = Math.Max(0, rehydrator.NextDecimal(49, -0.5m, 0.5m));
             var total = ch4;
 
-            var co = Math.Max(0, reconstitution.GetDecimal(32));
+            var co = Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
             total += co;
 
-            var so2 = Math.Max(0, reconstitution.GetDecimal(33));
+            var so2 = Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
             total += so2;
 
-            var n2 = Math.Max(0, reconstitution.GetDecimal(34));
+            var n2 = Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
             total += n2;
 
             // Noble traces: selected as fractions of N2, if present, to avoid over-representation.
-            var ar = n2 > 0 ? Math.Max(0, n2 * reconstitution.GetDecimal(35)) : 0;
+            var ar = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(53, -0.02m, 0.04m)) : 0;
             n2 -= ar;
-            var kr = n2 > 0 ? Math.Max(0, n2 * reconstitution.GetDecimal(36)) : 0;
+            var kr = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(54, -0.02m, 0.04m)) : 0;
             n2 -= kr;
-            var xe = n2 > 0 ? Math.Max(0, n2 * reconstitution.GetDecimal(37)) : 0;
+            var xe = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(55, -0.02m, 0.04m)) : 0;
             n2 -= xe;
 
             // Carbon monoxide means at least some carbon dioxide, as well.
             var co2 = co > 0
-                ? reconstitution.GetDecimal(38)
-                : Math.Max(0, reconstitution.GetDecimal(39));
+                ? rehydrator.NextDecimal(56, 0.5m)
+                : Math.Max(0, rehydrator.NextDecimal(56, -0.5m, 0.5m));
             total += co2;
 
             // If there is water on the surface, the water in the air will be determined based on
@@ -4941,7 +6567,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 && !Hydrosphere.Contains(water)
                 && !Hydrosphere.Contains(seawater))
             {
-                waterVapor = Math.Max(0, reconstitution.GetDecimal(40));
+                waterVapor = Math.Max(0, rehydrator.NextDecimal(57, -0.05m, 0.001m));
             }
             total += waterVapor;
 
@@ -4951,7 +6577,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 // Always at least some oxygen if there is water, planetary composition allowing
                 o2 = waterVapor > 0
                     ? waterVapor * 1e-4m
-                    : Math.Max(0, reconstitution.GetDecimal(41));
+                    : Math.Max(0, rehydrator.NextDecimal(58, -0.05m, 0.5m));
             }
             total += o2;
 
@@ -5021,28 +6647,35 @@ namespace NeverFoundry.WorldFoundry.Space
                 {
                     components.Add((Substances.All.Xenon.GetHomogeneousReference(), xe));
                 }
-                Atmosphere = new Atmosphere(this, reconstitution.GetDouble(12), components.ToArray());
+                Atmosphere = new Atmosphere(this, rehydrator.NextDouble(59, 25), components.ToArray());
             }
         }
 
-        private Planetoid? GenerateGiantSatellite(CosmicLocation? parent, List<Star> stars, Number periapsis, double eccentricity, Number maxMass)
+        private Planetoid? GenerateGiantSatellite(
+            Rehydrator rehydrator,
+            ref ulong index,
+            CosmicLocation? parent,
+            List<Star> stars,
+            Number periapsis,
+            double eccentricity,
+            Number maxMass)
         {
             var orbit = new OrbitalParameters(
                 Mass,
                 Position,
                 periapsis,
                 eccentricity,
-                Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                rehydrator.NextDouble(index++, 0.5),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             double chance;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _TerrestrialMinMassForType && Randomizer.Instance.NextBool())
+            if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
             {
                 // Select from the standard distribution of types.
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
 
                 // Planets with very low orbits are lava planets due to tidal
                 // stress (plus a small percentage of others due to impact trauma).
@@ -5052,79 +6685,189 @@ namespace NeverFoundry.WorldFoundry.Space
                 // which gets generated).
                 if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new Number(105, -2) || chance <= 0.01)
                 {
-                    return new Planetoid(PlanetType.Lava, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Lava,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.65) // Most will be standard terrestrial.
                 {
-                    return new Planetoid(PlanetType.Terrestrial, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Terrestrial,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.75)
                 {
-                    return new Planetoid(PlanetType.Iron, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Iron,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.Ocean, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Ocean,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > _DwarfMinMassForType && Randomizer.Instance.NextBool())
+            else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
             {
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DensityForDwarf) * new Number(105, -2) || chance <= 0.01)
                 {
-                    return new Planetoid(PlanetType.LavaDwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.LavaDwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    return new Planetoid(PlanetType.Dwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Dwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.RockyDwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.RockyDwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             // Otherwise, it is an asteroid, selected from the standard distribution of types.
             else if (maxMass > 0)
             {
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
                 if (chance <= 0.75)
                 {
-                    return new Planetoid(PlanetType.AsteroidC, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidC,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.9)
                 {
-                    return new Planetoid(PlanetType.AsteroidS, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidS,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.AsteroidM, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidM,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             return null;
         }
 
-        private void GenerateHydrocarbons(Reconstitution reconstitution)
+        private void GenerateHydrocarbons(Rehydrator rehydrator)
         {
             // It is presumed that it is statistically likely that the current eon is not the first
             // with life, and therefore that some fossilized hydrocarbon deposits exist.
-            var coal = reconstitution.GetDecimal(56);
+            var coal = (decimal)rehydrator.NormalDistributionSample(67, 1e-13, 1.7e-14);
 
             AddResource(Substances.All.Anthracite.GetReference(), coal, false);
             AddResource(Substances.All.BituminousCoal.GetReference(), coal, false);
 
-            var petroleum = reconstitution.GetDecimal(57);
+            var petroleum = (decimal)rehydrator.NormalDistributionSample(68, 1e-8, 1.6e-9);
             var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false);
 
             // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
             AddResource(Substances.All.NaturalGas.GetReference(), petroleum, false, true, petroleumSeed);
         }
 
-        private void GenerateHydrosphere(Reconstitution reconstitution, double surfaceTemp)
+        private void GenerateHydrosphere(Rehydrator rehydrator, double surfaceTemp)
         {
             // Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
             // icecaps, etc.). This might be removed later, depending on the planet's conditions.
@@ -5142,11 +6885,11 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.Ocean)
             {
-                ratio = (decimal)((reconstitution.GetDouble(16) * MaxElevation / 3) + (MaxElevation * 2));
+                ratio = (decimal)(1 + rehydrator.NormalDistributionSample(44, 1, 0.2));
             }
             else
             {
-                ratio = reconstitution.GetDecimal(68);
+                ratio = rehydrator.NextDecimal(44);
             }
 
             var mass = Number.Zero;
@@ -5156,37 +6899,32 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 SeaLevel = -MaxElevation * 1.1;
             }
-            else if (ratio >= 1 && (IsGiant || PlanetType == PlanetType.Ocean || MaxElevation.IsNearlyZero()))
+            else if (ratio >= 1)
             {
                 SeaLevel = MaxElevation * (double)ratio;
                 mass = new HollowSphere(Shape.ContainingRadius, Shape.ContainingRadius + SeaLevel).Volume * (seawater.Homogeneous.DensityLiquid ?? 0);
             }
             else
             {
-                var grid = new WorldGrid(this, WorldGrid.DefaultGridSize);
                 var seaLevel = 0.0;
-                if (ratio == 0.5m)
+                SeaLevel = 0;
+                const double randomMapElevationFactor = 0.33975352675545284; // proportion of MaxElevation of a random elevation map * 1/(e-1)
+                var variance = ratio == 0.5m
+                    ? 0
+                    : (Math.Exp(Math.Abs(((double)ratio) - 0.5)) - 1) * randomMapElevationFactor;
+                if (ratio != 0.5m)
                 {
-                    SeaLevel = 0;
-                }
-                else
-                {
-                    // Midway between the elevations of the first two tiles beyond the amount indicated by
-                    // the ratio when ordered by elevation.
-                    seaLevel = grid.Tiles
-                        .OrderBy(t => t.Elevation)
-                        .Skip((int)Math.Floor(grid.Tiles.Length * ratio))
-                        .Take(2)
-                        .Average(t => t.Elevation);
+                    seaLevel = ratio > 0.5m
+                        ? variance
+                        : -variance;
                     SeaLevel = seaLevel * MaxElevation;
                 }
-                var fiveSidedArea = WorldGrid.GridAreas[WorldGrid.DefaultGridSize].fiveSided;
-                var sixSidedArea = WorldGrid.GridAreas[WorldGrid.DefaultGridSize].sixSided;
-                mass = grid.Tiles
-                    .Where(t => t.Elevation - seaLevel < 0)
-                    .Sum(x => (x.EdgeCount == 5 ? fiveSidedArea : sixSidedArea) * GetNormalizedElevationAt(x.Vector))
-                    * -MaxElevation
-                    * RadiusSquared
+                const double halfVolume = 85183747862278.266; // empirical sum of random map pixel columns with 0 sea level
+                var volume = seaLevel > 0
+                    ? halfVolume + (halfVolume * variance)
+                    : halfVolume - (halfVolume * variance);
+                mass = volume
+                    * MaxElevation
                     * (seawater.Homogeneous.DensityLiquid ?? 0);
             }
 
@@ -5197,7 +6935,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             // Surface water is mostly salt water.
-            var seawaterProportion = reconstitution.GetDecimal(69);
+            var seawaterProportion = (decimal)rehydrator.NormalDistributionSample(45, 0.945, 0.015);
             var waterProportion = 1 - seawaterProportion;
             var water = Substances.All.Water.GetHomogeneousReference();
             var density = ((seawater.Homogeneous.DensityLiquid ?? 0) * (double)seawaterProportion) + ((water.Homogeneous.DensityLiquid ?? 0) * (double)waterProportion);
@@ -5245,7 +6983,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <returns>
         /// True if the atmosphere's greenhouse potential is adjusted; false if not.
         /// </returns>
-        private bool GenerateLife(Reconstitution reconstitution)
+        private bool GenerateLife(Rehydrator rehydrator)
         {
             if (IsInhospitable || !HasLiquidWater())
             {
@@ -5261,7 +6999,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
             HasBiosphere = true;
 
-            GenerateHydrocarbons(reconstitution);
+            GenerateHydrocarbons(rehydrator);
 
             // If the habitable zone is a subsurface ocean, no further adjustments occur.
             if (Hydrosphere is Composite)
@@ -5277,7 +7015,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // If there is a habitable surface layer, it is presumed that an initial population of a
             // cyanobacteria analogue will produce a significant amount of free oxygen, which in turn
             // will transform most CH4 to CO2 and H2O, and also produce an ozone layer.
-            var o2 = reconstitution.GetDecimal(55);
+            var o2 = rehydrator.NextDecimal(69, 0.2m, 0.25m);
             var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
             Atmosphere.Material.AddConstituent(oxygen, o2);
 
@@ -5308,7 +7046,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 if (Atmosphere.Material.GetProportion(Substances.All.Water) <= 0)
                 {
                     Atmosphere.Material.AddConstituent(Substances.All.Water, ch4 * 2 / 3);
-                    Atmosphere.ResetWater(this);
+                    Atmosphere.ResetWater();
                 }
 
                 Atmosphere.Material.AddConstituent(methane, ch4 * 0.001m);
@@ -5321,7 +7059,183 @@ namespace NeverFoundry.WorldFoundry.Space
             return false;
         }
 
+        private void GenerateMaterial(
+            Rehydrator rehydrator,
+            double? temperature,
+            Vector3 position,
+            Number semiMajorAxis)
+        {
+            if (PlanetType == PlanetType.Comet)
+            {
+                Material = new Material(
+                    CelestialSubstances.CometNucleus,
+                    rehydrator.NextDouble(7, 300, 700),
+                    // Gaussian distribution with most values between 1km and 19km.
+                    new Ellipsoid(
+                        rehydrator.NormalDistributionSample(8, 10000, 4500, minimum: 0),
+                        rehydrator.NextNumber(9, Number.Half, 1),
+                        position),
+                    temperature);
+                return;
+            }
+
+            if (IsAsteroid)
+            {
+                var doubleMaxMass = _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
+                    ? (double)_planetParams.Value.MaxMass.Value
+                    : AsteroidMaxMassForType;
+                var mass = rehydrator.PositiveNormalDistributionSample(
+                    7,
+                    AsteroidMinMassForType,
+                    (doubleMaxMass - AsteroidMinMassForType) / 3,
+                    doubleMaxMass);
+
+                var asteroidDensity = PlanetType switch
+                {
+                    PlanetType.AsteroidC => 1380,
+                    PlanetType.AsteroidM => 5320,
+                    PlanetType.AsteroidS => 2710,
+                    _ => 2000,
+                };
+
+                var axis = (mass * new Number(75, -2) / (asteroidDensity * MathConstants.PI)).CubeRoot();
+                var irregularity = rehydrator.NextNumber(8, Number.Half, Number.One);
+                var shape = new Ellipsoid(axis, axis * irregularity, axis / irregularity, position);
+
+                var substances = GetAsteroidComposition(rehydrator);
+                Material = new Material(
+                    substances,
+                    asteroidDensity,
+                    mass,
+                    shape,
+                    temperature);
+                return;
+            }
+
+            if (PlanetType == PlanetType.Lava
+                || PlanetType == PlanetType.LavaDwarf)
+            {
+                temperature = rehydrator.NextDouble(7, 974, 1574);
+            }
+
+            var density = GetDensity(rehydrator, PlanetType);
+
+            double? gravity = null;
+            if (_planetParams?.SurfaceGravity.HasValue == true)
+            {
+                gravity = _planetParams!.Value.SurfaceGravity!.Value;
+            }
+            else if (_habitabilityRequirements?.MinimumGravity.HasValue == true
+                || _habitabilityRequirements?.MaximumGravity.HasValue == true)
+            {
+                double maxGravity;
+                if (_habitabilityRequirements?.MaximumGravity.HasValue == true)
+                {
+                    maxGravity = _habitabilityRequirements!.Value.MaximumGravity!.Value;
+                }
+                else // Determine the maximum gravity the planet could have by calculating from its maximum mass.
+                {
+                    var max = _planetParams?.MaxMass ?? GetMaxMassForType(PlanetType);
+                    var maxVolume = max / density;
+                    var maxRadius = (maxVolume / MathConstants.FourThirdsPI).CubeRoot();
+                    maxGravity = (double)(ScienceConstants.G * max / (maxRadius * maxRadius));
+                }
+                gravity = rehydrator.NextDouble(9, _habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
+            }
+
+            Number MassFromUnknownGravity(Rehydrator rehydrator, Number semiMajorAxis, ulong index)
+            {
+                var min = Number.Zero;
+                if (!PlanetType.AnyDwarf.HasFlag(PlanetType))
+                {
+                    // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
+                    // at which the planet would be able to do so at this orbital distance. We set the
+                    // minimum at two orders of magnitude more than this (planets in our solar system
+                    // all have masses above 5 orders of magnitude more). Note that since lambda is
+                    // proportional to the square of mass, it is multiplied by 10 to obtain a difference
+                    // of 2 orders of magnitude, rather than by 100.
+                    var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
+                    min = Number.Max(min, sternLevisonLambdaMass * 10);
+
+                    // sanity check; may result in a "planet" which *can't* clear its neighborhood
+                    if (_planetParams.HasValue
+                        && _planetParams.Value.MaxMass.HasValue
+                        && min > _planetParams.Value.MaxMass.Value)
+                    {
+                        min = _planetParams.Value.MaxMass.Value;
+                    }
+                }
+                return _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
+                    ? rehydrator.NextNumber(index, min, _planetParams.Value.MaxMass.Value)
+                    : min;
+            }
+
+            if (_planetParams?.Radius.HasValue == true)
+            {
+                var radius = Number.Max(MinimumRadius, _planetParams!.Value.Radius!.Value);
+                var flattening = rehydrator.NextNumber(10, Number.Deci);
+                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
+
+                Number mass;
+                if (gravity.HasValue)
+                {
+                    mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
+                }
+                else
+                {
+                    mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 11);
+                }
+
+                Material = GetComposition(rehydrator, density, mass, shape, temperature);
+            }
+            else if (gravity.HasValue)
+            {
+                var radius = Number.Max(MinimumRadius, Number.Min(GetRadiusForSurfaceGravity(gravity.Value), GetRadiusForMass(density, GetMaxMassForType(PlanetType))));
+                var flattening = rehydrator.NextNumber(10, Number.Deci);
+                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
+
+                var mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
+
+                Material = GetComposition(rehydrator, density, mass, shape, temperature);
+            }
+            else
+            {
+                Number mass;
+                if (IsGiant)
+                {
+                    mass = rehydrator.NextNumber(10, _GiantMinMassForType, _planetParams?.MaxMass ?? _GiantMaxMassForType);
+                }
+                else if (IsDwarf)
+                {
+                    var maxMass = _planetParams?.MaxMass;
+                    if (!string.IsNullOrEmpty(ParentId))
+                    {
+                        var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
+                        maxMass = Number.Min(_planetParams?.MaxMass ?? _DwarfMaxMassForType, sternLevisonLambdaMass / 100);
+                        if (maxMass < _DwarfMinMassForType)
+                        {
+                            maxMass = _DwarfMinMassForType; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
+                        }
+                    }
+                    mass = rehydrator.NextNumber(10, _DwarfMinMassForType, maxMass ?? _DwarfMaxMassForType);
+                }
+                else
+                {
+                    mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 10);
+                }
+
+                // An approximate radius as if the shape was a sphere is determined, which is no less
+                // than the minimum required for hydrostatic equilibrium.
+                var radius = Number.Max(MinimumRadius, GetRadiusForMass(density, mass));
+                var flattening = rehydrator.NextNumber(11, Number.Deci);
+                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
+
+                Material = GetComposition(rehydrator, density, mass, shape, temperature);
+            }
+        }
+
         private void GenerateOrbit(
+            Rehydrator rehydrator,
             OrbitalParameters? orbit,
             CosmicLocation? orbitedObject,
             double eccentricity,
@@ -5350,9 +7264,9 @@ namespace NeverFoundry.WorldFoundry.Space
                     (1 - eccentricity) / (1 + eccentricity) * GetDistanceTo(orbitedObject),
 
                     eccentricity,
-                    Randomizer.Instance.NextDouble(Math.PI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(37, Math.PI),
+                    rehydrator.NextDouble(38, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                     Math.PI);
                 return;
             }
@@ -5364,9 +7278,9 @@ namespace NeverFoundry.WorldFoundry.Space
                     orbitedObject,
                     GetDistanceTo(orbitedObject),
                     eccentricity,
-                    Randomizer.Instance.NextDouble(0.5),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(37, 0.5),
+                    rehydrator.NextDouble(38, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                     0);
                 return;
             }
@@ -5378,17 +7292,17 @@ namespace NeverFoundry.WorldFoundry.Space
                     orbitedObject,
                     GetDistanceTo(orbitedObject),
                     eccentricity,
-                    Randomizer.Instance.NextDouble(0.9),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                    rehydrator.NextDouble(37, 0.9),
+                    rehydrator.NextDouble(38, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(40, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
                 return;
             }
 
-            var ta = Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
+            var ta = rehydrator.NextDouble(37, MathAndScience.Constants.Doubles.MathConstants.TwoPI);
             if (_planetParams?.RevolutionPeriod.HasValue == true)
             {
-                GenerateOrbit(orbitedObject, eccentricity, semiMajorAxis, ta);
+                GenerateOrbit(rehydrator, orbitedObject, eccentricity, semiMajorAxis, ta);
             }
             else
             {
@@ -5397,24 +7311,29 @@ namespace NeverFoundry.WorldFoundry.Space
                     orbitedObject,
                     GetDistanceTo(orbitedObject),
                     eccentricity,
-                    Randomizer.Instance.NextDouble(0.9),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                    rehydrator.NextDouble(38, 0.9),
+                    rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(40, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                    rehydrator.NextDouble(41, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             }
         }
 
-        private void GenerateOrbit(CosmicLocation orbitedObject, double eccentricity, Number semiMajorAxis, double trueAnomaly) => Space.Orbit.AssignOrbit(
+        private void GenerateOrbit(
+            Rehydrator rehydrator,
+            CosmicLocation orbitedObject,
+            double eccentricity,
+            Number semiMajorAxis,
+            double trueAnomaly) => Space.Orbit.AssignOrbit(
             this,
             orbitedObject,
             (1 - eccentricity) * semiMajorAxis,
             eccentricity,
-            Randomizer.Instance.NextDouble(0.9),
-            Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-            Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+            rehydrator.NextDouble(38, 0.9),
+            rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+            rehydrator.NextDouble(40, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
             trueAnomaly);
 
-        private void GenerateResources(Reconstitution reconstitution)
+        private void GenerateResources(Rehydrator rehydrator)
         {
             AddResources(Material.GetSurface()
                   .Constituents.Where(x => x.Key.Substance.IsGemstone || x.Key.Substance.IsMetalOre())
@@ -5435,7 +7354,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // This, in turn, indicates elemental sulfur at the surface.
             if (HasMagnetosphere)
             {
-                var sulfurProportion = reconstitution.GetDecimal(58);
+                var sulfurProportion = (decimal)rehydrator.NormalDistributionSample(70, 3.5e-5, 1.75e-6);
                 if (sulfurProportion > 0)
                 {
                     AddResource(Substances.All.Sulfur.GetHomogeneousReference(), sulfurProportion, false);
@@ -5444,15 +7363,15 @@ namespace NeverFoundry.WorldFoundry.Space
 
             if (IsTerrestrial)
             {
-                var beryl = reconstitution.GetDecimal(59);
+                var beryl = (decimal)rehydrator.NormalDistributionSample(71, 4e-6, 6.7e-7, minimum: 0);
                 var emerald = beryl * 1.58e-4m;
-                var corundum = reconstitution.GetDecimal(60);
+                var corundum = (decimal)rehydrator.NormalDistributionSample(72, 2.6e-4, 4e-5, minimum: 0);
                 var ruby = corundum * 1.58e-4m;
                 var sapphire = corundum * 5.7e-3m;
 
                 var diamond = PlanetType == PlanetType.Carbon
                     ? 0 // Carbon planets have diamond in the crust, which will have been added earlier.
-                    : reconstitution.GetDecimal(61);
+                    : (decimal)rehydrator.NormalDistributionSample(73, 1.5e-7, 2.5e-8, minimum: 0);
 
                 if (beryl > 0)
                 {
@@ -5481,24 +7400,64 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private Planetoid? GenerateSatellite(CosmicLocation? parent, List<Star> stars, Number periapsis, double eccentricity, Number maxMass)
+        private Planetoid? GenerateSatellite(
+            Rehydrator rehydrator,
+            ref ulong index,
+            CosmicLocation? parent,
+            List<Star> stars,
+            Number periapsis,
+            double eccentricity,
+            Number maxMass)
         {
             if (PlanetType == PlanetType.GasGiant
                 || PlanetType == PlanetType.IceGiant)
             {
-                return GenerateGiantSatellite(parent, stars, periapsis, eccentricity, maxMass);
+                return GenerateGiantSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
             }
             if (PlanetType == PlanetType.AsteroidC)
             {
-                return new Planetoid(PlanetType.AsteroidC, parent, null, stars, Vector3.Zero, out _, GetAsteroidSatelliteOrbit(periapsis, eccentricity), new PlanetParams(maxMass: maxMass), satellite: true);
+                return new Planetoid(
+                    PlanetType.AsteroidC,
+                    parent,
+                    null,
+                    stars,
+                    Vector3.Zero,
+                    out _,
+                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
+                    new PlanetParams(maxMass: maxMass),
+                    null,
+                    true,
+                    rehydrator.NextUIntInclusive(index++));
             }
             if (PlanetType == PlanetType.AsteroidM)
             {
-                return new Planetoid(PlanetType.AsteroidM, parent, null, stars, Vector3.Zero, out _, GetAsteroidSatelliteOrbit(periapsis, eccentricity), new PlanetParams(maxMass: maxMass), satellite: true);
+                return new Planetoid(
+                    PlanetType.AsteroidM,
+                    parent,
+                    null,
+                    stars,
+                    Vector3.Zero,
+                    out _,
+                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
+                    new PlanetParams(maxMass: maxMass),
+                    null,
+                    true,
+                    rehydrator.NextUIntInclusive(index++));
             }
             if (PlanetType == PlanetType.AsteroidS)
             {
-                return new Planetoid(PlanetType.AsteroidS, parent, null, stars, Vector3.Zero, out _, GetAsteroidSatelliteOrbit(periapsis, eccentricity), new PlanetParams(maxMass: maxMass), satellite: true);
+                return new Planetoid(
+                    PlanetType.AsteroidS,
+                    parent,
+                    null,
+                    stars,
+                    Vector3.Zero,
+                    out _,
+                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
+                    new PlanetParams(maxMass: maxMass),
+                    null,
+                    true,
+                    rehydrator.NextUIntInclusive(index++));
             }
             if (PlanetType == PlanetType.Comet)
             {
@@ -5509,17 +7468,17 @@ namespace NeverFoundry.WorldFoundry.Space
                 Position,
                 periapsis,
                 eccentricity,
-                Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                rehydrator.NextDouble(index++, 0.5),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
             double chance;
 
             // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _TerrestrialMinMassForType && Randomizer.Instance.NextBool())
+            if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
             {
                 // Select from the standard distribution of types.
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
 
                 // Planets with very low orbits are lava planets due to tidal
                 // stress (plus a small percentage of others due to impact trauma).
@@ -5544,67 +7503,188 @@ namespace NeverFoundry.WorldFoundry.Space
                 // which gets generated).
                 if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new Number(105, -2) || chance <= 0.01)
                 {
-                    return new Planetoid(PlanetType.Lava, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Lava,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= terrestrialChance)
                 {
-                    return new Planetoid(PlanetType.Terrestrial, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Terrestrial,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (PlanetType == PlanetType.Carbon && chance <= 0.77) // Carbon planets alone have a chance for carbon satellites.
                 {
-                    return new Planetoid(PlanetType.Carbon, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Carbon,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (IsGiant && chance <= 0.75)
                 {
-                    return new Planetoid(PlanetType.Iron, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Iron,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.Ocean, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Ocean,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > _DwarfMinMassForType && Randomizer.Instance.NextBool())
+            else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
             {
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
                 // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
                 if (periapsis < GetRocheLimit(DensityForDwarf) * new Number(105, -2) || chance <= 0.01)
                 {
-                    return new Planetoid(PlanetType.LavaDwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.LavaDwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.75) // Most will be standard.
                 {
-                    return new Planetoid(PlanetType.Dwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.Dwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.RockyDwarf, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.RockyDwarf,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             // Otherwise, it is an asteroid, selected from the standard distribution of types.
             else if (maxMass > 0)
             {
-                chance = Randomizer.Instance.NextDouble();
+                chance = rehydrator.NextDouble(index++);
                 if (chance <= 0.75)
                 {
-                    return new Planetoid(PlanetType.AsteroidC, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidC,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else if (chance <= 0.9)
                 {
-                    return new Planetoid(PlanetType.AsteroidS, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidS,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
                 else
                 {
-                    return new Planetoid(PlanetType.AsteroidM, parent, null, stars, Vector3.Zero, out _, orbit, new PlanetParams(maxMass: maxMass), satellite: true);
+                    return new Planetoid(
+                        PlanetType.AsteroidM,
+                        parent,
+                        null,
+                        stars,
+                        Vector3.Zero,
+                        out _,
+                        orbit,
+                        new PlanetParams(maxMass: maxMass),
+                        null,
+                        true,
+                        rehydrator.NextUIntInclusive(index++));
                 }
             }
 
             return null;
         }
 
-        private List<Planetoid> GenerateSatellites(CosmicLocation? parent, List<Star> stars)
+        private List<Planetoid> GenerateSatellites(Rehydrator rehydrator, CosmicLocation? parent, List<Star> stars, ulong index)
         {
             var addedSatellites = new List<Planetoid>();
 
@@ -5651,12 +7731,12 @@ namespace NeverFoundry.WorldFoundry.Space
 
             while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < maxSatellites)
             {
-                var periapsis = Randomizer.Instance.NextNumber(minPeriapsis, maxApoapsis);
+                var periapsis = rehydrator.NextNumber(index++, minPeriapsis, maxApoapsis);
 
                 var maxEccentricity = (double)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
                 var eccentricity = maxEccentricity < 0.01
-                    ? Randomizer.Instance.NextDouble(0, maxEccentricity)
-                    : Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05, maximum: maxEccentricity);
+                    ? rehydrator.NextDouble(index++, 0, maxEccentricity)
+                    : rehydrator.PositiveNormalDistributionSample(index++, 0, 0.05, maximum: maxEccentricity);
 
                 var semiLatusRectum = periapsis * (1 + eccentricity);
                 var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
@@ -5664,7 +7744,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
                 var maxMass = Number.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
 
-                var satellite = GenerateSatellite(parent, stars, periapsis, eccentricity, maxMass);
+                var satellite = GenerateSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
                 if (satellite is null)
                 {
                     break;
@@ -5727,7 +7807,7 @@ namespace NeverFoundry.WorldFoundry.Space
             return Math.Max(0, (double)albedo - delta);
         }
 
-        private List<(ISubstanceReference, decimal)> GetAsteroidComposition(Reconstitution reconstitution)
+        private List<(ISubstanceReference, decimal)> GetAsteroidComposition(Rehydrator rehydrator)
         {
             var substances = new List<(ISubstanceReference, decimal)>();
 
@@ -5735,10 +7815,10 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 var ironNickel = 0.95m;
 
-                var rock = reconstitution.GetDecimal(0);
+                var rock = rehydrator.NextDecimal(9, 0.2m);
                 ironNickel -= rock;
 
-                var gold = reconstitution.GetDecimal(1);
+                var gold = rehydrator.NextDecimal(10, 0.05m);
 
                 var platinum = 0.05m - gold;
 
@@ -5752,7 +7832,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.AsteroidS)
             {
-                var gold = reconstitution.GetDecimal(2);
+                var gold = rehydrator.NextDecimal(9, 0.005m);
 
                 foreach (var (material, proportion) in CelestialSubstances.ChondriticRockMixture_NoMetal)
                 {
@@ -5766,10 +7846,12 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 var rock = 1m;
 
-                var clay = reconstitution.GetDecimal(3);
+                var clay = rehydrator.NextDecimal(9, 0.1m, 0.2m);
                 rock -= clay;
 
-                var ice = reconstitution.GetDecimal(4);
+                var ice = PlanetType.AnyDwarf.HasFlag(PlanetType)
+                    ? rehydrator.NextDecimal(10)
+                    : rehydrator.NextDecimal(10, 0.22m);
                 rock -= ice;
 
                 foreach (var (material, proportion) in CelestialSubstances.ChondriticRockMixture)
@@ -5783,16 +7865,16 @@ namespace NeverFoundry.WorldFoundry.Space
             return substances;
         }
 
-        private OrbitalParameters GetAsteroidSatelliteOrbit(Number periapsis, double eccentricity)
-            => new OrbitalParameters(
+        private OrbitalParameters GetAsteroidSatelliteOrbit(Rehydrator rehydrator, ref ulong index, Number periapsis, double eccentricity)
+            => new(
                 Mass,
                 Position,
                 periapsis,
                 eccentricity,
-                Randomizer.Instance.NextDouble(0.5),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                Randomizer.Instance.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI));
+                rehydrator.NextDouble(index++, 0.5),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
+                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
 
         /// <summary>
         /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -5814,18 +7896,12 @@ namespace NeverFoundry.WorldFoundry.Space
         private double GetAtmosphericPressureFromTempAndElevation(double temperature, double elevation)
             => Atmosphere.GetAtmosphericPressure(this, temperature, elevation);
 
-        private double GetAverageTemperature(bool polar = false)
-        {
-            var avgBlackbodyTemp = AverageBlackbodyTemperature;
-            var greenhouseEffect = GetGreenhouseEffect();
-            return (avgBlackbodyTemp * (polar ? InsolationFactor_Polar : InsolationFactor_Equatorial)) + greenhouseEffect;
-        }
-
-        private IMaterial GetComposition(Reconstitution reconstitution, double density, Number mass, IShape shape, double? temperature)
+        private IMaterial GetComposition(Rehydrator rehydrator, double density, Number mass, IShape shape, double? temperature)
         {
             var coreProportion = PlanetType switch
             {
-                PlanetType.Dwarf or PlanetType.LavaDwarf or PlanetType.RockyDwarf => reconstitution.GetNumber(6),
+                PlanetType.Dwarf or PlanetType.LavaDwarf or PlanetType.RockyDwarf => rehydrator
+                    .NextNumber(12, new Number(2, -1), new Number(55, -2)),
                 PlanetType.Carbon or PlanetType.Iron => new Number(4, -1),
                 _ => new Number(15, -2),
             };
@@ -5836,21 +7912,21 @@ namespace NeverFoundry.WorldFoundry.Space
                 : 400000 / Number.Pow(shape.ContainingRadius, new Number(16, -1));
 
             var coreLayers = IsGiant
-                ? GetCore_Giant(reconstitution, shape, coreProportion, mass).ToList()
-                : GetCore(reconstitution, shape, coreProportion, crustProportion, mass).ToList();
+                ? GetCore_Giant(rehydrator, shape, coreProportion, mass).ToList()
+                : GetCore(rehydrator, shape, coreProportion, crustProportion, mass).ToList();
             var topCoreLayer = coreLayers.Last();
             var coreShape = topCoreLayer.Shape;
             var coreTemp = topCoreLayer.Temperature ?? 0;
 
             var mantleProportion = 1 - (coreProportion + crustProportion);
-            var mantleLayers = GetMantle(reconstitution, shape, mantleProportion, crustProportion, mass, coreShape, coreTemp).ToList();
+            var mantleLayers = GetMantle(rehydrator, shape, mantleProportion, crustProportion, mass, coreShape, coreTemp).ToList();
             if (mantleLayers.Count == 0
                 && mantleProportion.IsPositive)
             {
                 crustProportion += mantleProportion;
             }
 
-            var crustLayers = GetCrust(reconstitution, shape, crustProportion, mass).ToList();
+            var crustLayers = GetCrust(rehydrator, shape, crustProportion, mass).ToList();
             if (crustLayers.Count == 0
                 && crustProportion.IsPositive)
             {
@@ -5889,7 +7965,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private IEnumerable<IMaterial> GetCore(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number coreProportion,
             Number crustProportion,
@@ -5906,7 +7982,7 @@ namespace NeverFoundry.WorldFoundry.Space
             if (PlanetType == PlanetType.Carbon)
             {
                 // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
-                var coreSteel = reconstitution.GetDecimal(5);
+                var coreSteel = rehydrator.NextDecimal(12, 0.945m);
                 coreConstituents = new (ISubstanceReference, decimal)[]
                 {
                     (Substances.All.Iron.GetHomogeneousReference(), 0.945m - coreSteel),
@@ -5928,7 +8004,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private IEnumerable<IMaterial> GetCrust(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number crustProportion,
             Number planetMass)
@@ -5939,7 +8015,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.RockyDwarf)
             {
-                foreach (var item in GetCrust_RockyDwarf(reconstitution, planetShape, crustProportion, planetMass))
+                foreach (var item in GetCrust_RockyDwarf(rehydrator, planetShape, crustProportion, planetMass))
                 {
                     yield return item;
                 }
@@ -5947,7 +8023,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.LavaDwarf)
             {
-                foreach (var item in GetCrust_LavaDwarf(reconstitution, planetShape, crustProportion, planetMass))
+                foreach (var item in GetCrust_LavaDwarf(rehydrator, planetShape, crustProportion, planetMass))
                 {
                     yield return item;
                 }
@@ -5955,7 +8031,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.Carbon)
             {
-                foreach (var item in GetCrust_Carbon(reconstitution, planetShape, crustProportion, planetMass))
+                foreach (var item in GetCrust_Carbon(rehydrator, planetShape, crustProportion, planetMass))
                 {
                     yield return item;
                 }
@@ -5963,7 +8039,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (IsTerrestrial)
             {
-                foreach (var item in GetCrust_Terrestrial(reconstitution, planetShape, crustProportion, planetMass))
+                foreach (var item in GetCrust_Terrestrial(rehydrator, planetShape, crustProportion, planetMass))
                 {
                     yield return item;
                 }
@@ -5977,26 +8053,26 @@ namespace NeverFoundry.WorldFoundry.Space
                 planetShape.ContainingRadius,
                 planetShape.Position);
 
-            var dust = reconstitution.GetDecimal(4);
+            var dust = rehydrator.NextDecimal(13);
             var total = dust;
 
             // 50% chance of not including the following:
-            var waterIce = Math.Max(0, reconstitution.GetDecimal(5));
+            var waterIce = Math.Max(0, rehydrator.NextDecimal(14, -0.5m, 0.5m));
             total += waterIce;
 
-            var n2 = Math.Max(0, reconstitution.GetDecimal(6));
+            var n2 = Math.Max(0, rehydrator.NextDecimal(15, -0.5m, 0.5m));
             total += n2;
 
-            var ch4 = Math.Max(0, reconstitution.GetDecimal(7));
+            var ch4 = Math.Max(0, rehydrator.NextDecimal(16, -0.5m, 0.5m));
             total += ch4;
 
-            var co = Math.Max(0, reconstitution.GetDecimal(8));
+            var co = Math.Max(0, rehydrator.NextDecimal(17, -0.5m, 0.5m));
             total += co;
 
-            var co2 = Math.Max(0, reconstitution.GetDecimal(9));
+            var co2 = Math.Max(0, rehydrator.NextDecimal(18, -0.5m, 0.5m));
             total += co2;
 
-            var nh3 = Math.Max(0, reconstitution.GetDecimal(10));
+            var nh3 = Math.Max(0, rehydrator.NextDecimal(19, -0.5m, 0.5m));
             total += nh3;
 
             var ratio = 1 / total;
@@ -6158,7 +8234,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         private IEnumerable<IMaterial> GetMantle(
-            Reconstitution reconstitution,
+            Rehydrator rehydrator,
             IShape planetShape,
             Number mantleProportion,
             Number crustProportion,
@@ -6172,7 +8248,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.GasGiant)
             {
-                foreach (var item in GetMantle_Giant(reconstitution, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
+                foreach (var item in GetMantle_Giant(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
                 {
                     yield return item;
                 }
@@ -6180,7 +8256,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.IceGiant)
             {
-                foreach (var item in GetMantle_IceGiant(reconstitution, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
+                foreach (var item in GetMantle_IceGiant(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
                 {
                     yield return item;
                 }
@@ -6188,7 +8264,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             else if (PlanetType == PlanetType.Carbon)
             {
-                foreach (var item in GetMantle_Carbon(reconstitution, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
+                foreach (var item in GetMantle_Carbon(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
                 {
                     yield return item;
                 }
@@ -6215,119 +8291,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 mantleTemp);
         }
 
-        private void GenerateMaterial(
-            Reconstitution reconstitution,
-            double? temperature,
-            Vector3 position,
-            Number semiMajorAxis)
-        {
-            if (PlanetType == PlanetType.Comet)
-            {
-                Material = new Material(
-                    CelestialSubstances.CometNucleus,
-                    reconstitution.GetDouble(1),
-                    // Gaussian distribution with most values between 1km and 19km.
-                    new Ellipsoid(
-                        reconstitution.GetDouble(2),
-                        reconstitution.GetNumber(0),
-                        position),
-                    temperature);
-                return;
-            }
-
-            if (IsAsteroid)
-            {
-                var mass = reconstitution.GetDouble(3);
-
-                var asteroidDensity = PlanetType switch
-                {
-                    PlanetType.AsteroidC => 1380,
-                    PlanetType.AsteroidM => 5320,
-                    PlanetType.AsteroidS => 2710,
-                    _ => 2000,
-                };
-
-                var axis = (mass * new Number(75, -2) / (asteroidDensity * MathConstants.PI)).CubeRoot();
-                var irregularity = reconstitution.GetNumber(1);
-                var shape = new Ellipsoid(axis, axis * irregularity, axis / irregularity, position);
-
-                var substances = GetAsteroidComposition(reconstitution);
-                Material = new Material(
-                    substances,
-                    asteroidDensity,
-                    mass,
-                    shape,
-                    temperature);
-                return;
-            }
-
-            if (PlanetType == PlanetType.Lava
-                || PlanetType == PlanetType.LavaDwarf)
-            {
-                temperature = reconstitution.GetDouble(4);
-            }
-
-            var density = GetDensity(reconstitution, PlanetType);
-
-            double? gravity = null;
-            if (_planetParams?.SurfaceGravity.HasValue == true)
-            {
-                gravity = _planetParams!.Value.SurfaceGravity!.Value;
-            }
-            else if (_habitabilityRequirements?.MinimumGravity.HasValue == true
-                || _habitabilityRequirements?.MaximumGravity.HasValue == true)
-            {
-                gravity = reconstitution.GetDouble(10);
-            }
-
-            if (_planetParams?.Radius.HasValue == true)
-            {
-                var radius = Number.Max(MinimumRadius, _planetParams!.Value.Radius!.Value);
-                var flattening = reconstitution.GetNumber(2);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                var mass = gravity.HasValue
-                    ? GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape)
-                    : reconstitution.GetNumber(5);
-
-                Material = GetComposition(reconstitution, density, mass, shape, temperature);
-            }
-            else if (gravity.HasValue)
-            {
-                var radius = Number.Max(MinimumRadius, Number.Min(GetRadiusForSurfaceGravity(gravity.Value), GetRadiusForMass(density, GetMaxMassForType(PlanetType))));
-                var flattening = reconstitution.GetNumber(2);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                var mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
-
-                Material = GetComposition(reconstitution, density, mass, shape, temperature);
-            }
-            else
-            {
-                Number mass;
-                if (IsGiant)
-                {
-                    mass = reconstitution.GetNumber(3);
-                }
-                else if (IsDwarf)
-                {
-                    mass = reconstitution.GetNumber(4);
-                }
-                else
-                {
-                    mass = reconstitution.GetNumber(5);
-                }
-
-                // An approximate radius as if the shape was a sphere is determined, which is no less
-                // than the minimum required for hydrostatic equilibrium.
-                var radius = Number.Max(MinimumRadius, GetRadiusForMass(density, mass));
-                var flattening = reconstitution.GetNumber(2);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                Material = GetComposition(reconstitution, density, mass, shape, temperature);
-            }
-        }
-
         private double GetMaxPolarTemperature()
         {
             var greenhouseEffect = GetGreenhouseEffect();
@@ -6342,26 +8305,35 @@ namespace NeverFoundry.WorldFoundry.Space
             return (_surfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + greenhouseEffect - variation;
         }
 
-        private double GetNormalizedElevationAt(double x, double y, double z)
+        private double GetElevationNoise(double x, double y, double z)
         {
             if (MaxElevation.IsNearlyZero())
             {
                 return 0;
             }
 
-            var e = GetElevationNoiseAt(x, y, z);
+            // Initial noise map: a simple fractal noise map.
+            var baseNoise = Noise1.GetNoise(x, y, z);
 
-            // Get the value offset from sea level.
-            var n = e - _normalizedSeaLevel;
+            // Mountain noise map: a more ridged map.
+            var mountains = (-Noise2.GetNoise(x, y, z) - 0.25) * 4 / 3;
 
-            // Skew land lower, to avoid extended mountainous regions; and ocean locations deeper,
-            // to avoid extended shallow shores. The scaling is initially sharp, and reduces towards
-            // nothing. Landmasses are typically dominated by plains, and ascend rapidly towards
-            // mountain ranges. Oceans are typically shallow near the shore, then become deep
-            // rapidly, and remain at about the same depth throughout, with occasional trenches.
-            n *= 0.5 * ((n * n) + 1);
+            // Scale the base noise to the typical average height of continents, with a degree of
+            // randomness borrowed from the mountain noise function.
+            var scaledBaseNoise = (baseNoise * (0.25 + (mountains * 0.0625))) - 0.04;
 
-            return n;
+            // Modify the mountain map to indicate mountains only in random areas, instead of
+            // uniformly across the globe.
+            mountains *= (Noise3.GetNoise(x, y, z) + 1).Clamp(0, 1);
+
+            // Multiply with itself to produce predominantly low values with high (and low)
+            // extremes, and scale to the typical maximum height of mountains, with a degree of
+            // randomness borrowed from the base noise function.
+            mountains = Math.CopySign(mountains * mountains * (0.525 + (baseNoise * 0.13125)), mountains);
+
+            // The combined value is returned, resulting in mostly broad, low-lying areas,
+            // interrupted by occasional high mountain ranges and low trenches.
+            return scaledBaseNoise + mountains;
         }
 
         private double GetPolarAirMass(double atmosphericScaleHeight)
@@ -6369,6 +8341,75 @@ namespace NeverFoundry.WorldFoundry.Space
             var r = (double)Shape.ContainingRadius / atmosphericScaleHeight;
             var rCosLat = r * CosPolarLatitude;
             return Math.Sqrt((rCosLat * rCosLat) + (2 * r) + 1) - rCosLat;
+        }
+
+        private double GetPrecipitationNoise(
+            double x,
+            double y,
+            double z,
+            double latitude,
+            double seasonalLatitude,
+            double temperature,
+            out double snow)
+        {
+            snow = 0;
+
+            // Noise map with smooth, broad areas. Random range ~0.5-2.
+            var r1 = 1.25 + (Noise4.GetNoise(x, y, z) * 0.75);
+
+            // More detailed noise map. Random range of ~0-1.35.
+            var r2 = 0.675 + (Noise5.GetNoise(x, y, z) * 0.75);
+
+            // Combined map is noise with broad similarity over regions, and minor local
+            // diversity. Range ~0.5-3.35.
+            var r = r1 * r2;
+
+            // Hadley cells alter local conditions.
+            var absLatitude = Math.Abs(latitude);
+            var absSeasonalLatitude = Math.Abs((latitude + seasonalLatitude) / 2);
+            var hadleyValue = 0.0;
+
+            // The polar deserts above ~±10º result in almost no precipitation
+            if (absLatitude > ArcticLatitude)
+            {
+                // Range ~-3-~0.
+                hadleyValue = -3 * ((absLatitude - ArcticLatitude) / ArcticLatitudeRange);
+            }
+
+            // The horse latitudes create the subtropical deserts between ~±35º-30º
+            if (absLatitude < FifthPI)
+            {
+                // Range ~-3-0.
+                hadleyValue = 2 * (r1 - 2) * ((FifthPI - absLatitude) / FifthPI);
+
+                // The ITCZ increases in intensity towards the thermal equator
+                if (absSeasonalLatitude < EighthPI)
+                {
+                    // Range 0-~33.5.
+                    hadleyValue += 10 * r * ((EighthPI - absSeasonalLatitude) / EighthPI).Cube();
+                }
+            }
+
+            // Relative humidity is the Hadley cell value added to the random value. Range ~-2.5-~36.85.
+            var relativeHumidity = r + hadleyValue;
+
+            // In the range betwen 32K and 48K below freezing, the value is scaled down; below that
+            // range it is cut off completely; above it is unchanged.
+            relativeHumidity *= ((temperature - _LowTemp) / 16).Clamp(0, 1);
+
+            if (relativeHumidity <= 0)
+            {
+                return 0;
+            }
+
+            var precipitation = Atmosphere.AveragePrecipitation * relativeHumidity;
+
+            if (temperature <= Substances.All.Water.MeltingPoint)
+            {
+                snow = precipitation * Atmosphere.SnowToRainRatio;
+            }
+
+            return precipitation;
         }
 
         private async ValueTask<Star?> GetPrimaryStarAsync(IDataStore dataStore)
@@ -6423,6 +8464,20 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private Number GetRadiusForSurfaceGravity(double gravity) => (Mass * ScienceConstants.G / gravity).Sqrt();
 
+        private Rehydrator GetRehydrator(uint? seed = null)
+        {
+            Seed = seed ?? Randomizer.Instance.NextUIntInclusive();
+
+            var rehydrator = new Rehydrator(Seed);
+            _seed1 = rehydrator.NextInclusive(0);
+            _seed2 = rehydrator.NextInclusive(1);
+            _seed3 = rehydrator.NextInclusive(2);
+            _seed4 = rehydrator.NextInclusive(3);
+            _seed5 = rehydrator.NextInclusive(4);
+
+            return rehydrator;
+        }
+
         private (double rightAscension, double declination) GetRightAscensionAndDeclination(Vector3 position, Vector3 otherPosition)
         {
             var rot = AxisRotation;
@@ -6463,44 +8518,6 @@ namespace NeverFoundry.WorldFoundry.Space
             * Shape.ContainingRadius
             * (Material.Density / density).CubeRoot();
 
-        private double GetSeasonalLatitude(double latitude, double trueAnomaly)
-            => GetSeasonalLatitudeFromDeclination(latitude, GetSolarDeclination(trueAnomaly));
-
-        private double GetSlope(MathAndScience.Numerics.Doubles.Vector3 position, double latitude, double longitude, double elevation)
-        {
-            // north
-            var otherCoords = (lat: latitude + Second, lon: longitude);
-            if (otherCoords.lat > Math.PI)
-            {
-                otherCoords = (MathAndScience.Constants.Doubles.MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            }
-            var otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
-            var otherElevation = GetNormalizedElevationAt(otherCoords.lat, otherCoords.lon);
-            var slope = Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos);
-
-            // east
-            otherCoords = (lat: latitude, lon: (longitude + Second) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
-            slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
-
-            // south
-            otherCoords = (lat: latitude - Second, lon: longitude);
-            if (otherCoords.lat < -Math.PI)
-            {
-                otherCoords = (-MathAndScience.Constants.Doubles.MathConstants.TwoPI - otherCoords.lat, (otherCoords.lon + Math.PI) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            }
-            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
-            slope = Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
-
-            // west
-            otherCoords = (lat: latitude, lon: (longitude - Second) % MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            otherPos = LatitudeAndLongitudeToDoubleVector(otherCoords.lat, otherCoords.lon);
-            otherElevation = GetNormalizedElevationAt(otherPos.X, otherPos.Y, otherPos.Z);
-            return Math.Max(slope, Math.Abs(elevation - otherElevation) * MaxElevation / GetDistance(position, otherPos));
-        }
-
         private Number GetSphereOfInfluenceRadius() => Orbit?.GetSphereOfInfluenceRadius(Mass) ?? Number.Zero;
 
         private async ValueTask<StarSystem?> GetStarSystemAsync(IDataStore dataStore)
@@ -6523,10 +8540,7 @@ namespace NeverFoundry.WorldFoundry.Space
             return null;
         }
 
-        private double GetSurfaceTemperature(double blackbodyTemperature, double latitude, double trueAnomaly)
-            => GetSeasonalSurfaceTemperature(blackbodyTemperature, GetSeasonalLatitude(latitude, trueAnomaly), trueAnomaly);
-
-        private double GetSeasonalSurfaceTemperature(double blackbodyTemperature, double seasonalLatitude, double trueAnomaly)
+        private double GetSeasonalSurfaceTemperature(double blackbodyTemperature, double seasonalLatitude)
         {
             var greenhouseEffect = GetGreenhouseEffect();
             var temp = (blackbodyTemperature * GetInsolationFactor(seasonalLatitude)) + greenhouseEffect;
@@ -6536,10 +8550,9 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             // Represent the effect of atmospheric convection by resturning the average of the raw
             // result and the equatorial result, weighted by the distance to the equator.
-            var seasonalEquatorialLatitide = GetSeasonalLatitude(0, trueAnomaly);
             var equatorialTemp = (blackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
-            var latitudeFactor = Math.Abs(seasonalLatitude - seasonalEquatorialLatitide) / (MathAndScience.Constants.Doubles.MathConstants.HalfPI - AxialTilt) * Math.PI;
-            var weight = Math.Sin(latitudeFactor) / 3;
+            var weight = Math.Sin(2.5 * Math.Sqrt(Math.Abs(seasonalLatitude))) / 1.75;
+
             return temp.Lerp(equatorialTemp, weight);
         }
 
@@ -6617,7 +8630,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// specific positions precisely.
         /// </remarks>
         private double GetTemperatureAtTrueAnomaly(double trueAnomaly)
-            => _surfaceTemperatureAtPeriapsis.Lerp(_surfaceTemperatureAtApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI));
+            => Orbit.HasValue
+            ? _surfaceTemperatureAtPeriapsis.Lerp(_surfaceTemperatureAtApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI))
+            : _blackbodyTemperature;
 
         /// <summary>
         /// Calculates the temperature at which this <see cref="Planetoid"/> will retain only
@@ -6648,7 +8663,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, avgTemp, pressure);
         }
 
-        private double ReconstituteHydrosphere(Reconstitution reconstitution)
+        private double ReconstituteHydrosphere(Rehydrator rehydrator)
         {
             double surfaceTemp;
             if (_planetParams?.SurfaceTemperature.HasValue == true)
@@ -6668,11 +8683,11 @@ namespace NeverFoundry.WorldFoundry.Space
                 surfaceTemp = _blackbodyTemperature;
             }
 
-            GenerateHydrosphere(reconstitution, surfaceTemp);
+            GenerateHydrosphere(rehydrator, surfaceTemp);
 
             HasMagnetosphere = _planetParams?.HasMagnetosphere.HasValue == true
                 ? _planetParams!.Value.HasMagnetosphere!.Value
-                : reconstitution.GetNumber(9) <= Mass * new Number(2.88, -19) / RotationalPeriod * (PlanetType switch
+                : rehydrator.NextNumber(46) <= Mass * new Number(2.88, -19) / RotationalPeriod * (PlanetType switch
                 {
                     PlanetType.Iron => new Number(5),
                     PlanetType.Ocean => Number.Half,
@@ -6682,30 +8697,16 @@ namespace NeverFoundry.WorldFoundry.Space
             return surfaceTemp;
         }
 
-        private Reconstitution ReconstituteMaterial(
+        private void ReconstituteMaterial(
+            Rehydrator rehydrator,
             Vector3 position,
             double? temperature,
             Number semiMajorAxis)
         {
-            var reconstitution = new Reconstitution(
-                _seed,
-                ParentId,
-                PlanetType,
-                semiMajorAxis,
-                _planetParams,
-                _habitabilityRequirements);
-
-            _seed1 = reconstitution.GetInt(0);
-            _seed2 = reconstitution.GetInt(1);
-            _seed3 = reconstitution.GetInt(2);
-            _seed4 = reconstitution.GetInt(3);
-            _seed5 = reconstitution.GetInt(4);
-            _seed6 = reconstitution.GetInt(5);
-
-            AxialPrecession = reconstitution.GetDouble(0);
+            AxialPrecession = rehydrator.NextDouble(6, MathAndScience.Constants.Doubles.MathConstants.TwoPI);
 
             GenerateMaterial(
-                reconstitution,
+                rehydrator,
                 temperature,
                 position,
                 semiMajorAxis);
@@ -6714,13 +8715,31 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 _surfaceAlbedo = _planetParams.Value.Albedo.Value;
             }
+            else if (PlanetType == PlanetType.Comet)
+            {
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.025, 0.055);
+            }
+            else if (PlanetType == PlanetType.AsteroidC)
+            {
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.03, 0.1);
+            }
+            else if (PlanetType == PlanetType.AsteroidM)
+            {
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.2);
+            }
+            else if (PlanetType == PlanetType.AsteroidS)
+            {
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.22);
+            }
+            else if (PlanetType.Giant.HasFlag(PlanetType))
+            {
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.275, 0.35);
+            }
             else
             {
-                _surfaceAlbedo = reconstitution.GetDouble(11);
+                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.6);
             }
             Albedo = _surfaceAlbedo;
-
-            return reconstitution;
         }
 
         private void ResetAllCachedTemperatures(List<Star> stars)
@@ -6732,7 +8751,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ResetCachedTemperatures()
         {
-            _averagePolarSurfaceTemperature = null;
             _averageSurfaceTemperature = null;
             GreenhouseEffect = null;
             _insolationFactor_Equatorial = null;
@@ -6745,7 +8763,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private void ResetPressureDependentProperties()
         {
-            _averagePolarSurfaceTemperature = null;
             _averageSurfaceTemperature = null;
             GreenhouseEffect = null;
             _insolationFactor_Equatorial = null;
@@ -6778,19 +8795,19 @@ namespace NeverFoundry.WorldFoundry.Space
             ResetCachedTemperatures();
         }
 
-        private void SetRings()
+        private ulong SetRings(Rehydrator rehydrator)
         {
             if (PlanetType == PlanetType.Comet
                 || IsAsteroid
                 || IsDwarf)
             {
-                return;
+                return 71;
             }
 
             var ringChance = IsGiant ? 0.9 : 0.1;
-            if (Randomizer.Instance.NextDouble() > ringChance)
+            if (rehydrator.NextDouble(70) > ringChance)
             {
-                return;
+                return 71;
             }
 
             var innerLimit = (Number)Atmosphere.AtmosphericHeight;
@@ -6802,7 +8819,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             if (innerLimit >= outerLimit_Icy)
             {
-                return;
+                return 71;
             }
 
             var outerLimit_Rocky = GetRingDistance(_RockyRingDensity);
@@ -6812,13 +8829,14 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var numRings = IsGiant
-                ? (int)Math.Round(Randomizer.Instance.PositiveNormalDistributionSample(1, 1), MidpointRounding.AwayFromZero)
-                : (int)Math.Round(Randomizer.Instance.PositiveNormalDistributionSample(1, 0.1667), MidpointRounding.AwayFromZero);
+                ? (int)Math.Round(rehydrator.PositiveNormalDistributionSample(71, 1, 1), MidpointRounding.AwayFromZero)
+                : (int)Math.Round(rehydrator.PositiveNormalDistributionSample(72, 1, 0.1667), MidpointRounding.AwayFromZero);
+            var index = 73UL;
             for (var i = 0; i < numRings && innerLimit <= outerLimit_Icy; i++)
             {
-                if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBool())
+                if (innerLimit < outerLimit_Rocky && rehydrator.NextBool(index++))
                 {
-                    var innerRadius = Randomizer.Instance.NextNumber(innerLimit, outerLimit_Rocky);
+                    var innerRadius = rehydrator.NextNumber(index++, innerLimit, outerLimit_Rocky);
 
                     (_rings ??= new List<PlanetaryRing>()).Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
 
@@ -6830,7 +8848,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 }
                 else
                 {
-                    var innerRadius = Randomizer.Instance.NextNumber(innerLimit, outerLimit_Icy);
+                    var innerRadius = rehydrator.NextNumber(index++, innerLimit, outerLimit_Icy);
 
                     (_rings ??= new List<PlanetaryRing>()).Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
 
@@ -6841,6 +8859,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     }
                 }
             }
+            return index;
         }
 
         private void SetTemperatures(List<Star> stars)
@@ -6866,564 +8885,6 @@ namespace NeverFoundry.WorldFoundry.Space
             AverageBlackbodyTemperature = Orbit.HasValue
                 ? ((_surfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (_surfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
                 : _blackbodyTemperature;
-        }
-
-        private class Reconstitution
-        {
-            private readonly Dictionary<int, decimal> _decimals = new Dictionary<int, decimal>();
-            private readonly Dictionary<int, double> _doubles = new Dictionary<int, double>();
-            private readonly Dictionary<int, int> _ints = new Dictionary<int, int>();
-            private readonly Dictionary<int, Number> _numbers = new Dictionary<int, Number>();
-            private readonly string? _parentId;
-            private readonly PlanetParams? _planetParams;
-            private readonly PlanetType _planetType;
-            private readonly HabitabilityRequirements? _habitabilityRequirements;
-            private readonly Randomizer _randomizer;
-            private readonly Number _semiMajorAxis;
-
-            private int _decimalIndex = -1;
-            private int _doubleIndex = -1;
-            private int _intIndex = -1;
-            private int _numberIndex = -1;
-
-            public Reconstitution(
-                uint seed,
-                string? parentId,
-                PlanetType planetType,
-                Number semiMajorAxis,
-                PlanetParams? planetParams,
-                HabitabilityRequirements? habitabilityRequirements)
-            {
-                _habitabilityRequirements = habitabilityRequirements;
-                _parentId = parentId;
-                _planetParams = planetParams;
-                _planetType = planetType;
-                _randomizer = new Randomizer(seed);
-                _semiMajorAxis = semiMajorAxis;
-            }
-
-            public decimal GetDecimal(int index)
-            {
-                if (!_decimals.TryGetValue(index, out var value))
-                {
-                    while (_decimalIndex < index)
-                    {
-                        _decimalIndex++;
-                        decimal? v = null;
-                        switch (_decimalIndex)
-                        {
-                            case 0: // Asteroid M rock proportion
-                                v = _randomizer.NextDecimal(0.2m);
-                                break;
-                            case 1: // Asteroid M gold proportion
-                                v = _randomizer.NextDecimal(0.05m);
-                                break;
-                            case 2: // Asteroid S gold proportion
-                                v = _randomizer.NextDecimal(0.005m);
-                                break;
-                            case 3: // Asteroid C clay proportion
-                                v = _randomizer.NextDecimal(0.1m, 0.2m);
-                                break;
-                            case 4: // Asteroid C ice proportion; other dwarf water dust proportion
-                                v = PlanetType.AnyDwarf.HasFlag(_planetType)
-                                    ? _randomizer.NextDecimal()
-                                    : _randomizer.NextDecimal(0.22m);
-                                break;
-                            case 5: // Carbon planet core steel; rocky/lava dwarf dust proportion; other dwarf water ice proportion
-                                v = PlanetType.AnyDwarf.HasFlag(_planetType)
-                                    ? _randomizer.NextDecimal(-0.5m, 0.5m)
-                                    : _randomizer.NextDecimal(0.945m);
-                                break;
-                            case 6: // Giant mantle Ne proportion; ice giant mantle water proportion; dwarf N2 proportion
-                            case 7: // Giant mantle CH4 proportion; ice giant mantle NH4 proportion; dwarf CH4 proportion
-                            case 8: // Giant mantle NH4 proportion; ice giant mantle CH4 proportion; dwarf CO proportion
-                            case 9: // Giant mantle C2H6 proportion; dwarf CO2 proportion
-                                v = PlanetType.AnyDwarf.HasFlag(_planetType)
-                                    ? _randomizer.NextDecimal(-0.5m, 0.5m)
-                                    : _randomizer.NextDecimal();
-                                break;
-                            case 10: // dwarf NH3 proportion 
-                                v = _randomizer.NextDecimal(-0.5m, 0.5m);
-                                break;
-                            case 11: // Terrestrial planet aluminium proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(0.026, 4e-3, minimum: 0);
-                                break;
-                            case 12: // Terrestrial planet iron proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1.67e-2, 2.75e-3, minimum: 0);
-                                break;
-                            case 13: // Terrestrial planet titanium proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(5.7e-3, 9e-4, minimum: 0);
-                                break;
-                            case 14: // Terrestrial planet chalcopyrite (copper) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1.1e-3, 1.8e-4, minimum: 0);
-                                break;
-                            case 15: // Terrestrial planet chromite proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(5.5e-4, 9e-5, minimum: 0);
-                                break;
-                            case 16: // Terrestrial planet sphalerite (zinc) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(8.1e-5, 1.3e-5, minimum: 0);
-                                break;
-                            case 17: // Terrestrial planet galena (lead) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(2e-5, 3.3e-6, minimum: 0);
-                                break;
-                            case 18: // Terrestrial planet uraninite proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(7.15e-6, 1.1e-6, minimum: 0);
-                                break;
-                            case 19: // Terrestrial planet cassiterite (tin) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(6.7e-6, 1.1e-6, minimum: 0);
-                                break;
-                            case 20: // Terrestrial planet cinnabar (mercury) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1.35e-7, 2.3e-8, minimum: 0);
-                                break;
-                            case 21: // Terrestrial planet acanthite (silver) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(5e-8, 8.3e-9, minimum: 0);
-                                break;
-                            case 22: // Terrestrial planet sperrylite (platinum) proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1.17e-8, 2e-9, minimum: 0);
-                                break;
-                            case 23: // Terrestrial planet gold proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(2.75e-9, 4.6e-10, minimum: 0);
-                                break;
-                            case 24: // Terrestrial planet hematite proportion factor
-                                v = (decimal)_randomizer.NormalDistributionSample(1, 0.167, minimum: 0);
-                                break;
-                            case 25: // Carbon planet coal proportion
-                            case 26: // Carbon planet oil proportion
-                            case 27: // Carbon planet gas proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(0.25, 0.042, minimum: 0);
-                                break;
-                            case 28: // Carbon planet diamond proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(0.125, 0.021, minimum: 0);
-                                break;
-                            case 29:
-                                // Giant atmospheric trace proportion
-                                if (PlanetType.Giant.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.025m);
-                                }
-                                // Small body atmosphere water proportion
-                                else if (PlanetType.AnyDwarf.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.75m, 0.9m);
-                                }
-                                // Trace atmosphere H proportion
-                                else
-                                {
-                                    v = _randomizer.NextDecimal(5e-8m, 2e-7m);
-                                }
-                                break;
-                            case 30:
-                                // Giant atmosphere H proportion
-                                if (PlanetType.Giant.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.75m, 0.97m);
-                                }
-                                // Small body atmosphere CO proportion
-                                else if (PlanetType.AnyDwarf.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.05m, 0.15m);
-                                }
-                                // Trace atmosphere He proportion
-                                else
-                                {
-                                    v = _randomizer.NextDecimal(2.6e-7m, 1e-5m);
-                                }
-                                break;
-                            case 31:
-                                // Giant atmosphere CH4 proportion
-                                if (PlanetType.Giant.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal();
-                                }
-                                // Small body atmosphere CO2 proportion
-                                else if (PlanetType.AnyDwarf.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.01m);
-                                }
-                                // Trace atmosphere CH4 proportion
-                                else
-                                {
-                                    v = _randomizer.NextDecimal(-0.5m, 0.5m);
-                                }
-                                break;
-                            case 32: // Giant atmosphere C2H6 proportion; small body atmosphere NH3 proportion; trace atmosphere CO proportion
-                            case 33: // Giant atmosphere NH3 proportion; small body atmosphere CH4 proportion; trace atmosphere SO2 proportion
-                            case 34: // Giant atmosphere water proportion; small body atmosphere H2S proportion; trace atmosphere N2 proportion
-                                v = PlanetType.AnyDwarf.HasFlag(_planetType)
-                                    ? _randomizer.NextDecimal(0.01m)
-                                    : _randomizer.NextDecimal(-0.5m, 0.5m);
-                                break;
-                            case 35:
-                                // Giant atmosphere NH4SH proportion
-                                if (PlanetType.Giant.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal();
-                                }
-                                // Small body atmosphere SO2 proportion
-                                else if (PlanetType.AnyDwarf.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDecimal(0.001m);
-                                }
-                                // Trace atmosphere Ar proportion
-                                else
-                                {
-                                    v = _randomizer.NextDecimal(-0.02m, 0.04m);
-                                }
-                                break;
-                            case 36: // Trace atmosphere Kr proportion
-                            case 37: // Trace atmosphere Xe proportion
-                                v = _randomizer.NextDecimal(-0.02m, 0.04m);
-                                break;
-                            case 38: // Trace atmosphere CO2 with CO proportion
-                                v = _randomizer.NextDecimal(0.5m);
-                                break;
-                            case 39: // Trace atmosphere CO2 without CO proportion
-                                v = _randomizer.NextDecimal(-0.5m, 0.5m);
-                                break;
-                            case 40: // Trace atmosphere water proportion
-                                v = _randomizer.NextDecimal(-0.05m, 0.001m);
-                                break;
-                            case 41: // Trace atmosphere O2 proportion
-                                v = _randomizer.NextDecimal(-0.05m, 0.5m);
-                                break;
-                            case 42: // Thick atmosphere H proportion
-                                v = _randomizer.NextDecimal(1e-8m, 2e-7m);
-                                break;
-                            case 43: // Thick atmosphere He proportion
-                                v = _randomizer.NextDecimal(2.6e-7m, 1e-5m);
-                                break;
-                            case 44: // Thick atmosphere CH4 proportion
-                            case 45: // Thick atmosphere CO proportion
-                            case 46: // Thick atmosphere SO2 proportion
-                                v = _randomizer.NextDecimal(-0.5m, 0.5m);
-                                break;
-                            case 47: // Thick atmosphere trace proportion
-                                v = _randomizer.NextDecimal(1e-6m, 2.5e-4m);
-                                break;
-                            case 48: // Thick atmosphere CO2 proportion
-                                v = _randomizer.NextDecimal(0.97m, 0.99m);
-                                break;
-                            case 49: // Thick atmosphere water proportion
-                                v = _randomizer.NextDecimal(-0.05m, 0.001m);
-                                break;
-                            case 50: // Thick atmosphere O2 proportion
-                                v = _randomizer.NextDecimal(0.002m);
-                                break;
-                            case 51: // Thick atmosphere Ar proportion
-                                v = _randomizer.NextDecimal(-0.02m, 0.04m);
-                                break;
-                            case 52: // Thick atmosphere Kr proportion
-                                v = _randomizer.NextDecimal(-2.5e-4m, 5.0e-4m);
-                                break;
-                            case 53: // Thick atmosphere Xe proportion
-                            case 54: // Thick atmosphere Ne proportion
-                                v = _randomizer.NextDecimal(-1.8e-5m, 3.5e-5m);
-                                break;
-                            case 55: // Biosphere O2 proportion
-                                v = _randomizer.NextDecimal(0.2m, 0.25m);
-                                break;
-                            case 56: // Coal proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1e-13, 1.7e-14);
-                                break;
-                            case 57: // Petroleum proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1e-8, 1.6e-9);
-                                break;
-                            case 58: // Sulfur proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(3.5e-5, 1.75e-6);
-                                break;
-                            case 59: // Beryl proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(4e-6, 6.7e-7, minimum: 0);
-                                break;
-                            case 60: // Corundum proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(2.6e-4, 4e-5, minimum: 0);
-                                break;
-                            case 61: // Diamond proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(1.5e-7, 2.5e-8, minimum: 0);
-                                break;
-                            case 62: // CO2 reduction: CO2 proportion
-                                v = _randomizer.NextDecimal(15e-6m, 0.001m);
-                                break;
-                            case 63: // CO2 reduction: Ar proportion
-                                v = _randomizer.NextDecimal(-0.02m, 0.04m);
-                                break;
-                            case 64: // CO2 reduction: Kr proportion
-                                v = _randomizer.NextDecimal(-25e-5m, 0.0005m);
-                                break;
-                            case 65: // CO2 reduction: Xe proportion
-                            case 66: // CO2 reduction: Ne proportion
-                                v = _randomizer.NextDecimal(-18e-6m, 35e-6m);
-                                break;
-                            case 67: // Evaporated water vapor
-                                v = _randomizer.NextDecimal(0.001m);
-                                break;
-                            case 68: // Water ratio
-                                v = _randomizer.NextDecimal();
-                                break;
-                            case 69: // Seawater proportion
-                                v = (decimal)_randomizer.NormalDistributionSample(0.945, 0.015);
-                                break;
-                        }
-                        if (v.HasValue)
-                        {
-                            _decimals[_decimalIndex] = v.Value;
-                        }
-                    }
-                    if (_decimals.ContainsKey(index))
-                    {
-                        return _decimals[index];
-                    }
-                    throw new IndexOutOfRangeException("Index invalid for this value type");
-                }
-                return value;
-            }
-
-            public double GetDouble(int index)
-            {
-                if (!_doubles.TryGetValue(index, out var value))
-                {
-                    while (_doubleIndex < index)
-                    {
-                        _doubleIndex++;
-                        double? v = null;
-                        switch (_doubleIndex)
-                        {
-                            case 0: // AxialPrecession
-                                v = _randomizer.NextDouble(MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-                                break;
-                            case 1: // Comet density
-                                v = _randomizer.NextDouble(300, 700);
-                                break;
-                            case 2: // Comet radius
-                                v = _randomizer.NormalDistributionSample(10000, 4500, minimum: 0);
-                                break;
-                            case 3: // Asteroid mass
-                                var doubleMaxMass = _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                                    ? (double)_planetParams.Value.MaxMass.Value
-                                    : AsteroidMaxMassForType;
-                                v = _randomizer.PositiveNormalDistributionSample(AsteroidMinMassForType, (doubleMaxMass - AsteroidMinMassForType) / 3, maximum: doubleMaxMass);
-                                break;
-                            case 4: // Lava temperature
-                                v = _randomizer.NextDouble(974, 1574);
-                                break;
-                            case 5: // Gas giant density type
-                                v = _randomizer.NextDouble();
-                                break;
-                            case 6: // Gas giant puffy density
-                                v = _randomizer.NextDouble(GiantSubMinDensity, GiantMinDensity);
-                                break;
-                            case 7: // Gas giant density
-                                v = _randomizer.NextDouble(GiantMinDensity, GiantMaxDensity);
-                                break;
-                            case 8: // Iron planet density
-                                v = _randomizer.NextDouble(5250, 8000);
-                                break;
-                            case 9: // Terrestrial planet density
-                                v = _randomizer.NextDouble(3750, DefaultTerrestrialMaxDensity);
-                                break;
-                            case 10: // Specified gravity
-                                double maxGravity;
-                                if (_habitabilityRequirements?.MaximumGravity.HasValue == true)
-                                {
-                                    maxGravity = _habitabilityRequirements!.Value.MaximumGravity!.Value;
-                                }
-                                else // Determine the maximum gravity the planet could have by calculating from its maximum mass.
-                                {
-                                    var density = GetDensity(this, _planetType);
-                                    var max = _planetParams?.MaxMass ?? GetMaxMassForType(_planetType);
-                                    var maxVolume = max / density;
-                                    var maxRadius = (maxVolume / MathConstants.FourThirdsPI).CubeRoot();
-                                    maxGravity = (double)(ScienceConstants.G * max / (maxRadius * maxRadius));
-                                }
-                                v = _randomizer.NextDouble(_habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
-                                break;
-                            case 11: // Surface albedo
-                                if (_planetType == PlanetType.Comet)
-                                {
-                                    v = _randomizer.NextDouble(0.025, 0.055);
-                                }
-                                else if (_planetType == PlanetType.AsteroidC)
-                                {
-                                    v = _randomizer.NextDouble(0.03, 0.1);
-                                }
-                                else if (_planetType == PlanetType.AsteroidM)
-                                {
-                                    v = _randomizer.NextDouble(0.1, 0.2);
-                                }
-                                else if (_planetType == PlanetType.AsteroidS)
-                                {
-                                    v = _randomizer.NextDouble(0.1, 0.22);
-                                }
-                                else if (PlanetType.Giant.HasFlag(_planetType))
-                                {
-                                    v = _randomizer.NextDouble(0.275, 0.35);
-                                }
-                                else
-                                {
-                                    v = _randomizer.NextDouble(0.1, 0.6);
-                                }
-                                break;
-                            case 12: // Dwarf/trace atmopsheric pressure
-                                v = PlanetType.AnyDwarf.HasFlag(_planetType)
-                                    ? _randomizer.NextDouble(2.5)
-                                    : _randomizer.NextDouble(25);
-                                break;
-                            case 13: // Thick atmopsheric bounded pressure
-                                // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                                if (_habitabilityRequirements.HasValue
-                                    && _habitabilityRequirements.Value.MinimumPressure.HasValue)
-                                {
-                                    if (!_habitabilityRequirements.Value.MaximumPressure.HasValue)
-                                    {
-                                        v = _habitabilityRequirements.Value.MinimumPressure.Value
-                                            + Math.Abs(_randomizer.NormalDistributionSample(0, _habitabilityRequirements.Value.MinimumPressure.Value / 3));
-                                    }
-                                    else
-                                    {
-                                        v = _randomizer.NextDouble(_habitabilityRequirements.Value.MinimumPressure ?? 0, _habitabilityRequirements.Value.MaximumPressure.Value);
-                                    }
-                                }
-                                else
-                                {
-                                    v = 0;
-                                }
-                                break;
-                            case 14: // Thick atmopsheric high mass pressure
-                                v = _randomizer.NormalDistributionSample(1158568, 38600, minimum: 579300, maximum: 1737900);
-                                break;
-                            case 15: // Thick atmopsheric low mass pressure
-                                v = _randomizer.NormalDistributionSample(7723785, 258000, minimum: 3862000, maximum: 11586000);
-                                break;
-                            case 16: // Ocean planet water ratio
-                                v = _randomizer.NormalDistributionSample();
-                                break;
-                        }
-                        if (v.HasValue)
-                        {
-                            _doubles[_doubleIndex] = v.Value;
-                        }
-                    }
-                    if (_doubles.ContainsKey(index))
-                    {
-                        return _doubles[index];
-                    }
-                    throw new IndexOutOfRangeException("Index invalid for this value type");
-                }
-                return value;
-            }
-
-            public int GetInt(int index)
-            {
-                if (!_ints.TryGetValue(index, out var value))
-                {
-                    while (_intIndex < index)
-                    {
-                        _intIndex++;
-                        int? v = _intIndex switch
-                        {
-                            // _seed1-6
-                            <= 5 => _randomizer.NextInclusive(),
-                            _ => null,
-                        };
-                        if (v.HasValue)
-                        {
-                            _ints[_intIndex] = v.Value;
-                        }
-                    }
-                    if (_ints.ContainsKey(index))
-                    {
-                        return _ints[index];
-                    }
-                    throw new IndexOutOfRangeException("Index invalid for this value type");
-                }
-                return value;
-            }
-
-            public Number GetNumber(int index)
-            {
-                if (!_numbers.TryGetValue(index, out var value))
-                {
-                    while (_numberIndex < index)
-                    {
-                        _numberIndex++;
-                        Number? v = null;
-                        switch (_numberIndex)
-                        {
-                            case 0: // Comet axis
-                                v = _randomizer.NextNumber(Number.Half, 1);
-                                break;
-                            case 1: // Asteroid irregularity
-                                v = _randomizer.NextNumber(Number.Half, Number.One);
-                                break;
-                            case 2: // Planet flattening
-                                v = _randomizer.NextNumber(Number.Deci);
-                                break;
-                            case 3: // Giant mass
-                                v = _randomizer.NextNumber(_GiantMinMassForType, _planetParams?.MaxMass ?? _GiantMaxMassForType);
-                                break;
-                            case 4: // Dwarf mass
-                                var maxMass = _planetParams?.MaxMass;
-                                if (!string.IsNullOrEmpty(_parentId))
-                                {
-                                    var sternLevisonLambdaMass = (Number.Pow(_semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
-                                    maxMass = Number.Min(_planetParams?.MaxMass ?? _DwarfMaxMassForType, sternLevisonLambdaMass / 100);
-                                    if (maxMass < _DwarfMinMassForType)
-                                    {
-                                        maxMass = _DwarfMinMassForType; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
-                                    }
-                                }
-                                v = _randomizer.NextNumber(_DwarfMinMassForType, maxMass ?? _DwarfMaxMassForType);
-                                break;
-                            case 5: // Mass for unspecified gravity
-                                var min = Number.Zero;
-                                if (!PlanetType.AnyDwarf.HasFlag(_planetType))
-                                {
-                                    // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
-                                    // at which the planet would be able to do so at this orbital distance. We set the
-                                    // minimum at two orders of magnitude more than this (planets in our solar system
-                                    // all have masses above 5 orders of magnitude more). Note that since lambda is
-                                    // proportional to the square of mass, it is multiplied by 10 to obtain a difference
-                                    // of 2 orders of magnitude, rather than by 100.
-                                    var sternLevisonLambdaMass = (Number.Pow(_semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
-                                    min = Number.Max(min, sternLevisonLambdaMass * 10);
-
-                                    // sanity check; may result in a "planet" which *can't* clear its neighborhood
-                                    if (_planetParams.HasValue
-                                        && _planetParams.Value.MaxMass.HasValue
-                                        && min > _planetParams.Value.MaxMass.Value)
-                                    {
-                                        min = _planetParams.Value.MaxMass.Value;
-                                    }
-                                }
-                                v = _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                                    ? _randomizer.NextNumber(min, _planetParams.Value.MaxMass.Value)
-                                    : min;
-                                break;
-                            case 6: // Dwarf core proportion
-                                v = _randomizer.NextNumber(new Number(2, -1), new Number(55, -2));
-                                break;
-                            case 7: // Giant inner core proportion
-                                v = _randomizer.NextNumber(new Number(2, -2), new Number(2, -1));
-                                break;
-                            case 8: // Giant metallic hydrogen lower mantle; carbon planet Molten silicon carbide lower mantle
-                                v = _randomizer.NextNumber(-Number.Deci, new Number(55, -2));
-                                break;
-                            case 9: // Magnetosphere chance
-                                v = _randomizer.NextNumber();
-                                break;
-                        }
-                        if (v.HasValue)
-                        {
-                            _numbers[_numberIndex] = v.Value;
-                        }
-                    }
-                    if (_numbers.ContainsKey(index))
-                    {
-                        return _numbers[index];
-                    }
-                    throw new IndexOutOfRangeException("Index invalid for this value type");
-                }
-                return value;
-            }
         }
     }
 }
