@@ -223,7 +223,7 @@ namespace NeverFoundry.WorldFoundry.Space
         public bool HasBiosphere { get; set; }
 
         /// <summary>
-        /// Whether an elevation map has been assigned.
+        /// Whether an elevation map has been loaded.
         /// </summary>
         public bool HasElevationMap => _elevationMap != null;
 
@@ -233,27 +233,27 @@ namespace NeverFoundry.WorldFoundry.Space
         public bool HasMagnetosphere { get; private set; }
 
         /// <summary>
-        /// Whether any precipitation maps have been assigned.
+        /// Whether any precipitation maps have been loaded.
         /// </summary>
         public bool HasPrecipitationMap => _precipitationMaps != null;
 
         /// <summary>
-        /// Whether any snowfall maps have been assigned.
+        /// Whether any snowfall maps have been loaded.
         /// </summary>
         public bool HasSnowfallMap => _snowfallMaps != null;
 
         /// <summary>
-        /// Whether any temperature maps have been assigned.
+        /// Whether any temperature maps have been loaded.
         /// </summary>
         public bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
 
         /// <summary>
-        /// Whether a summer temperature map has been assigned.
+        /// Whether a summer temperature map has been loaded.
         /// </summary>
         public bool HasTemperatureMapSummer => _temperatureMapSummer != null;
 
         /// <summary>
-        /// Whether a winter temperature map has been assigned.
+        /// Whether a winter temperature map has been loaded.
         /// </summary>
         public bool HasTemperatureMapWinter => _temperatureMapWinter != null;
 
@@ -2070,7 +2070,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public async Task<Image<L16>> GetElevationMapAsync(ISurfaceMapLoader? mapLoader = null)
         {
-            if (_elevationMap is null && HasElevationMap && mapLoader is not null)
+            if (_elevationMap is null && !string.IsNullOrEmpty(_elevationMapPath) && mapLoader is not null)
             {
                 await LoadElevationMapAsync(mapLoader).ConfigureAwait(false);
             }
@@ -2633,7 +2633,10 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public async Task<Image<L16>> GetPrecipitationMapAsync(int steps = 1, ISurfaceMapLoader? mapLoader = null)
         {
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
+                && _precipitationMapPaths is not null
+                && _precipitationMapPaths.Length > 0
+                && mapLoader is not null)
             {
                 await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
             }
@@ -2649,7 +2652,9 @@ namespace NeverFoundry.WorldFoundry.Space
                 {
                     await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
                 }
-                if (_snowfallMaps is null && !HasSnowfallMap)
+                if (_snowfallMaps is null
+                    && (_snowfallMapPaths is null
+                    || _snowfallMapPaths.Length == 0))
                 {
                     _snowfallMaps = snowfallMaps;
                     if (mapLoader is not null)
@@ -2756,7 +2761,10 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public async Task<Image<L16>> GetPrecipitationMapAsync(double proportionOfYear, int steps = 1, ISurfaceMapLoader? mapLoader = null)
         {
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
+                && _precipitationMapPaths is not null
+                && _precipitationMapPaths.Length > 0
+                && mapLoader is not null)
             {
                 await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
             }
@@ -2772,7 +2780,9 @@ namespace NeverFoundry.WorldFoundry.Space
                 {
                     await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
                 }
-                if (_snowfallMaps is null && !HasSnowfallMap)
+                if (_snowfallMaps is null
+                    && (_snowfallMapPaths is null
+                    || _snowfallMapPaths.Length == 0))
                 {
                     _snowfallMaps = snowfallMaps;
                     if (mapLoader is not null)
@@ -2916,7 +2926,10 @@ namespace NeverFoundry.WorldFoundry.Space
                 var map = await GetPrecipitationMapAsync(steps, mapLoader).ConfigureAwait(false);
                 return new[] { map };
             }
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0) && HasPrecipitationMap && mapLoader is not null)
+            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
+                && _precipitationMapPaths is not null
+                && _precipitationMapPaths.Length > 0
+                && mapLoader is not null)
             {
                 await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
             }
@@ -2932,7 +2945,9 @@ namespace NeverFoundry.WorldFoundry.Space
                 {
                     await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
                 }
-                if (_snowfallMaps is null && !HasSnowfallMap)
+                if (_snowfallMaps is null
+                    && (_snowfallMapPaths is null
+                    || _snowfallMapPaths.Length == 0))
                 {
                     _snowfallMaps = snowfallMaps;
                     if (mapLoader is not null)
@@ -3595,7 +3610,10 @@ namespace NeverFoundry.WorldFoundry.Space
                 var map = await GetSnowfallMapAsync(steps, mapLoader).ConfigureAwait(false);
                 return new[] { map };
             }
-            if ((_snowfallMaps is null || _snowfallMaps.Length == 0) && HasSnowfallMap && mapLoader is not null)
+            if ((_snowfallMaps is null || _snowfallMaps.Length == 0)
+                && _snowfallMapPaths is not null
+                && _snowfallMapPaths.Length > 0
+                && mapLoader is not null)
             {
                 await LoadSnowfallMapsAsync(mapLoader).ConfigureAwait(false);
             }
@@ -3632,7 +3650,9 @@ namespace NeverFoundry.WorldFoundry.Space
                     {
                         await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
                     }
-                    if (_precipitationMaps is null && !HasPrecipitationMap)
+                    if (_precipitationMaps is null
+                        && (_precipitationMapPaths is null
+                        || _precipitationMapPaths.Length == 0))
                     {
                         _precipitationMaps = precipitationMaps;
                         if (mapLoader is not null)
@@ -3920,7 +3940,8 @@ namespace NeverFoundry.WorldFoundry.Space
         public async Task<Image<L16>> GetTemperatureMapAsync(ISurfaceMapLoader? mapLoader = null)
         {
             if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
-                && HasTemperatureMap
+                && (!string.IsNullOrEmpty(_temperatureMapWinterPath)
+                || !string.IsNullOrEmpty(_temperatureMapSummerPath))
                 && mapLoader is not null)
             {
                 await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
@@ -3967,7 +3988,8 @@ namespace NeverFoundry.WorldFoundry.Space
         public async Task<Image<L16>> GetTemperatureMapAsync(double proportionOfYear, ISurfaceMapLoader? mapLoader = null)
         {
             if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
-                && HasTemperatureMap
+                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
+                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
                 && mapLoader is not null)
             {
                 await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
@@ -4176,7 +4198,10 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public async Task<Image<L16>> GetTemperatureMapSummerAsync(ISurfaceMapLoader? mapLoader = null)
         {
-            if (_temperatureMapSummer is null && HasTemperatureMap && mapLoader is not null)
+            if (_temperatureMapSummer is null
+                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
+                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
+                && mapLoader is not null)
             {
                 await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
             }
@@ -4224,7 +4249,10 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </remarks>
         public async Task<Image<L16>> GetTemperatureMapWinterAsync(ISurfaceMapLoader? mapLoader = null)
         {
-            if (_temperatureMapWinter is null && HasTemperatureMap && mapLoader is not null)
+            if (_temperatureMapWinter is null
+                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
+                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
+                && mapLoader is not null)
             {
                 await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
             }
@@ -4333,13 +4361,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Loads the elevation map for this planet from storage.
+        /// Loads the elevation map for this planet from storage, if any.
         /// </summary>
         /// <param name="mapLoader">
         /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
         /// image.
         /// </param>
-        public async Task LoadElevationMapAsync(ISurfaceMapLoader mapLoader)
+        public async ValueTask LoadElevationMapAsync(ISurfaceMapLoader mapLoader)
         {
             if (!string.IsNullOrEmpty(_elevationMapPath))
             {
@@ -4348,13 +4376,32 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Loads a set of images as the precipitation maps for this planet from storage.
+        /// Loads the assigned set of map images for this planet from storage, if any.
         /// </summary>
         /// <param name="mapLoader">
         /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
         /// image.
         /// </param>
-        public async Task LoadPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
+        public async ValueTask LoadMapsAsync(ISurfaceMapLoader mapLoader)
+        {
+            await LoadElevationMapAsync(mapLoader)
+                .ConfigureAwait(false);
+            await LoadPrecipitationMapsAsync(mapLoader)
+                .ConfigureAwait(false);
+            await LoadSnowfallMapsAsync(mapLoader)
+                .ConfigureAwait(false);
+            await LoadTemperatureMapAsync(mapLoader)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Loads a set of images as the precipitation maps for this planet from storage, if any.
+        /// </summary>
+        /// <param name="mapLoader">
+        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
+        /// image.
+        /// </param>
+        public async ValueTask LoadPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
         {
             if (_precipitationMapPaths is null)
             {
@@ -4371,13 +4418,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Loads a set of images as the snowfall maps for this planet from storage.
+        /// Loads a set of images as the snowfall maps for this planet from storage, if any.
         /// </summary>
         /// <param name="mapLoader">
         /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
         /// image.
         /// </param>
-        public async Task LoadSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
+        public async ValueTask LoadSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
         {
             if (_snowfallMapPaths is null)
             {
@@ -4394,13 +4441,13 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Loads the temperature map(s) for this planet from storage.
+        /// Loads the temperature map(s) for this planet from storage, if any.
         /// </summary>
         /// <param name="mapLoader">
         /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
         /// image.
         /// </param>
-        public async Task LoadTemperatureMapAsync(ISurfaceMapLoader mapLoader)
+        public async ValueTask LoadTemperatureMapAsync(ISurfaceMapLoader mapLoader)
         {
             if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
             {
