@@ -225,7 +225,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// Whether an elevation map has been assigned.
         /// </summary>
-        internal bool HasElevationMap => _elevationMap != null;
+        public bool HasElevationMap => _elevationMap != null;
 
         /// <summary>
         /// Indicates whether this <see cref="Planetoid"/> has a strong magnetosphere.
