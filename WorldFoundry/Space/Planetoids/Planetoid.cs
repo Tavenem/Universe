@@ -223,9 +223,39 @@ namespace NeverFoundry.WorldFoundry.Space
         public bool HasBiosphere { get; set; }
 
         /// <summary>
+        /// Whether an elevation map has been assigned.
+        /// </summary>
+        internal bool HasElevationMap => _elevationMap != null;
+
+        /// <summary>
         /// Indicates whether this <see cref="Planetoid"/> has a strong magnetosphere.
         /// </summary>
         public bool HasMagnetosphere { get; private set; }
+
+        /// <summary>
+        /// Whether any precipitation maps have been assigned.
+        /// </summary>
+        public bool HasPrecipitationMap => _precipitationMaps != null;
+
+        /// <summary>
+        /// Whether any snowfall maps have been assigned.
+        /// </summary>
+        public bool HasSnowfallMap => _snowfallMaps != null;
+
+        /// <summary>
+        /// Whether any temperature maps have been assigned.
+        /// </summary>
+        public bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
+
+        /// <summary>
+        /// Whether a summer temperature map has been assigned.
+        /// </summary>
+        public bool HasTemperatureMapSummer => _temperatureMapSummer != null;
+
+        /// <summary>
+        /// Whether a winter temperature map has been assigned.
+        /// </summary>
+        public bool HasTemperatureMapWinter => _temperatureMapWinter != null;
 
         /// <summary>
         /// This planet's surface liquids and ices (not necessarily water).
@@ -348,14 +378,6 @@ namespace NeverFoundry.WorldFoundry.Space
         internal double AverageBlackbodyTemperature { get; private set; }
 
         internal double? GreenhouseEffect { get; set; }
-
-        internal bool HasElevationMap => _elevationMap != null;
-
-        internal bool HasPrecipitationMap => _precipitationMaps != null;
-
-        internal bool HasSnowfallMap => _snowfallMaps != null;
-
-        internal bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
 
         internal bool HasAllWeatherMaps
             => _precipitationMaps != null
