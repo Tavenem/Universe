@@ -307,6 +307,11 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public bool IsTerrestrial => PlanetType.AnyTerrestrial.HasFlag(PlanetType);
 
+        /// <summary>
+        /// The number of precipitation maps which have been assigned.
+        /// </summary>
+        public int MappedSeasons => _precipitationMaps?.Length ?? 0;
+
         private double? _maxElevation;
         /// <summary>
         /// <para>
@@ -391,8 +396,6 @@ namespace NeverFoundry.WorldFoundry.Space
             get => _insolationFactor_Equatorial ??= GetInsolationFactor();
             set => _insolationFactor_Equatorial = value;
         }
-
-        internal int MappedSeasons => _precipitationMaps?.Length ?? 0;
 
         private double? _summerSolsticeTrueAnomaly;
         internal double SummerSolsticeTrueAnomaly
