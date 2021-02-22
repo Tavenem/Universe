@@ -14,7 +14,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// A region of space with a high concentration of asteroids.
     /// </summary>
     [Serializable]
-    [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.AsteroidFieldConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(AsteroidFieldConverter))]
     public class AsteroidField : CosmicLocation
     {

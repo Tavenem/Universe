@@ -1,13 +1,11 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Time;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
 using System;
 using System.Threading.Tasks;
 using Number = NeverFoundry.MathAndScience.Numerics.Number;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Planet.SurfaceMapping
 {
     /// <summary>
     /// Static methods to assist with producing equirectangular projections that map the surface of
@@ -37,7 +35,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The specific value from a range which varies over the course of a
         /// year.</returns>
         public static float GetAnnualRangeValue(
-            this Planetoid planet,
+            this Planet planet,
             FloatRange range,
             Instant moment) => GetAnnualRangeValue(range, (float)planet.GetProportionOfYearAtTime(moment));
 
@@ -66,7 +64,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns><see langword="true"/> if the range indicates a positive result for the given
         /// <paramref name="moment"/>; otherwise <see langword="false"/>.</returns>
         public static bool GetAnnualRangeIsPositiveAtTime(
-            this Planetoid planet,
+            this Planet planet,
             FloatRange range,
             Instant moment) => GetAnnualRangeIsPositiveAtTime(range, (float)planet.GetProportionOfYearAtTime(moment));
 
@@ -91,7 +89,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// given proportion of the year from a set of ranges.</returns>
         public static float GetAnnualValueFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             FloatRange[,] ranges,
             float proportionOfYear,
@@ -131,7 +129,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// given <paramref name="moment"/> from a set of ranges.</returns>
         public static float GetAnnualValueFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             FloatRange[,] ranges,
             Instant moment,
@@ -175,7 +173,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// otherwise <see langword="false"/>.</returns>
         public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             FloatRange[,] ranges,
             float proportionOfYear,
@@ -214,7 +212,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// otherwise <see langword="false"/>.</returns>
         public static bool GetAnnualRangeIsPositiveAtTimeAndLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             FloatRange[,] ranges,
             Instant moment,
@@ -280,7 +278,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The area of the given point, in m².</returns>
         public static Number GetAreaOfLocalPoint(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution,
             MapProjectionOptions options) => GetAreaOfPointFromRadiusSquared(
@@ -373,7 +371,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (int x, int y) GetCylindricalEqualAreaProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             int resolution)
         {
@@ -400,7 +398,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (int x, int y) GetCylindricalEqualAreaProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             int resolution)
@@ -451,7 +449,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             int resolution)
         {
@@ -478,7 +476,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (int x, int y) GetEquirectangularProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             int resolution)
@@ -594,7 +592,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (double latitude, double longitude) GetLatLonOfCylindricalEqualAreaProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution)
             => GetLatLonOfCylindricalEqualAreaProjection(
@@ -618,7 +616,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static (double latitude, double longitude) GetLatLonOfEquirectangularProjectionFromLocalPosition(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution)
             => GetLatLonOfEquirectangularProjection(
@@ -642,7 +640,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static Vector3 GetLocalPositionFromCylindricalEqualAreaProjection(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution)
         {
@@ -669,7 +667,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static Vector3 GetLocalPositionFromEquirectangularProjection(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution)
         {
@@ -727,7 +725,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The area of the given point, in m².</returns>
         public static Number GetSeparationOfPoint(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int x, int y,
             int resolution,
             bool equalArea = false)
@@ -754,7 +752,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// a set of values.</returns>
         public static T GetValueFromLocalPosition<T>(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             Vector3 position,
             T[,] values,
             bool equalArea = false)
@@ -800,7 +798,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// A <see cref="WeatherMaps"/> instance.
         /// </returns>
         public static async Task<WeatherMaps> GetWeatherMapsAsync(
-            this Planetoid planet,
+            this Planet planet,
             int resolution,
             int steps = 12,
             MapProjectionOptions? options = null,
@@ -859,7 +857,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static async Task<WeatherMaps> GetWeatherMapsAsync(
             this SurfaceRegion region,
-            Planetoid planet,
+            Planet planet,
             int resolution,
             int steps = 12,
             bool equalArea = false,

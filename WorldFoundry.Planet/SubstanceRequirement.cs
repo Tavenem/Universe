@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace NeverFoundry.WorldFoundry
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
     /// The requirements for a particular component in a mixture.

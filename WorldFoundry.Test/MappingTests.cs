@@ -7,11 +7,9 @@ using NeverFoundry.WorldFoundry.Space.Planetoids;
 using NeverFoundry.WorldFoundry.SurfaceMapping;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.WebSockets;
 using System.Text;
 using System.Threading.Tasks;
 

@@ -19,7 +19,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// A region of space containing a system of stars, and the bodies which orbit that system.
     /// </summary>
     [Serializable]
-    [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.StarSystemConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(StarSystemConverter))]
     public class StarSystem : CosmicLocation
     {

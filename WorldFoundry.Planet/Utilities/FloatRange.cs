@@ -1,12 +1,12 @@
 ﻿using NeverFoundry.MathAndScience;
-using NeverFoundry.WorldFoundry.Utilities;
+using NeverFoundry.WorldFoundry.Planet.Utilities;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
-namespace NeverFoundry.WorldFoundry
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
     /// A floating-point value which specifies an average, and optionally a range (minimum to maximum).

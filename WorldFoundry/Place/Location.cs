@@ -2,7 +2,6 @@
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +20,6 @@ namespace NeverFoundry.WorldFoundry.Place
     /// hierarchy can be analyzed using the methods available on this class.
     /// </remarks>
     [Serializable]
-    [JsonObject]
     public class Location : IdItem, ISerializable
     {
         private Location? _parent;
@@ -60,7 +58,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The position of this location relative to the center of its parent.
         /// </summary>
-        [JsonIgnore]
         [System.Text.Json.Serialization.JsonIgnore]
         public virtual Vector3 Position
         {
@@ -71,7 +68,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <summary>
         /// The shape of this location.
         /// </summary>
-        [JsonProperty(TypeNameHandling = TypeNameHandling.None)]
         public virtual IShape Shape { get; private protected set; } = SinglePoint.Origin;
 
         /// <summary>
@@ -192,7 +188,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Note: this constructor is most useful for deserializers. The other constructors are more
         /// suited to creating a new instance, as they will automatically generate an appropriate ID.
         /// </remarks>
-        [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public Location(
             string id,

@@ -8,7 +8,7 @@ using System;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 
-namespace NeverFoundry.WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
     /// Defines an orbit by the Kepler elements.
@@ -149,6 +149,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="period">The period of this orbit.</param>
         /// <param name="epoch">The time at which the state of this orbit is defined, which
         /// coincides with a time of pericenter passage.</param>
+        [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public Orbit(
             Number orbitedMass,
@@ -856,7 +857,7 @@ namespace NeverFoundry.WorldFoundry.Space
             orbitingObject.Velocity = Number.Sqrt(alpha) * perifocalQ;
 
             var longitudeOfPeriapsis = (double)(longitudeAscending + argPeriapsis);
-            if (orbitingObject is Planetoid planetoid)
+            if (orbitingObject is Planet planetoid)
             {
                 longitudeOfPeriapsis -= planetoid.AxialPrecession;
             }
@@ -970,7 +971,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var sineTrueAnomaly = (Number)Math.Sin(trueAnomaly);
 
             var longitudeOfPeriapsis = (double)(angleAscending + argumentPeriapsis);
-            if (orbitingObject is Planetoid planetoid)
+            if (orbitingObject is Planet planetoid)
             {
                 longitudeOfPeriapsis -= planetoid.AxialPrecession;
             }
@@ -1121,7 +1122,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var radius = semiLatusRectum / (1 + (eccentricity * cosineTrueAnomaly));
 
             var longitudeOfPeriapsis = longitudeAscending + argPeriapsis;
-            if (orbitingObject is Planetoid planetoid)
+            if (orbitingObject is Planet planetoid)
             {
                 longitudeOfPeriapsis -= planetoid.AxialPrecession;
             }

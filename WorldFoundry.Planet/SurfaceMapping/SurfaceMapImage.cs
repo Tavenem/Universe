@@ -1,9 +1,7 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Planet.Climate;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -13,7 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Planet.SurfaceMapping
 {
     /// <summary>
     /// Static methods related to images with surface map data.
@@ -124,7 +122,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> BiomeMapToImage(
             this BiomeType[][] biomeMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             bool showOcean = true,
             MapProjectionOptions? mapProjection = null,
@@ -190,7 +188,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> ElevationMapToImage(
             this Image<L16> elevationMap,
-            Planetoid planet,
+            Planet planet,
             Func<L16, Rgba32> converter,
             HillShadingOptions? hillShading = null)
         {
@@ -245,7 +243,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> ElevationMapToImage(
             this Image<L16> elevationMap,
-            Planetoid planet,
+            Planet planet,
             Func<L16, Rgba32> landConverter,
             Func<L16, Rgba32> oceanConverter,
             HillShadingOptions? hillShading = null)
@@ -292,7 +290,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> ElevationMapToImage(
             this Image<L16> elevationMap,
-            Planetoid planet,
+            Planet planet,
             HillShadingOptions? hillShading = null) => ElevationMapToImage(
                 elevationMap,
                 planet,
@@ -305,7 +303,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="planet">The planet to be mapped.</param>
         /// <param name="resolution">The vertical resolution.</param>
         /// <returns>An elevation map image.</returns>
-        public static Image<L16> GenerateElevationMap(this Planetoid planet, int resolution)
+        public static Image<L16> GenerateElevationMap(this Planet planet, int resolution)
             => GenerateMapImage(
                 (lat, lon) => planet.GetElevationNoise(planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
                 resolution,
@@ -332,7 +330,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// A set of precipitation and snowfall map images.
         /// </returns>
         public static (Image<L16>[] precipitationMaps, Image<L16>[] snowfallMaps) GeneratePrecipitationMaps(
-            this Planetoid planet,
+            this Planet planet,
             Image<L16> winterTemperatures,
             Image<L16> summerTemperatues,
             int resolution,
@@ -363,7 +361,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         var precipitation = planet.GetPrecipitationNoise(
                             planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
                             lat,
-                            Planetoid.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
+                            Planet.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
                             temperature * TemperatureScaleFactor,
                             out var snow);
                         return (
@@ -392,11 +390,10 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <param name="resolution">The vertical resolution.</param>
         /// <returns>Winter and summer temperature map images.</returns>
         public static (Image<L16> winter, Image<L16> summer) GenerateTemperatureMaps(
-            this Planetoid planet,
+            this Planet planet,
             Image<L16> elevationMap,
             int resolution)
         {
-            var tilt = planet.AxialTilt;
             var winterTrueAnomaly = planet.WinterSolsticeTrueAnomaly;
             var summerTrueAnomaly = planet.SummerSolsticeTrueAnomaly;
             var winterLatitudes = new Dictionary<double, double>();
@@ -411,7 +408,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
                     if (!winterLatitudes.TryGetValue(lat, out var winterLat))
                     {
-                        winterLat = Math.Abs((lat + Planetoid.GetSeasonalLatitudeFromDeclination(lat, tilt)) / 2);
+                        winterLat = Math.Abs((lat + Planet.GetSeasonalLatitudeFromDeclination(lat, PlanetParams.EarthAxialTilt)) / 2);
                         winterLatitudes.Add(lat, winterLat);
                     }
                     if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
@@ -437,7 +434,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
 
                     if (!summerLatitudes.TryGetValue(lat, out var summerLat))
                     {
-                        summerLat = Math.Abs((lat + Planetoid.GetSeasonalLatitudeFromDeclination(lat, -tilt)) / 2);
+                        summerLat = Math.Abs((lat + Planet.GetSeasonalLatitudeFromDeclination(lat, -PlanetParams.EarthAxialTilt)) / 2);
                         summerLatitudes.Add(lat, summerLat);
                     }
                     if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
@@ -469,7 +466,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The elevation at the given position indicated by this map image, in meters.
         /// </returns>
-        public static double GetElevation(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
+        public static double GetElevation(this Image<L16> image, Planet planet, double latitude, double longitude, MapProjectionOptions options)
             => (image.GetValueFromImage(latitude, longitude, options, true) - planet._normalizedSeaLevel) * planet.MaxElevation;
 
         /// <summary>
@@ -488,7 +485,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The elevation at the given position indicated by this map image, in meters.
         /// </returns>
-        public static double GetElevation(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
+        public static double GetElevation(this Image<L16> image, Planet planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
         {
             var pos = region.PlanetaryPosition + position;
             return image.GetElevation(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
@@ -502,7 +499,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The minimum, maximum, and average elevations represented by this map image, in meters.
         /// </returns>
-        public static FloatRange GetElevationRange(this Image<L16> image, Planetoid planet)
+        public static FloatRange GetElevationRange(this Image<L16> image, Planet planet)
         {
             var range = GetRange(image, true);
             return new FloatRange(
@@ -522,7 +519,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The precipitation at the given position indicated by this map image, in mm/hr.
         /// </returns>
-        public static double GetPrecipitation(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
+        public static double GetPrecipitation(this Image<L16> image, Planet planet, double latitude, double longitude, MapProjectionOptions options)
             => image.GetValueFromImage(latitude, longitude, options) * planet.Atmosphere.MaxPrecipitation;
 
         /// <summary>
@@ -541,7 +538,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The precipitation at the given position indicated by this map image, in mm/hr.
         /// </returns>
-        public static double GetPrecipitation(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
+        public static double GetPrecipitation(this Image<L16> image, Planet planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
         {
             var pos = region.PlanetaryPosition + position;
             return image.GetPrecipitation(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
@@ -556,7 +553,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// The minimum, maximum, and average precipitations represented by this map image, in
         /// mm/hr.
         /// </returns>
-        public static FloatRange GetPrecipitationRange(this Image<L16> image, Planetoid planet)
+        public static FloatRange GetPrecipitationRange(this Image<L16> image, Planet planet)
         {
             var range = GetRange(image);
             return new FloatRange(
@@ -635,7 +632,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The slope at the given coordinates.</returns>
         public static double GetSlope(
             this Image<L16> elevationMap,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             MapProjectionOptions? options = null)
@@ -661,7 +658,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>The slope at the given coordinates.</returns>
         public static double GetSlope(
             this Image elevationMap,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             MapProjectionOptions? options = null)
@@ -681,7 +678,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The snowfall at the given position indicated by this map image, in mm/hr.
         /// </returns>
-        public static double GetSnowfall(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
+        public static double GetSnowfall(this Image<L16> image, Planet planet, double latitude, double longitude, MapProjectionOptions options)
             => image.GetValueFromImage(latitude, longitude, options) * planet.Atmosphere.MaxSnowfall;
 
         /// <summary>
@@ -700,7 +697,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The snowfall at the given position indicated by this map image, in mm/hr.
         /// </returns>
-        public static double GetSnowfall(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
+        public static double GetSnowfall(this Image<L16> image, Planet planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
         {
             var pos = region.PlanetaryPosition + position;
             return image.GetSnowfall(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
@@ -715,7 +712,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// The minimum, maximum, and average snowfall represented by this map image, in
         /// mm/hr.
         /// </returns>
-        public static FloatRange GetSnowfallRange(this Image<L16> image, Planetoid planet)
+        public static FloatRange GetSnowfallRange(this Image<L16> image, Planet planet)
         {
             var range = GetRange(image);
             return new FloatRange(
@@ -753,7 +750,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// The temperature at the given position indicated by this map image, in K.
         /// </returns>
-        public static double GetTemperature(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
+        public static double GetTemperature(this Image<L16> image, Planet planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
         {
             var pos = region.PlanetaryPosition + position;
             return image.GetTemperature(planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
@@ -780,7 +777,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// biome map with additional elevation shading.
         /// </summary>
         /// <param name="maps">The set of <see cref="WeatherMaps"/> from which to generate an image.</param>
-        /// <param name="planet">The <see cref="Planetoid"/> for which to generate an image.</param>
+        /// <param name="planet">The <see cref="Planet"/> for which to generate an image.</param>
         /// <param name="elevationMap">An elevation map.</param>
         /// <param name="temperatureMap">A temperature map.</param>
         /// <param name="mapProjection">
@@ -802,7 +799,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> GetSatelliteImage(
             this WeatherMaps maps,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Image<L16> temperatureMap,
             MapProjectionOptions? mapProjection = null,
@@ -859,7 +856,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </remarks>
         public static bool IsMountainous(
             this Image<L16> elevationMap,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             MapProjectionOptions? options = null)
@@ -907,7 +904,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </remarks>
         public static bool IsMountainous(
             this Image elevationMap,
-            Planetoid planet,
+            Planet planet,
             double latitude,
             double longitude,
             MapProjectionOptions? options = null)
@@ -1035,7 +1032,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> PrecipitationMapToImage(
             this Image<L16> precipitationMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             bool showOcean = true,
             MapProjectionOptions? mapProjection = null,
@@ -1239,7 +1236,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImage(
             this Image<L16> surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<L16, Rgba32>? landConverter = null,
             Func<L16, Rgba32>? oceanConverter = null,
@@ -1388,7 +1385,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImage(
             this Image<L16> surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<L16, double, Rgba32>? landConverter = null,
             Func<L16, double, Rgba32>? oceanConverter = null,
@@ -1537,7 +1534,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImageByIndex(
             this Image<L16> surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<L16, double, int, int, Rgba32>? landConverter = null,
             Func<L16, double, int, int, Rgba32>? oceanConverter = null,
@@ -1686,7 +1683,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImageByLatLon(
             this Image<L16> surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<L16, double, double, double, Rgba32>? landConverter = null,
             Func<L16, double, double, double, Rgba32>? oceanConverter = null,
@@ -1953,7 +1950,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImage<T>(
             this T[][] surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<T, double, Rgba32> landConverter,
             Func<T, double, Rgba32> oceanConverter,
@@ -2071,7 +2068,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImageByIndex<T>(
             this T[][] surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<T, double, int, int, Rgba32> landConverter,
             Func<T, double, int, int, Rgba32> oceanConverter,
@@ -2189,7 +2186,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> SurfaceMapToImageByLatLon<T>(
             this T[][] surfaceMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Func<T, double, double, double, Rgba32> landConverter,
             Func<T, double, double, double, Rgba32> oceanConverter,
@@ -2388,7 +2385,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>An image.</returns>
         public static Image<Rgba32> TemperatureMapToImage(
             this Image<L16> temperatureMap,
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             bool showOcean = true,
             MapProjectionOptions? mapProjection = null,
@@ -2534,7 +2531,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// <returns>
         /// An <see cref="Rgba32"/> pixel corresponding to the normalized elevation value provided.
         /// </returns>
-        public static Rgba32 ToElevationColor(this L16 value, Planetoid planet) => InterpColorRange_PosNeg(
+        public static Rgba32 ToElevationColor(this L16 value, Planet planet) => InterpColorRange_PosNeg(
             value,
             v => v - planet._normalizedSeaLevel,
             _ElevationColorProfile);
@@ -3087,7 +3084,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         private static double GetSlope(
             Image<L16> elevationMap,
             int x, int y,
-            Planetoid planet,
+            Planet planet,
             int xResolution,
             int yResolution,
             MapProjectionOptions options)

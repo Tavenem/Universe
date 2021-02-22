@@ -1,6 +1,5 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using Newtonsoft.Json;
 using System;
 
 namespace NeverFoundry.WorldFoundry.Space
@@ -8,7 +7,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// <summary>
     /// The parameters which describe an orbit.
     /// </summary>
-    [JsonObject]
     public struct OrbitalParameters : IEquatable<OrbitalParameters>
     {
         /// <summary>
@@ -108,7 +106,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// If true, all parameters other than eccentricity are ignored, and an orbit will
         /// be set based on the orbiting object's position.
         /// </param>
-        [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public OrbitalParameters(
             Number orbitedMass,

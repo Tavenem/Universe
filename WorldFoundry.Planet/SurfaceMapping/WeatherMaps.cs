@@ -1,14 +1,13 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Space;
+using NeverFoundry.WorldFoundry.Planet.Climate;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Planet.SurfaceMapping
 {
     /// <summary>
     /// A collection of weather maps providing yearlong climate data.
@@ -115,7 +114,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// these same options, or thew results will not be accurate.
         /// </param>
         public WeatherMaps(
-            Planetoid planet,
+            Planet planet,
             Image<L16> elevationMap,
             Image<L16> winterTemperatureMap,
             Image<L16> summerTemperatureMap,

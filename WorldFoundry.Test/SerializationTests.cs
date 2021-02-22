@@ -6,7 +6,6 @@ using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -19,10 +18,6 @@ namespace NeverFoundry.WorldFoundry.Test
     [TestClass]
     public class SerializationTests
     {
-        private static readonly Newtonsoft.Json.JsonSerializerSettings _JsonSerializerSettings
-            = new()
-            { TypeNameHandling = Newtonsoft.Json.TypeNameHandling.Auto };
-
         [TestMethod]
         public void FloatRangeTest()
         {
@@ -32,11 +27,7 @@ namespace NeverFoundry.WorldFoundry.Test
             Assert.AreEqual("<0;0>", str);
             Assert.AreEqual(value, FloatRange.Parse(str));
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Assert.AreEqual($"\"{str}\"", json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<FloatRange>(json));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Assert.AreEqual("\"\\u003C0;0\\u003E\"", json);
             Assert.AreEqual(value, System.Text.Json.JsonSerializer.Deserialize<FloatRange>(json));
 
@@ -45,10 +36,6 @@ namespace NeverFoundry.WorldFoundry.Test
             str = value.ToString("r");
             Assert.AreEqual("<0.25;0.75>", str);
             Assert.AreEqual(value, FloatRange.Parse(str));
-
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Assert.AreEqual($"\"{str}\"", json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<FloatRange>(json));
 
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Assert.AreEqual("\"\\u003C0.25;0.75\\u003E\"", json);
@@ -60,21 +47,12 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new SubstanceRequirement(Substances.All.Water.GetHomogeneousReference());
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<SubstanceRequirement>(json));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
             Assert.AreEqual(value, System.Text.Json.JsonSerializer.Deserialize<SubstanceRequirement>(json));
 
             value = new SubstanceRequirement(Substances.All.Oxygen.GetHomogeneousReference(), 0.2m, 0.6m, PhaseType.Gas);
-
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine();
-            Console.WriteLine(json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<SubstanceRequirement>(json));
 
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
@@ -87,27 +65,14 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere(new Number(10)), null, null);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Location>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<Location>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<Location>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
             value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere(new Number(10)), "Test_Parent_ID", new Vector3[] { Vector3.Zero, Vector3.UnitX });
-
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine();
-            Console.WriteLine(json);
-            deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Location>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
 
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
@@ -122,16 +87,10 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new Territory("Test_ID", Territory.TerritoryIdItemTypeName, new Sphere(new Number(10)), new string[] { "Test_Child_ID" });
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Territory>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<Territory>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<Territory>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
@@ -142,13 +101,6 @@ namespace NeverFoundry.WorldFoundry.Test
                 new string[] { "Test_Child_ID" },
                 "Test_Parent_ID",
                 new Vector3[] { Vector3.Zero, Vector3.UnitX });
-
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine();
-            Console.WriteLine(json);
-            deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Territory>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
 
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
@@ -179,11 +131,7 @@ namespace NeverFoundry.WorldFoundry.Test
                 new Number(1, 10000),
                 MathAndScience.Time.Duration.Zero);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<Orbit>(json));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
             Assert.AreEqual(value, System.Text.Json.JsonSerializer.Deserialize<Orbit>(json));
@@ -202,11 +150,7 @@ namespace NeverFoundry.WorldFoundry.Test
                 20,
                 true);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<HabitabilityRequirements>(json));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
             Assert.AreEqual(value, System.Text.Json.JsonSerializer.Deserialize<HabitabilityRequirements>(json));
@@ -217,11 +161,7 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = PlanetParams.Earthlike;
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            Assert.AreEqual(value, Newtonsoft.Json.JsonConvert.DeserializeObject<PlanetParams>(json));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
             Assert.AreEqual(value, System.Text.Json.JsonSerializer.Deserialize<PlanetParams>(json));
@@ -242,16 +182,10 @@ namespace NeverFoundry.WorldFoundry.Test
                 null,
                 null);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<SurfaceRegion>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<SurfaceRegion>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<SurfaceRegion>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
@@ -267,13 +201,6 @@ namespace NeverFoundry.WorldFoundry.Test
                 null,
                 new Vector3[] { Vector3.Zero, Vector3.UnitX });
 
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine();
-            Console.WriteLine(json);
-            deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<SurfaceRegion>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
@@ -287,16 +214,10 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = CosmicLocation.New(CosmicStructureType.Universe, null, Vector3.Zero, out _);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<CosmicLocation>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<CosmicLocation>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<CosmicLocation>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
         }
@@ -306,16 +227,10 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new AsteroidField(null, Vector3.Zero, childOrbit: OrbitalParameters.GetCircular(new Number(1, 1000), Vector3.Zero));
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<AsteroidField>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<AsteroidField>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<AsteroidField>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
         }
@@ -325,16 +240,10 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new BlackHole(null, Vector3.Zero);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<BlackHole>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<BlackHole>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<BlackHole>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
         }
@@ -344,27 +253,14 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new Star(null, Vector3.Zero);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Star>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<Star>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<Star>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
 
             value = new Star(null, Vector3.Zero, null, Space.Stars.SpectralClass.G, Space.Stars.LuminosityClass.V);
-
-            json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine();
-            Console.WriteLine(json);
-            deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Star>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
 
             json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
@@ -379,16 +275,10 @@ namespace NeverFoundry.WorldFoundry.Test
         {
             var value = new StarSystem(null, Vector3.Zero, out _);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
-            Console.WriteLine(json);
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<StarSystem>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
             Console.WriteLine();
             Console.WriteLine(json);
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<StarSystem>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<StarSystem>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
         }
@@ -399,28 +289,16 @@ namespace NeverFoundry.WorldFoundry.Test
             var value = Planetoid.GetPlanetForSunlikeStar(out _);
             Assert.IsNotNull(value);
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(value, _JsonSerializerSettings);
+            var json = System.Text.Json.JsonSerializer.Serialize(value);
 
             var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Size (Newtonsoft): {BytesToString(bytes.Length)}");
-            Console.WriteLine();
-            Console.WriteLine("JSON (Newtonsoft):");
-            Console.WriteLine(json);
-
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<Planetoid>(json);
-            Assert.AreEqual(value, deserialized);
-            Assert.AreEqual(json, Newtonsoft.Json.JsonConvert.SerializeObject(deserialized, _JsonSerializerSettings));
-
-            json = System.Text.Json.JsonSerializer.Serialize(value);
-
-            bytes = Encoding.UTF8.GetBytes(json);
             Console.WriteLine();
             Console.WriteLine($"Size (System.Text.Json): {BytesToString(bytes.Length)}");
             Console.WriteLine();
             Console.WriteLine("JSON (System.Text.Json):");
             Console.WriteLine(json);
 
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<Planetoid>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<Planetoid>(json);
             Assert.AreEqual(value, deserialized);
             Assert.AreEqual(json, System.Text.Json.JsonSerializer.Serialize(deserialized));
         }
@@ -436,37 +314,11 @@ namespace NeverFoundry.WorldFoundry.Test
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(children, _JsonSerializerSettings);
+            var json = System.Text.Json.JsonSerializer.Serialize(children);
 
             stopwatch.Stop();
 
             var bytes = Encoding.UTF8.GetBytes(json);
-            Console.WriteLine($"Size (Newtonsoft): {BytesToString(bytes.Length)}");
-            Console.WriteLine($"Serialization time (Newtonsoft): {stopwatch.Elapsed}");
-            //Console.WriteLine();
-            //Console.WriteLine("JSON (Newtonsoft):");
-            //Console.WriteLine(json);
-
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CosmicLocation>>(json, _JsonSerializerSettings);
-
-            stopwatch.Stop();
-
-            Assert.IsNotNull(deserialized);
-            Assert.IsTrue(children.SequenceEqual(deserialized!));
-
-            Console.WriteLine($"Deserialization time (Newtonsoft): {stopwatch.Elapsed}");
-
-            stopwatch.Reset();
-            stopwatch.Start();
-
-            json = System.Text.Json.JsonSerializer.Serialize(children);
-
-            stopwatch.Stop();
-
-            bytes = Encoding.UTF8.GetBytes(json);
             Console.WriteLine();
             Console.WriteLine($"Size (System.Text.Json): {BytesToString(bytes.Length)}");
             Console.WriteLine($"Serialization time (System.Text.Json): {stopwatch.Elapsed}");
@@ -477,7 +329,7 @@ namespace NeverFoundry.WorldFoundry.Test
             stopwatch.Reset();
             stopwatch.Start();
 
-            deserialized = System.Text.Json.JsonSerializer.Deserialize<List<CosmicLocation>>(json);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<List<CosmicLocation>>(json);
 
             stopwatch.Stop();
 

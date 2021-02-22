@@ -6,11 +6,9 @@ using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.MathAndScience.Randomization;
 using NeverFoundry.MathAndScience.Time;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
-using NeverFoundry.WorldFoundry.Space.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
-using NeverFoundry.WorldFoundry.Utilities;
+using NeverFoundry.WorldFoundry.Planet.Climate;
+using NeverFoundry.WorldFoundry.Planet.SurfaceMapping;
+using NeverFoundry.WorldFoundry.Planet.Utilities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
@@ -21,86 +19,40 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Number = NeverFoundry.MathAndScience.Numerics.Number;
 
-namespace NeverFoundry.WorldFoundry.Space
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
     /// Any non-stellar celestial body, such as a planet or asteroid.
     /// </summary>
     [Serializable]
-    [System.Text.Json.Serialization.JsonConverter(typeof(PlanetoidConverter))]
-    public class Planetoid : CosmicLocation, IDisposable
+    [System.Text.Json.Serialization.JsonConverter(typeof(PlanetConverter))]
+    public class Planet : IdItem, ISerializable, IDisposable
     {
         internal const double DefaultTerrestrialMaxDensity = 6000;
-        internal const int GiantMaxDensity = 1650;
-
-        /// <summary>
-        /// Above this an object achieves hydrostatic equilibrium, and is considered a dwarf planet
-        /// rather than an asteroid.
-        /// </summary>
-        private const double AsteroidMaxMassForType = 3.4e20;
-        /// <summary>
-        /// Below this a body is considered a meteoroid, rather than an asteroid.
-        /// </summary>
-        private const double AsteroidMinMassForType = 5.9e8;
 
         // polar latitude = ~1.476
         private const double CosPolarLatitude = 0.095;
         private const int DefaultMapResolution = 320;
         private const int DefaultSeasons = 4;
-        private const int DensityForDwarf = 2000;
-        private const int GiantMinDensity = 1100;
-        private const int GiantSubMinDensity = 600;
+        private const double DoubleEarthAxialTilt = PlanetParams.EarthAxialTilt * 2;
 
         /// <summary>
         /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
         /// </summary>
         private const int MinimumRadius = 600000;
-
         private const double ArcticLatitudeRange = Math.PI / 16;
         private const double ArcticLatitude = MathAndScience.Constants.Doubles.MathConstants.HalfPI - ArcticLatitudeRange;
         private const double FifthPI = Math.PI / 5;
         private const double EighthPI = Math.PI / 8;
 
-        internal static readonly Number GiantSpace = new(2.5, 8);
-
-        private static readonly Number _AsteroidSpace = new(400000);
-        private static readonly Number _CometSpace = new(25000);
-
-        /// <summary>
-        /// The minimum to achieve hydrostatic equilibrium and be considered a dwarf planet.
-        /// </summary>
-        private static readonly Number _DwarfMinMassForType = new(3.4, 20);
-
-        private static readonly Number _DwarfSpace = new(1.5, 6);
-
-        /// <summary>
-        /// Below this limit the planet will not have sufficient mass to retain hydrogen, and will
-        /// be a terrestrial planet.
-        /// </summary>
-        private static readonly Number _GiantMinMassForType = new(6, 25);
-
-        private static readonly Number _IcyRingDensity = 300;
         private static readonly double _LowTemp = (Substances.All.Water.MeltingPoint ?? 0) - 48;
-
-        /// <summary>
-        /// An arbitrary limit separating rogue dwarf planets from rogue planets.
-        /// Within orbital systems, a calculated value for clearing the neighborhood is used instead.
-        /// </summary>
-        private static readonly Number _DwarfMaxMassForType = new(6, 25);
-
-        /// <summary>
-        /// At around this limit the planet will have sufficient mass to sustain fusion, and become
-        /// a brown dwarf.
-        /// </summary>
-        private static readonly Number _GiantMaxMassForType = new(2.5, 28);
+        private static readonly double _SinNegativeAxialTilt = Math.Sin(-PlanetParams.EarthAxialTilt);
 
         /// <summary>
         /// At around this limit the planet will have sufficient mass to retain hydrogen, and become
         /// a giant.
         /// </summary>
         private static readonly Number _TerrestrialMaxMassForType = new(6, 25);
-
-        private static readonly Number _RockyRingDensity = 1380;
 
         /// <summary>
         /// An arbitrary limit separating rogue dwarf planets from rogue planets. Within orbital
@@ -110,17 +62,12 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private static readonly Number _TerrestrialSpace = new(1.75, 7);
 
-        internal readonly bool _earthlike;
-        internal readonly HabitabilityRequirements? _habitabilityRequirements;
-        internal readonly PlanetParams? _planetParams;
-
         internal double _blackbodyTemperature;
         internal Image? _elevationMap;
         internal string? _elevationMapPath;
         internal double _normalizedSeaLevel;
         internal Image?[]? _precipitationMaps;
         internal string?[]? _precipitationMapPaths;
-        internal List<string>? _satelliteIDs;
         internal Image?[]? _snowfallMaps;
         internal string?[]? _snowfallMapPaths;
         internal double _surfaceTemperatureAtApoapsis;
@@ -133,6 +80,7 @@ namespace NeverFoundry.WorldFoundry.Space
         private double? _averageSurfaceTemperature;
         private bool _disposedValue;
         private double? _diurnalTemperatureVariation;
+        private bool _hasBiosphere;
         private double? _maxSurfaceTemperature;
         private double? _minSurfaceTemperature;
         private int _seed1, _seed2, _seed3, _seed4, _seed5;
@@ -140,7 +88,22 @@ namespace NeverFoundry.WorldFoundry.Space
         private double? _surfaceTemperature;
 
         /// <summary>
-        /// The average albedo of this <see cref="Planetoid"/> (a value between 0 and 1).
+        /// The length of time it takes for this <see cref="Planet"/> to rotate once about its axis, in seconds. Read-only.
+        /// </summary>
+        public static Number RotationalPeriod => PlanetParams.EarthRotationalPeriod;
+
+        /// <summary>
+        /// The angular velocity of this <see cref="Planet"/>, in radians per second. Read-only.
+        /// </summary>
+        public static Number AngularVelocity { get; } = MathConstants.TwoPI / PlanetParams.EarthRotationalPeriod;
+
+        /// <summary>
+        /// The axial tilt of the <see cref="Planet"/> relative to its orbital plane, in radians. Read-only.
+        /// </summary>
+        public static double AxialTilt => PlanetParams.EarthAxialTilt;
+
+        /// <summary>
+        /// The average albedo of this <see cref="Planet"/> (a value between 0 and 1).
         /// </summary>
         /// <remarks>
         /// This refers to the total albedo of the body, including any atmosphere, not just the
@@ -149,28 +112,20 @@ namespace NeverFoundry.WorldFoundry.Space
         public double Albedo { get; private set; }
 
         /// <summary>
-        /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
+        /// The angle between the Y-axis and the axis of rotation of this <see cref="Planet"/>.
         /// Values greater than π/2 indicate clockwise rotation. Read-only; set with <see
         /// cref="SetAngleOfRotation(double)"/>.
         /// </summary>
         /// <remarks>
-        /// Note that this is not the same as axial tilt if the <see cref="Planetoid"/>
+        /// Note that this is not the same as axial tilt if the <see cref="Planet"/>
         /// is in orbit; in that case axial tilt is relative to the normal of the orbital plane of
-        /// the <see cref="Planetoid"/>, not the Y-axis.
+        /// the <see cref="Planet"/>, not the Y-axis.
         /// </remarks>
         public double AngleOfRotation { get; private set; }
 
-        private Number? _angularVelocity;
-        /// <summary>
-        /// The angular velocity of this <see cref="Planetoid"/>, in radians per second. Read-only;
-        /// set via <see cref="RotationalPeriod"/>.
-        /// </summary>
-        public Number AngularVelocity
-            => _angularVelocity ??= RotationalPeriod.IsZero ? Number.Zero : MathConstants.TwoPI / RotationalPeriod;
-
         private Atmosphere? _atmosphere;
         /// <summary>
-        /// The atmosphere possessed by this <see cref="Planetoid"/>.
+        /// The atmosphere possessed by this <see cref="Planet"/>.
         /// </summary>
         public Atmosphere Atmosphere
         {
@@ -184,51 +139,22 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public double AxialPrecession { get; private set; }
 
-        private double? _axialTilt;
-        /// <summary>
-        /// The axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in radians.
-        /// Values greater than π/2 indicate clockwise rotation. Read-only; set with <see
-        /// cref="SetAxialTilt(double)"/>
-        /// </summary>
-        /// <remarks>
-        /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
-        /// rotation.
-        /// </remarks>
-        public double AxialTilt => _axialTilt ??= Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
-
         /// <summary>
         /// A <see cref="System.Numerics.Vector3"/> which represents the axis of this <see
-        /// cref="Planetoid"/>. Read-only. Set with <see cref="SetAxialTilt(double)"/> or <see
-        /// cref="SetAngleOfRotation(double)"/>.
+        /// cref="Planet"/>. Read-only.
         /// </summary>
         public System.Numerics.Vector3 Axis { get; private set; } = System.Numerics.Vector3.UnitY;
 
         /// <summary>
         /// A <see cref="System.Numerics.Quaternion"/> representing the rotation of the axis of this
-        /// <see cref="Planetoid"/>. Read-only; set with <see cref="SetAxialTilt(double)"/> or
-        /// <see cref="SetAngleOfRotation(double)"/>"/>
+        /// <see cref="Planet"/>. Read-only.
         /// </summary>
         public System.Numerics.Quaternion AxisRotation { get; private set; } = System.Numerics.Quaternion.Identity;
-
-        /// <summary>
-        /// Indicates whether or not this planet has a native population of living organisms.
-        /// </summary>
-        /// <remarks>
-        /// The complexity of life is not presumed. If a planet is basically habitable (liquid
-        /// surface water), life in at least a single-celled form may be indicated, and may affect
-        /// the atmospheric composition.
-        /// </remarks>
-        public bool HasBiosphere { get; set; }
 
         /// <summary>
         /// Whether an elevation map has been loaded.
         /// </summary>
         public bool HasElevationMap => _elevationMap != null;
-
-        /// <summary>
-        /// Indicates whether this <see cref="Planetoid"/> has a strong magnetosphere.
-        /// </summary>
-        public bool HasMagnetosphere { get; private set; }
 
         /// <summary>
         /// Whether any precipitation maps have been loaded.
@@ -260,7 +186,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         /// <remarks>
         /// Represented as a separate <see cref="IMaterial"/> rather than as a top layer of <see
-        /// cref="CosmicLocation.Material"/> for ease of reference to both the solid surface
+        /// cref="Material"/> for ease of reference to both the solid surface
         /// layer, and the hydrosphere.
         /// </remarks>
         public IMaterial Hydrosphere { get; private set; } = MathAndScience.Chemistry.Material.Empty;
@@ -268,47 +194,26 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <summary>
         /// The type discriminator for this type.
         /// </summary>
-        public const string PlanetoidIdItemTypeName = ":Location:CosmicLocation:Planetoid:";
+        public const string PlanetIdItemTypeName = ":Planet:";
         /// <summary>
         /// A built-in, read-only type discriminator.
         /// </summary>
-        public override string IdItemTypeName => PlanetoidIdItemTypeName;
-
-        /// <summary>
-        /// Indicates whether this is an asteroid.
-        /// </summary>
-        public bool IsAsteroid => PlanetType.Asteroid.HasFlag(PlanetType);
-
-        /// <summary>
-        /// Indicates whether this is a dwarf planet.
-        /// </summary>
-        public bool IsDwarf => PlanetType.AnyDwarf.HasFlag(PlanetType);
-
-        /// <summary>
-        /// Indicates whether this is a giant planet (including ice giants).
-        /// </summary>
-        public bool IsGiant => PlanetType.Giant.HasFlag(PlanetType);
-
-        /// <summary>
-        /// <para>
-        /// Whether this planet is inhospitable to life.
-        /// </para>
-        /// <para>
-        /// Typically due to a highly energetic or volatile star, which either produces a great deal
-        /// of ionizing radiation, or has a rapidly shifting habitable zone, or both.
-        /// </para>
-        /// </summary>
-        public bool IsInhospitable { get; private set; }
-
-        /// <summary>
-        /// Indicates whether this is a terrestrial planet.
-        /// </summary>
-        public bool IsTerrestrial => PlanetType.AnyTerrestrial.HasFlag(PlanetType);
+        public string IdItemTypeName => PlanetIdItemTypeName;
 
         /// <summary>
         /// The number of precipitation maps which have been assigned.
         /// </summary>
         public int MappedSeasons => _precipitationMaps?.Length ?? 0;
+
+        /// <summary>
+        /// The mass of this location's material, in kg.
+        /// </summary>
+        public Number Mass => Material.Mass;
+
+        /// <summary>
+        /// The physical material which comprises this location.
+        /// </summary>
+        public IMaterial Material { get; private protected set; } = MathAndScience.Chemistry.Material.Empty;
 
         private double? _maxElevation;
         /// <summary>
@@ -328,29 +233,21 @@ namespace NeverFoundry.WorldFoundry.Space
         /// even close to this value.
         /// </para>
         /// </summary>
-        public double MaxElevation => _maxElevation ??= (IsGiant || PlanetType == PlanetType.Ocean ? 0 : 200000 / (double)SurfaceGravity);
+        public double MaxElevation => _maxElevation ??= 200000 / (double)SurfaceGravity;
 
         /// <summary>
-        /// The type of <see cref="Planetoid"/>.
+        /// The orbit occupied by this <see cref="Planet"/> (may be <see langword="null"/>).
         /// </summary>
-        public PlanetType PlanetType { get; }
-
-        internal List<PlanetaryRing>? _rings;
-        /// <summary>
-        /// The collection of rings around this <see cref="Planetoid"/>.
-        /// </summary>
-        public IEnumerable<PlanetaryRing> Rings => _rings ?? Enumerable.Empty<PlanetaryRing>();
+        public Orbit? Orbit { get; internal set; }
 
         /// <summary>
-        /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis, in seconds.
+        /// The position of this location relative to the center of its parent.
         /// </summary>
-        public Number RotationalPeriod { get; private set; }
-
-        private readonly List<Resource> _resources = new();
-        /// <summary>
-        /// The resources of this <see cref="Planetoid"/>.
-        /// </summary>
-        public IEnumerable<Resource> Resources => _resources;
+        public virtual Vector3 Position
+        {
+            get => Shape.Position;
+            internal set => Shape = Shape.GetCloneAtPosition(value);
+        }
 
         private double? _seaLevel;
         /// <summary>
@@ -368,7 +265,39 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// The total temperature of this <see cref="Planetoid"/>, not including atmosphereic
+        /// A value which deterministically allows this <see cref="Planet"/> to be
+        /// regenerated, given identical values for its other properties.
+        /// </summary>
+        public uint Seed { get; private protected set; }
+
+        /// <summary>
+        /// The shape of this location.
+        /// </summary>
+        public IShape Shape
+        {
+            get => Material.Shape;
+            private protected set => Material.Shape = value;
+        }
+
+        private protected Number? _surfaceGravity;
+        /// <summary>
+        /// The average force of gravity at the surface of this object, in N.
+        /// </summary>
+        public Number SurfaceGravity => _surfaceGravity ??= Material.GetSurfaceGravity();
+
+        /// <summary>
+        /// The average temperature of this location's <see cref="Material"/>, in K.
+        /// </summary>
+        /// <returns>
+        /// The average temperature of this location's <see cref="Material"/>, in K.
+        /// </returns>
+        /// <remarks>
+        /// No less than the ambient temperature of its parent, if any.
+        /// </remarks>
+        public double Temperature => Material.Temperature ?? 0;
+
+        /// <summary>
+        /// The total temperature of this <see cref="Planet"/>, not including atmosphereic
         /// effects, averaged over its orbit, in K.
         /// </summary>
         internal double AverageBlackbodyTemperature { get; private set; }
@@ -388,6 +317,9 @@ namespace NeverFoundry.WorldFoundry.Space
             set => _insolationFactor_Equatorial = value;
         }
 
+        private Number? _radiusSquared;
+        internal Number RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
+
         private double? _summerSolsticeTrueAnomaly;
         internal double SummerSolsticeTrueAnomaly
             => _summerSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.HalfPI
@@ -399,29 +331,6 @@ namespace NeverFoundry.WorldFoundry.Space
             => _winterSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI
             - (Orbit?.LongitudeOfPeriapsis ?? 0))
             % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-
-        private protected override string BaseTypeName => PlanetType switch
-        {
-            PlanetType.AsteroidC => "C-Type Asteroid",
-            PlanetType.AsteroidM => "M-Type Asteroid",
-            PlanetType.AsteroidS => "S-Type Asteroid",
-            PlanetType.Comet => "Comet",
-            PlanetType.Dwarf => "Dwarf Planet",
-            PlanetType.LavaDwarf => "Dwarf Planet",
-            PlanetType.RockyDwarf => "Dwarf Planet",
-            PlanetType.GasGiant => "Gas Giant",
-            PlanetType.IceGiant => "Ice Giant",
-            _ => "Planet",
-        };
-
-        private bool CanHaveWater => PlanetType switch
-        {
-            PlanetType.Carbon => false,
-            PlanetType.Iron => false,
-            PlanetType.Lava => false,
-            PlanetType.LavaDwarf => false,
-            _ => true,
-        };
 
         private double? _insolationFactor_Polar;
         private double InsolationFactor_Polar => _insolationFactor_Polar ??= GetInsolationFactor(true);
@@ -444,184 +353,36 @@ namespace NeverFoundry.WorldFoundry.Space
         private FastNoise? _noise5;
         private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
 
-        private protected override string? TypeNamePrefix => PlanetType switch
-        {
-            PlanetType.LavaDwarf => "Lava",
-            PlanetType.RockyDwarf => "Rocky",
-            PlanetType.Terrestrial => "Terrestrial",
-            PlanetType.Carbon => "Carbon",
-            PlanetType.Iron => "Iron",
-            PlanetType.Lava => "Lava",
-            PlanetType.Ocean => "Ocean",
-            _ => null,
-        };
-
-        private protected override string? TypeNameSuffix => PlanetType switch
-        {
-            PlanetType.AsteroidC => "c",
-            PlanetType.AsteroidM => "m",
-            PlanetType.AsteroidS => "s",
-            _ => null,
-        };
-
         /// <summary>
-        /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
+        /// Initializes a new instance of <see cref="Planet"/> with the given parameters.
         /// </summary>
-        /// <param name="planetType">The type of planet to generate.</param>
-        /// <param name="parent">
-        /// The containing parent location for the new planet (if any).
-        /// </param>
-        /// <param name="star">
-        /// <para>
-        /// The star the new <see cref="Planetoid"/> will orbit.
-        /// </para>
-        /// <para>
-        /// If omitted, and <paramref name="orbit"/> is also <see langword="null"/>, a star will be
-        /// selected at random from among the provided <paramref name="stars"/>.
-        /// </para>
-        /// </param>
-        /// <param name="stars">
-        /// The collection of stars in the local system.
-        /// </param>
-        /// <param name="position">The position for the child.</param>
-        /// <param name="satellites">
-        /// <para>
-        /// When this method returns, will be set to a <see cref="List{T}"/> of <see
-        /// cref="Planetoid"/>s containing any satellites generated for the planet during the
-        /// creation process.
-        /// </para>
-        /// <para>
-        /// This list may be useful, for instance, to ensure that these additional objects are also
-        /// persisted to data storage.
-        /// </para>
-        /// </param>
-        /// <param name="orbit">
-        /// <para>
-        /// An optional orbit to assign to the child.
-        /// </para>
-        /// <para>
-        /// Depending on the parameters, may override <paramref name="position"/>.
-        /// </para>
-        /// </param>
-        /// <param name="planetParams">An optional set of <see cref="PlanetParams"/>.</param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>.
-        /// </param>
-        /// <param name="satellite">
-        /// If <see langword="true"/>, indicates that this <see cref="Planetoid"/> is being
-        /// generated as a satellite of another.
-        /// </param>
         /// <param name="seed">
         /// A value used to seed the random generator.
         /// </param>
-        public Planetoid(
-            PlanetType planetType,
-            CosmicLocation? parent,
-            Star? star,
-            List<Star> stars,
-            Vector3 position,
-            out List<Planetoid> satellites,
-            OrbitalParameters? orbit = null,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null,
-            bool satellite = false,
-            uint? seed = null) : base(parent?.Id, CosmicStructureType.Planetoid)
-        {
-            PlanetType = planetType;
-            _planetParams = planetParams;
-            _habitabilityRequirements = habitabilityRequirements;
-            if (planetParams.HasValue
-                && habitabilityRequirements.HasValue
-                && planetParams.Value.Equals(PlanetParams.Earthlike)
-                && habitabilityRequirements.Value.Equals(HabitabilityRequirements.HumanHabitabilityRequirements))
-            {
-                _earthlike = true;
-            }
+        public Planet(uint? seed = null) => Configure(seed);
 
-            if (star is null && !orbit.HasValue)
-            {
-                star = Randomizer.Instance.Next(stars);
-            }
-
-            satellites = Configure(parent, stars, star, position, satellite, orbit, seed);
-
-            if (parent is not null && !orbit.HasValue && !Orbit.HasValue)
-            {
-                if (parent is AsteroidField asteroidField)
-                {
-                    orbit = asteroidField.GetChildOrbit();
-                }
-                else
-                {
-                    orbit = parent.StructureType switch
-                    {
-                        CosmicStructureType.GalaxySubgroup => Position.IsZero() ? null : parent.GetGalaxySubgroupChildOrbit(),
-                        CosmicStructureType.SpiralGalaxy
-                            or CosmicStructureType.EllipticalGalaxy
-                            or CosmicStructureType.DwarfGalaxy => Position.IsZero() ? (OrbitalParameters?)null : parent.GetGalaxyChildOrbit(),
-                        CosmicStructureType.GlobularCluster => Position.IsZero() ? (OrbitalParameters?)null : parent.GetGlobularClusterChildOrbit(),
-                        CosmicStructureType.StarSystem => parent is StarSystem && !Position.IsZero()
-                            ? OrbitalParameters.GetFromEccentricity(parent.Mass, parent.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
-                            : (OrbitalParameters?)null,
-                        _ => null,
-                    };
-                }
-            }
-            if (orbit.HasValue && !Orbit.HasValue)
-            {
-                Space.Orbit.AssignOrbit(this, orbit.Value);
-            }
-        }
-
-        internal Planetoid(
+        internal Planet(
             string id,
             uint seed,
-            PlanetType planetType,
-            string? parentId,
             Vector3[]? absolutePosition,
-            string? name,
             Vector3 velocity,
             Orbit? orbit,
             Vector3 position,
             double? temperature,
             double angleOfRotation,
-            Number rotationalPeriod,
-            List<string>? satelliteIds,
-            List<PlanetaryRing>? rings,
             double blackbodyTemperature,
             double surfaceTemperatureAtApoapsis,
             double surfaceTemperatureAtPeriapsis,
-            bool isInhospitable,
-            bool earthlike,
-            PlanetParams? planetParams,
-            HabitabilityRequirements? habitabilityRequirements,
             string? elevationMapPath,
             string?[]? precipitationMapPaths,
             string?[]? snowfallMapPaths,
             string? temperatureMapSummerPath,
             string? temperatureMapWinterPath)
-            : base(
-                id,
-                seed,
-                CosmicStructureType.Planetoid,
-                parentId,
-                absolutePosition,
-                name,
-                velocity,
-                orbit)
         {
-            PlanetType = planetType;
             AngleOfRotation = angleOfRotation;
-            RotationalPeriod = rotationalPeriod;
-            _satelliteIDs = satelliteIds;
-            _rings = rings;
             _blackbodyTemperature = blackbodyTemperature;
             _surfaceTemperatureAtApoapsis = surfaceTemperatureAtApoapsis;
             _surfaceTemperatureAtPeriapsis = surfaceTemperatureAtPeriapsis;
-            IsInhospitable = isInhospitable;
-            _earthlike = earthlike;
-            _planetParams = earthlike ? PlanetParams.Earthlike : planetParams;
-            _habitabilityRequirements = earthlike ? HabitabilityRequirements.HumanHabitabilityRequirements : habitabilityRequirements;
             _elevationMapPath = elevationMapPath;
             _precipitationMapPaths = precipitationMapPaths;
             _snowfallMapPaths = snowfallMapPaths;
@@ -643,28 +404,16 @@ namespace NeverFoundry.WorldFoundry.Space
             GenerateResources(rehydrator);
         }
 
-        private Planetoid(SerializationInfo info, StreamingContext context) : this(
+        private Planet(SerializationInfo info, StreamingContext context) : this(
             (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
             (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
-            (PlanetType?)info.GetValue(nameof(PlanetType), typeof(PlanetType)) ?? PlanetType.Comet,
-            (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
-            (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
-            (string?)info.GetValue(nameof(Name), typeof(string)),
-            (Vector3?)info.GetValue(nameof(Velocity), typeof(Vector3)) ?? default,
             (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
             (Vector3?)info.GetValue(nameof(Position), typeof(Vector3)) ?? default,
             (double?)info.GetValue(nameof(Temperature), typeof(double?)),
             (double?)info.GetValue(nameof(AngleOfRotation), typeof(double)) ?? default,
-            (Number?)info.GetValue(nameof(RotationalPeriod), typeof(Number)) ?? Number.Zero,
-            (List<string>?)info.GetValue(nameof(_satelliteIDs), typeof(List<string>)),
-            (List<PlanetaryRing>?)info.GetValue(nameof(Rings), typeof(List<PlanetaryRing>)),
             (double?)info.GetValue(nameof(_blackbodyTemperature), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(_surfaceTemperatureAtApoapsis), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(_surfaceTemperatureAtPeriapsis), typeof(double)) ?? default,
-            (bool?)info.GetValue(nameof(IsInhospitable), typeof(bool)) ?? default,
-            (bool?)info.GetValue(nameof(_earthlike), typeof(bool)) ?? default,
-            (PlanetParams?)info.GetValue(nameof(_planetParams), typeof(PlanetParams?)),
-            (HabitabilityRequirements?)info.GetValue(nameof(_habitabilityRequirements), typeof(HabitabilityRequirements?)),
             (string?)info.GetValue(nameof(_elevationMapPath), typeof(string)),
             (string?[]?)info.GetValue(nameof(_precipitationMapPaths), typeof(string?[])),
             (string?[]?)info.GetValue(nameof(_snowfallMapPaths), typeof(string?[])),
@@ -673,122 +422,20 @@ namespace NeverFoundry.WorldFoundry.Space
         { }
 
         /// <summary>
-        /// Generates a new <see cref="Planetoid"/> instance in a new <see cref="StarSystem"/>.
+        /// Gets the number of seconds difference from solar time at zero longitude at the given
+        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
+        /// west.
         /// </summary>
-        /// <param name="children">
-        /// <para>
-        /// When this method returns, will be set to a <see cref="List{T}"/> of <see
-        /// cref="CosmicLocation"/>s containing any child objects generated for the location during
-        /// the creation process.
-        /// </para>
-        /// <para>
-        /// This list may be useful, for instance, to ensure that these additional objects are also
-        /// persisted to data storage.
-        /// </para>
-        /// </param>
-        /// <param name="planetType">The type of planet to generate.</param>
-        /// <param name="starSystemDefinition">
-        /// <para>
-        /// Any requirements the newly created <see cref="StarSystem"/> should meet.
-        /// </para>
-        /// <para>
-        /// If omitted, a system with a single star similar to Sol, Earth's sun, will be generated.
-        /// </para>
-        /// </param>
-        /// <param name="parent">
-        /// The containing parent location for the new system (if any).
-        /// </param>
-        /// <param name="position">
-        /// <para>
-        /// The position for new system.
-        /// </para>
-        /// <para>
-        /// If omitted, the system will be placed at <see cref="Vector3.Zero"/>.
-        /// </para>
-        /// </param>
-        /// <param name="orbit">
-        /// An optional orbit to assign to the child.
-        /// </param>
-        /// <param name="planetParams">
-        /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
-        /// </param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-        /// habiltability requirements will be used.
-        /// </param>
-        /// <returns>A planet with the given parameters.</returns>
-        public static Planetoid? GetPlanetForNewStar(
-            out List<CosmicLocation> children,
-            PlanetType planetType = PlanetType.Terrestrial,
-            StarSystemChildDefinition? starSystemDefinition = null,
-            CosmicLocation? parent = null,
-            Vector3? position = null,
-            OrbitalParameters? orbit = null,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
-        {
-            var system = starSystemDefinition is null
-                ? new StarSystem(parent, position ?? Vector3.Zero, out children, sunlike: true)
-                : starSystemDefinition.GetStarSystem(parent, position ?? Vector3.Zero, out children);
-            if (system is null)
-            {
-                return null;
-            }
-
-            var pParams = planetParams ?? PlanetParams.Earthlike;
-            var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
-            var sanityCheck = 0;
-            Planetoid? planet;
-            List<Planetoid> childSatellites;
-            do
-            {
-                planet = new Planetoid(
-                    planetType,
-                    system,
-                    null,
-                    children.OfType<Star>().ToList(),
-                    new Vector3(new Number(15209, 7), Number.Zero, Number.Zero),
-                    out childSatellites,
-                    orbit,
-                    pParams,
-                    requirements);
-                sanityCheck++;
-                if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
-                {
-                    break;
-                }
-                else
-                {
-                    planet = null;
-                }
-            } while (sanityCheck <= 100);
-            if (planet is not null)
-            {
-                // Clear pregenerated planets whose orbits are too close to this one.
-                if (planet.Orbit.HasValue)
-                {
-                    var planetOrbitalPath = new Torus(
-                        (planet.Orbit.Value.Apoapsis + planet.Orbit.Value.Periapsis) / 2,
-                        Number.Min(
-                            (planet.Orbit.Value.Apoapsis + planet.Orbit.Value.Periapsis) / 2,
-                            (Number.Abs(planet.Orbit.Value.Apoapsis - planet.Orbit.Value.Periapsis) / 2) + planet.Orbit.Value.GetSphereOfInfluenceRadius(planet.Mass)));
-                    children.RemoveAll(x => x is Planetoid p
-                        && p.Orbit.HasValue
-                        && planetOrbitalPath.Intersects(new Torus(
-                            (p.Orbit.Value.Apoapsis + p.Orbit.Value.Periapsis) / 2,
-                            Number.Min(
-                                (p.Orbit.Value.Apoapsis + p.Orbit.Value.Periapsis) / 2,
-                                (Number.Abs(p.Orbit.Value.Apoapsis - p.Orbit.Value.Periapsis) / 2) + p.Orbit.Value.GetSphereOfInfluenceRadius(p.Mass)))));
-                }
-                children.Add(system);
-                children.AddRange(childSatellites);
-            }
-            return planet;
-        }
+        /// <param name="longitude">The longitude at which to determine the time offset.</param>
+        /// <returns>The number of seconds difference from solar time at zero longitude at the given
+        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
+        /// west.</returns>
+        public static Number GetLocalTimeOffset(double longitude)
+            => (longitude > Math.PI ? longitude - MathAndScience.Constants.Doubles.MathConstants.TwoPI : longitude) * PlanetParams.EarthRotationalPeriod / MathConstants.TwoPI;
 
         /// <summary>
         /// <para>
-        /// Generates a new <see cref="Planetoid"/> instance with no containing parent location, but
+        /// Generates a new <see cref="Planet"/> instance with no containing parent location, but
         /// assuming a star with sunlike characteristics.
         /// </para>
         /// <para>
@@ -801,7 +448,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="children">
         /// <para>
         /// When this method returns, will be set to a <see cref="List{T}"/> of <see
-        /// cref="CosmicLocation"/>s containing any child objects generated for the location during
+        /// cref="Planet"/>s containing any child objects generated for the location during
         /// the creation process.
         /// </para>
         /// <para>
@@ -824,8 +471,8 @@ namespace NeverFoundry.WorldFoundry.Space
         /// A value used to seed the random generator.
         /// </param>
         /// <returns>A planet with the given parameters.</returns>
-        public static Planetoid? GetPlanetForSunlikeStar(
-            out List<CosmicLocation> children,
+        public static Planet? GetPlanetForSunlikeStar(
+            out List<Planet> children,
             PlanetType planetType = PlanetType.Terrestrial,
             OrbitalParameters? orbit = null,
             PlanetParams? planetParams = null,
@@ -835,7 +482,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var pParams = planetParams ?? PlanetParams.Earthlike;
             var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
 
-            children = new List<CosmicLocation>();
+            children = new List<Planet>();
 
             var fakeStar = Star.NewSunlike(null, Vector3.Zero);
             if (fakeStar is null)
@@ -844,11 +491,11 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var sanityCheck = 0;
-            Planetoid? planet;
-            List<Planetoid> childSatellites;
+            Planet? planet;
+            List<Planet> childSatellites;
             do
             {
-                planet = new Planetoid(
+                planet = new Planet(
                     planetType,
                     null,
                     fakeStar,
@@ -878,280 +525,18 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Given a star, generates a terrestrial planet with the given parameters, and puts the
-        /// planet in orbit around the star.
+        /// Determines the proportion of the seasonal cycle, with 0 indicating winter, and 1
+        /// indicating summer, from the given proportion of a full year, starting and ending at
+        /// midwinter.
         /// </summary>
-        /// <param name="dataStore">
-        /// The <see cref="IDataStore"/> from which to retrieve instances.
+        /// <param name="proportionOfYear">
+        /// The proportion of a full year, starting and ending at midwinter, at which to make the
+        /// calculation.
         /// </param>
-        /// <param name="star">
-        /// <para>
-        /// A star which the new planet will orbit, at a distance suitable for habitability.
-        /// </para>
-        /// <para>
-        /// Note: if the star system already has planets in orbit around the given star, the newly
-        /// created planet may be placed into an unrealistically close orbit to another body,
-        /// especially if such an orbit is required in order to satisfy any temperature
-        /// requirements. For more realistic results, you may wish to generate your target planet
-        /// and system together with <see cref="GetPlanetForNewStar(out List{CosmicLocation},
-        /// PlanetType, StarSystemChildDefinition?, CosmicLocation?, Vector3?, OrbitalParameters?,
-        /// PlanetParams?, HabitabilityRequirements?)"/>. That method not only generates a planet
-        /// and star system according to provided specifications, but ensures that any additional
-        /// planets generated for the system take up orbits which are in accordance with the
-        /// initial, target planet.
-        /// </para>
-        /// </param>
-        /// <param name="planetParams">
-        /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
-        /// </param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-        /// habiltability requirements will be used.
-        /// </param>
-        /// <returns>
-        /// <para>
-        /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
-        /// generated.
-        /// </para>
-        /// <para>
-        /// Also, a <see cref="List{T}"/> of <see cref="Planetoid"/>s containing any satellites
-        /// generated during the creation process.
-        /// </para>
-        /// </returns>
-        public static async Task<(Planetoid? planet, List<Planetoid> children)> GetPlanetForStar(
-            IDataStore dataStore,
-            Star star,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
-        {
-            var stars = new List<Star>();
-            var parent = await star.GetParentAsync(dataStore).ConfigureAwait(false);
-            if (parent is StarSystem system)
-            {
-                await foreach (var item in system.GetStarsAsync(dataStore))
-                {
-                    stars.Add(item);
-                }
-            }
-            else
-            {
-                stars.Add(star);
-            }
-
-            var pParams = planetParams ?? PlanetParams.Earthlike;
-            var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
-            var sanityCheck = 0;
-            Planetoid? planet;
-            List<Planetoid> childSatellites;
-            do
-            {
-                planet = new Planetoid(
-                    PlanetType.Terrestrial,
-                    parent as CosmicLocation,
-                    star,
-                    stars,
-                    parent is StarSystem sys
-                        ? Vector3.UnitX * Randomizer.Instance.NextNumber(sys.Shape.ContainingRadius)
-                        : Randomizer.Instance.NextVector3Number(Number.Zero, parent?.Shape.ContainingRadius ?? Number.MaxValue),
-                    out childSatellites,
-                    null,
-                    pParams,
-                    requirements);
-                sanityCheck++;
-                if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
-                {
-                    break;
-                }
-                else
-                {
-                    planet = null;
-                }
-            } while (sanityCheck <= 100);
-            var satellites = planet is null ? new List<Planetoid>() : childSatellites;
-            return (planet, satellites);
-        }
-
-        /// <summary>
-        /// Given a galaxy, generates a terrestrial planet with the given parameters, orbiting a
-        /// Sol-like star in a new system in the given galaxy.
-        /// </summary>
-        /// <param name="dataStore">
-        /// The <see cref="IDataStore"/> from which to retrieve instances.
-        /// </param>
-        /// <param name="galaxy">A galaxy in which to situate the new planet.</param>
-        /// <param name="planetParams">
-        /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
-        /// </param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-        /// habiltability requirements will be used.
-        /// </param>
-        /// <returns>
-        /// <para>
-        /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
-        /// generated.
-        /// </para>
-        /// <para>
-        /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
-        /// generated during the creation process.
-        /// </para>
-        /// </returns>
-        public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGalaxyAsync(
-            IDataStore dataStore,
-            CosmicLocation galaxy,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
-        {
-            var children = new List<CosmicLocation>();
-
-            if (!CosmicStructureType.Galaxy.HasFlag(galaxy.StructureType))
-            {
-                return (null, children);
-            }
-
-            var galaxyChildren = new List<Location>();
-            await foreach (var item in galaxy.GetChildrenAsync(dataStore))
-            {
-                galaxyChildren.Add(item);
-            }
-
-            var pos = galaxy.GetOpenSpace(StarSystem.StarSystemSpace, galaxyChildren);
-            if (!pos.HasValue)
-            {
-                return (null, children);
-            }
-
-            var planet = GetPlanetForNewStar(
-                out children,
-                parent: galaxy,
-                position: pos,
-                planetParams: planetParams,
-                habitabilityRequirements: habitabilityRequirements);
-            return (planet, children);
-        }
-
-        /// <summary>
-        /// Given a universe, generates a terrestrial planet with the given parameters, orbiting a
-        /// Sol-like star in a new spiral galaxy in the given universe.
-        /// </summary>
-        /// <param name="dataStore">
-        /// The <see cref="IDataStore"/> from which to retrieve instances.
-        /// </param>
-        /// <param name="universe">A universe in which to situate the new planet.</param>
-        /// <param name="planetParams">
-        /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
-        /// </param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-        /// habiltability requirements will be used.
-        /// </param>
-        /// <returns>
-        /// <para>
-        /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
-        /// generated.
-        /// </para>
-        /// <para>
-        /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
-        /// generated during the creation process.
-        /// </para>
-        /// </returns>
-        public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForUniverseAsync(
-            IDataStore dataStore,
-            CosmicLocation universe,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
-        {
-            var children = new List<CosmicLocation>();
-
-            if (universe.StructureType != CosmicStructureType.Universe)
-            {
-                return (null, children);
-            }
-
-            var (gsc, gscSub) = await universe.GenerateChildAsync(dataStore, CosmicStructureType.Supercluster).ConfigureAwait(false);
-            if (gsc is null)
-            {
-                return (null, children);
-            }
-            children.Add(gsc);
-            children.AddRange(gscSub);
-
-            var (gc, gcSub) = await gsc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyCluster).ConfigureAwait(false);
-            if (gc is null)
-            {
-                return (null, children);
-            }
-            children.Add(gc);
-            children.AddRange(gcSub);
-
-            CosmicLocation? galaxy = null;
-            var sanityCheck = 0;
-            while (galaxy is null && sanityCheck < 100)
-            {
-                sanityCheck++;
-                var (gg, ggSub) = await gc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyGroup).ConfigureAwait(false);
-                if (gg is null || ggSub is null)
-                {
-                    continue;
-                }
-                galaxy = ggSub.Find(x => x.StructureType == CosmicStructureType.SpiralGalaxy);
-                if (galaxy is not null)
-                {
-                    children.Add(gg);
-                    children.AddRange(ggSub);
-                }
-            }
-            if (galaxy is null)
-            {
-                return (null, children);
-            }
-
-            var (planet, satellites) = await GetPlanetForGalaxyAsync(dataStore, galaxy, planetParams, habitabilityRequirements).ConfigureAwait(false);
-            children.AddRange(satellites);
-            return (planet, children);
-        }
-
-        /// <summary>
-        /// Generates a terrestrial planet with the given parameters, orbiting a Sol-like star in a
-        /// spiral galaxy in a new universe.
-        /// </summary>
-        /// <param name="dataStore">
-        /// The <see cref="IDataStore"/> from which to retrieve instances.
-        /// </param>
-        /// <param name="planetParams">
-        /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
-        /// </param>
-        /// <param name="habitabilityRequirements">
-        /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-        /// habiltability requirements will be used.
-        /// </param>
-        /// <returns>
-        /// <para>
-        /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
-        /// generated.
-        /// </para>
-        /// <para>
-        /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
-        /// generated during the creation process.
-        /// </para>
-        /// </returns>
-        public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForNewUniverseAsync(
-            IDataStore dataStore,
-            PlanetParams? planetParams = null,
-            HabitabilityRequirements? habitabilityRequirements = null)
-        {
-            var universe = New(CosmicStructureType.Universe, null, Vector3.Zero, out var children);
-            if (universe is null)
-            {
-                return (null, new List<CosmicLocation>());
-            }
-            var (planet, subChildren) = await GetPlanetForUniverseAsync(dataStore, universe, planetParams, habitabilityRequirements).ConfigureAwait(false);
-            children.Add(universe);
-            children.AddRange(subChildren);
-            return (planet, children);
-        }
-
-        internal static double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude, double axialTilt)
+        /// <param name="latitude">Used to determine hemisphere.</param>
+        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
+        /// at the given proportion of a full year, starting and ending at midwinter.</returns>
+        public static double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude)
         {
             if (proportionOfYear > 0.5)
             {
@@ -1164,9 +549,9 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var absLat = Math.Abs(latitude);
-            if (absLat < axialTilt)
+            if (absLat < PlanetParams.EarthAxialTilt)
             {
-                var maximum = 1 - ((axialTilt - absLat) / (axialTilt * 2));
+                var maximum = 1 - ((PlanetParams.EarthAxialTilt - absLat) / DoubleEarthAxialTilt);
                 proportionOfYear = 1 - (Math.Abs(proportionOfYear - maximum) / maximum);
             }
 
@@ -1754,23 +1139,27 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// <para>
-        /// Removes this location and all contained children, as well as all satellites, from the
-        /// given data store.
+        /// Removes this location from the given data store.
         /// </para>
         /// <para>
-        /// Note: for planets, it may be necessary to call <see
-        /// cref="ClearMapsAsync(ISurfaceMapLoader)"/> prior to deletion, in order to ensure that
-        /// any stored maps are also removed.
+        /// Note: it may be necessary to call <see cref="ClearMapsAsync(ISurfaceMapLoader)"/> prior
+        /// to deletion, in order to ensure that any stored maps are also removed.
         /// </para>
         /// </summary>
-        public override async Task<bool> DeleteAsync(IDataStore dataStore)
+        /// <param name="dataStore">
+        /// The <see cref="IDataStore"/> from which to delete this planet.
+        /// </param>
+        /// <param name="mapLoader">
+        /// Optional <see cref="ISurfaceMapLoader"/> implementation which will be used to delete any
+        /// stored map images.
+        /// </param>
+        public async Task<bool> DeleteAsync(IDataStore dataStore, ISurfaceMapLoader? mapLoader = null)
         {
-            var childrenSuccess = true;
-            await foreach (var child in GetSatellitesAsync(dataStore))
+            if (mapLoader is not null)
             {
-                childrenSuccess &= await child.DeleteAsync(dataStore).ConfigureAwait(false);
+                await ClearMapsAsync(mapLoader).ConfigureAwait(false);
             }
-            return childrenSuccess && await base.DeleteAsync(dataStore).ConfigureAwait(false);
+            return await dataStore.RemoveItemAsync(this).ConfigureAwait(false);
         }
 
         /// <summary>
@@ -1812,7 +1201,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// Calculates the atmospheric drag on a spherical object within the <see
-        /// cref="Atmosphere"/> of this <see cref="Planetoid"/> under given conditions, in N.
+        /// cref="Atmosphere"/> of this <see cref="Planet"/> under given conditions, in N.
         /// </summary>
         /// <param name="moment">The time at which to make the calculation.</param>
         /// <param name="latitude">The latitude of the object.</param>
@@ -1904,7 +1293,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// <para>
-        /// The average surface temperature of the <see cref="Planetoid"/> near its equator
+        /// The average surface temperature of the <see cref="Planet"/> near its equator
         /// throughout its orbit (or at its current position, if it is not in orbit), in K.
         /// </para>
         /// <para>
@@ -1931,9 +1320,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="position2">The first normalized position vector.</param>
         /// <returns>The approximate distance between the points, in meters.</returns>
         /// <remarks>
-        /// The distance is calculated as if the <see cref="Planetoid"/> was a sphere using a
+        /// The distance is calculated as if the <see cref="Planet"/> was a sphere using a
         /// great circle formula, which will lead to greater inaccuracy the more ellipsoidal the
-        /// shape of the <see cref="Planetoid"/>.
+        /// shape of the <see cref="Planet"/>.
         /// </remarks>
         public double GetDistance(Vector3 position1, Vector3 position2)
             => (double)Shape.ContainingRadius * Math.Atan2((double)position1.Dot(position2), (double)position1.Cross(position2).Length());
@@ -1946,9 +1335,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="position2">The first normalized position vector.</param>
         /// <returns>The approximate distance between the points, in meters.</returns>
         /// <remarks>
-        /// The distance is calculated as if the <see cref="Planetoid"/> was a sphere using a
+        /// The distance is calculated as if the <see cref="Planet"/> was a sphere using a
         /// great circle formula, which will lead to greater inaccuracy the more ellipsoidal the
-        /// shape of the <see cref="Planetoid"/>.
+        /// shape of the <see cref="Planet"/>.
         /// </remarks>
         public double GetDistance(MathAndScience.Numerics.Doubles.Vector3 position1, MathAndScience.Numerics.Doubles.Vector3 position2)
             => (double)Shape.ContainingRadius * Math.Atan2(position1.Dot(position2), position1.Cross(position2).Length());
@@ -1962,9 +1351,9 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="longitude2">The longitude of the second point.</param>
         /// <returns>The approximate distance between the points, in meters.</returns>
         /// <remarks>
-        /// The distance is calculated as if the <see cref="Planetoid"/> was a sphere using a
+        /// The distance is calculated as if the <see cref="Planet"/> was a sphere using a
         /// great circle formula, which will lead to greater inaccuracy the more ellipsoidal the
-        /// shape of the <see cref="Planetoid"/>.
+        /// shape of the <see cref="Planet"/>.
         /// </remarks>
         public double GetDistance(double latitude1, double longitude1, double latitude2, double longitude2)
             => GetDistance(LatitudeAndLongitudeToVector(latitude1, longitude1), LatitudeAndLongitudeToVector(latitude2, longitude2));
@@ -1978,7 +1367,7 @@ namespace NeverFoundry.WorldFoundry.Space
             if (!_diurnalTemperatureVariation.HasValue)
             {
                 var temp = Temperature;
-                var timeFactor = (double)(1 - ((RotationalPeriod - 2500) / 595000)).Clamp(0, 1);
+                var timeFactor = (double)(1 - ((PlanetParams.EarthRotationalPeriod - 2500) / 595000)).Clamp(0, 1);
                 var blackbodyTemp = AverageBlackbodyTemperature;
                 var greenhouseEffect = GetGreenhouseEffect();
                 var darkSurfaceTemp = (((blackbodyTemp * InsolationFactor_Equatorial) - temp) * timeFactor)
@@ -2137,26 +1526,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="latitude">The latitude at which to make the calculation.</param>
         /// <param name="longitude">The longitude at which to make the calculation.</param>
         /// <returns>The total illumination on the body, in lux (lumens per m²).</returns>
-        /// <remarks>
-        /// <para>
-        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
-        /// may not be as precise for other stellar bodies.
-        /// </para>
-        /// <para>
-        /// This method modifies total illumination based on an angle of incidence calculated from
-        /// the star orbited by this body, or by the body it orbits (in the case of satellites).
-        /// This will be accurate for single-star systems, and will be roughly accurate for binary
-        /// or multi-star systems where the secondary stars are either very distant compared to the
-        /// main, orbited star (and hence contribute little to overall illumination), or else are
-        /// very close to the main star relative to the body (and hence share a similar angle of
-        /// incidence). In multi-star systems where the stellar bodies are close enough to the body
-        /// to contribute significantly to total illumination, but have significantly different
-        /// positions (and hence, angles of incidence), this method's results will be significantly
-        /// less accurate. Such systems should be rare, however, as multi-star systems, by default,
-        /// are generated in either of the two configurations described above which produce
-        /// reasonable results.
-        /// </para>
-        /// </remarks>
         public async Task<double> GetIlluminationAsync(IDataStore dataStore, Instant moment, double latitude, double longitude)
         {
             var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
@@ -2347,10 +1716,10 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var localSecondsFromSolarNoonAtSunriseAndSet = Math.Acos(-Math.Sin(solarDeclination) * Math.Sin(latitude) / d) / AngularVelocity;
-            var localSecondsSinceMidnightAtSunrise = ((RotationalPeriod / 2) - localSecondsFromSolarNoonAtSunriseAndSet) % RotationalPeriod;
-            var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (RotationalPeriod / 2)) % RotationalPeriod;
-            return (RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunrise / RotationalPeriod),
-                RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunset / RotationalPeriod));
+            var localSecondsSinceMidnightAtSunrise = ((PlanetParams.EarthRotationalPeriod / 2) - localSecondsFromSolarNoonAtSunriseAndSet) % PlanetParams.EarthRotationalPeriod;
+            var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (PlanetParams.EarthRotationalPeriod / 2)) % PlanetParams.EarthRotationalPeriod;
+            return (RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunrise / PlanetParams.EarthRotationalPeriod),
+                RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunset / PlanetParams.EarthRotationalPeriod));
         }
 
         /// <summary>
@@ -2391,21 +1760,9 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
 
-            var localSecondsSinceMidnight = (localSecondsSinceSolarNoon + (RotationalPeriod / 2)) % RotationalPeriod;
-            return RelativeDuration.FromProportionOfDay(localSecondsSinceMidnight / RotationalPeriod);
+            var localSecondsSinceMidnight = (localSecondsSinceSolarNoon + (PlanetParams.EarthRotationalPeriod / 2)) % PlanetParams.EarthRotationalPeriod;
+            return RelativeDuration.FromProportionOfDay(localSecondsSinceMidnight / PlanetParams.EarthRotationalPeriod);
         }
-
-        /// <summary>
-        /// Gets the number of seconds difference from solar time at zero longitude at the given
-        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
-        /// west.
-        /// </summary>
-        /// <param name="longitude">The longitude at which to determine the time offset.</param>
-        /// <returns>The number of seconds difference from solar time at zero longitude at the given
-        /// <paramref name="longitude"/>. Values will be positive to the east, and negative to the
-        /// west.</returns>
-        public Number GetLocalTimeOffset(double longitude)
-            => (longitude > Math.PI ? longitude - MathAndScience.Constants.Doubles.MathConstants.TwoPI : longitude) * RotationalPeriod / MathConstants.TwoPI;
 
         /// <summary>
         /// Calculates the total luminous flux incident on this body from nearby sources of light
@@ -2436,7 +1793,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// <para>
-        /// Gets the approximate maximum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// Gets the approximate maximum surface temperature of this <see cref="Planet"/>, in K.
         /// </para>
         /// <para>
         /// Note that this is a calculated value, and does not take any custom temperature maps into
@@ -2458,7 +1815,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// <para>
-        /// Gets the approximate minimum surface temperature of this <see cref="Planetoid"/>, in K.
+        /// Gets the approximate minimum surface temperature of this <see cref="Planet"/>, in K.
         /// </para>
         /// <para>
         /// Note that this is a calculated value, and does not take any custom temperature maps into
@@ -2491,33 +1848,13 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             info.AddValue(nameof(Id), Id);
             info.AddValue(nameof(Seed), Seed);
-            info.AddValue(nameof(PlanetType), PlanetType);
-            info.AddValue(nameof(ParentId), ParentId);
-            info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
-            info.AddValue(nameof(Name), Name);
-            info.AddValue(nameof(Velocity), Velocity);
             info.AddValue(nameof(Orbit), Orbit);
             info.AddValue(nameof(Position), Position);
             info.AddValue(nameof(Temperature), Material.Temperature);
             info.AddValue(nameof(AngleOfRotation), AngleOfRotation);
-            info.AddValue(nameof(RotationalPeriod), RotationalPeriod);
-            info.AddValue(nameof(_satelliteIDs), _satelliteIDs);
-            info.AddValue(nameof(Rings), _rings);
             info.AddValue(nameof(_blackbodyTemperature), _blackbodyTemperature);
             info.AddValue(nameof(_surfaceTemperatureAtApoapsis), _surfaceTemperatureAtApoapsis);
             info.AddValue(nameof(_surfaceTemperatureAtPeriapsis), _surfaceTemperatureAtPeriapsis);
-            info.AddValue(nameof(IsInhospitable), IsInhospitable);
-            info.AddValue(nameof(_earthlike), _earthlike);
-            if (_earthlike)
-            {
-                info.AddValue(nameof(_planetParams), null);
-                info.AddValue(nameof(_habitabilityRequirements), null);
-            }
-            else
-            {
-                info.AddValue(nameof(_planetParams), _planetParams);
-                info.AddValue(nameof(_habitabilityRequirements), _habitabilityRequirements);
-            }
             info.AddValue(nameof(_elevationMapPath), _elevationMapPath);
             info.AddValue(nameof(_precipitationMapPaths), _precipitationMapPaths);
             info.AddValue(nameof(_snowfallMapPaths), _snowfallMapPaths);
@@ -3068,21 +2405,6 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Gets the richness of the resources at the given <paramref name="latitude"/> and
-        /// <paramref name="longitude"/>.
-        /// </summary>
-        /// <param name="latitude">The latitude at which to determine resource richness.</param>
-        /// <param name="longitude">The longitude at which to determine resource richness.</param>
-        /// <returns>The richness of the resources at the given <paramref name="latitude"/> and
-        /// <paramref name="longitude"/>, as a collection of values between 0 and 1 for each <see
-        /// cref="ISubstance"/> present.</returns>
-        public IEnumerable<(ISubstanceReference substance, double richness)> GetResourceRichnessAt(double latitude, double longitude)
-        {
-            var position = LatitudeAndLongitudeToVector(latitude, longitude);
-            return Resources.Select(x => (x.Substance, x.GetResourceRichnessAt(position)));
-        }
-
-        /// <summary>
         /// Gets the richness of the given resource at the given <paramref name="latitude"/> and
         /// <paramref name="longitude"/>.
         /// </summary>
@@ -3124,7 +2446,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// always be <see langword="false"/>.
         /// </para>
         /// </returns>
-        public async Task<(double phase, bool waxing)> GetSatellitePhaseAsync(IDataStore dataStore, Instant moment, Planetoid satellite)
+        public async Task<(double phase, bool waxing)> GetSatellitePhaseAsync(IDataStore dataStore, Instant moment, Planet satellite)
         {
             if (_satelliteIDs?.Contains(satellite.Id) != true || !satellite.Orbit.HasValue)
             {
@@ -3183,7 +2505,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Enumerates the natural satellites around this <see cref="Planetoid"/>.
+        /// Enumerates the natural satellites around this <see cref="Planet"/>.
         /// </summary>
         /// <param name="dataStore">
         /// The <see cref="IDataStore"/> from which instances may be retrieved.
@@ -3192,7 +2514,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// Unlike children, natural satellites are actually siblings in the local <see
         /// cref="Location"/> hierarchy, which merely share an orbital relationship.
         /// </remarks>
-        public async IAsyncEnumerable<Planetoid> GetSatellitesAsync(IDataStore dataStore)
+        public async IAsyncEnumerable<Planet> GetSatellitesAsync(IDataStore dataStore)
         {
             if (_satelliteIDs is null)
             {
@@ -3200,7 +2522,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
             foreach (var id in _satelliteIDs)
             {
-                var satellite = await dataStore.GetItemAsync<Planetoid>(id).ConfigureAwait(false);
+                var satellite = await dataStore.GetItemAsync<Planet>(id).ConfigureAwait(false);
                 if (satellite is not null)
                 {
                     yield return satellite;
@@ -3229,30 +2551,15 @@ namespace NeverFoundry.WorldFoundry.Space
                 proportionOfYear = 1 - proportionOfYear;
             }
 
-            if (latitude < AxialTilt)
+            if (latitude < PlanetParams.EarthAxialTilt)
             {
-                var maximum = (AxialTilt - latitude) / (AxialTilt * 2);
+                var maximum = (PlanetParams.EarthAxialTilt - latitude) / DoubleEarthAxialTilt;
                 var range = 1 - maximum;
                 proportionOfYear = Math.Abs(maximum - proportionOfYear) / range;
             }
 
             return proportionOfYear;
         }
-
-        /// <summary>
-        /// Determines the proportion of the seasonal cycle, with 0 indicating winter, and 1
-        /// indicating summer, from the given proportion of a full year, starting and ending at
-        /// midwinter.
-        /// </summary>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year, starting and ending at midwinter, at which to make the
-        /// calculation.
-        /// </param>
-        /// <param name="latitude">Used to determine hemisphere.</param>
-        /// <returns>The proportion of the year, with 0 indicating winter, and 1 indicating summer,
-        /// at the given proportion of a full year, starting and ending at midwinter.</returns>
-        public double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude)
-            => GetSeasonalProportionFromAnnualProportion(proportionOfYear, latitude, AxialTilt);
 
         /// <summary>
         /// Determines the current season at the given <paramref name="moment"/>.
@@ -3742,7 +3049,7 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// <para>
-        /// Gets the surface temperature of the <see cref="Planetoid"/> at its equator, based on its
+        /// Gets the surface temperature of the <see cref="Planet"/> at its equator, based on its
         /// current position, in K.
         /// </para>
         /// <para>
@@ -3868,7 +3175,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// made for an elevation above the surface.
         /// </param>
         /// <returns>
-        /// The temperature of this <see cref="Planetoid"/> at the given elevation, in K.
+        /// The temperature of this <see cref="Planet"/> at the given elevation, in K.
         /// </returns>
         /// <remarks>
         /// In an Earth-like atmosphere, the temperature lapse rate varies considerably in the
@@ -4276,11 +3583,6 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             var reason = UninhabitabilityReason.None;
 
-            if (IsInhospitable)
-            {
-                reason = UninhabitabilityReason.Inhospitable;
-            }
-
             if (habitabilityRequirements.RequireLiquidWater && !HasLiquidWater())
             {
                 reason |= UninhabitabilityReason.NoWater;
@@ -4340,7 +3642,7 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="longitude">A longitude, as an angle in radians from the X-axis at 0
         /// rotation.</param>
         /// <returns>A normalized <see cref="Vector3"/> representing a position on the surface of
-        /// this <see cref="Planetoid"/>.</returns>
+        /// this <see cref="Planet"/>.</returns>
         /// <remarks>
         /// If the planet's axis has never been set, it is treated as vertical for the purpose of
         /// this calculation, but is not permanently set to such an axis.
@@ -4460,11 +3762,11 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Sets the atmospheric pressure of this <see cref="Planetoid"/>, in kPa.
+        /// Sets the atmospheric pressure of this <see cref="Planet"/>, in kPa.
         /// </summary>
         /// <param name="value">An atmospheric pressure in kPa.</param>
         /// <remarks>
-        /// Has no effect if this <see cref="Planetoid"/> has no atmosphere.
+        /// Has no effect if this <see cref="Planet"/> has no atmosphere.
         /// </remarks>
         public void SetAtmosphericPressure(double value)
         {
@@ -4473,53 +3775,41 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Sets the axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in
+        /// Sets the axial tilt of the <see cref="Planet"/> relative to its orbital plane, in
         /// radians. Values greater than half Pi indicate clockwise rotation.
         /// </summary>
         /// <param name="value">An angle, in radians.</param>
         /// <remarks>
-        /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
+        /// If the <see cref="Planet"/> isn't orbiting anything, this is the same as the angle of
         /// rotation.
         /// </remarks>
         public void SetAxialTilt(double value) => SetAngleOfRotation(Orbit.HasValue ? value + Orbit.Value.Inclination : value);
 
         /// <summary>
-        /// Sets the length of time it takes for this <see cref="Planetoid"/> to rotate once about
-        /// its axis, in seconds.
-        /// </summary>
-        /// <param name="value">A <see cref="Number"/> value.</param>
-        public void SetRotationalPeriod(Number value)
-        {
-            RotationalPeriod = value;
-            _angularVelocity = null;
-            ResetCachedTemperatures();
-        }
-
-        /// <summary>
         /// Converts a <see cref="Vector3"/> to a latitude, in radians.
         /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planet"/>.</param>
         /// <returns>A latitude, as an angle in radians from the equator.</returns>
         public double VectorToLatitude(Vector3 v) => VectorToLatitude((System.Numerics.Vector3)v);
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a latitude, in radians.
         /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planet"/>.</param>
         /// <returns>A latitude, as an angle in radians from the equator.</returns>
         public double VectorToLatitude(System.Numerics.Vector3 v) => MathAndScience.Constants.Doubles.MathConstants.HalfPI - (double)Axis.Angle(v);
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a longitude, in radians.
         /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planet"/>.</param>
         /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
         public double VectorToLongitude(Vector3 v) => VectorToLongitude((System.Numerics.Vector3)v);
 
         /// <summary>
         /// Converts a <see cref="Vector3"/> to a longitude, in radians.
         /// </summary>
-        /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
+        /// <param name="v">A vector representing a position on the surface of this <see cref="Planet"/>.</param>
         /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
         public double VectorToLongitude(System.Numerics.Vector3 v)
         {
@@ -4605,7 +3895,7 @@ namespace NeverFoundry.WorldFoundry.Space
             => GetPrecipitationNoise(position.X, position.Y, position.Z, latitude, seasonalLatitude, temperature, out snow);
 
         internal double GetSolarDeclination(double trueAnomaly)
-            => Orbit.HasValue ? Math.Asin(Math.Sin(-AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
+            => Orbit.HasValue ? Math.Asin(_SinNegativeAxialTilt * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
 
         /// <summary>
         /// Calculates the effective surface temperature at the given surface position, including
@@ -4647,8 +3937,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal override async ValueTask ResetOrbitAsync(IDataStore dataStore)
         {
-            _axialTilt = null;
-
             var stars = new List<Star>();
             if (Orbit.HasValue)
             {
@@ -5424,11 +4712,6 @@ namespace NeverFoundry.WorldFoundry.Space
                     ref adjustedAtmosphericPressure);
             }
 
-            if (isWater && _planetParams?.EarthlikeAtmosphere != true)
-            {
-                CheckCO2Reduction(rehydrator, vaporPressure);
-            }
-
             return adjustedAtmosphericPressure;
         }
 
@@ -5482,23 +4765,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var cloudCover = Atmosphere.AtmosphericPressure
                 * (double)Atmosphere.Material.GetOverallDoubleValue(x => (double)x.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid | PhaseType.Liquid).First().proportion) / 100;
             var reflectiveSurface = Math.Max(iceAmount, cloudCover);
-            if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-            {
-                _surfaceAlbedo = ((Albedo - (0.9 * reflectiveSurface)) / (1 - reflectiveSurface)).Clamp(0, 1);
-            }
-            else
-            {
-                Albedo = ((_surfaceAlbedo * (1 - reflectiveSurface)) + (0.9 * reflectiveSurface)).Clamp(0, 1);
-                Atmosphere.ResetTemperatureDependentProperties(this);
-
-                // An albedo change might significantly alter surface temperature, which may require a
-                // re-calculation (but not too many). 5K is used as the threshold for re-calculation,
-                // which may lead to some inaccuracies, but should avoid over-repetition for small changes.
-                if (counter < 10 && Math.Abs(surfaceTemp - GetAverageSurfaceTemperature()) > 5)
-                {
-                    adjustedAtmosphericPressure = CalculatePhases(rehydrator, counter + 1, adjustedAtmosphericPressure);
-                }
-            }
+            _surfaceAlbedo = ((Albedo - (0.9 * reflectiveSurface)) / (1 - reflectiveSurface)).Clamp(0, 1);
 
             return adjustedAtmosphericPressure;
         }
@@ -5585,9 +4852,9 @@ namespace NeverFoundry.WorldFoundry.Space
             {
                 // Adjust vapor present in the atmosphere based on the vapor pressure.
                 var pressureRatio = (vaporPressure / Atmosphere.AtmosphericPressure).Clamp(0, 1);
-                if (substance.Equals(water) && _planetParams?.WaterVaporRatio.HasValue == true)
+                if (substance.Equals(water))
                 {
-                    vaporProportion = _planetParams!.Value.WaterVaporRatio!.Value;
+                    vaporProportion = PlanetParams.EarthWaterVaporRatio;
                 }
                 else
                 {
@@ -5606,17 +4873,6 @@ namespace NeverFoundry.WorldFoundry.Space
                     if (substance.Equals(water))
                     {
                         Atmosphere.ResetWater();
-
-                        // For water, also add a corresponding amount of oxygen, if it's not already present.
-                        if (_planetParams?.EarthlikeAtmosphere != true && PlanetType != PlanetType.Carbon)
-                        {
-                            var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-                            var o2 = Atmosphere.Material.GetProportion(oxygen);
-                            previousGasFraction += o2;
-                            o2 = Math.Max(o2, vaporProportion * 0.0001m);
-                            gasFraction += o2;
-                            Atmosphere.Material.AddConstituent(oxygen, o2);
-                        }
                     }
 
                     adjustedAtmosphericPressure += adjustedAtmosphericPressure * (double)(gasFraction - previousGasFraction);
@@ -5635,8 +4891,8 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private List<Planetoid> Configure(
-            CosmicLocation? parent,
+        private List<Planet> Configure(
+            Planet? parent,
             List<Star> stars,
             Star? star,
             Vector3 position,
@@ -5646,109 +4902,19 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             var rehydrator = GetRehydrator(seed);
 
-            IsInhospitable = stars.Any(x => !x.IsHospitable);
+            var eccentricity = PlanetParams.EarthEccentricity;
 
-            double eccentricity;
-            if (_planetParams?.Eccentricity.HasValue == true)
-            {
-                eccentricity = _planetParams!.Value.Eccentricity!.Value;
-            }
-            else if (orbit.HasValue)
-            {
-                eccentricity = orbit.Value.Circular ? 0 : orbit.Value.Eccentricity;
-            }
-            else if (PlanetType == PlanetType.Comet)
-            {
-                eccentricity = rehydrator.NextDouble(33);
-            }
-            else if (IsAsteroid)
-            {
-                eccentricity = rehydrator.NextDouble(33, 0.4);
-            }
-            else
-            {
-                eccentricity = rehydrator.PositiveNormalDistributionSample(33, 0, 0.05);
-            }
-
-            Number semiMajorAxis;
-            if (_planetParams?.RevolutionPeriod.HasValue == true
-                && (orbit.HasValue || star is not null))
-            {
-                var orbitedMass = orbit.HasValue ? orbit.Value.OrbitedMass : star?.Mass;
-                semiMajorAxis = Space.Orbit.GetSemiMajorAxisForPeriod(Mass, orbitedMass!.Value, _planetParams!.Value.RevolutionPeriod!.Value);
-                position = position.IsZero()
-                    ? Vector3.UnitX * semiMajorAxis
-                    : position.Normalize() * semiMajorAxis;
-            }
-            else if (orbit.HasValue)
-            {
-                var periapsis = orbit.Value.Circular ? position.Distance(orbit.Value.OrbitedPosition) : orbit.Value.Periapsis;
-                semiMajorAxis = eccentricity == 1
-                    ? periapsis
-                    : periapsis * (1 + eccentricity) / (1 - (eccentricity * eccentricity));
-                position = position.IsZero()
-                    ? Vector3.UnitX * periapsis
-                    : position.Normalize() * periapsis;
-            }
-            else
-            {
-                var distance = star is null
-                    ? position.Length()
-                    : star.Position.Distance(position);
-                semiMajorAxis = distance * ((1 + eccentricity) / (1 - eccentricity));
-            }
+            var orbitedMass = orbit.HasValue ? orbit.Value.OrbitedMass : star?.Mass;
+            var semiMajorAxis = WorldFoundry.Planet.Orbit.GetSemiMajorAxisForPeriod(Mass, orbitedMass!.Value, PlanetParams.EarthRevolutionPeriod);
+            position = position.IsZero()
+                ? Vector3.UnitX * semiMajorAxis
+                : position.Normalize() * semiMajorAxis;
 
             ReconstituteMaterial(
                 rehydrator,
                 position,
                 parent?.Material.Temperature ?? UniverseAmbientTemperature,
                 semiMajorAxis);
-
-            if (_planetParams?.RotationalPeriod.HasValue == true)
-            {
-                RotationalPeriod = Number.Max(0, _planetParams!.Value.RotationalPeriod!.Value);
-            }
-            else
-            {
-                // Check for tidal locking.
-                var rotationalPeriodSet = false;
-                if (orbit.HasValue)
-                {
-                    // Invent an orbit age. Precision isn't important here, and some inaccuracy and
-                    // inconsistency between satellites is desirable. The age of the Solar system is used
-                    // as an arbitrary norm.
-                    var years = rehydrator.LogisticDistributionSample(34, 0, 1) * new Number(4.6, 9);
-
-                    var rigidity = PlanetType == PlanetType.Comet ? new Number(4, 9) : new Number(3, 10);
-                    if (Number.Pow(years / new Number(6, 11)
-                        * Mass
-                        * orbit.Value.OrbitedMass.Square()
-                        / (Shape.ContainingRadius * rigidity)
-                        , Number.One / new Number(6)) >= semiMajorAxis)
-                    {
-                        RotationalPeriod = MathConstants.TwoPI * Number.Sqrt(semiMajorAxis.Cube() / (ScienceConstants.G * (orbit.Value.OrbitedMass + Mass)));
-                        rotationalPeriodSet = true;
-                    }
-                }
-                if (!rotationalPeriodSet)
-                {
-                    var rotationalPeriodLimit = IsTerrestrial ? new Number(6500000) : new Number(100000);
-                    if (rehydrator.NextDouble(35) <= 0.05) // low chance of an extreme period
-                    {
-                        RotationalPeriod = rehydrator.NextNumber(
-                            36,
-                            rotationalPeriodLimit,
-                            IsTerrestrial ? new Number(22000000) : new Number(1100000));
-                    }
-                    else
-                    {
-                        RotationalPeriod = rehydrator.NextNumber(
-                            36,
-                            IsTerrestrial ? new Number(40000) : new Number(8000),
-                            rotationalPeriodLimit);
-                    }
-                }
-            }
 
             GenerateOrbit(
                 rehydrator,
@@ -5757,41 +4923,27 @@ namespace NeverFoundry.WorldFoundry.Space
                 eccentricity,
                 semiMajorAxis);
 
-            if (_planetParams?.AxialTilt.HasValue == true)
+            var axialTilt = PlanetParams.EarthAxialTilt;
+            if (Orbit.HasValue)
             {
-                var axialTilt = _planetParams!.Value.AxialTilt!.Value;
-                if (Orbit.HasValue)
-                {
-                    axialTilt += Orbit.Value.Inclination;
-                }
-                while (axialTilt > Math.PI)
-                {
-                    axialTilt -= Math.PI;
-                }
-                while (axialTilt < 0)
-                {
-                    axialTilt += Math.PI;
-                }
-                AngleOfRotation = axialTilt;
+                axialTilt += Orbit.Value.Inclination;
             }
-            else if (rehydrator.NextDouble(42) <= 0.2) // low chance of an extreme tilt
+            while (axialTilt > Math.PI)
             {
-                AngleOfRotation = rehydrator.NextDouble(43, MathAndScience.Constants.Doubles.MathConstants.QuarterPI, Math.PI);
+                axialTilt -= Math.PI;
             }
-            else
+            while (axialTilt < 0)
             {
-                AngleOfRotation = rehydrator.NextDouble(43, MathAndScience.Constants.Doubles.MathConstants.QuarterPI);
+                axialTilt += Math.PI;
             }
+            AngleOfRotation = axialTilt;
             SetAxis();
 
             SetTemperatures(stars);
 
             var surfaceTemp = ReconstituteHydrosphere(rehydrator);
 
-            if (star is not null
-                && (_planetParams?.SurfaceTemperature.HasValue == true
-                || _habitabilityRequirements?.MinimumTemperature.HasValue == true
-                || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
+            if (star is not null)
             {
                 CorrectSurfaceTemperature(rehydrator, stars, star, surfaceTemp);
             }
@@ -5805,7 +4957,7 @@ namespace NeverFoundry.WorldFoundry.Space
             var index = SetRings(rehydrator);
 
             return satellite
-                ? new List<Planetoid>()
+                ? new List<Planet>()
                 : GenerateSatellites(rehydrator, parent, stars, index);
         }
 
@@ -5824,20 +4976,12 @@ namespace NeverFoundry.WorldFoundry.Space
             var avgElevation = MaxElevation * 0.04;
             var totalTargetEffectiveTemp = targetEquatorialTemp + (avgElevation * LapseRateDry);
 
-            var greenhouseEffect = 30.0; // naïve initial guess, corrected if possible with param values
-            if (_planetParams?.AtmosphericPressure.HasValue == true
-                && (_planetParams?.WaterVaporRatio.HasValue == true
-                || _planetParams?.WaterRatio.HasValue == true))
-            {
-                var pressure = _planetParams!.Value.AtmosphericPressure!.Value;
+            var pressure = PlanetParams.EarthAtmosphericPressure;
 
-                var vaporRatio = _planetParams?.WaterVaporRatio.HasValue == true
-                    ? (double)_planetParams!.Value.WaterVaporRatio!.Value
-                    : (Substances.All.Water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
-                greenhouseEffect = GetGreenhouseEffect(
-                    GetInsolationFactor(Atmosphere.GetAtmosphericMass(this, pressure), 0), // scale height will be ignored since this isn't a polar calculation
-                    Atmosphere.GetGreenhouseFactor(Substances.All.Water.GreenhousePotential * vaporRatio, pressure));
-            }
+            var vaporRatio = (double)PlanetParams.EarthWaterVaporRatio;
+            var greenhouseEffect = GetGreenhouseEffect(
+                GetInsolationFactor(Atmosphere.GetAtmosphericMass(this, pressure), 0), // scale height will be ignored since this isn't a polar calculation
+                Atmosphere.GetGreenhouseFactor(Substances.All.Water.GreenhousePotential * vaporRatio, pressure));
             var targetEffectiveTemp = totalTargetEffectiveTemp - greenhouseEffect;
 
             var currentTargetTemp = targetEffectiveTemp;
@@ -5859,21 +5003,13 @@ namespace NeverFoundry.WorldFoundry.Space
                 // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
                 // This allows calculation of the correct distance/orbit for an average
                 // orbital temperature (rather than the temperature at the current position).
-                if (_planetParams?.RevolutionPeriod.HasValue == true)
+                // Do not attempt a correction on the first pass; the albedo delta due to
+                // atmospheric effects will not yet have a meaningful value.
+                if (Albedo != _surfaceAlbedo)
                 {
-                    // Do not attempt a correction on the first pass; the albedo delta due to
-                    // atmospheric effects will not yet have a meaningful value.
-                    if (Albedo != _surfaceAlbedo)
-                    {
-                        var albedoDelta = Albedo - _surfaceAlbedo;
-                        _surfaceAlbedo = GetSurfaceAlbedoForTemperature(star, currentTargetTemp - Temperature);
-                        Albedo = _surfaceAlbedo + albedoDelta;
-                    }
-                }
-                else
-                {
-                    var semiMajorAxis = GetDistanceForTemperature(star, currentTargetTemp - Temperature) / (1 + (Orbit!.Value.Eccentricity * Orbit.Value.Eccentricity / 2));
-                    GenerateOrbit(rehydrator, star, Orbit.Value.Eccentricity, semiMajorAxis, Orbit.Value.TrueAnomaly);
+                    var albedoDelta = Albedo - _surfaceAlbedo;
+                    _surfaceAlbedo = GetSurfaceAlbedoForTemperature(star, currentTargetTemp - Temperature);
+                    Albedo = _surfaceAlbedo + albedoDelta;
                 }
                 ResetAllCachedTemperatures(stars);
 
@@ -5886,33 +5022,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     newAtmosphere = false;
                 }
 
-                if (_planetParams?.SurfaceTemperature.HasValue == true)
-                {
-                    delta = targetEquatorialTemp - GetTemperatureAtElevation(GetAverageSurfaceTemperature(), avgElevation);
-                }
-                else if (_habitabilityRequirements.HasValue)
-                {
-                    var tooCold = false;
-                    if (_habitabilityRequirements.Value.MinimumTemperature.HasValue)
-                    {
-                        var coolestEquatorialTemp = GetMinEquatorTemperature();
-                        if (coolestEquatorialTemp < _habitabilityRequirements.Value.MinimumTemperature)
-                        {
-                            delta = _habitabilityRequirements.Value.MaximumTemperature.HasValue
-                                ? _habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
-                                : _habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
-                            tooCold = true;
-                        }
-                    }
-                    if (!tooCold && _habitabilityRequirements.Value.MaximumTemperature.HasValue)
-                    {
-                        var warmestPolarTemp = GetMaxPolarTemperature();
-                        if (warmestPolarTemp > _habitabilityRequirements.Value.MaximumTemperature)
-                        {
-                            delta = _habitabilityRequirements!.Value.MaximumTemperature.Value - warmestPolarTemp;
-                        }
-                    }
-                }
+                delta = targetEquatorialTemp - GetTemperatureAtElevation(GetAverageSurfaceTemperature(), avgElevation);
 
                 // Avoid oscillation by reducing deltas which bounce around zero.
                 var deltaAdjustment = prevDelta != 0 && Math.Sign(delta) != Math.Sign(prevDelta)
@@ -6154,14 +5264,7 @@ namespace NeverFoundry.WorldFoundry.Space
                     Atmosphere.AtmosphericPressure,
                     PhaseType.Solid)
                 .First().proportion);
-            if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-            {
-                _surfaceAlbedo = ((Albedo - (0.9 * ice)) / (1 - ice)).Clamp(0, 1);
-            }
-            else
-            {
-                Albedo = ((_surfaceAlbedo * (1 - ice)) + (0.9 * ice)).Clamp(0, 1);
-            }
+            _surfaceAlbedo = ((Albedo - (0.9 * ice)) / (1 - ice)).Clamp(0, 1);
         }
 
         private void GenerateAtmosphere_Giant(Rehydrator rehydrator)
@@ -6303,27 +5406,10 @@ namespace NeverFoundry.WorldFoundry.Space
                 // First calculate water phases at effective temp, to establish a baseline
                 // for the presence of water and its effect on CO2.
                 // If a desired temp has been established, use that instead.
-                double surfaceTemp;
-                if (_planetParams?.SurfaceTemperature.HasValue == true)
-                {
-                    surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
-                }
-                else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-                {
-                    surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                        ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
-                            + _habitabilityRequirements!.Value.MaximumTemperature!.Value)
-                            / 2
-                        : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
-                }
-                else
-                {
-                    surfaceTemp = AverageBlackbodyTemperature;
-                }
                 adjustedAtmosphericPressure = CalculateGasPhaseMix(
                     rehydrator,
                     water,
-                    surfaceTemp,
+                    PlanetParams.EarthSurfaceTemperature,
                     adjustedAtmosphericPressure);
 
                 // Recalculate temperatures based on the new atmosphere.
@@ -6358,8 +5444,7 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var modified = false;
-            foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(_habitabilityRequirements?.AtmosphericRequirements)
-                .Concat(Atmosphere.ConvertRequirementsForPressure(_planetParams?.AtmosphericRequirements)))
+            foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(Atmosphere.HumanBreathabilityRequirements))
             {
                 var proportion = Atmosphere.Material.GetProportion(requirement.Substance);
                 if (proportion < requirement.MinimumProportion
@@ -6386,552 +5471,51 @@ namespace NeverFoundry.WorldFoundry.Space
             adjustedAtmosphericPressure = CalculatePhases(rehydrator, 0, adjustedAtmosphericPressure);
             FractionHydrophere(GetAverageSurfaceTemperature());
 
-            if (_planetParams?.AtmosphericPressure.HasValue != true && _habitabilityRequirements is null)
-            {
-                SetAtmosphericPressure(Math.Max(0, adjustedAtmosphericPressure));
-                Atmosphere.ResetPressureDependentProperties(this);
-            }
-
             // If the adjustments have led to the loss of liquid water, then there is no life after
             // all (this may be interpreted as a world which once supported life, but became
             // inhospitable due to the environmental changes that life produced).
             if (!HasLiquidWater())
             {
-                HasBiosphere = false;
+                _hasBiosphere = false;
             }
         }
 
         private void GenerateAtmosphereThick(Rehydrator rehydrator)
         {
-            double pressure;
-            if (_planetParams?.AtmosphericPressure.HasValue == true)
-            {
-                pressure = Math.Max(0, _planetParams!.Value.AtmosphericPressure!.Value);
-            }
-            else if (_planetParams?.EarthlikeAtmosphere == true)
-            {
-                pressure = PlanetParams.EarthAtmosphericPressure;
-            }
-            else if (_habitabilityRequirements?.MinimumPressure.HasValue == true
-                || _habitabilityRequirements?.MaximumPressure.HasValue == true)
-            {
-                // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-                if (_habitabilityRequirements.HasValue
-                    && _habitabilityRequirements.Value.MinimumPressure.HasValue)
+            const decimal h = 3.8e-8m;
+            const decimal he = 7.24e-6m;
+            const decimal ch4 = 2.9e-6m;
+            const decimal co = 2.5e-7m;
+            const decimal so2 = 1e-7m;
+            const decimal co2 = 5.3e-4m;
+            const decimal o2 = 0.23133m;
+            const decimal o3 = o2 * 4.5e-5m;
+            const decimal ar = 1.288e-3m;
+            const decimal kr = 3.3e-6m;
+            const decimal xe = 8.7e-8m;
+            const decimal ne = 1.267e-5m;
+            const decimal n2 = 1 - (h + he + ch4 + co + so2 + co2 + PlanetParams.EarthWaterVaporRatio + o2 + o3 + ar + kr + xe + ne);
+
+            Atmosphere = new Atmosphere(
+                this,
+                PlanetParams.EarthAtmosphericPressure,
+                new (ISubstanceReference, decimal)[]
                 {
-                    if (!_habitabilityRequirements.Value.MaximumPressure.HasValue)
-                    {
-                        pressure = _habitabilityRequirements.Value.MinimumPressure.Value
-                            + Math.Abs(rehydrator.NormalDistributionSample(47, 0, _habitabilityRequirements.Value.MinimumPressure.Value / 3));
-                    }
-                    else
-                    {
-                        pressure = rehydrator.NextDouble(47, _habitabilityRequirements.Value.MinimumPressure ?? 0, _habitabilityRequirements.Value.MaximumPressure.Value);
-                    }
-                }
-                else
-                {
-                    pressure = 0;
-                }
-            }
-            else
-            {
-                Number mass;
-                // Low-gravity planets without magnetospheres are less likely to hold onto the bulk
-                // of their atmospheres over long periods.
-                if (Mass >= 1.5e24 || HasMagnetosphere)
-                {
-                    mass = Mass / rehydrator.NormalDistributionSample(47, 1158568, 38600, minimum: 579300, maximum: 1737900);
-                }
-                else
-                {
-                    mass = Mass / rehydrator.NormalDistributionSample(47, 7723785, 258000, minimum: 3862000, maximum: 11586000);
-                }
-
-                pressure = (double)(mass * SurfaceGravity / (1000 * MathConstants.FourPI * RadiusSquared));
-            }
-
-            // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
-            // atmospheric escape.
-            var h = _planetParams?.EarthlikeAtmosphere == true ? 3.8e-8m : rehydrator.NextDecimal(48, 1e-8m, 2e-7m);
-            var he = _planetParams?.EarthlikeAtmosphere == true ? 7.24e-6m : rehydrator.NextDecimal(49, 2.6e-7m, 1e-5m);
-
-            // 50% chance not to have these components at all.
-            var ch4 = _planetParams?.EarthlikeAtmosphere == true ? 2.9e-6m : Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
-            var traceTotal = ch4;
-
-            var co = _planetParams?.EarthlikeAtmosphere == true ? 2.5e-7m : Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
-            traceTotal += co;
-
-            var so2 = _planetParams?.EarthlikeAtmosphere == true ? 1e-7m : Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
-            traceTotal += so2;
-
-            decimal trace;
-            if (_planetParams?.EarthlikeAtmosphere == true)
-            {
-                trace = traceTotal;
-            }
-            else if (traceTotal == 0)
-            {
-                trace = 0;
-            }
-            else
-            {
-                trace = rehydrator.NextDecimal(53, 1e-6m, 2.5e-4m);
-            }
-            if (_planetParams?.EarthlikeAtmosphere != true)
-            {
-                var traceRatio = traceTotal == 0 ? 0 : trace / traceTotal;
-                ch4 *= traceRatio;
-                co *= traceRatio;
-                so2 *= traceRatio;
-            }
-
-            // CO2 makes up the bulk of a thick atmosphere by default (although the presence of water
-            // may change this later).
-            var co2 = _planetParams?.EarthlikeAtmosphere == true ? 5.3e-4m : rehydrator.NextDecimal(54, 0.97m, 0.99m) - trace;
-
-            // If there is water on the surface, the water in the air will be determined based on
-            // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
-            // chance of water vapor without significant surface water (results of cometary deposits, etc.)
-            var waterVapor = _planetParams?.EarthlikeAtmosphere == true ? PlanetParams.EarthWaterVaporRatio : 0.0m;
-            var surfaceWater = false;
-            if (_planetParams?.EarthlikeAtmosphere != true)
-            {
-                var water = Substances.All.Water.GetHomogeneousReference();
-                var seawater = Substances.All.Seawater.GetHomogeneousReference();
-                surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
-                if (CanHaveWater && !surfaceWater)
-                {
-                    waterVapor = Math.Max(0, rehydrator.NextDecimal(55, -0.05m, 0.001m));
-                }
-            }
-
-            // Always at least some oxygen if there is water, planetary composition allowing
-            var o2 = _planetParams?.EarthlikeAtmosphere == true ? 0.23133m : 0.0m;
-            if (_planetParams?.EarthlikeAtmosphere != true && PlanetType != PlanetType.Carbon)
-            {
-                if (waterVapor != 0)
-                {
-                    o2 = waterVapor * 0.0001m;
-                }
-                else if (surfaceWater)
-                {
-                    o2 = rehydrator.NextDecimal(56, 0.002m);
-                }
-            }
-
-            var o3 = _planetParams?.EarthlikeAtmosphere == true ? o2 * 4.5e-5m : 0;
-
-            // N2 (largely inert gas) comprises whatever is left after the other components have been
-            // determined. This is usually a trace amount, unless CO2 has been reduced to a trace, in
-            // which case it will comprise the bulk of the atmosphere.
-            var n2 = 1 - (h + he + co2 + waterVapor + o2 + o3 + trace);
-
-            // Some portion of the N2 may be Ar instead.
-            var ar = _planetParams?.EarthlikeAtmosphere == true ? 1.288e-3m : Math.Max(0, n2 * rehydrator.NextDecimal(57, -0.02m, 0.04m));
-            n2 -= ar;
-            // An even smaller fraction may be Kr.
-            var kr = _planetParams?.EarthlikeAtmosphere == true ? 3.3e-6m : Math.Max(0, n2 * rehydrator.NextDecimal(58, -2.5e-4m, 5.0e-4m));
-            n2 -= kr;
-            // An even smaller fraction may be Xe or Ne.
-            var xe = _planetParams?.EarthlikeAtmosphere == true ? 8.7e-8m : Math.Max(0, n2 * rehydrator.NextDecimal(59, -1.8e-5m, 3.5e-5m));
-            n2 -= xe;
-            var ne = _planetParams?.EarthlikeAtmosphere == true ? 1.267e-5m : Math.Max(0, n2 * rehydrator.NextDecimal(60, -1.8e-5m, 3.5e-5m));
-            n2 -= ne;
-
-            var components = new List<(ISubstanceReference, decimal)>()
-            {
-                (Substances.All.CarbonDioxide.GetHomogeneousReference(), co2),
-                (Substances.All.Helium.GetHomogeneousReference(), he),
-                (Substances.All.Hydrogen.GetHomogeneousReference(), h),
-                (Substances.All.Nitrogen.GetHomogeneousReference(), n2),
-            };
-            if (ar > 0)
-            {
-                components.Add((Substances.All.Argon.GetHomogeneousReference(), ar));
-            }
-            if (co > 0)
-            {
-                components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-            }
-            if (kr > 0)
-            {
-                components.Add((Substances.All.Krypton.GetHomogeneousReference(), kr));
-            }
-            if (ch4 > 0)
-            {
-                components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-            }
-            if (o2 > 0)
-            {
-                components.Add((Substances.All.Oxygen.GetHomogeneousReference(), o2));
-            }
-            if (o3 > 0)
-            {
-                components.Add((Substances.All.Ozone.GetHomogeneousReference(), o3));
-            }
-            if (so2 > 0)
-            {
-                components.Add((Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
-            }
-            if (waterVapor > 0)
-            {
-                components.Add((Substances.All.Water.GetHomogeneousReference(), waterVapor));
-            }
-            if (xe > 0)
-            {
-                components.Add((Substances.All.Xenon.GetHomogeneousReference(), xe));
-            }
-            if (ne > 0)
-            {
-                components.Add((Substances.All.Neon.GetHomogeneousReference(), ne));
-            }
-            Atmosphere = new Atmosphere(this, pressure, components.ToArray());
-        }
-
-        private void GenerateAtmosphereTrace(Rehydrator rehydrator)
-        {
-            // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
-            // atmospheric escape.
-            var h = rehydrator.NextDecimal(47, 5e-8m, 2e-7m);
-            var he = rehydrator.NextDecimal(48, 2.6e-7m, 1e-5m);
-
-            // 50% chance not to have these components at all.
-            var ch4 = Math.Max(0, rehydrator.NextDecimal(49, -0.5m, 0.5m));
-            var total = ch4;
-
-            var co = Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
-            total += co;
-
-            var so2 = Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
-            total += so2;
-
-            var n2 = Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
-            total += n2;
-
-            // Noble traces: selected as fractions of N2, if present, to avoid over-representation.
-            var ar = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(53, -0.02m, 0.04m)) : 0;
-            n2 -= ar;
-            var kr = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(54, -0.02m, 0.04m)) : 0;
-            n2 -= kr;
-            var xe = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(55, -0.02m, 0.04m)) : 0;
-            n2 -= xe;
-
-            // Carbon monoxide means at least some carbon dioxide, as well.
-            var co2 = co > 0
-                ? rehydrator.NextDecimal(56, 0.5m)
-                : Math.Max(0, rehydrator.NextDecimal(56, -0.5m, 0.5m));
-            total += co2;
-
-            // If there is water on the surface, the water in the air will be determined based on
-            // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
-            // chance of water vapor without significant surface water (results of cometary deposits, etc.)
-            var waterVapor = 0.0m;
-            var water = Substances.All.Water.GetHomogeneousReference();
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            if (CanHaveWater
-                && !Hydrosphere.Contains(water)
-                && !Hydrosphere.Contains(seawater))
-            {
-                waterVapor = Math.Max(0, rehydrator.NextDecimal(57, -0.05m, 0.001m));
-            }
-            total += waterVapor;
-
-            var o2 = 0.0m;
-            if (PlanetType != PlanetType.Carbon)
-            {
-                // Always at least some oxygen if there is water, planetary composition allowing
-                o2 = waterVapor > 0
-                    ? waterVapor * 1e-4m
-                    : Math.Max(0, rehydrator.NextDecimal(58, -0.05m, 0.5m));
-            }
-            total += o2;
-
-            var ratio = total == 0 ? 0 : (1 - h - he) / total;
-            ch4 *= ratio;
-            co *= ratio;
-            so2 *= ratio;
-            n2 *= ratio;
-            ar *= ratio;
-            kr *= ratio;
-            xe *= ratio;
-            co2 *= ratio;
-            waterVapor *= ratio;
-            o2 *= ratio;
-
-            // H and He are always assumed to be present in small amounts if a planet has any
-            // atmosphere, but without any other gases making up the bulk of the atmosphere, they are
-            // presumed lost to atmospheric escape entirely, and no atmosphere at all is indicated.
-            if (total == 0)
-            {
-                Atmosphere = new Atmosphere(this, 0);
-            }
-            else
-            {
-                var components = new List<(ISubstanceReference, decimal)>()
-                {
+                    (Substances.All.CarbonDioxide.GetHomogeneousReference(), co2),
                     (Substances.All.Helium.GetHomogeneousReference(), he),
                     (Substances.All.Hydrogen.GetHomogeneousReference(), h),
-                };
-                if (ar > 0)
-                {
-                    components.Add((Substances.All.Argon.GetHomogeneousReference(), ar));
-                }
-                if (co2 > 0)
-                {
-                    components.Add((Substances.All.CarbonDioxide.GetHomogeneousReference(), co2));
-                }
-                if (co > 0)
-                {
-                    components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-                }
-                if (kr > 0)
-                {
-                    components.Add((Substances.All.Krypton.GetHomogeneousReference(), kr));
-                }
-                if (ch4 > 0)
-                {
-                    components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-                }
-                if (n2 > 0)
-                {
-                    components.Add((Substances.All.Nitrogen.GetHomogeneousReference(), n2));
-                }
-                if (o2 > 0)
-                {
-                    components.Add((Substances.All.Oxygen.GetHomogeneousReference(), o2));
-                }
-                if (so2 > 0)
-                {
-                    components.Add((Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
-                }
-                if (waterVapor > 0)
-                {
-                    components.Add((Substances.All.Water.GetHomogeneousReference(), waterVapor));
-                }
-                if (xe > 0)
-                {
-                    components.Add((Substances.All.Xenon.GetHomogeneousReference(), xe));
-                }
-                Atmosphere = new Atmosphere(this, rehydrator.NextDouble(59, 25), components.ToArray());
-            }
-        }
-
-        private Planetoid? GenerateGiantSatellite(
-            Rehydrator rehydrator,
-            ref ulong index,
-            CosmicLocation? parent,
-            List<Star> stars,
-            Number periapsis,
-            double eccentricity,
-            Number maxMass)
-        {
-            var orbit = new OrbitalParameters(
-                Mass,
-                Position,
-                periapsis,
-                eccentricity,
-                rehydrator.NextDouble(index++, 0.5),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-            double chance;
-
-            // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
-            {
-                // Select from the standard distribution of types.
-                chance = rehydrator.NextDouble(index++);
-
-                // Planets with very low orbits are lava planets due to tidal
-                // stress (plus a small percentage of others due to impact trauma).
-
-                // The maximum mass and density are used to calculate an outer
-                // Roche limit (may not be the actual Roche limit for the body
-                // which gets generated).
-                if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new Number(105, -2) || chance <= 0.01)
-                {
-                    return new Planetoid(
-                        PlanetType.Lava,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.65) // Most will be standard terrestrial.
-                {
-                    return new Planetoid(
-                        PlanetType.Terrestrial,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.75)
-                {
-                    return new Planetoid(
-                        PlanetType.Iron,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.Ocean,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
-            {
-                chance = rehydrator.NextDouble(index++);
-                // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DensityForDwarf) * new Number(105, -2) || chance <= 0.01)
-                {
-                    return new Planetoid(
-                        PlanetType.LavaDwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.75) // Most will be standard.
-                {
-                    return new Planetoid(
-                        PlanetType.Dwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.RockyDwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            // Otherwise, it is an asteroid, selected from the standard distribution of types.
-            else if (maxMass > 0)
-            {
-                chance = rehydrator.NextDouble(index++);
-                if (chance <= 0.75)
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidC,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.9)
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidS,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidM,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            return null;
-        }
-
-        private void GenerateHydrocarbons(Rehydrator rehydrator)
-        {
-            // It is presumed that it is statistically likely that the current eon is not the first
-            // with life, and therefore that some fossilized hydrocarbon deposits exist.
-            var coal = (decimal)rehydrator.NormalDistributionSample(67, 1e-13, 1.7e-14);
-
-            AddResource(Substances.All.Anthracite.GetReference(), coal, false);
-            AddResource(Substances.All.BituminousCoal.GetReference(), coal, false);
-
-            var petroleum = (decimal)rehydrator.NormalDistributionSample(68, 1e-8, 1.6e-9);
-            var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false);
-
-            // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
-            AddResource(Substances.All.NaturalGas.GetReference(), petroleum, false, true, petroleumSeed);
+                    (Substances.All.Nitrogen.GetHomogeneousReference(), n2),
+                    (Substances.All.Argon.GetHomogeneousReference(), ar),
+                    (Substances.All.CarbonMonoxide.GetHomogeneousReference(), co),
+                    (Substances.All.Krypton.GetHomogeneousReference(), kr),
+                    (Substances.All.Methane.GetHomogeneousReference(), ch4),
+                    (Substances.All.SulphurDioxide.GetHomogeneousReference(), so2),
+                    (Substances.All.Xenon.GetHomogeneousReference(), xe),
+                    (Substances.All.Neon.GetHomogeneousReference(), ne),
+                    (Substances.All.Water.GetHomogeneousReference(), PlanetParams.EarthWaterVaporRatio),
+                    (Substances.All.Oxygen.GetHomogeneousReference(), o2),
+                    (Substances.All.Ozone.GetHomogeneousReference(), o3),
+                });
         }
 
         private void GenerateHydrosphere(Rehydrator rehydrator, double surfaceTemp)
@@ -6939,25 +5523,7 @@ namespace NeverFoundry.WorldFoundry.Space
             // Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
             // icecaps, etc.). This might be removed later, depending on the planet's conditions.
 
-            if (!CanHaveWater || !IsTerrestrial)
-            {
-                SeaLevel = -MaxElevation * 1.1;
-                return;
-            }
-
-            decimal ratio;
-            if (_planetParams.HasValue && _planetParams.Value.WaterRatio.HasValue)
-            {
-                ratio = _planetParams.Value.WaterRatio.Value;
-            }
-            else if (PlanetType == PlanetType.Ocean)
-            {
-                ratio = (decimal)(1 + rehydrator.NormalDistributionSample(44, 1, 0.2));
-            }
-            else
-            {
-                ratio = rehydrator.NextDecimal(44);
-            }
+            var ratio = PlanetParams.EarthWaterRatio;
 
             var mass = Number.Zero;
             var seawater = Substances.All.Seawater.GetHomogeneousReference();
@@ -7052,76 +5618,19 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </returns>
         private bool GenerateLife(Rehydrator rehydrator)
         {
-            if (IsInhospitable || !HasLiquidWater())
+            if (!HasLiquidWater())
             {
-                HasBiosphere = false;
+                _hasBiosphere = false;
                 return false;
             }
 
             // If the planet already has a biosphere, there is nothing left to do.
-            if (HasBiosphere)
+            if (_hasBiosphere)
             {
                 return false;
             }
 
-            HasBiosphere = true;
-
-            GenerateHydrocarbons(rehydrator);
-
-            // If the habitable zone is a subsurface ocean, no further adjustments occur.
-            if (Hydrosphere is Composite)
-            {
-                return false;
-            }
-
-            if (_planetParams?.EarthlikeAtmosphere == true)
-            {
-                return false;
-            }
-
-            // If there is a habitable surface layer, it is presumed that an initial population of a
-            // cyanobacteria analogue will produce a significant amount of free oxygen, which in turn
-            // will transform most CH4 to CO2 and H2O, and also produce an ozone layer.
-            var o2 = rehydrator.NextDecimal(69, 0.2m, 0.25m);
-            var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-            Atmosphere.Material.AddConstituent(oxygen, o2);
-
-            // Calculate ozone based on level of free oxygen.
-            var o3 = o2 * 4.5e-5m;
-            var ozone = Substances.All.Ozone.GetHomogeneousReference();
-            if (Atmosphere.Material is not Composite lc || lc.Components.Count < 3)
-            {
-                Atmosphere.DifferentiateTroposphere(); // First ensure troposphere is differentiated.
-                (Atmosphere.Material as Composite)?.CopyComponent(1, 0.01m);
-            }
-            (Atmosphere.Material as Composite)?.Components[2].AddConstituent(ozone, o3);
-
-            // Convert most methane to CO2 and H2O.
-            var methane = Substances.All.Methane.GetHomogeneousReference();
-            var ch4 = Atmosphere.Material.GetProportion(methane);
-            if (ch4 != 0)
-            {
-                // The levels of CO2 and H2O are not adjusted; it is presumed that the levels already
-                // determined for them take the amounts derived from CH4 into account. If either gas
-                // is entirely missing, however, it is added.
-                var carbonDioxide = Substances.All.CarbonDioxide.GetHomogeneousReference();
-                if (Atmosphere.Material.GetProportion(carbonDioxide) <= 0)
-                {
-                    Atmosphere.Material.AddConstituent(carbonDioxide, ch4 / 3);
-                }
-
-                if (Atmosphere.Material.GetProportion(Substances.All.Water) <= 0)
-                {
-                    Atmosphere.Material.AddConstituent(Substances.All.Water, ch4 * 2 / 3);
-                    Atmosphere.ResetWater();
-                }
-
-                Atmosphere.Material.AddConstituent(methane, ch4 * 0.001m);
-
-                Atmosphere.ResetGreenhouseFactor();
-                ResetCachedTemperatures();
-                return true;
-            }
+            _hasBiosphere = true;
 
             return false;
         }
@@ -7132,179 +5641,23 @@ namespace NeverFoundry.WorldFoundry.Space
             Vector3 position,
             Number semiMajorAxis)
         {
-            if (PlanetType == PlanetType.Comet)
-            {
-                Material = new Material(
-                    CelestialSubstances.CometNucleus,
-                    rehydrator.NextDouble(7, 300, 700),
-                    // Gaussian distribution with most values between 1km and 19km.
-                    new Ellipsoid(
-                        rehydrator.NormalDistributionSample(8, 10000, 4500, minimum: 0),
-                        rehydrator.NextNumber(9, Number.Half, 1),
-                        position),
-                    temperature);
-                return;
-            }
-
-            if (IsAsteroid)
-            {
-                var doubleMaxMass = _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                    ? (double)_planetParams.Value.MaxMass.Value
-                    : AsteroidMaxMassForType;
-                var mass = rehydrator.PositiveNormalDistributionSample(
-                    7,
-                    AsteroidMinMassForType,
-                    (doubleMaxMass - AsteroidMinMassForType) / 3,
-                    doubleMaxMass);
-
-                var asteroidDensity = PlanetType switch
-                {
-                    PlanetType.AsteroidC => 1380,
-                    PlanetType.AsteroidM => 5320,
-                    PlanetType.AsteroidS => 2710,
-                    _ => 2000,
-                };
-
-                var axis = (mass * new Number(75, -2) / (asteroidDensity * MathConstants.PI)).CubeRoot();
-                var irregularity = rehydrator.NextNumber(8, Number.Half, Number.One);
-                var shape = new Ellipsoid(axis, axis * irregularity, axis / irregularity, position);
-
-                var substances = GetAsteroidComposition(rehydrator);
-                Material = new Material(
-                    substances,
-                    asteroidDensity,
-                    mass,
-                    shape,
-                    temperature);
-                return;
-            }
-
-            if (PlanetType == PlanetType.Lava
-                || PlanetType == PlanetType.LavaDwarf)
-            {
-                temperature = rehydrator.NextDouble(7, 974, 1574);
-            }
-
             var density = GetDensity(rehydrator, PlanetType);
 
-            double? gravity = null;
-            if (_planetParams?.SurfaceGravity.HasValue == true)
-            {
-                gravity = _planetParams!.Value.SurfaceGravity!.Value;
-            }
-            else if (_habitabilityRequirements?.MinimumGravity.HasValue == true
-                || _habitabilityRequirements?.MaximumGravity.HasValue == true)
-            {
-                double maxGravity;
-                if (_habitabilityRequirements?.MaximumGravity.HasValue == true)
-                {
-                    maxGravity = _habitabilityRequirements!.Value.MaximumGravity!.Value;
-                }
-                else // Determine the maximum gravity the planet could have by calculating from its maximum mass.
-                {
-                    var max = _planetParams?.MaxMass ?? GetMaxMassForType(PlanetType);
-                    var maxVolume = max / density;
-                    var maxRadius = (maxVolume / MathConstants.FourThirdsPI).CubeRoot();
-                    maxGravity = (double)(ScienceConstants.G * max / (maxRadius * maxRadius));
-                }
-                gravity = rehydrator.NextDouble(9, _habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
-            }
+            var gravity = PlanetParams.EarthSurfaceGravity;
 
-            Number MassFromUnknownGravity(Rehydrator rehydrator, Number semiMajorAxis, ulong index)
-            {
-                var min = Number.Zero;
-                if (!PlanetType.AnyDwarf.HasFlag(PlanetType))
-                {
-                    // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
-                    // at which the planet would be able to do so at this orbital distance. We set the
-                    // minimum at two orders of magnitude more than this (planets in our solar system
-                    // all have masses above 5 orders of magnitude more). Note that since lambda is
-                    // proportional to the square of mass, it is multiplied by 10 to obtain a difference
-                    // of 2 orders of magnitude, rather than by 100.
-                    var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
-                    min = Number.Max(min, sternLevisonLambdaMass * 10);
+            var radius = Number.Max(MinimumRadius, PlanetParams.EarthRadius);
+            var flattening = rehydrator.NextNumber(10, Number.Deci);
+            var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
 
-                    // sanity check; may result in a "planet" which *can't* clear its neighborhood
-                    if (_planetParams.HasValue
-                        && _planetParams.Value.MaxMass.HasValue
-                        && min > _planetParams.Value.MaxMass.Value)
-                    {
-                        min = _planetParams.Value.MaxMass.Value;
-                    }
-                }
-                return _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                    ? rehydrator.NextNumber(index, min, _planetParams.Value.MaxMass.Value)
-                    : min;
-            }
+            var mass = GetMass(PlanetType, semiMajorAxis, null, gravity, shape);
 
-            if (_planetParams?.Radius.HasValue == true)
-            {
-                var radius = Number.Max(MinimumRadius, _planetParams!.Value.Radius!.Value);
-                var flattening = rehydrator.NextNumber(10, Number.Deci);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                Number mass;
-                if (gravity.HasValue)
-                {
-                    mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
-                }
-                else
-                {
-                    mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 11);
-                }
-
-                Material = GetComposition(rehydrator, density, mass, shape, temperature);
-            }
-            else if (gravity.HasValue)
-            {
-                var radius = Number.Max(MinimumRadius, Number.Min(GetRadiusForSurfaceGravity(gravity.Value), GetRadiusForMass(density, GetMaxMassForType(PlanetType))));
-                var flattening = rehydrator.NextNumber(10, Number.Deci);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                var mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
-
-                Material = GetComposition(rehydrator, density, mass, shape, temperature);
-            }
-            else
-            {
-                Number mass;
-                if (IsGiant)
-                {
-                    mass = rehydrator.NextNumber(10, _GiantMinMassForType, _planetParams?.MaxMass ?? _GiantMaxMassForType);
-                }
-                else if (IsDwarf)
-                {
-                    var maxMass = _planetParams?.MaxMass;
-                    if (!string.IsNullOrEmpty(ParentId))
-                    {
-                        var sternLevisonLambdaMass = (Number.Pow(semiMajorAxis, new Number(15, -1)) / new Number(2.5, -28)).Sqrt();
-                        maxMass = Number.Min(_planetParams?.MaxMass ?? _DwarfMaxMassForType, sternLevisonLambdaMass / 100);
-                        if (maxMass < _DwarfMinMassForType)
-                        {
-                            maxMass = _DwarfMinMassForType; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
-                        }
-                    }
-                    mass = rehydrator.NextNumber(10, _DwarfMinMassForType, maxMass ?? _DwarfMaxMassForType);
-                }
-                else
-                {
-                    mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 10);
-                }
-
-                // An approximate radius as if the shape was a sphere is determined, which is no less
-                // than the minimum required for hydrostatic equilibrium.
-                var radius = Number.Max(MinimumRadius, GetRadiusForMass(density, mass));
-                var flattening = rehydrator.NextNumber(11, Number.Deci);
-                var shape = new Ellipsoid(radius, radius * (1 - flattening), position);
-
-                Material = GetComposition(rehydrator, density, mass, shape, temperature);
-            }
+            Material = GetComposition(rehydrator, density, mass, shape, temperature);
         }
 
         private void GenerateOrbit(
             Rehydrator rehydrator,
             OrbitalParameters? orbit,
-            CosmicLocation? orbitedObject,
+            Planet? orbitedObject,
             double eccentricity,
             Number semiMajorAxis)
         {
@@ -7367,27 +5720,12 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             var ta = rehydrator.NextDouble(37, MathAndScience.Constants.Doubles.MathConstants.TwoPI);
-            if (_planetParams?.RevolutionPeriod.HasValue == true)
-            {
-                GenerateOrbit(rehydrator, orbitedObject, eccentricity, semiMajorAxis, ta);
-            }
-            else
-            {
-                Space.Orbit.AssignOrbit(
-                    this,
-                    orbitedObject,
-                    GetDistanceTo(orbitedObject),
-                    eccentricity,
-                    rehydrator.NextDouble(38, 0.9),
-                    rehydrator.NextDouble(39, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    rehydrator.NextDouble(40, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                    rehydrator.NextDouble(41, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-            }
+            GenerateOrbit(rehydrator, orbitedObject, eccentricity, semiMajorAxis, ta);
         }
 
         private void GenerateOrbit(
             Rehydrator rehydrator,
-            CosmicLocation orbitedObject,
+            Planet orbitedObject,
             double eccentricity,
             Number semiMajorAxis,
             double trueAnomaly) => Space.Orbit.AssignOrbit(
@@ -7467,367 +5805,8 @@ namespace NeverFoundry.WorldFoundry.Space
             }
         }
 
-        private Planetoid? GenerateSatellite(
-            Rehydrator rehydrator,
-            ref ulong index,
-            CosmicLocation? parent,
-            List<Star> stars,
-            Number periapsis,
-            double eccentricity,
-            Number maxMass)
-        {
-            if (PlanetType == PlanetType.GasGiant
-                || PlanetType == PlanetType.IceGiant)
-            {
-                return GenerateGiantSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
-            }
-            if (PlanetType == PlanetType.AsteroidC)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidC,
-                    parent,
-                    null,
-                    stars,
-                    Vector3.Zero,
-                    out _,
-                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            if (PlanetType == PlanetType.AsteroidM)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidM,
-                    parent,
-                    null,
-                    stars,
-                    Vector3.Zero,
-                    out _,
-                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            if (PlanetType == PlanetType.AsteroidS)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidS,
-                    parent,
-                    null,
-                    stars,
-                    Vector3.Zero,
-                    out _,
-                    GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            if (PlanetType == PlanetType.Comet)
-            {
-                return null;
-            }
-            var orbit = new OrbitalParameters(
-                Mass,
-                Position,
-                periapsis,
-                eccentricity,
-                rehydrator.NextDouble(index++, 0.5),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
-                rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
-            double chance;
-
-            // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-            if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
-            {
-                // Select from the standard distribution of types.
-                chance = rehydrator.NextDouble(index++);
-
-                // Planets with very low orbits are lava planets due to tidal
-                // stress (plus a small percentage of others due to impact trauma).
-
-                // Most will be standard terrestrial.
-                double terrestrialChance;
-                if (PlanetType == PlanetType.Carbon)
-                {
-                    terrestrialChance = 0.45;
-                }
-                else if (IsGiant)
-                {
-                    terrestrialChance = 0.65;
-                }
-                else
-                {
-                    terrestrialChance = 0.77;
-                }
-
-                // The maximum mass and density are used to calculate an outer
-                // Roche limit (may not be the actual Roche limit for the body
-                // which gets generated).
-                if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new Number(105, -2) || chance <= 0.01)
-                {
-                    return new Planetoid(
-                        PlanetType.Lava,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= terrestrialChance)
-                {
-                    return new Planetoid(
-                        PlanetType.Terrestrial,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (PlanetType == PlanetType.Carbon && chance <= 0.77) // Carbon planets alone have a chance for carbon satellites.
-                {
-                    return new Planetoid(
-                        PlanetType.Carbon,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (IsGiant && chance <= 0.75)
-                {
-                    return new Planetoid(
-                        PlanetType.Iron,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.Ocean,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-            else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
-            {
-                chance = rehydrator.NextDouble(index++);
-                // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-                if (periapsis < GetRocheLimit(DensityForDwarf) * new Number(105, -2) || chance <= 0.01)
-                {
-                    return new Planetoid(
-                        PlanetType.LavaDwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.75) // Most will be standard.
-                {
-                    return new Planetoid(
-                        PlanetType.Dwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.RockyDwarf,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            // Otherwise, it is an asteroid, selected from the standard distribution of types.
-            else if (maxMass > 0)
-            {
-                chance = rehydrator.NextDouble(index++);
-                if (chance <= 0.75)
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidC,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else if (chance <= 0.9)
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidS,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-                else
-                {
-                    return new Planetoid(
-                        PlanetType.AsteroidM,
-                        parent,
-                        null,
-                        stars,
-                        Vector3.Zero,
-                        out _,
-                        orbit,
-                        new PlanetParams(maxMass: maxMass),
-                        null,
-                        true,
-                        rehydrator.NextUIntInclusive(index++));
-                }
-            }
-
-            return null;
-        }
-
-        private List<Planetoid> GenerateSatellites(Rehydrator rehydrator, CosmicLocation? parent, List<Star> stars, ulong index)
-        {
-            var addedSatellites = new List<Planetoid>();
-
-            int maxSatellites;
-            if (_planetParams?.NumSatellites.HasValue == true)
-            {
-                maxSatellites = _planetParams!.Value.NumSatellites!.Value;
-            }
-            else
-            {
-                maxSatellites = PlanetType switch
-                {
-                    // 5 for most Planemos. For reference, Pluto has 5 moons, the most of any planemo in the
-                    // Solar System apart from the giants. No others are known to have more than 2.
-                    PlanetType.Terrestrial => 5,
-                    PlanetType.Carbon => 5,
-                    PlanetType.Iron => 5,
-                    PlanetType.Ocean => 5,
-                    PlanetType.Dwarf => 5,
-                    PlanetType.RockyDwarf => 5,
-
-                    // Lava planets are too unstable for satellites.
-                    PlanetType.Lava => 0,
-                    PlanetType.LavaDwarf => 0,
-
-                    // Set to 75 for Giant. For reference, Jupiter has 67 moons, and Saturn has 62
-                    // (non-ring) moons.
-                    PlanetType.GasGiant => 75,
-
-                    // Set to 40 for IceGiant. For reference, Uranus has 27 moons, and Neptune has 14 moons.
-                    PlanetType.IceGiant => 40,
-
-                    _ => 1,
-                };
-            }
-
-            if (_satelliteIDs != null || maxSatellites <= 0)
-            {
-                return addedSatellites;
-            }
-
-            var minPeriapsis = Shape.ContainingRadius + 20;
-            var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3 : Shape.ContainingRadius * 100;
-
-            while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < maxSatellites)
-            {
-                var periapsis = rehydrator.NextNumber(index++, minPeriapsis, maxApoapsis);
-
-                var maxEccentricity = (double)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
-                var eccentricity = maxEccentricity < 0.01
-                    ? rehydrator.NextDouble(index++, 0, maxEccentricity)
-                    : rehydrator.PositiveNormalDistributionSample(index++, 0, 0.05, maximum: maxEccentricity);
-
-                var semiLatusRectum = periapsis * (1 + eccentricity);
-                var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
-
-                // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
-                var maxMass = Number.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
-
-                var satellite = GenerateSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
-                if (satellite is null)
-                {
-                    break;
-                }
-                addedSatellites.Add(satellite);
-
-                (_satelliteIDs ??= new List<string>()).Add(satellite.Id);
-
-                minPeriapsis = (satellite.Orbit?.Apoapsis ?? 0) + satellite.GetSphereOfInfluenceRadius();
-            }
-
-            return addedSatellites;
-        }
-
         /// <summary>
-        /// Calculates the surface albedo this <see cref="Planetoid"/> would need in order to have
+        /// Calculates the surface albedo this <see cref="Planet"/> would need in order to have
         /// the given effective temperature at its average distance from the given <paramref
         /// name="star"/> (assuming it is either orbiting the star or not in orbit at all, and that
         /// the current difference between its surface and total albedo remained constant).
@@ -7841,23 +5820,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="temperature">The desired temperature, in K.</param>
         private double GetSurfaceAlbedoForTemperature(Star star, double temperature)
         {
-            var areaRatio = 1;
-            if (RotationalPeriod > 2500)
-            {
-                if (RotationalPeriod <= 75000)
-                {
-                    areaRatio = 4;
-                }
-                else if (RotationalPeriod <= 150000)
-                {
-                    areaRatio = 3;
-                }
-                else if (RotationalPeriod <= 300000)
-                {
-                    areaRatio = 2;
-                }
-            }
-
             var averageDistanceSq = Orbit.HasValue
                 ? ((Orbit.Value.Apoapsis + Orbit.Value.Periapsis) / 2).Square()
                 : Position.DistanceSquared(star.Position);
@@ -7866,7 +5828,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 * Math.Pow(temperature - Temperature, 4)
                 * MathAndScience.Constants.Doubles.MathConstants.FourPI
                 * MathAndScience.Constants.Doubles.ScienceConstants.sigma
-                * areaRatio
+                * 3
                 / star.Luminosity);
 
             var delta = Albedo - _surfaceAlbedo;
@@ -8187,7 +6149,7 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Calculates the distance (in meters) this <see cref="Planetoid"/> would have to be
+        /// Calculates the distance (in meters) this <see cref="Planet"/> would have to be
         /// from a <see cref="Star"/> in order to have the given effective temperature.
         /// </summary>
         /// <remarks>
@@ -8197,28 +6159,11 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <param name="temperature">The desired temperature, in K.</param>
         private Number GetDistanceForTemperature(Star star, double temperature)
         {
-            var areaRatio = 1;
-            if (RotationalPeriod > 2500)
-            {
-                if (RotationalPeriod <= 75000)
-                {
-                    areaRatio = 4;
-                }
-                else if (RotationalPeriod <= 150000)
-                {
-                    areaRatio = 3;
-                }
-                else if (RotationalPeriod <= 300000)
-                {
-                    areaRatio = 2;
-                }
-            }
-
             return Math.Sqrt(star.Luminosity * (1 - Albedo)
                 / (Math.Pow(temperature - Temperature, 4)
                 * MathAndScience.Constants.Doubles.MathConstants.FourPI
                 * MathAndScience.Constants.Doubles.ScienceConstants.sigma
-                * areaRatio));
+                * 3));
         }
 
         private (double latitude, double longitude) GetEclipticLatLon(Vector3 position, Vector3 otherPosition)
@@ -8250,15 +6195,15 @@ namespace NeverFoundry.WorldFoundry.Space
         private double GetInsolationFactor(double latitude)
             => InsolationFactor_Polar + ((InsolationFactor_Equatorial - InsolationFactor_Polar)
             * (0.5 + (Math.Cos(Math.Max(0, (Math.Abs(2 * latitude)
-                * (MathAndScience.Constants.Doubles.MathConstants.HalfPI + AxialTilt)
-                / MathAndScience.Constants.Doubles.MathConstants.HalfPI) - AxialTilt)) / 2)));
+                * (MathAndScience.Constants.Doubles.MathConstants.HalfPI + PlanetParams.EarthAxialTilt)
+                / MathAndScience.Constants.Doubles.MathConstants.HalfPI) - PlanetParams.EarthAxialTilt)) / 2)));
 
         /// <summary>
-        /// Calculates the adiabatic lapse rate for this <see cref="Planetoid"/>, after determining
+        /// Calculates the adiabatic lapse rate for this <see cref="Planet"/>, after determining
         /// whether to use the dry or moist based on the presence of water vapor, in K/m.
         /// </summary>
         /// <param name="surfaceTemp">The surface temperature at the location, in K.</param>
-        /// <returns>The adiabatic lapse rate for this <see cref="Planetoid"/>, in K/m.</returns>
+        /// <returns>The adiabatic lapse rate for this <see cref="Planet"/>, in K/m.</returns>
         /// <remarks>
         /// Uses the specific heat and gas constant of dry air on Earth, which is clearly not
         /// correct for other atmospheres, but is considered "close enough" for the purposes of this
@@ -8269,11 +6214,11 @@ namespace NeverFoundry.WorldFoundry.Space
 
         /// <summary>
         /// Calculates the moist adiabatic lapse rate near the surface of this <see
-        /// cref="Planetoid"/>, in K/m.
+        /// cref="Planet"/>, in K/m.
         /// </summary>
         /// <param name="surfaceTemp">The surface temperature at the location, in K.</param>
         /// <returns>
-        /// The moist adiabatic lapse rate near the surface of this <see cref="Planetoid"/>, in K/m.
+        /// The moist adiabatic lapse rate near the surface of this <see cref="Planet"/>, in K/m.
         /// </returns>
         /// <remarks>
         /// Uses the specific heat and gas constant of dry air on Earth, which is clearly not
@@ -8650,27 +6595,10 @@ namespace NeverFoundry.WorldFoundry.Space
                     //    * (double)Number.Sqrt(star.Shape.ContainingRadius / (2 * position.Distance(star.Position)));
                 }
 
-                var areaRatio = 1;
-                if (RotationalPeriod > 2500)
-                {
-                    if (RotationalPeriod <= 75000)
-                    {
-                        areaRatio = 4;
-                    }
-                    else if (RotationalPeriod <= 150000)
-                    {
-                        areaRatio = 3;
-                    }
-                    else if (RotationalPeriod <= 300000)
-                    {
-                        areaRatio = 2;
-                    }
-                }
-
                 insolationHeat = sum * Math.Pow((1 - Albedo)
                     / (MathAndScience.Constants.Doubles.MathConstants.FourPI
                     * MathAndScience.Constants.Doubles.ScienceConstants.sigma
-                    * areaRatio), 0.25);
+                    * 3), 0.25);
             }
 
             return Temperature + insolationHeat;
@@ -8702,7 +6630,7 @@ namespace NeverFoundry.WorldFoundry.Space
             : _blackbodyTemperature;
 
         /// <summary>
-        /// Calculates the temperature at which this <see cref="Planetoid"/> will retain only
+        /// Calculates the temperature at which this <see cref="Planet"/> will retain only
         /// a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
         /// </summary>
         /// <returns>A temperature, in K.</returns>
@@ -8732,34 +6660,9 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private double ReconstituteHydrosphere(Rehydrator rehydrator)
         {
-            double surfaceTemp;
-            if (_planetParams?.SurfaceTemperature.HasValue == true)
-            {
-                surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
-            }
-            else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-            {
-                surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                    ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
-                        + _habitabilityRequirements!.Value.MaximumTemperature.Value)
-                        / 2
-                    : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
-            }
-            else
-            {
-                surfaceTemp = _blackbodyTemperature;
-            }
+            var surfaceTemp = PlanetParams.EarthSurfaceTemperature;
 
             GenerateHydrosphere(rehydrator, surfaceTemp);
-
-            HasMagnetosphere = _planetParams?.HasMagnetosphere.HasValue == true
-                ? _planetParams!.Value.HasMagnetosphere!.Value
-                : rehydrator.NextNumber(46) <= Mass * new Number(2.88, -19) / RotationalPeriod * (PlanetType switch
-                {
-                    PlanetType.Iron => new Number(5),
-                    PlanetType.Ocean => Number.Half,
-                    _ => Number.One,
-                });
 
             return surfaceTemp;
         }
@@ -8778,34 +6681,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 position,
                 semiMajorAxis);
 
-            if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-            {
-                _surfaceAlbedo = _planetParams.Value.Albedo.Value;
-            }
-            else if (PlanetType == PlanetType.Comet)
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.025, 0.055);
-            }
-            else if (PlanetType == PlanetType.AsteroidC)
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.03, 0.1);
-            }
-            else if (PlanetType == PlanetType.AsteroidM)
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.2);
-            }
-            else if (PlanetType == PlanetType.AsteroidS)
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.22);
-            }
-            else if (PlanetType.Giant.HasFlag(PlanetType))
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.275, 0.35);
-            }
-            else
-            {
-                _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.6);
-            }
+            _surfaceAlbedo = PlanetParams.EarthAlbedo;
             Albedo = _surfaceAlbedo;
         }
 

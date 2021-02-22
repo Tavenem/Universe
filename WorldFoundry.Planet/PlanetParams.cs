@@ -1,16 +1,16 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Numerics;
-using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Planet.Climate;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace NeverFoundry.WorldFoundry.Space.Planetoids
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
-    /// A set of parameters which constrains the random generation of a <see cref="Planetoid"/>.
+    /// A set of parameters which constrains the random generation of a <see cref="Planet"/>.
     /// </summary>
     [Serializable]
     public struct PlanetParams : ISerializable, IEquatable<PlanetParams>

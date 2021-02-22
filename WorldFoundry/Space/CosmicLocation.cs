@@ -29,7 +29,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// hierarchy can be analyzed using the methods available on this class.
     /// </remarks>
     [Serializable]
-    [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.CosmicLocationConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(CosmicLocationConverter))]
     public partial class CosmicLocation : Location
     {

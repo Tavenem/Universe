@@ -12,7 +12,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// A gravitational singularity.
     /// </summary>
     [Serializable]
-    [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.BlackHoleConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(BlackHoleConverter))]
     public class BlackHole : CosmicLocation
     {

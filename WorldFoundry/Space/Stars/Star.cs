@@ -16,7 +16,6 @@ namespace NeverFoundry.WorldFoundry.Space
     /// A stellar body.
     /// </summary>
     [Serializable]
-    [Newtonsoft.Json.JsonConverter(typeof(NewtonsoftJson.StarConverter))]
     [System.Text.Json.Serialization.JsonConverter(typeof(StarConverter))]
     public class Star : CosmicLocation
     {

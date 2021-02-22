@@ -1,5 +1,4 @@
 ﻿using NeverFoundry.MathAndScience.Numerics;
-using Newtonsoft.Json;
 using System;
 using System.Runtime.Serialization;
 
@@ -9,7 +8,6 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
     /// Contains information about a planetary ring (usually one of a collection that makes up a ring system).
     /// </summary>
     [Serializable]
-    [JsonObject]
     public struct PlanetaryRing : ISerializable, IEquatable<PlanetaryRing>
     {
         /// <summary>
@@ -33,7 +31,6 @@ namespace NeverFoundry.WorldFoundry.Space.Planetoids
         /// <param name="icy">Whether the ring is icy, rather than rocky.</param>
         /// <param name="innerRadius">The inner radius of the ring, in m.</param>
         /// <param name="outerRadius">The outer radius of the ring, in m.</param>
-        [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public PlanetaryRing(bool icy, Number innerRadius, Number outerRadius)
         {

@@ -1,9 +1,8 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Space;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
+using NeverFoundry.WorldFoundry.Planet.Climate;
+using NeverFoundry.WorldFoundry.Planet.SurfaceMapping;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
@@ -13,10 +12,10 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Number = NeverFoundry.MathAndScience.Numerics.Number;
 
-namespace NeverFoundry.WorldFoundry.Place
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
-    /// A <see cref="Location"/> on the surface of a <see cref="Planetoid"/>, which can override
+    /// A <see cref="Location"/> on the surface of a <see cref="Planet"/>, which can override
     /// local conditions with manually-specified maps.
     /// </summary>
     [Serializable]
@@ -121,7 +120,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Maximum value is π (a full hemisphere, which produces the full globe).
         /// </para>
         /// </param>
-        public SurfaceRegion(Planetoid planet, Vector3 position, Number latitudeRange)
+        public SurfaceRegion(Planet planet, Vector3 position, Number latitudeRange)
             : base(planet.Id, new Frustum(2, position * (planet.Shape.ContainingRadius + planet.Atmosphere.AtmosphericHeight), Number.Min(latitudeRange, MathConstants.PI), 0)) { }
 
         /// <summary>
@@ -138,7 +137,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Maximum value is π (a full hemisphere, which produces the full globe).
         /// </para>
         /// </param>
-        public SurfaceRegion(Planetoid planet, double latitude, double longitude, Number latitudeRange)
+        public SurfaceRegion(Planet planet, double latitude, double longitude, Number latitudeRange)
             : base(planet.Id, new Frustum(2, planet.LatitudeAndLongitudeToVector(latitude, longitude) * (planet.Shape.ContainingRadius + planet.Atmosphere.AtmosphericHeight), Number.Min(latitudeRange, MathConstants.PI), 0)) { }
 
         /// <summary>
@@ -185,7 +184,9 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </remarks>
         public SurfaceRegion(
             string id,
+#pragma warning disable IDE0060 // Remove unused parameter; needed for serialization
             string idItemTypeName,
+#pragma warning restore IDE0060 // Remove unused parameter
             IShape shape,
             string? parentId,
             string? elevationMapPath,
@@ -276,7 +277,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// the region, which might result in a larger distance in one dimension than indicated by
         /// the given dimensions.
         /// </remarks>
-        public static SurfaceRegion FromBounds(Planetoid planet, double northLatitude, double westLongitude, double southLatitude, double eastLongitude)
+        public static SurfaceRegion FromBounds(Planet planet, double northLatitude, double westLongitude, double southLatitude, double eastLongitude)
         {
             var latitudeRange = Math.Abs(southLatitude - northLatitude);
             var centerLat = northLatitude + (latitudeRange / 2);
@@ -830,7 +831,7 @@ namespace NeverFoundry.WorldFoundry.Place
             double northLatitude,
             double westLongitude,
             double southLatitude,
-            double eastLongitude) GetBounds(Planetoid planet)
+            double eastLongitude) GetBounds(Planet planet)
         {
             var lat = planet.VectorToLongitude(Position);
             var lon = planet.VectorToLatitude(Position);
@@ -877,11 +878,11 @@ namespace NeverFoundry.WorldFoundry.Place
         /// </param>
         /// <returns>
         /// A projected map of elevation. Pixel luminosity indicates elevation relative to <see
-        /// cref="Planetoid.MaxElevation"/>, with values below the midpoint indicating elevations
+        /// cref="Planet.MaxElevation"/>, with values below the midpoint indicating elevations
         /// below the mean surface.
         /// </returns>
         public async Task<Image<L16>> GetElevationMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             bool equalArea = false,
             ISurfaceMapLoader? mapLoader = null)
@@ -964,7 +965,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// name="planet"/>'s <see cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>> GetPrecipitationMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             int steps = 1,
             bool equalArea = false,
@@ -1038,7 +1039,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>> GetPrecipitationMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             double proportionOfYear,
             int steps = 1,
@@ -1130,7 +1131,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// name="planet"/>'s <see cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>[]> GetPrecipitationMapsAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             int steps,
             bool equalArea = false,
@@ -1197,7 +1198,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <param name="planet">The planet on which this region occurs.</param>
         /// <param name="equalArea">Whether to generate cylindrical equal-area options.</param>
         /// <returns>A <see cref="MapProjectionOptions"/> instance.</returns>
-        public MapProjectionOptions GetProjection(Planetoid planet, bool equalArea = false)
+        public MapProjectionOptions GetProjection(Planet planet, bool equalArea = false)
             => new(planet.VectorToLongitude(PlanetaryPosition),
                 planet.VectorToLatitude(PlanetaryPosition),
                 range: (double)((Frustum)Shape).FieldOfViewAngle,
@@ -1237,7 +1238,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>> GetSnowfallMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             int steps = 1,
             bool equalArea = false,
@@ -1310,7 +1311,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// of the <paramref name="planet"/>'s <see cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>> GetSnowfallMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             double proportionOfYear,
             int steps = 1,
@@ -1402,7 +1403,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <see cref="Atmosphere"/>.
         /// </returns>
         public async Task<Image<L16>[]> GetSnowfallMapsAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             int steps,
             bool equalArea = false,
@@ -1486,7 +1487,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// K.
         /// </returns>
         public async Task<Image<L16>> GetTemperatureMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             bool equalArea = false,
             ISurfaceMapLoader? mapLoader = null)
@@ -1553,7 +1554,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// indicates temperature relative to 5000 K.
         /// </returns>
         public async Task<Image<L16>> GetTemperatureMapAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             double proportionOfYear,
             bool equalArea = false,
@@ -1624,7 +1625,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// luminosity indicates temperature relative to 5000 K.
         /// </returns>
         public async Task<Image<L16>> GetTemperatureMapSummerAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             bool equalArea = false,
             ISurfaceMapLoader? mapLoader = null)
@@ -1683,7 +1684,7 @@ namespace NeverFoundry.WorldFoundry.Place
         /// luminosity indicates temperature relative to 5000 K.
         /// </returns>
         public async Task<Image<L16>> GetTemperatureMapWinterAsync(
-            Planetoid planet,
+            Planet planet,
             int resolution,
             bool equalArea = false,
             ISurfaceMapLoader? mapLoader = null)

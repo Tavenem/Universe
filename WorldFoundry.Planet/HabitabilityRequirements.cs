@@ -1,15 +1,15 @@
-﻿using NeverFoundry.WorldFoundry.Climate;
+﻿using NeverFoundry.WorldFoundry.Planet.Climate;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
 
-namespace NeverFoundry.WorldFoundry.Space.Planetoids
+namespace NeverFoundry.WorldFoundry.Planet
 {
     /// <summary>
     /// A collection of parameters for habitability by a given form of life which a <see
-    /// cref="Planetoid"/> must meet in order for such life to survive unaided.
+    /// cref="Planet"/> must meet in order for such life to survive unaided.
     /// </summary>
     [Serializable]
     public struct HabitabilityRequirements : ISerializable, IEquatable<HabitabilityRequirements>

@@ -1,7 +1,6 @@
 ﻿using NeverFoundry.DataStorage;
 using NeverFoundry.MathAndScience.Numerics;
 using NeverFoundry.MathAndScience.Numerics.Numbers;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -16,13 +15,11 @@ namespace NeverFoundry.WorldFoundry.Place
     /// a contiguous region).
     /// </summary>
     [Serializable]
-    [JsonObject]
     public class Territory : Location
     {
         /// <summary>
         /// The ids of the child locations contained within this instance.
         /// </summary>
-        [JsonProperty(TypeNameHandling = TypeNameHandling.None)]
         public IReadOnlyList<string> ChildIds { get; private set; }
 
         /// <summary>
@@ -81,7 +78,6 @@ namespace NeverFoundry.WorldFoundry.Place
         /// Note: this constructor is most useful for deserializers. The other constructors are more
         /// suited to creating a new instance, as they will automatically generate an appropriate ID.
         /// </remarks>
-        [JsonConstructor]
         [System.Text.Json.Serialization.JsonConstructor]
         public Territory(
             string id,
