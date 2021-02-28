@@ -21,10 +21,10 @@ namespace NeverFoundry.WorldFoundry.Test
     public class MappingTests
     {
         private const int ElevationMapResolution = 640;
-        private const int PrecipitationMapResolution = 640;
+        private const int PrecipitationMapResolution = 180;
         private const int TemperatureMapResolution = 640;
         private const int ProjectionResolution = 640;
-        private const int Seasons = 12;
+        private const int Seasons = 2;
 
         private static readonly HillShadingOptions _HillShading = new (true, false, 8);
 
@@ -446,16 +446,24 @@ namespace NeverFoundry.WorldFoundry.Test
             var planet = GetPlanet();
             var region = new SurfaceRegion(planet, -0.95, -0.25, 0.95);
             var projection = region.GetProjection(planet, equalArea);
+            var projectionXResolution = (int)Math.Floor(ProjectionResolution * projection.AspectRatio);
 
             Image<L16> elevationMap;
             if (pregen)
             {
                 using var img = Image.Load<L16>(@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\avora_elev_5400x2700.png");
-                elevationMap = img.GetMapProjection(ElevationMapResolution, null, projection)!;
+                elevationMap = img.GetMapProjection(
+                    Math.Max(ElevationMapResolution, ProjectionResolution),
+                    null,
+                    projection)!;
             }
             else
             {
                 elevationMap = region.GetElevationMap(planet, ElevationMapResolution, equalArea);
+                //if (ElevationMapResolution < ProjectionResolution)
+                //{
+                //    elevationMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                //}
             }
 
             //using (var img = elevationMap
@@ -473,6 +481,11 @@ namespace NeverFoundry.WorldFoundry.Test
 
             var (winterTemperatureMap, summerTemperatureMap) = region
                 .GetTemperatureMaps(planet, elevationMap, TemperatureMapResolution, equalArea);
+            //if (TemperatureMapResolution < ProjectionResolution)
+            //{
+            //    winterTemperatureMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+            //    summerTemperatureMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+            //}
             using var temperatureMap = SurfaceMapImage.AverageImages(winterTemperatureMap, summerTemperatureMap);
 
             //using (var img = temperatureMap.TemperatureMapToImage(
@@ -487,20 +500,21 @@ namespace NeverFoundry.WorldFoundry.Test
             Image<L16>[] snowfallMaps;
             if (pregen)
             {
-                precipitationMaps = new Image<L16>[Seasons];
-                snowfallMaps = new Image<L16>[Seasons];
+                precipitationMaps = new Image<L16>[12];
+                snowfallMaps = new Image<L16>[12];
 
-                const double proportionOfYearPerSeason = 1.0 / Seasons;
-                const int step = 12 / Seasons;
-                for (var i = 0; i < Seasons; i++)
+                const double proportionOfYearPerSeason = 1.0 / 12;
+                for (var i = 0; i < 12; i++)
                 {
                     var proportionOfYear = proportionOfYearPerSeason * i;
                     var seasonTemperatureMap = region.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
 
-                    var m = (i * step) + 1;
-                    using (var img = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{m:00}.png"))
+                    using (var img = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{i + 1:00}.png"))
                     {
-                        precipitationMaps[i] = img.GetMapProjection(PrecipitationMapResolution, null, projection)!;
+                        precipitationMaps[i] = img.GetMapProjection(
+                            Math.Max(PrecipitationMapResolution, ProjectionResolution),
+                            null,
+                            projection)!;
                     }
                     snowfallMaps[i] = precipitationMaps[i].GetSnowfallMap(seasonTemperatureMap);
                 }
@@ -509,9 +523,17 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 (precipitationMaps, snowfallMaps) = region
                     .GetPrecipitationAndSnowfallMaps(planet, winterTemperatureMap, summerTemperatureMap, PrecipitationMapResolution, Seasons, equalArea);
+                if (PrecipitationMapResolution < ProjectionResolution)
+                {
+                    for (var i = 0; i < Seasons; i++)
+                    {
+                        precipitationMaps[i].Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                        snowfallMaps[i].Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                    }
+                }
             }
 
-            for (var i = 0; i < Seasons; i++)
+            for (var i = 0; i < snowfallMaps.Length; i++)
             {
                 snowfallMaps[i].Dispose();
             }
@@ -586,13 +608,18 @@ namespace NeverFoundry.WorldFoundry.Test
             stopwatch2.Start();
             var planet = GetPlanet();
 
+            var projectionXResolution = (int)Math.Floor(ProjectionResolution * projection.AspectRatio);
+
             Image<L16> elevationMap;
             if (pregen)
             {
                 elevationMap = Image.Load<L16>(@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\avora_elev_5400x2700.png");
-                if (projection.EqualArea)
+                if (projection.EqualArea || elevationMap.Height < ProjectionResolution)
                 {
-                    var projected = elevationMap.GetMapProjection(elevationMap.Height, null, projection)!;
+                    var projected = elevationMap.GetMapProjection(
+                        Math.Max(elevationMap.Height, ProjectionResolution),
+                        null,
+                        projection)!;
                     elevationMap.Dispose();
                     elevationMap = projected;
                 }
@@ -600,6 +627,10 @@ namespace NeverFoundry.WorldFoundry.Test
             else
             {
                 elevationMap = planet.GetElevationMap(ElevationMapResolution, projection);
+                //if (ElevationMapResolution < ProjectionResolution)
+                //{
+                //    elevationMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                //}
             }
 
             var elevationMapImage = pregen
@@ -624,6 +655,11 @@ namespace NeverFoundry.WorldFoundry.Test
             }
 
             var (winterTemperatureMap, summerTemperatureMap) = planet.GetTemperatureMaps(elevationMap, TemperatureMapResolution, projection, projection);
+            //if (TemperatureMapResolution < ProjectionResolution)
+            //{
+            //    winterTemperatureMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+            //    summerTemperatureMap.Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+            //}
             using var temperatureMap = SurfaceMapImage.AverageImages(winterTemperatureMap, summerTemperatureMap);
 
             //using (var img = temperatureMap.TemperatureMapToImage())
@@ -639,21 +675,22 @@ namespace NeverFoundry.WorldFoundry.Test
             Image<L16>[] snowfallMaps;
             if (pregen)
             {
-                precipitationMaps = new Image<L16>[Seasons];
-                snowfallMaps = new Image<L16>[Seasons];
+                precipitationMaps = new Image<L16>[12];
+                snowfallMaps = new Image<L16>[12];
 
-                const double proportionOfYearPerSeason = 1.0 / Seasons;
-                const int step = 12 / Seasons;
-                for (var i = 0; i < Seasons; i++)
+                const double proportionOfYearPerSeason = 1.0 / 12;
+                for (var i = 0; i < 12; i++)
                 {
                     var proportionOfYear = proportionOfYearPerSeason * i;
                     var seasonTemperatureMap = planet.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
 
-                    var m = (i * step) + 1;
-                    precipitationMaps[i] = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{m:00}.png");
-                    if (projection.EqualArea)
+                    precipitationMaps[i] = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{i + 1:00}.png");
+                    if (projection.EqualArea || precipitationMaps[i].Height < ProjectionResolution)
                     {
-                        var projected = precipitationMaps[i].GetMapProjection(precipitationMaps[i].Height, null, projection)!;
+                        var projected = precipitationMaps[i].GetMapProjection(
+                            Math.Max(precipitationMaps[i].Height, ProjectionResolution),
+                            null,
+                            projection)!;
                         precipitationMaps[i].Dispose();
                         precipitationMaps[i] = projected;
                     }
@@ -664,6 +701,14 @@ namespace NeverFoundry.WorldFoundry.Test
             {
                 (precipitationMaps, snowfallMaps) = planet
                     .GetPrecipitationAndSnowfallMaps(winterTemperatureMap, summerTemperatureMap, PrecipitationMapResolution, Seasons, projection, projection);
+                if (PrecipitationMapResolution < ProjectionResolution)
+                {
+                    for (var i = 0; i < Seasons; i++)
+                    {
+                        precipitationMaps[i].Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                        snowfallMaps[i].Mutate(x => x.Resize(projectionXResolution, ProjectionResolution));
+                    }
+                }
             }
 
             //using (var snowfallMap = SurfaceMapImage.AverageImages(snowfallMaps))
