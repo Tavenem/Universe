@@ -21,12 +21,17 @@
     <SupportedPlatform Include="browser" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="NeverFoundry.WorldFoundry" Version="0.20.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\WorldFoundry\WorldFoundry.csproj" />
-  </ItemGroup>
+  <Target Name="NugetAdd" AfterTargets="Pack">
+    <exec command="nuget push -Source &quot;WS-NuGet&quot; -ApiKey AzureDevOps $(OutputPath)..\$(PackageId).$(PackageVersion).nupkg" />
+  </Target>
 
 </Project>
