@@ -9,17 +9,12 @@ using NeverFoundry.MathAndScience.Time;
 using NeverFoundry.WorldFoundry.Climate;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
-using NeverFoundry.WorldFoundry.Utilities;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Number = NeverFoundry.MathAndScience.Numerics.Number;
 
 namespace NeverFoundry.WorldFoundry.Space
 {
@@ -28,7 +23,7 @@ namespace NeverFoundry.WorldFoundry.Space
     /// </summary>
     [Serializable]
     [System.Text.Json.Serialization.JsonConverter(typeof(PlanetoidConverter))]
-    public class Planetoid : CosmicLocation, IDisposable
+    public class Planetoid : CosmicLocation
     {
         internal const double DefaultTerrestrialMaxDensity = 6000;
         internal const int GiantMaxDensity = 1650;
@@ -45,8 +40,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
         // polar latitude = ~1.476
         private const double CosPolarLatitude = 0.095;
-        private const int DefaultMapResolution = 320;
-        private const int DefaultSeasons = 4;
         private const int DensityForDwarf = 2000;
         private const int GiantMinDensity = 1100;
         private const int GiantSubMinDensity = 600;
@@ -55,11 +48,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
         /// </summary>
         private const int MinimumRadius = 600000;
-
-        private const double ArcticLatitudeRange = Math.PI / 16;
-        private const double ArcticLatitude = MathAndScience.Constants.Doubles.MathConstants.HalfPI - ArcticLatitudeRange;
-        private const double FifthPI = Math.PI / 5;
-        private const double EighthPI = Math.PI / 8;
 
         internal static readonly Number GiantSpace = new(2.5, 8);
 
@@ -80,7 +68,6 @@ namespace NeverFoundry.WorldFoundry.Space
         private static readonly Number _GiantMinMassForType = new(6, 25);
 
         private static readonly Number _IcyRingDensity = 300;
-        private static readonly double _LowTemp = (Substances.All.Water.MeltingPoint ?? 0) - 48;
 
         /// <summary>
         /// An arbitrary limit separating rogue dwarf planets from rogue planets.
@@ -115,27 +102,14 @@ namespace NeverFoundry.WorldFoundry.Space
         internal readonly PlanetParams? _planetParams;
 
         internal double _blackbodyTemperature;
-        internal Image? _elevationMap;
-        internal string? _elevationMapPath;
-        internal double _normalizedSeaLevel;
-        internal Image?[]? _precipitationMaps;
-        internal string?[]? _precipitationMapPaths;
         internal List<string>? _satelliteIDs;
-        internal Image?[]? _snowfallMaps;
-        internal string?[]? _snowfallMapPaths;
         internal double _surfaceTemperatureAtApoapsis;
         internal double _surfaceTemperatureAtPeriapsis;
-        internal Image? _temperatureMapSummer;
-        internal string? _temperatureMapSummerPath;
-        internal Image? _temperatureMapWinter;
-        internal string? _temperatureMapWinterPath;
 
         private double? _averageSurfaceTemperature;
-        private bool _disposedValue;
         private double? _diurnalTemperatureVariation;
         private double? _maxSurfaceTemperature;
         private double? _minSurfaceTemperature;
-        private int _seed1, _seed2, _seed3, _seed4, _seed5;
         private double _surfaceAlbedo;
         private double? _surfaceTemperature;
 
@@ -221,39 +195,9 @@ namespace NeverFoundry.WorldFoundry.Space
         public bool HasBiosphere { get; set; }
 
         /// <summary>
-        /// Whether an elevation map has been loaded.
-        /// </summary>
-        public bool HasElevationMap => _elevationMap != null;
-
-        /// <summary>
         /// Indicates whether this <see cref="Planetoid"/> has a strong magnetosphere.
         /// </summary>
         public bool HasMagnetosphere { get; private set; }
-
-        /// <summary>
-        /// Whether any precipitation maps have been loaded.
-        /// </summary>
-        public bool HasPrecipitationMap => _precipitationMaps != null;
-
-        /// <summary>
-        /// Whether any snowfall maps have been loaded.
-        /// </summary>
-        public bool HasSnowfallMap => _snowfallMaps != null;
-
-        /// <summary>
-        /// Whether any temperature maps have been loaded.
-        /// </summary>
-        public bool HasTemperatureMap => _temperatureMapSummer != null || _temperatureMapWinter != null;
-
-        /// <summary>
-        /// Whether a summer temperature map has been loaded.
-        /// </summary>
-        public bool HasTemperatureMapSummer => _temperatureMapSummer != null;
-
-        /// <summary>
-        /// Whether a winter temperature map has been loaded.
-        /// </summary>
-        public bool HasTemperatureMapWinter => _temperatureMapWinter != null;
 
         /// <summary>
         /// This planet's surface liquids and ices (not necessarily water).
@@ -305,11 +249,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public bool IsTerrestrial => PlanetType.AnyTerrestrial.HasFlag(PlanetType);
 
-        /// <summary>
-        /// The number of precipitation maps which have been assigned.
-        /// </summary>
-        public int MappedSeasons => _precipitationMaps?.Length ?? 0;
-
         private double? _maxElevation;
         /// <summary>
         /// <para>
@@ -329,6 +268,12 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </para>
         /// </summary>
         public double MaxElevation => _maxElevation ??= (IsGiant || PlanetType == PlanetType.Ocean ? 0 : 200000 / (double)SurfaceGravity);
+
+        /// <summary>
+        /// The elevation of sea level relative to the mean surface elevation of the planet, as a
+        /// fraction of <see cref="MaxElevation"/>.
+        /// </summary>
+        public double NormalizedSeaLevel { get; private set; }
 
         /// <summary>
         /// The type of <see cref="Planetoid"/>.
@@ -359,13 +304,73 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public double SeaLevel
         {
-            get => _seaLevel ??= _normalizedSeaLevel * MaxElevation;
+            get => _seaLevel ??= NormalizedSeaLevel * MaxElevation;
             private set
             {
                 _seaLevel = value;
-                _normalizedSeaLevel = value / MaxElevation;
+                NormalizedSeaLevel = value / MaxElevation;
             }
         }
+
+        /// <summary>
+        /// A value which can be used to deterministically generate random values for this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        public int Seed1 { get; private set; }
+
+        /// <summary>
+        /// A value which can be used to deterministically generate random values for this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        public int Seed2 { get; private set; }
+
+        /// <summary>
+        /// A value which can be used to deterministically generate random values for this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        public int Seed3 { get; private set; }
+
+        /// <summary>
+        /// A value which can be used to deterministically generate random values for this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        public int Seed4 { get; private set; }
+
+        /// <summary>
+        /// A value which can be used to deterministically generate random values for this <see
+        /// cref="Planetoid"/>.
+        /// </summary>
+        public int Seed5 { get; private set; }
+
+        private double? _summerSolsticeTrueAnomaly;
+        /// <summary>
+        /// <para>
+        /// The true anomaly of this planet's orbit at the summer solstice of the northern
+        /// hemisphere.
+        /// </para>
+        /// <para>
+        /// Will be zero for a planet not in orbit.
+        /// </para>
+        /// </summary>
+        public double SummerSolsticeTrueAnomaly
+            => _summerSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.HalfPI
+            - (Orbit?.LongitudeOfPeriapsis ?? 0))
+            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
+
+        private double? _winterSolsticeTrueAnomaly;
+        /// <summary>
+        /// <para>
+        /// The true anomaly of this planet's orbit at the winter solstice of the northern
+        /// hemisphere.
+        /// </para>
+        /// <para>
+        /// Will be zero for a planet not in orbit.
+        /// </para>
+        /// </summary>
+        public double WinterSolsticeTrueAnomaly
+            => _winterSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI
+            - (Orbit?.LongitudeOfPeriapsis ?? 0))
+            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         /// <summary>
         /// The total temperature of this <see cref="Planetoid"/>, not including atmosphereic
@@ -375,30 +380,12 @@ namespace NeverFoundry.WorldFoundry.Space
 
         internal double? GreenhouseEffect { get; set; }
 
-        internal bool HasAllWeatherMaps
-            => _precipitationMaps != null
-            && _snowfallMaps != null
-            && _temperatureMapSummer != null
-            && _temperatureMapWinter != null;
-
         private double? _insolationFactor_Equatorial;
         internal double InsolationFactor_Equatorial
         {
             get => _insolationFactor_Equatorial ??= GetInsolationFactor();
             set => _insolationFactor_Equatorial = value;
         }
-
-        private double? _summerSolsticeTrueAnomaly;
-        internal double SummerSolsticeTrueAnomaly
-            => _summerSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.HalfPI
-            - (Orbit?.LongitudeOfPeriapsis ?? 0))
-            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-
-        private double? _winterSolsticeTrueAnomaly;
-        internal double WinterSolsticeTrueAnomaly
-            => _winterSolsticeTrueAnomaly ??= (MathAndScience.Constants.Doubles.MathConstants.ThreeHalvesPI
-            - (Orbit?.LongitudeOfPeriapsis ?? 0))
-            % MathAndScience.Constants.Doubles.MathConstants.TwoPI;
 
         private protected override string BaseTypeName => PlanetType switch
         {
@@ -428,21 +415,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
         private double? _lapseRateDry;
         private double LapseRateDry => _lapseRateDry ??= (double)SurfaceGravity / MathAndScience.Constants.Doubles.ScienceConstants.CpDryAir;
-
-        private FastNoise? _noise1;
-        private FastNoise Noise1 => _noise1 ??= new FastNoise(_seed1, 0.8, FastNoise.NoiseType.SimplexFractal, octaves: 6);
-
-        private FastNoise? _noise2;
-        private FastNoise Noise2 => _noise2 ??= new FastNoise(_seed2, 0.6, FastNoise.NoiseType.SimplexFractal, FastNoise.FractalType.Billow, octaves: 6);
-
-        private FastNoise? _noise3;
-        private FastNoise Noise3 => _noise3 ??= new FastNoise(_seed3, 1.2, FastNoise.NoiseType.Simplex);
-
-        private FastNoise? _noise4;
-        private FastNoise Noise4 => _noise4 ??= new FastNoise(_seed4, 1.0, FastNoise.NoiseType.Simplex);
-
-        private FastNoise? _noise5;
-        private FastNoise Noise5 => _noise5 ??= new FastNoise(_seed5, 3.0, FastNoise.NoiseType.SimplexFractal, octaves: 3);
 
         private protected override string? TypeNamePrefix => PlanetType switch
         {
@@ -594,12 +566,7 @@ namespace NeverFoundry.WorldFoundry.Space
             bool isInhospitable,
             bool earthlike,
             PlanetParams? planetParams,
-            HabitabilityRequirements? habitabilityRequirements,
-            string? elevationMapPath,
-            string?[]? precipitationMapPaths,
-            string?[]? snowfallMapPaths,
-            string? temperatureMapSummerPath,
-            string? temperatureMapWinterPath)
+            HabitabilityRequirements? habitabilityRequirements)
             : base(
                 id,
                 seed,
@@ -622,11 +589,6 @@ namespace NeverFoundry.WorldFoundry.Space
             _earthlike = earthlike;
             _planetParams = earthlike ? PlanetParams.Earthlike : planetParams;
             _habitabilityRequirements = earthlike ? HabitabilityRequirements.HumanHabitabilityRequirements : habitabilityRequirements;
-            _elevationMapPath = elevationMapPath;
-            _precipitationMapPaths = precipitationMapPaths;
-            _snowfallMapPaths = snowfallMapPaths;
-            _temperatureMapSummerPath = temperatureMapSummerPath;
-            _temperatureMapWinterPath = temperatureMapWinterPath;
 
             AverageBlackbodyTemperature = Orbit.HasValue
                 ? ((_surfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (_surfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
@@ -664,12 +626,7 @@ namespace NeverFoundry.WorldFoundry.Space
             (bool?)info.GetValue(nameof(IsInhospitable), typeof(bool)) ?? default,
             (bool?)info.GetValue(nameof(_earthlike), typeof(bool)) ?? default,
             (PlanetParams?)info.GetValue(nameof(_planetParams), typeof(PlanetParams?)),
-            (HabitabilityRequirements?)info.GetValue(nameof(_habitabilityRequirements), typeof(HabitabilityRequirements?)),
-            (string?)info.GetValue(nameof(_elevationMapPath), typeof(string)),
-            (string?[]?)info.GetValue(nameof(_precipitationMapPaths), typeof(string?[])),
-            (string?[]?)info.GetValue(nameof(_snowfallMapPaths), typeof(string?[])),
-            (string?)info.GetValue(nameof(_temperatureMapSummerPath), typeof(string)),
-            (string?)info.GetValue(nameof(_temperatureMapWinterPath), typeof(string)))
+            (HabitabilityRequirements?)info.GetValue(nameof(_habitabilityRequirements), typeof(HabitabilityRequirements?)))
         { }
 
         /// <summary>
@@ -1151,6 +1108,26 @@ namespace NeverFoundry.WorldFoundry.Space
             return (planet, children);
         }
 
+        /// <summary>
+        /// Offsets the given latitude by the given solar declination.
+        /// </summary>
+        /// <param name="latitude">A latitude, in radians.</param>
+        /// <param name="solarDeclination">A solar declination, in radians.</param>
+        /// <returns>The offset latitude, adjusted to within ±π/2.</returns>
+        public static double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
+        {
+            var seasonalLatitude = latitude + solarDeclination;
+            if (seasonalLatitude > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                return Math.PI - seasonalLatitude;
+            }
+            else if (seasonalLatitude < -MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                return -seasonalLatitude - Math.PI;
+            }
+            return seasonalLatitude;
+        }
+
         internal static double GetSeasonalProportionFromAnnualProportion(double proportionOfYear, double latitude, double axialTilt)
         {
             if (proportionOfYear > 0.5)
@@ -1174,594 +1151,8 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Performs application-defined tasks associated with freeing, releasing, or resetting
-        /// unmanaged resources.
-        /// </summary>
-        /// <param name="disposing"></param>
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _elevationMap?.Dispose();
-                    _temperatureMapSummer?.Dispose();
-                    _temperatureMapWinter?.Dispose();
-
-                    if (_precipitationMaps is not null)
-                    {
-                        for (var i = 0; i < _precipitationMaps.Length; i++)
-                        {
-                            _precipitationMaps[i]?.Dispose();
-                        }
-                    }
-
-                    if (_snowfallMaps is not null)
-                    {
-                        for (var i = 0; i < _snowfallMaps.Length; i++)
-                        {
-                            _snowfallMaps[i]?.Dispose();
-                        }
-                    }
-                }
-
-                _disposedValue = true;
-            }
-        }
-
-        /// <summary>
-        /// Performs application-defined tasks associated with freeing, releasing, or resetting
-        /// unmanaged resources.
-        /// </summary>
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <summary>
-        /// Stores an image as the elevation map for this planet.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignElevationMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _elevationMap = null;
-                _elevationMapPath = null;
-                return;
-            }
-            if (mapLoader is null)
-            {
-                _elevationMap = image;
-                _elevationMapPath = null;
-            }
-            else
-            {
-                _elevationMapPath = await mapLoader.SaveAsync(image, Id, "elevation").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(_elevationMapPath))
-                {
-                    _elevationMap = image;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores an image as a precipitation map for this planet, adding it to any existing
-        /// collection.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignPrecipitationMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _precipitationMaps = null;
-                _precipitationMapPaths = null;
-                return;
-            }
-
-            if (mapLoader is not null)
-            {
-                var path = await mapLoader.SaveAsync(image, Id, $"precipitation_{(_precipitationMaps?.Length ?? -1) + 1}").ConfigureAwait(false);
-                if (string.IsNullOrEmpty(path))
-                {
-                    return;
-                }
-                else if (_precipitationMapPaths is null)
-                {
-                    _precipitationMapPaths = new string?[] { path };
-                }
-                else
-                {
-                    var old = _precipitationMapPaths;
-                    _precipitationMapPaths = new string?[old.Length + 1];
-                    Array.Copy(old, _precipitationMapPaths, old.Length);
-                    _precipitationMapPaths[old.Length] = path;
-                }
-            }
-
-            if (_precipitationMaps is null)
-            {
-                _precipitationMaps = new Image?[] { image };
-            }
-            else
-            {
-                var old = _precipitationMaps;
-                _precipitationMaps = new Image?[old.Length + 1];
-                Array.Copy(old, _precipitationMaps, old.Length);
-                _precipitationMaps[old.Length] = image;
-            }
-        }
-
-        /// <summary>
-        /// Stores a set of images as the precipitation maps for this planet.
-        /// </summary>
-        /// <param name="images">
-        /// The images to load. The set is presumed to be evenly spaced over the course of a year.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignPrecipitationMapsAsync(IEnumerable<Image> images, ISurfaceMapLoader? mapLoader = null)
-        {
-            var list = images.ToList();
-            if (list.Count == 0)
-            {
-                _precipitationMaps = null;
-                _precipitationMapPaths = null;
-                return;
-            }
-            _precipitationMaps = new Image?[list.Count];
-            if (mapLoader is null)
-            {
-                _precipitationMapPaths = null;
-            }
-            else
-            {
-                _precipitationMapPaths = new string?[list.Count];
-            }
-            for (var i = 0; i < list.Count; i++)
-            {
-                if (mapLoader is null)
-                {
-                    _precipitationMaps[i] = list[i];
-                }
-                else
-                {
-                    var path = await mapLoader.SaveAsync(list[i], Id, $"precipitation_{i}").ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        _precipitationMaps[i] = list[i];
-                        _precipitationMapPaths![i] = path;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores an image as a snowfall map for this planet, adding it to any existing
-        /// collection.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignSnowfallMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _snowfallMaps = null;
-                _snowfallMapPaths = null;
-                return;
-            }
-
-            if (mapLoader is not null)
-            {
-                var path = await mapLoader.SaveAsync(image, Id, $"snowfall_{(_snowfallMaps?.Length ?? -1) + 1}").ConfigureAwait(false);
-                if (string.IsNullOrEmpty(path))
-                {
-                    return;
-                }
-                else if (_snowfallMapPaths is null)
-                {
-                    _snowfallMapPaths = new string?[] { path };
-                }
-                else
-                {
-                    var old = _snowfallMapPaths;
-                    _snowfallMapPaths = new string?[old.Length + 1];
-                    Array.Copy(old, _snowfallMapPaths, old.Length);
-                    _snowfallMapPaths[old.Length] = path;
-                }
-            }
-
-            if (_snowfallMaps is null)
-            {
-                _snowfallMaps = new Image?[] { image };
-            }
-            else
-            {
-                var old = _snowfallMaps;
-                _snowfallMaps = new Image?[old.Length + 1];
-                Array.Copy(old, _snowfallMaps, old.Length);
-                _snowfallMaps[old.Length] = image;
-            }
-        }
-
-        /// <summary>
-        /// Stores a set of images as the snowfall maps for this planet.
-        /// </summary>
-        /// <param name="images">
-        /// The images to load. The set is presumed to be evenly spaced over the course of a year.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignSnowfallMapsAsync(IEnumerable<Image> images, ISurfaceMapLoader? mapLoader = null)
-        {
-            var list = images.ToList();
-            if (list.Count == 0)
-            {
-                _snowfallMaps = null;
-                _snowfallMapPaths = null;
-                return;
-            }
-            _snowfallMaps = new Image?[list.Count];
-            if (mapLoader is null)
-            {
-                _snowfallMapPaths = null;
-            }
-            else
-            {
-                _snowfallMapPaths = new string?[list.Count];
-            }
-            for (var i = 0; i < list.Count; i++)
-            {
-                if (mapLoader is null)
-                {
-                    _snowfallMaps[i] = list[i];
-                }
-                else
-                {
-                    var path = await mapLoader.SaveAsync(list[i], Id, $"snowfall_{i}").ConfigureAwait(false);
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        _snowfallMaps[i] = list[i];
-                        _snowfallMapPaths![i] = path;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores an image as the temperature map for this planet, applying the same map to both
-        /// summer and winter.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignTemperatureMapAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _temperatureMapSummer = null;
-                _temperatureMapSummerPath = null;
-                _temperatureMapWinter = null;
-                _temperatureMapWinterPath = null;
-                return;
-            }
-
-            if (mapLoader is null)
-            {
-                _temperatureMapSummer = image;
-                _temperatureMapSummerPath = null;
-                _temperatureMapWinter = _temperatureMapSummer;
-                _temperatureMapWinterPath = null;
-            }
-            else
-            {
-                _temperatureMapSummerPath = await mapLoader.SaveAsync(image, Id, "temperature_summer").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
-                {
-                    _temperatureMapSummer = image;
-                    _temperatureMapWinter = _temperatureMapSummer;
-                    _temperatureMapWinterPath = _temperatureMapSummerPath;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores an image as the temperature map for this planet at the summer solstice.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignTemperatureMapSummerAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _temperatureMapSummer = null;
-                _temperatureMapSummerPath = null;
-                return;
-            }
-
-            if (mapLoader is null)
-            {
-                _temperatureMapSummer = image;
-                _temperatureMapSummerPath = null;
-            }
-            else
-            {
-                _temperatureMapSummerPath = await mapLoader.SaveAsync(image, Id, "temperature_summer").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
-                {
-                    _temperatureMapSummer = image;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Stores an image as the temperature map for this planet at the winter solstice.
-        /// </summary>
-        /// <param name="image">The image to load.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to store the
-        /// image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> the image will not be stored, and will only be available while
-        /// this region persists in memory.
-        /// </para>
-        /// </param>
-        public async Task AssignTemperatureMapWinterAsync(Image? image, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (image is null)
-            {
-                _temperatureMapWinter = null;
-                _temperatureMapWinterPath = null;
-                return;
-            }
-
-            if (mapLoader is null)
-            {
-                _temperatureMapWinter = image;
-                _temperatureMapWinterPath = null;
-            }
-            else
-            {
-                _temperatureMapWinterPath = await mapLoader.SaveAsync(image, Id, "temperature_winter").ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
-                {
-                    _temperatureMapWinter = image;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Clears the elevation map for this planet, and removes it from storage.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to remove the
-        /// image.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the image was removed; or <see langword="false"/> if the
-        /// operation fails.
-        /// </returns>
-        public async Task<bool> ClearElevationMapAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (string.IsNullOrEmpty(_elevationMapPath))
-            {
-                return true;
-            }
-            var success = await mapLoader.RemoveAsync(_elevationMapPath).ConfigureAwait(false);
-            if (success)
-            {
-                _elevationMapPath = null;
-            }
-            return success;
-        }
-
-        /// <summary>
-        /// Clears all this planet's map images, and removes them from storage.
-        /// </summary>
-        /// <returns>
-        /// <see langword="true"/> if the images were all removed; or <see langword="false"/> if the
-        /// operation fails for any iamge.
-        /// </returns>
-        public async Task<bool> ClearMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            var elevationSuccess = ClearElevationMapAsync(mapLoader);
-            var precipitationSuccess = ClearPrecipitationMapsAsync(mapLoader);
-            var snowfallSuccess = ClearSnowfallMapsAsync(mapLoader);
-            var temperatureSuccess = ClearTemperatureMapAsync(mapLoader);
-            var successes = await Task.WhenAll(elevationSuccess, precipitationSuccess, snowfallSuccess, temperatureSuccess)
-                .ConfigureAwait(false);
-            return successes.All(x => x);
-        }
-
-        /// <summary>
-        /// Clears the set of precipitation map images for this planet, and removes them from
-        /// storage.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the images were removed; or <see langword="false"/> if the
-        /// operation fails for any image.
-        /// </returns>
-        public async Task<bool> ClearPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (_precipitationMapPaths is null)
-            {
-                return true;
-            }
-            var success = true;
-            for (var i = 0; i < _precipitationMapPaths.Length; i++)
-            {
-                if (string.IsNullOrEmpty(_precipitationMapPaths[i]))
-                {
-                    continue;
-                }
-                var mapSuccess = await mapLoader.RemoveAsync(_precipitationMapPaths[i]).ConfigureAwait(false);
-                if (mapSuccess)
-                {
-                    _precipitationMapPaths[i] = null;
-                }
-                success &= mapSuccess;
-            }
-            if (success)
-            {
-                _precipitationMapPaths = null;
-            }
-            return success;
-        }
-
-        /// <summary>
-        /// Clears the set of images as the snowfall maps for this planet, and removes them from
-        /// storage.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the images were removed; or <see langword="false"/> if the
-        /// operation fails for any image.
-        /// </returns>
-        public async Task<bool> ClearSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (_snowfallMapPaths is null)
-            {
-                return true;
-            }
-            var success = true;
-            for (var i = 0; i < _snowfallMapPaths.Length; i++)
-            {
-                if (string.IsNullOrEmpty(_snowfallMapPaths[i]))
-                {
-                    continue;
-                }
-                var mapSuccess = await mapLoader.RemoveAsync(_snowfallMapPaths[i]).ConfigureAwait(false);
-                if (mapSuccess)
-                {
-                    _snowfallMapPaths[i] = null;
-                }
-                success &= mapSuccess;
-            }
-            if (success)
-            {
-                _snowfallMapPaths = null;
-            }
-            return success;
-        }
-
-        /// <summary>
-        /// Clears the temperature map(s) for this planet, and removes them from storage.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the image(s) were removed; or <see langword="false"/> if the
-        /// operation fails for any image.
-        /// </returns>
-        public async Task<bool> ClearTemperatureMapAsync(ISurfaceMapLoader mapLoader)
-        {
-            var success = true;
-            if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
-            {
-                success = await mapLoader.RemoveAsync(_temperatureMapSummerPath).ConfigureAwait(false);
-                if (success)
-                {
-                    _temperatureMapSummerPath = null;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
-            {
-                var mapSuccess = await mapLoader.RemoveAsync(_temperatureMapWinterPath).ConfigureAwait(false);
-                if (mapSuccess)
-                {
-                    _temperatureMapWinterPath = null;
-                }
-                success &= mapSuccess;
-            }
-            return success;
-        }
-
-        /// <summary>
-        /// <para>
         /// Removes this location and all contained children, as well as all satellites, from the
         /// given data store.
-        /// </para>
-        /// <para>
-        /// Note: for planets, it may be necessary to call <see
-        /// cref="ClearMapsAsync(ISurfaceMapLoader)"/> prior to deletion, in order to ensure that
-        /// any stored maps are also removed.
-        /// </para>
         /// </summary>
         public override async Task<bool> DeleteAsync(IDataStore dataStore)
         {
@@ -1771,135 +1162,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 childrenSuccess &= await child.DeleteAsync(dataStore).ConfigureAwait(false);
             }
             return childrenSuccess && await base.DeleteAsync(dataStore).ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Calculates the atmospheric density for the given conditions, in kg/m³.
-        /// </summary>
-        /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="latitude">The latitude of the object.</param>
-        /// <param name="longitude">The longitude of the object.</param>
-        /// <param name="altitude">The altitude of the object.</param>
-        /// <param name="surface">
-        /// If <see langword="true"/> the determination is made for a location
-        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
-        /// made for an elevation above the surface.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>The atmospheric density for the given conditions, in kg/m³.</returns>
-        public async Task<double> GetAtmosphericDensityAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            double altitude,
-            bool surface = true,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
-                .ConfigureAwait(false);
-            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude, surface);
-            return Atmosphere.GetAtmosphericDensity(this, tempAtElevation, altitude);
-        }
-
-        /// <summary>
-        /// Calculates the atmospheric drag on a spherical object within the <see
-        /// cref="Atmosphere"/> of this <see cref="Planetoid"/> under given conditions, in N.
-        /// </summary>
-        /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="latitude">The latitude of the object.</param>
-        /// <param name="longitude">The longitude of the object.</param>
-        /// <param name="altitude">The altitude of the object.</param>
-        /// <param name="speed">The speed of the object, in m/s.</param>
-        /// <param name="surface">
-        /// If <see langword="true"/> the determination is made for a location
-        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
-        /// made for an elevation above the surface.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>The atmospheric drag on the object at the specified height, in N.</returns>
-        /// <remarks>
-        /// 0.47 is an arbitrary drag coefficient (that of a sphere in a fluid with a Reynolds
-        /// number of 10⁴), which may not reflect the actual conditions at all, but the inaccuracy
-        /// is accepted since the level of detailed information needed to calculate this value
-        /// accurately is not desired in this library.
-        /// </remarks>
-        public async Task<double> GetAtmosphericDragAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            double altitude,
-            double speed,
-            bool surface = true,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
-                .ConfigureAwait(false);
-            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, altitude, surface);
-            return Atmosphere.GetAtmosphericDrag(this, tempAtElevation, altitude, speed);
-        }
-
-        /// <summary>
-        /// Calculates the atmospheric pressure at a given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, at the given true anomaly of the planet's orbit, in kPa.
-        /// </summary>
-        /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="latitude">The latitude at which to determine atmospheric pressure.</param>
-        /// <param name="longitude">The longitude at which to determine atmospheric
-        /// pressure.</param>
-        /// <param name="surface">
-        /// If <see langword="true"/> the determination is made for a location
-        /// on the surface of the planetoid at the given elevation. Otherwise, the calculation is
-        /// made for an elevation above the surface.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>The atmospheric pressure at the specified height, in kPa.</returns>
-        /// <remarks>
-        /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the
-        /// different atmospheric layers, but this cannot be easily modeled for arbitrary
-        /// exoplanetary atmospheres, so the simple barometric formula is used, which should be
-        /// "close enough" for the purposes of this library. Also, this calculation uses the molar
-        /// mass of air on Earth, which is clearly not correct for other atmospheres, but is
-        /// considered "close enough" for the purposes of this library.
-        /// </remarks>
-        public async Task<double> GetAtmosphericPressureAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            bool surface = true,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var elevation = await GetElevationAtAsync(latitude, longitude, mapLoader).ConfigureAwait(false);
-            var surfaceTemp = await GetSurfaceTemperatureAsync(moment, latitude, longitude, mapLoader)
-                .ConfigureAwait(false);
-            var tempAtElevation = GetTemperatureAtElevation(surfaceTemp, elevation, surface);
-            return GetAtmosphericPressureFromTempAndElevation(tempAtElevation, elevation);
         }
 
         /// <summary>
@@ -1987,132 +1249,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 _diurnalTemperatureVariation = GetAverageSurfaceTemperature() - darkSurfaceTemp;
             }
             return _diurnalTemperatureVariation.Value;
-        }
-
-        /// <summary>
-        /// Gets the elevation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, in meters.
-        /// </summary>
-        /// <param name="latitude">The latitude at which to determine elevation.</param>
-        /// <param name="longitude">The longitude at which to determine elevation.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The elevation at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
-        /// in meters.
-        /// </returns>
-        public async Task<double> GetElevationAtAsync(double latitude, double longitude, ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetElevationMapAsync(mapLoader)
-                .ConfigureAwait(false);
-            return map.GetElevation(this, latitude, longitude, MapProjectionOptions.Default);
-        }
-
-        /// <summary>
-        /// Gets the elevation at the given <paramref name="position"/>, in meters.
-        /// </summary>
-        /// <param name="position">The longitude at which to determine elevation.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The elevation at the given <paramref name="position"/>, in meters.
-        /// </returns>
-        public Task<double> GetElevationAtAsync(Vector3 position, ISurfaceMapLoader? mapLoader = null)
-            => GetElevationAtAsync(VectorToLatitude(position), VectorToLongitude(position), mapLoader);
-
-        /// <summary>
-        /// Gets the stored elevation map image for this planet, if any.
-        /// </summary>
-        /// <returns>The stored elevation map image for this planet, if any.</returns>
-        public Image? GetElevationMap() => _elevationMap;
-
-        /// <summary>
-        /// Gets or generates an elevation map image for this planet.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>An elevation map image for this planet.</returns>
-        /// <remarks>
-        /// If a map exists, it will be returned at its native resolution. If one does not already
-        /// exist, a new one will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetElevationMapAsync(ISurfaceMapLoader? mapLoader = null)
-        {
-            if (_elevationMap is null && !string.IsNullOrEmpty(_elevationMapPath) && mapLoader is not null)
-            {
-                await LoadElevationMapAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_elevationMap is null)
-            {
-                _elevationMap = SurfaceMapImage.GenerateElevationMap(this, DefaultMapResolution);
-                if (mapLoader is not null)
-                {
-                    await AssignElevationMapAsync(_elevationMap, mapLoader).ConfigureAwait(false);
-                }
-            }
-            return _elevationMap.CloneAs<L16>();
-        }
-
-        /// <summary>
-        /// Produces an elevation map projection.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of elevation. Pixel luminosity indicates elevation relative to <see
-        /// cref="MaxElevation"/>, with values below the midpoint indicating elevations below the
-        /// mean surface.
-        /// </returns>
-        public async Task<Image<L16>> GetElevationMapProjectionAsync(
-            int resolution,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetElevationMapAsync(mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
         }
 
         /// <summary>
@@ -2518,523 +1654,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 info.AddValue(nameof(_planetParams), _planetParams);
                 info.AddValue(nameof(_habitabilityRequirements), _habitabilityRequirements);
             }
-            info.AddValue(nameof(_elevationMapPath), _elevationMapPath);
-            info.AddValue(nameof(_precipitationMapPaths), _precipitationMapPaths);
-            info.AddValue(nameof(_snowfallMapPaths), _snowfallMapPaths);
-            info.AddValue(nameof(_temperatureMapSummerPath), _temperatureMapSummerPath);
-            info.AddValue(nameof(_temperatureMapWinterPath), _temperatureMapWinterPath);
-        }
-
-        /// <summary>
-        /// Gets the precipitation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, at the given time, in mm/hr.
-        /// </summary>
-        /// <param name="moment">
-        /// The moment at which precipitation is to be determined.
-        /// </param>
-        /// <param name="latitude">The latitude at which to determine precipitation.</param>
-        /// <param name="longitude">The longitude at which to determine precipitation.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map images.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The precipitation at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, in mm/hr.
-        /// </returns>
-        public async Task<double> GetPrecipitationAtAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetPrecipitationMapAsync(
-                GetProportionOfYearAtTime(moment),
-                DefaultSeasons,
-                mapLoader)
-                .ConfigureAwait(false);
-            return map.GetPrecipitation(this, latitude, longitude, MapProjectionOptions.Default);
-        }
-
-        /// <summary>
-        /// Gets the precipitation at the given <paramref name="position"/>, at the given time, in
-        /// mm/hr.
-        /// </summary>
-        /// <param name="moment">
-        /// The moment at which precipitation is to be determined.
-        /// </param>
-        /// <param name="position">
-        /// The position at which to determine precipitation.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map images.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The precipitation at the given <paramref name="position"/>, in mm/hr.
-        /// </returns>
-        public Task<double> GetPrecipitationAtAsync(
-            Instant moment,
-            Vector3 position,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var latitude = VectorToLatitude(position);
-            var longitude = VectorToLongitude(position);
-            return GetPrecipitationAtAsync(moment, latitude, longitude, mapLoader);
-        }
-
-        /// <summary>
-        /// Gets or generates a precipitation map image for this planet.
-        /// </summary>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// averaging them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>A precipitation map image for this planet.</returns>
-        /// <remarks>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetPrecipitationMapAsync(int steps = 1, ISurfaceMapLoader? mapLoader = null)
-        {
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
-                && _precipitationMapPaths is not null
-                && _precipitationMapPaths.Length > 0
-                && mapLoader is not null)
-            {
-                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_precipitationMaps is null
-                || _precipitationMaps.Length == 0
-                || _precipitationMaps.Any(x => x is null))
-            {
-                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
-                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
-                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
-                _precipitationMaps = precipitationMaps;
-                if (mapLoader is not null)
-                {
-                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
-                }
-                if (_snowfallMaps is null
-                    && (_snowfallMapPaths is null
-                    || _snowfallMapPaths.Length == 0))
-                {
-                    _snowfallMaps = snowfallMaps;
-                    if (mapLoader is not null)
-                    {
-                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
-                    }
-                }
-            }
-            return SurfaceMapImage.AverageImages(_precipitationMaps!);
-        }
-
-        /// <summary>
-        /// Produces a precipitation map projection.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere), before averaging
-        /// them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of precipitation. Pixel luminosity indicates precipitation in mm/hr,
-        /// relative to the <see cref="Atmosphere.MaxPrecipitation"/> of this planet's <see
-        /// cref="Atmosphere"/>.
-        /// </returns>
-        public async Task<Image<L16>> GetPrecipitationMapProjectionAsync(
-            int resolution,
-            int steps = 1,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetPrecipitationMapAsync(steps, mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Gets or generates a precipitation map image for this planet at the given proportion of a
-        /// year.
-        /// </summary>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// interpolating them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A precipitation map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates precipitation in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </para>
-        /// <para>
-        /// Note: if you will be getting multiple images, it is more efficient to use the <see
-        /// cref="GetPrecipitationMapsAsync(int, ISurfaceMapLoader?)"/> method to get the
-        /// entire set at once.
-        /// </para>
-        /// </remarks>
-        public async Task<Image<L16>> GetPrecipitationMapAsync(double proportionOfYear, int steps = 1, ISurfaceMapLoader? mapLoader = null)
-        {
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
-                && _precipitationMapPaths is not null
-                && _precipitationMapPaths.Length > 0
-                && mapLoader is not null)
-            {
-                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_precipitationMaps is null
-                || _precipitationMaps.Length == 0
-                || _precipitationMaps.Any(x => x is null))
-            {
-                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
-                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
-                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
-                _precipitationMaps = precipitationMaps;
-                if (mapLoader is not null)
-                {
-                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
-                }
-                if (_snowfallMaps is null
-                    && (_snowfallMapPaths is null
-                    || _snowfallMapPaths.Length == 0))
-                {
-                    _snowfallMaps = snowfallMaps;
-                    if (mapLoader is not null)
-                    {
-                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
-                    }
-                }
-            }
-            var proportionPerSeason = 1.0 / steps;
-            var proportionPerMap = 1.0 / _precipitationMaps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _precipitationMaps.Length - 1);
-            var nextSeason = season == _precipitationMaps.Length - 1
-                ? 0
-                : season + 1;
-            var weight = proportionOfYear % proportionPerMap;
-            if (weight.IsNearlyZero())
-            {
-                return _precipitationMaps[season]!.CloneAs<L16>();
-            }
-            else
-            {
-                return SurfaceMapImage.InterpolateImages(
-                    _precipitationMaps[season]!,
-                    _precipitationMaps[nextSeason]!,
-                    weight);
-            }
-        }
-
-        /// <summary>
-        /// Produces a precipitation map projection at the given proportion of a year.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// interpolating them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of precipitation at the given proportion of a year. Pixel luminosity
-        /// indicates precipitation in mm/hr, relative to the <see
-        /// cref="Atmosphere.MaxPrecipitation"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// Note: if you will be getting multiple images, it is more efficient to use the <see
-        /// cref="GetPrecipitationMapsProjectionAsync(int, int, MapProjectionOptions?,
-        /// ISurfaceMapLoader?)"/> method to get the entire set at once.
-        /// </remarks>
-        public async Task<Image<L16>> GetPrecipitationMapProjectionAsync(
-            int resolution,
-            double proportionOfYear,
-            int steps = 1,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetPrecipitationMapAsync(proportionOfYear, steps, mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Gets the stored set of precipitation map images for this planet, if any.
-        /// </summary>
-        /// <returns>The stored set of precipitation map images for this planet, if any.</returns>
-        public Image?[] GetPrecipitationMaps()
-        {
-            if (_precipitationMaps is null)
-            {
-                return Array.Empty<Image?>();
-            }
-            var maps = new Image?[_precipitationMaps.Length];
-            for (var i = 0; i < _precipitationMaps.Length; i++)
-            {
-                maps[i] = _precipitationMaps[i];
-            }
-            return maps;
-        }
-
-        /// <summary>
-        /// Gets or generates a set of precipitation map images for this planet.
-        /// </summary>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere).
-        /// </para>
-        /// <para>
-        /// If stored maps exist but in a different number, they will be interpolated.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A set of precipitation map images for this planet. Pixel luminosity indicates
-        /// precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of
-        /// this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>[]> GetPrecipitationMapsAsync(int steps, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (steps == 1)
-            {
-                var map = await GetPrecipitationMapAsync(steps, mapLoader).ConfigureAwait(false);
-                return new[] { map };
-            }
-            if ((_precipitationMaps is null || _precipitationMaps.Length == 0)
-                && _precipitationMapPaths is not null
-                && _precipitationMapPaths.Length > 0
-                && mapLoader is not null)
-            {
-                await LoadPrecipitationMapsAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_precipitationMaps is null
-                || _precipitationMaps.Length == 0
-                || _precipitationMaps.Any(x => x is null))
-            {
-                var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
-                var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
-                var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
-                _precipitationMaps = precipitationMaps;
-                if (mapLoader is not null)
-                {
-                    await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
-                }
-                if (_snowfallMaps is null
-                    && (_snowfallMapPaths is null
-                    || _snowfallMapPaths.Length == 0))
-                {
-                    _snowfallMaps = snowfallMaps;
-                    if (mapLoader is not null)
-                    {
-                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
-                    }
-                }
-            }
-            var maps = new Image<L16>[steps];
-            if (_precipitationMaps.Length == steps)
-            {
-                for (var i = 0; i < steps; i++)
-                {
-                    maps[i] = _precipitationMaps[i]!.CloneAs<L16>();
-                }
-                return maps;
-            }
-            var proportionOfYear = 0.0;
-            var proportionPerSeason = 1.0 / steps;
-            var proportionPerMap = 1.0 / _precipitationMaps.Length;
-            for (var i = 0; i < steps; i++)
-            {
-                var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _precipitationMaps.Length - 1);
-                var nextSeason = season == _precipitationMaps.Length - 1
-                    ? 0
-                    : season + 1;
-                var weight = proportionOfYear % proportionPerMap;
-                if (weight.IsNearlyZero())
-                {
-                    maps[i] = _precipitationMaps[season]!.CloneAs<L16>();
-                }
-                else
-                {
-                    maps[i] = SurfaceMapImage.InterpolateImages(
-                        _precipitationMaps[season]!,
-                        _precipitationMaps[nextSeason]!,
-                        weight);
-                }
-                proportionOfYear += proportionPerSeason;
-            }
-            return maps;
-        }
-
-        /// <summary>
-        /// Produces a set of precipitation map projections.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere).
-        /// </para>
-        /// <para>
-        /// If stored maps exist but in a different number, they will be interpolated.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A set of projected maps of precipitation. Pixel luminosity indicates precipitation in
-        /// mm/hr, relative to the <see cref="Atmosphere.MaxPrecipitation"/> of this planet's <see
-        /// cref="Atmosphere"/>.
-        /// </returns>
-        public async Task<Image<L16>[]> GetPrecipitationMapsProjectionAsync(
-            int resolution,
-            int steps,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var maps = await GetPrecipitationMapsAsync(steps, mapLoader).ConfigureAwait(false);
-            var newMaps = new Image<L16>[maps.Length];
-            for (var i = 0; i < steps; i++)
-            {
-                newMaps[i] = SurfaceMapImage.GetMapImage(
-                    maps[i],
-                    resolution,
-                    options);
-                maps[i].Dispose();
-            }
-            return newMaps;
         }
 
         /// <summary>
@@ -3265,480 +1884,17 @@ namespace NeverFoundry.WorldFoundry.Space
             => (uint)Math.Floor(GetProportionOfYearAtTime(moment) * numSeasons);
 
         /// <summary>
-        /// Gets the snowfall at the given <paramref name="latitude"/> and <paramref
-        /// name="longitude"/>, at the given time, in mm/hr.
+        /// <para>
+        /// Calculates the solar declination at the given true anomaly.
+        /// </para>
+        /// <para>
+        /// Always zero for a planet not in orbit.
+        /// </para>
         /// </summary>
-        /// <param name="moment">
-        /// The moment at which snowfall is to be determined.
-        /// </param>
-        /// <param name="latitude">The latitude at which to determine snowfall.</param>
-        /// <param name="longitude">The longitude at which to determine snowfall.</param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map images.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The snowfall at the given <paramref name="latitude"/> and <paramref name="longitude"/>,
-        /// in mm/hr.
-        /// </returns>
-        public async Task<double> GetSnowfallAtAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetSnowfallMapAsync(
-                GetProportionOfYearAtTime(moment),
-                DefaultSeasons,
-                mapLoader)
-                .ConfigureAwait(false);
-            return map.GetSnowfall(this, latitude, longitude, MapProjectionOptions.Default);
-        }
-
-        /// <summary>
-        /// Gets the snowfall at the given <paramref name="position"/>, at the given time, in mm/hr.
-        /// </summary>
-        /// <param name="moment">
-        /// The moment at which snowfall is to be determined.
-        /// </param>
-        /// <param name="position">
-        /// The position at which to determine snowfall.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map images.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used. Even if one exists, random maps
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// The snowfall at the given <paramref name="position"/>, in mm/hr.
-        /// </returns>
-        public Task<double> GetSnowfallAtAsync(
-            Instant moment,
-            Vector3 position,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var latitude = VectorToLatitude(position);
-            var longitude = VectorToLongitude(position);
-            return GetSnowfallAtAsync(moment, latitude, longitude, mapLoader);
-        }
-
-        /// <summary>
-        /// Gets or generates a snowfall map image for this planet.
-        /// </summary>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// averaging them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A snowfall map image for this planet. Pixel luminosity indicates snowfall in mm/hr,
-        /// relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
-        /// cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetSnowfallMapAsync(int steps = 1, ISurfaceMapLoader? mapLoader = null)
-        {
-            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
-            var map = SurfaceMapImage.AverageImages(maps);
-            for (var i = 0; i < maps.Length; i++)
-            {
-                maps[i].Dispose();
-            }
-            return map;
-        }
-
-        /// <summary>
-        /// Produces a snowfall map projection.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere), before averaging
-        /// them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of snowfall. Pixel luminosity indicates precipitation in mm/hr, relative
-        /// to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        public async Task<Image<L16>> GetSnowfallMapProjectionAsync(
-            int resolution,
-            int steps = 1,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetSnowfallMapAsync(steps, mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Gets or generates a snowfall map image for this planet at the given proportion of a
-        /// year.
-        /// </summary>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// interpolating them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A snowfall map image for this planet at the given proportion of a year. Pixel luminosity
-        /// indicates snowfall in mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/> of
-        /// this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </para>
-        /// <para>
-        /// Note: if you will be getting multiple images, it is more efficient to use the <see
-        /// cref="GetSnowfallMapsAsync(int, ISurfaceMapLoader?)"/> method to get the entire set
-        /// at once.
-        /// </para>
-        /// </remarks>
-        public async Task<Image<L16>> GetSnowfallMapAsync(double proportionOfYear, int steps = 1, ISurfaceMapLoader? mapLoader = null)
-        {
-            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
-            var proportionPerMap = 1.0 / maps.Length;
-            var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, maps.Length - 1);
-            var nextSeason = season == maps.Length - 1
-                ? 0
-                : season + 1;
-            var weight = proportionOfYear % proportionPerMap;
-            var map = weight.IsNearlyZero()
-                ? maps[season]!.CloneAs<L16>()
-                : SurfaceMapImage.InterpolateImages(maps[season]!, maps[nextSeason]!, weight);
-            for (var i = 0; i < maps.Length; i++)
-            {
-                maps[i].Dispose();
-            }
-            return map;
-        }
-
-        /// <summary>
-        /// Produces a snowfall map projection at the given proportion of a year.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a
-        /// year, starting and ending at the winter solstice in the northern hemisphere), before
-        /// interpolating them into a single image.
-        /// </para>
-        /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of snowfall at the given proportion of a year. Pixel luminosity
-        /// indicates precipitation in mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/>
-        /// of this planet's <see cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// Note: if you will be getting multiple images, it is more efficient to use the <see
-        /// cref="GetSnowfallMapProjectionsAsync(int, int, MapProjectionOptions?,
-        /// ISurfaceMapLoader?)"/> method to get the entire set at once.
-        /// </remarks>
-        public async Task<Image<L16>> GetSnowfallMapProjectionAsync(
-            int resolution,
-            double proportionOfYear,
-            int steps = 1,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetSnowfallMapAsync(proportionOfYear, steps, mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Gets the stored set of snowfall map images for this planet, if any.
-        /// </summary>
-        /// <returns>The stored set of snowfall map images for this planet, if any.</returns>
-        public Image?[] GetSnowfallMaps()
-        {
-            if (_snowfallMaps is null)
-            {
-                return Array.Empty<Image?>();
-            }
-            var maps = new Image?[_snowfallMaps.Length];
-            for (var i = 0; i < _snowfallMaps.Length; i++)
-            {
-                maps[i] = _snowfallMaps[i];
-            }
-            return maps;
-        }
-
-        /// <summary>
-        /// Gets or generates a set of snowfall map images for this planet.
-        /// </summary>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere).
-        /// </para>
-        /// <para>
-        /// If stored maps exist but in a different number, they will be interpolated.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A set of snowfall map images for this planet. Pixel luminosity indicates snowfall in
-        /// mm/hr, relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
-        /// cref="Atmosphere"/>.
-        /// </returns>
-        /// <remarks>
-        /// If maps exist, they will be returned at their native resolutions. If maps do not already
-        /// exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>[]> GetSnowfallMapsAsync(int steps, ISurfaceMapLoader? mapLoader = null)
-        {
-            if (steps == 1)
-            {
-                var map = await GetSnowfallMapAsync(steps, mapLoader).ConfigureAwait(false);
-                return new[] { map };
-            }
-            if ((_snowfallMaps is null || _snowfallMaps.Length == 0)
-                && _snowfallMapPaths is not null
-                && _snowfallMapPaths.Length > 0
-                && mapLoader is not null)
-            {
-                await LoadSnowfallMapsAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_snowfallMaps is null
-                || _snowfallMaps.Length == 0
-                || _snowfallMaps.Any(x => x is null))
-            {
-                if (_precipitationMaps is not null
-                    && _precipitationMaps.Length > 0
-                    && !_precipitationMaps.Any(x => x is null))
-                {
-                    var propYear = 0.0;
-                    var propPerSeason = 1.0 / steps;
-                    _snowfallMaps = new Image[_precipitationMaps.Length];
-                    for (var i = 0; i < _precipitationMaps.Length; i++)
-                    {
-                        using var tImg = await GetTemperatureMapAsync(propYear, mapLoader).ConfigureAwait(false);
-                        using var img = _precipitationMaps[i]!.CloneAs<L16>();
-                        _snowfallMaps[i] = img.GetSnowfallMap(tImg);
-                        propYear += propPerSeason;
-                    }
-                    if (mapLoader is not null)
-                    {
-                        await AssignSnowfallMapsAsync(_snowfallMaps!, mapLoader).ConfigureAwait(false);
-                    }
-                }
-                else
-                {
-                    var winterMap = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
-                    var summerMap = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
-                    var (precipitationMaps, snowfallMaps) = SurfaceMapImage.GeneratePrecipitationMaps(this, winterMap, summerMap, DefaultMapResolution, steps);
-                    _snowfallMaps = snowfallMaps;
-                    if (mapLoader is not null)
-                    {
-                        await AssignSnowfallMapsAsync(snowfallMaps, mapLoader).ConfigureAwait(false);
-                    }
-                    if (_precipitationMaps is null
-                        && (_precipitationMapPaths is null
-                        || _precipitationMapPaths.Length == 0))
-                    {
-                        _precipitationMaps = precipitationMaps;
-                        if (mapLoader is not null)
-                        {
-                            await AssignPrecipitationMapsAsync(precipitationMaps, mapLoader).ConfigureAwait(false);
-                        }
-                    }
-                }
-            }
-            var maps = new Image<L16>[steps];
-            if (_snowfallMaps.Length == steps)
-            {
-                for (var i = 0; i < steps; i++)
-                {
-                    maps[i] = _snowfallMaps[i]!.CloneAs<L16>();
-                }
-                return maps;
-            }
-            var proportionOfYear = 0.0;
-            var proportionPerSeason = 1.0 / steps;
-            var proportionPerMap = 1.0 / _snowfallMaps.Length;
-            for (var i = 0; i < steps; i++)
-            {
-                var season = (int)Math.Floor(proportionOfYear / proportionPerMap).Clamp(0, _snowfallMaps.Length - 1);
-                var nextSeason = season == _snowfallMaps.Length - 1
-                    ? 0
-                    : season + 1;
-                var weight = proportionOfYear % proportionPerMap;
-                if (weight.IsNearlyZero())
-                {
-                    maps[i] = _snowfallMaps[season]!.CloneAs<L16>();
-                }
-                else
-                {
-                    maps[i] = SurfaceMapImage.InterpolateImages(_snowfallMaps[season]!, _snowfallMaps[nextSeason]!, weight);
-                }
-                proportionOfYear += proportionPerSeason;
-            }
-            return maps;
-        }
-
-        /// <summary>
-        /// Produces a set of snowfall map projections.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="steps">
-        /// <para>
-        /// The number of maps to generate (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere).
-        /// </para>
-        /// <para>
-        /// If stored maps exist but in a different number, they will be interpolated.
-        /// </para>
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A set of projected maps of snowfall. Pixel luminosity indicates snowfall in mm/hr,
-        /// relative to the <see cref="Atmosphere.MaxSnowfall"/> of this planet's <see
-        /// cref="Atmosphere"/>.
-        /// </returns>
-        public async Task<Image<L16>[]> GetSnowfallMapProjectionsAsync(
-            int resolution,
-            int steps,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            var maps = await GetSnowfallMapsAsync(steps, mapLoader).ConfigureAwait(false);
-            var newMaps = new Image<L16>[maps.Length];
-            for (var i = 0; i < steps; i++)
-            {
-                newMaps[i] = SurfaceMapImage.GetMapImage(
-                    maps[i],
-                    resolution,
-                    options);
-                maps[i].Dispose();
-            }
-            return newMaps;
-        }
+        /// <param name="trueAnomaly">The true anomaly, in radians.</param>
+        /// <returns>The solar declination, in radians.</returns>
+        public double GetSolarDeclination(double trueAnomaly)
+            => Orbit.HasValue ? Math.Asin(Math.Sin(-AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
 
         /// <summary>
         /// <para>
@@ -3761,101 +1917,29 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
-        /// Calculates the surface temperature at the given position, in K.
+        /// Calculates the effective surface temperature at the given surface position, including
+        /// greenhouse effects, as if this object was at the specified true anomaly in its orbit, in
+        /// K. If the body is not in orbit, returns the temperature at its current position.
         /// </summary>
-        /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="latitude">
-        /// The latitude at which to calculate the temperature, in radians.
+        /// <param name="trueAnomaly">
+        /// A true anomaly at which its temperature will be calculated.
         /// </param>
-        /// <param name="longitude">
-        /// The latitude at which to calculate the temperature, in radians.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
+        /// <param name="seasonalLatitude">
+        /// The latitude at which temperature will be calculated, relative to the solar equator at
+        /// the time, rather than the rotational equator.
         /// </param>
         /// <returns>The surface temperature, in K.</returns>
-        public async Task<double> GetSurfaceTemperatureAsync(
-            Instant moment,
-            double latitude,
-            double longitude,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetTemperatureMapAsync(
-                GetProportionOfYearAtTime(moment),
-                mapLoader)
-                .ConfigureAwait(false);
-            return map.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
-        }
-
-        /// <summary>
-        /// Calculates the surface temperature at the given position, in K.
-        /// </summary>
-        /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="position">
-        /// The surface position at which temperature will be calculated.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>The surface temperature, in K.</returns>
-        public Task<double> GetSurfaceTemperatureAsync(Instant moment, Vector3 position, ISurfaceMapLoader? mapLoader = null)
-            => GetSurfaceTemperatureAsync(moment, VectorToLatitude(position), VectorToLongitude(position), mapLoader);
-
-        /// <summary>
-        /// Calculates the range of temperatures at the given <paramref name="latitude"/> and
-        /// <paramref name="longitude"/>, in K.
-        /// </summary>
-        /// <param name="latitude">
-        /// The latitude at which to calculate the temperature range, in radians.
-        /// </param>
-        /// <param name="longitude">
-        /// The latitude at which to calculate the temperature range, in radians.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to load any stored
-        /// map image.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used. Even if one exists, a random map
-        /// will be generated and kept in memory only.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A <see cref="FloatRange"/> giving the range of temperatures at the given <paramref
-        /// name="latitude"/> and <paramref name="longitude"/>, in K.
-        /// </returns>
-        public async Task<FloatRange> GetSurfaceTemperatureAsync(
-            double latitude,
-            double longitude,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var winterMap = await GetTemperatureMapWinterAsync(
-                mapLoader)
-                .ConfigureAwait(false);
-            using var summerMap = await GetTemperatureMapWinterAsync(
-                mapLoader)
-                .ConfigureAwait(false);
-            var winterTemperature = winterMap.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
-            var summerTemperature = winterMap.GetTemperature(latitude, longitude, MapProjectionOptions.Default);
-            return new FloatRange(
-                (float)Math.Min(winterTemperature, summerTemperature),
-                (float)Math.Max(winterTemperature, summerTemperature));
-        }
+        /// <remarks>
+        /// The estimation is performed by linear interpolation between the temperature at periapsis
+        /// and apoapsis, and between the equatorial and polar insolation levels, which is not
+        /// necessarily accurate for highly elliptical orbits, or bodies with multiple significant
+        /// nearby heat sources, but it should be fairly accurate for bodies in fairly circular
+        /// orbits around heat sources which are all close to the center of the orbit, and much
+        /// faster for successive calls than calculating the temperature at specific positions
+        /// precisely.
+        /// </remarks>
+        public double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
+            => GetSeasonalSurfaceTemperature(GetTemperatureAtTrueAnomaly(trueAnomaly), seasonalLatitude);
 
         /// <summary>
         /// Adjusts the given surface temperature for elevation.
@@ -3906,359 +1990,6 @@ namespace NeverFoundry.WorldFoundry.Space
 
                 return surfaceTemp.Lerp(value, weight);
             }
-        }
-
-        /// <summary>
-        /// Gets or generates a temperature map image for this planet.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet. Pixel luminosity indicates temperature relative
-        /// to 5000K.
-        /// </returns>
-        /// <remarks>
-        /// If maps exist, the result will be at the maximum of their native resolutions. If maps do
-        /// not already exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetTemperatureMapAsync(ISurfaceMapLoader? mapLoader = null)
-        {
-            if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
-                && (!string.IsNullOrEmpty(_temperatureMapWinterPath)
-                || !string.IsNullOrEmpty(_temperatureMapSummerPath))
-                && mapLoader is not null)
-            {
-                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_temperatureMapWinter is null || _temperatureMapSummer is null)
-            {
-                var elevationMap = await GetElevationMapAsync(mapLoader)
-                    .ConfigureAwait(false);
-                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
-                if (mapLoader is not null)
-                {
-                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
-                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
-                }
-            }
-            return SurfaceMapImage.GenerateTemperatureMap(_temperatureMapWinter, _temperatureMapSummer);
-        }
-
-        /// <summary>
-        /// Gets or generates a temperature map image for this planet at the given proportion of a
-        /// year.
-        /// </summary>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet at the given proportion of a year. Pixel
-        /// luminosity indicates temperature relative to 5000K.
-        /// </returns>
-        /// <remarks>
-        /// If maps exist, the result will be at the maximum of their native resolutions. If maps do
-        /// not already exist, new ones will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetTemperatureMapAsync(double proportionOfYear, ISurfaceMapLoader? mapLoader = null)
-        {
-            if ((_temperatureMapWinter is null || _temperatureMapSummer is null)
-                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
-                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
-                && mapLoader is not null)
-            {
-                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_temperatureMapWinter is null || _temperatureMapSummer is null)
-            {
-                var elevationMap = await GetElevationMapAsync(mapLoader)
-                    .ConfigureAwait(false);
-                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
-                if (mapLoader is not null)
-                {
-                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
-                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
-                }
-            }
-            return SurfaceMapImage.InterpolateImages(_temperatureMapWinter, _temperatureMapSummer, proportionOfYear);
-        }
-
-        /// <summary>
-        /// Produces a temperature map projection.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of temperature. Pixel luminosity indicates temperature relative to
-        /// 5000K.
-        /// </returns>
-        public async Task<Image<L16>> GetTemperatureMapProjectionAsync(
-            int resolution,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetTemperatureMapAsync(mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Produces a temperature map projection at the given proportion of a year.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="proportionOfYear">
-        /// The proportion of a full year at which the map is to be generated, assuming a year
-        /// begins and ends at the winter solstice in the northern hemisphere.
-        /// </param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of temperature at the given proportion of a year. Pixel luminosity
-        /// indicates temperature relative to 5000K.
-        /// </returns>
-        public async Task<Image<L16>> GetTemperatureMapProjectionAsync(
-            int resolution,
-            double proportionOfYear,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetTemperatureMapAsync(proportionOfYear, mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Produces a temperature map projection of the summer solstice in the northern hemisphere.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of temperature at the summer solstice in the northern hemisphere. Pixel
-        /// luminosity indicates temperature relative to 5000K.
-        /// </returns>
-        public async Task<Image<L16>> GetTemperatureMapProjectionSummerAsync(
-            int resolution,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetTemperatureMapSummerAsync(mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Produces a temperature map projection of the winter solstice in the northern hemisphere.
-        /// </summary>
-        /// <param name="resolution">The vertical resolution of the projection.</param>
-        /// <param name="options">
-        /// <para>
-        /// The map projection options used.
-        /// </para>
-        /// <para>
-        /// If left <see langword="null"/> an equirectangular projection of the full globe is
-        /// produced.
-        /// </para>
-        /// </param>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored map will be used, and any generated map will not be
-        /// saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A projected map of temperature at the winter solstice in the northern hemisphere. Pixel
-        /// luminosity indicates temperature relative to 5000K.
-        /// </returns>
-        public async Task<Image<L16>> GetTemperatureMapProjectionWinterAsync(
-            int resolution,
-            MapProjectionOptions? options = null,
-            ISurfaceMapLoader? mapLoader = null)
-        {
-            using var map = await GetTemperatureMapWinterAsync(mapLoader).ConfigureAwait(false);
-            return SurfaceMapImage.GetMapImage(
-                map,
-                resolution,
-                options);
-        }
-
-        /// <summary>
-        /// Gets the stored temperature map image for this planet at the summer solstice of the
-        /// northern hemisphere, if any.
-        /// </summary>
-        /// <returns>
-        /// The stored temperature map image for this planet at the summer solstice of the northern
-        /// hemisphere, if any.
-        /// </returns>
-        public Image? GetTemperatureMapSummer() => _temperatureMapSummer ?? _temperatureMapWinter;
-
-        /// <summary>
-        /// Gets or generates a temperature map image for this planet at the summer solstice in the
-        /// northern hemisphere.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet at the summer solstice in the northern
-        /// hemisphere. Pixel luminosity indicates temperature relative to 5000K.
-        /// </returns>
-        /// <remarks>
-        /// If a map exists, it will be returned at its native resolution. If a map does not already
-        /// exist, a new one will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetTemperatureMapSummerAsync(ISurfaceMapLoader? mapLoader = null)
-        {
-            if (_temperatureMapSummer is null
-                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
-                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
-                && mapLoader is not null)
-            {
-                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_temperatureMapSummer is null)
-            {
-                var elevationMap = await GetElevationMapAsync(mapLoader)
-                    .ConfigureAwait(false);
-                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
-                if (mapLoader is not null)
-                {
-                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
-                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
-                }
-            }
-            return _temperatureMapSummer.CloneAs<L16>();
-        }
-
-        /// <summary>
-        /// Gets the stored temperature map image for this planet at the winter solstice, if any.
-        /// </summary>
-        /// <returns>The stored temperature map image for this planet at the winter solstice, if
-        /// any.</returns>
-        public Image? GetTemperatureMapWinter() => _temperatureMapWinter ?? _temperatureMapSummer;
-
-        /// <summary>
-        /// Gets or generates a temperature map image for this planet at the winter solstice in the
-        /// northern hemisphere.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// <para>
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used.
-        /// </para>
-        /// <para>
-        /// If <see langword="null"/> no stored maps will be used, and any generated maps will not
-        /// be saved.
-        /// </para>
-        /// </param>
-        /// <returns>
-        /// A temperature map image for this planet at the winter solstice in the northern
-        /// hemisphere. Pixel luminosity indicates temperature relative to 5000K.
-        /// </returns>
-        /// <remarks>
-        /// If a map exists, it will be returned at its native resolution. If a map does not already
-        /// exist, a new one will be generated at a default resolution.
-        /// </remarks>
-        public async Task<Image<L16>> GetTemperatureMapWinterAsync(ISurfaceMapLoader? mapLoader = null)
-        {
-            if (_temperatureMapWinter is null
-                && (!string.IsNullOrEmpty(_temperatureMapSummerPath)
-                || !string.IsNullOrEmpty(_temperatureMapWinterPath))
-                && mapLoader is not null)
-            {
-                await LoadTemperatureMapAsync(mapLoader).ConfigureAwait(false);
-            }
-            if (_temperatureMapWinter is null)
-            {
-                var elevationMap = await GetElevationMapAsync(mapLoader)
-                    .ConfigureAwait(false);
-                (_temperatureMapWinter, _temperatureMapSummer) = SurfaceMapImage.GenerateTemperatureMaps(this, elevationMap, DefaultMapResolution);
-                if (mapLoader is not null)
-                {
-                    await AssignTemperatureMapWinterAsync(_temperatureMapWinter, mapLoader).ConfigureAwait(false);
-                    await AssignTemperatureMapWinterAsync(_temperatureMapSummer, mapLoader).ConfigureAwait(false);
-                }
-            }
-            return _temperatureMapWinter.CloneAs<L16>();
         }
 
         /// <summary>
@@ -4334,6 +2065,32 @@ namespace NeverFoundry.WorldFoundry.Space
         }
 
         /// <summary>
+        /// Converts latitude and longitude to a <see
+        /// cref="MathAndScience.Numerics.Doubles.Vector3"/>.
+        /// </summary>
+        /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
+        /// <param name="longitude">A longitude, as an angle in radians from the X-axis at 0
+        /// rotation.</param>
+        /// <returns>A normalized <see cref="MathAndScience.Numerics.Doubles.Vector3"/> representing
+        /// a position on the surface of this <see cref="Planetoid"/>.</returns>
+        /// <remarks>
+        /// If the planet's axis has never been set, it is treated as vertical for the purpose of
+        /// this calculation, but is not permanently set to such an axis.
+        /// </remarks>
+        public MathAndScience.Numerics.Doubles.Vector3 LatitudeAndLongitudeToDoubleVector(double latitude, double longitude)
+        {
+            var cosLat = Math.Cos(latitude);
+            var rot = AxisRotation;
+            return MathAndScience.Numerics.Doubles.Vector3.Normalize(
+                MathAndScience.Numerics.Doubles.Vector3.Transform(
+                    new MathAndScience.Numerics.Doubles.Vector3(
+                        cosLat * Math.Sin(longitude),
+                        Math.Sin(latitude),
+                        cosLat * Math.Cos(longitude)),
+                    MathAndScience.Numerics.Doubles.Quaternion.Inverse(rot)));
+        }
+
+        /// <summary>
         /// Converts latitude and longitude to a <see cref="Vector3"/>.
         /// </summary>
         /// <param name="latitude">A latitude, as an angle in radians from the equator.</param>
@@ -4349,114 +2106,6 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             var v = LatitudeAndLongitudeToDoubleVector(latitude, longitude);
             return new Vector3(v.X, v.Y, v.Z);
-        }
-
-        /// <summary>
-        /// Loads the elevation map for this planet from storage, if any.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        public async ValueTask LoadElevationMapAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (!string.IsNullOrEmpty(_elevationMapPath))
-            {
-                _elevationMap = await mapLoader.LoadAsync(_elevationMapPath).ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// Loads the assigned set of map images for this planet from storage, if any.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        public async ValueTask LoadMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            await LoadElevationMapAsync(mapLoader)
-                .ConfigureAwait(false);
-            await LoadPrecipitationMapsAsync(mapLoader)
-                .ConfigureAwait(false);
-            await LoadSnowfallMapsAsync(mapLoader)
-                .ConfigureAwait(false);
-            await LoadTemperatureMapAsync(mapLoader)
-                .ConfigureAwait(false);
-        }
-
-        /// <summary>
-        /// Loads a set of images as the precipitation maps for this planet from storage, if any.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        public async ValueTask LoadPrecipitationMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (_precipitationMapPaths is null)
-            {
-                return;
-            }
-            _precipitationMaps = new Image?[_precipitationMapPaths.Length];
-            for (var i = 0; i < _precipitationMapPaths.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(_precipitationMapPaths[i]))
-                {
-                    _precipitationMaps[i] = await mapLoader.LoadAsync(_precipitationMapPaths[i]).ConfigureAwait(false);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Loads a set of images as the snowfall maps for this planet from storage, if any.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        public async ValueTask LoadSnowfallMapsAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (_snowfallMapPaths is null)
-            {
-                return;
-            }
-            _snowfallMaps = new Image?[_snowfallMapPaths.Length];
-            for (var i = 0; i < _snowfallMapPaths.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(_snowfallMapPaths[i]))
-                {
-                    _snowfallMaps[i] = await mapLoader.LoadAsync(_snowfallMapPaths[i]).ConfigureAwait(false);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Loads the temperature map(s) for this planet from storage, if any.
-        /// </summary>
-        /// <param name="mapLoader">
-        /// The <see cref="ISurfaceMapLoader"/> implementation which will be used to retrieve the
-        /// image.
-        /// </param>
-        public async ValueTask LoadTemperatureMapAsync(ISurfaceMapLoader mapLoader)
-        {
-            if (!string.IsNullOrEmpty(_temperatureMapSummerPath))
-            {
-                _temperatureMapSummer = await mapLoader.LoadAsync(_temperatureMapSummerPath).ConfigureAwait(false);
-                if (string.IsNullOrEmpty(_temperatureMapWinterPath))
-                {
-                    _temperatureMapWinter = _temperatureMapSummer;
-                }
-            }
-
-            if (!string.IsNullOrEmpty(_temperatureMapWinterPath))
-            {
-                _temperatureMapWinter = await mapLoader.LoadAsync(_temperatureMapWinterPath).ConfigureAwait(false);
-                if (_temperatureMapSummer is null)
-                {
-                    _temperatureMapSummer = _temperatureMapWinter;
-                }
-            }
         }
 
         /// <summary>
@@ -4529,20 +2178,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 : Math.Atan2(u.X, u.Z);
         }
 
-        internal static double GetSeasonalLatitudeFromDeclination(double latitude, double solarDeclination)
-        {
-            var seasonalLatitude = latitude + solarDeclination;
-            if (seasonalLatitude > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
-            {
-                return Math.PI - seasonalLatitude;
-            }
-            else if (seasonalLatitude < -MathAndScience.Constants.Doubles.MathConstants.HalfPI)
-            {
-                return -seasonalLatitude - Math.PI;
-            }
-            return seasonalLatitude;
-        }
-
         internal static Number GetSpaceForType(PlanetType type) => type switch
         {
             PlanetType.AsteroidC => _AsteroidSpace,
@@ -4581,69 +2216,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// <returns>The radius of the orbiting body's Hill sphere, in meters.</returns>
         internal Number GetMutualHillSphereRadius(Number otherMass)
             => Orbit?.GetMutualHillSphereRadius(Mass, otherMass) ?? Number.Zero;
-
-        internal double GetElevationNoise(Vector3 position)
-            => GetElevationNoise((double)position.X, (double)position.Y, (double)position.Z);
-
-        internal double GetElevationNoise(MathAndScience.Numerics.Doubles.Vector3 position)
-            => GetElevationNoise(position.X, position.Y, position.Z);
-
-        internal double GetPrecipitationNoise(
-            Vector3 position,
-            double latitude,
-            double seasonalLatitude,
-            double temperature,
-            out double snow)
-            => GetPrecipitationNoise((double)position.X, (double)position.Y, (double)position.Z, latitude, seasonalLatitude, temperature, out snow);
-
-        internal double GetPrecipitationNoise(
-            MathAndScience.Numerics.Doubles.Vector3 position,
-            double latitude,
-            double seasonalLatitude,
-            double temperature,
-            out double snow)
-            => GetPrecipitationNoise(position.X, position.Y, position.Z, latitude, seasonalLatitude, temperature, out snow);
-
-        internal double GetSolarDeclination(double trueAnomaly)
-            => Orbit.HasValue ? Math.Asin(Math.Sin(-AxialTilt) * Math.Sin(Orbit.Value.GetEclipticLongitudeAtTrueAnomaly(trueAnomaly))) : 0;
-
-        /// <summary>
-        /// Calculates the effective surface temperature at the given surface position, including
-        /// greenhouse effects, as if this object was at the specified true anomaly in its orbit, in
-        /// K. If the body is not in orbit, returns the temperature at its current position.
-        /// </summary>
-        /// <param name="trueAnomaly">
-        /// A true anomaly at which its temperature will be calculated.
-        /// </param>
-        /// <param name="seasonalLatitude">
-        /// The latitude at which temperature will be calculated, relative to the solar equator at
-        /// the time, rather than the rotational equator.
-        /// </param>
-        /// <returns>The surface temperature, in K.</returns>
-        /// <remarks>
-        /// The estimation is performed by linear interpolation between the temperature at periapsis
-        /// and apoapsis, and between the equatorial and polar insolation levels, which is not
-        /// necessarily accurate for highly elliptical orbits, or bodies with multiple significant
-        /// nearby heat sources, but it should be fairly accurate for bodies in fairly circular
-        /// orbits around heat sources which are all close to the center of the orbit, and much
-        /// faster for successive calls than calculating the temperature at specific positions
-        /// precisely.
-        /// </remarks>
-        internal double GetSurfaceTemperatureAtTrueAnomaly(double trueAnomaly, double seasonalLatitude)
-            => GetSeasonalSurfaceTemperature(GetTemperatureAtTrueAnomaly(trueAnomaly), seasonalLatitude);
-
-        internal MathAndScience.Numerics.Doubles.Vector3 LatitudeAndLongitudeToDoubleVector(double latitude, double longitude)
-        {
-            var cosLat = Math.Cos(latitude);
-            var rot = AxisRotation;
-            return MathAndScience.Numerics.Doubles.Vector3.Normalize(
-                MathAndScience.Numerics.Doubles.Vector3.Transform(
-                    new MathAndScience.Numerics.Doubles.Vector3(
-                        cosLat * Math.Sin(longitude),
-                        Math.Sin(latitude),
-                        cosLat * Math.Cos(longitude)),
-                    MathAndScience.Numerics.Doubles.Quaternion.Inverse(rot)));
-        }
 
         internal override async ValueTask ResetOrbitAsync(IDataStore dataStore)
         {
@@ -7943,26 +5515,6 @@ namespace NeverFoundry.WorldFoundry.Space
                 rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI),
                 rehydrator.NextDouble(index++, MathAndScience.Constants.Doubles.MathConstants.TwoPI));
 
-        /// <summary>
-        /// Calculates the atmospheric pressure at a given elevation, in kPa.
-        /// </summary>
-        /// <param name="temperature">The temperature at the given elevation, in K.</param>
-        /// <param name="elevation">
-        /// An elevation above the reference elevation for standard atmospheric pressure (sea level),
-        /// in meters.
-        /// </param>
-        /// <returns>The atmospheric pressure at the specified height, in kPa.</returns>
-        /// <remarks>
-        /// In an Earth-like atmosphere, the pressure lapse rate varies considerably in the different
-        /// atmospheric layers, but this cannot be easily modeled for arbitrary exoplanetary
-        /// atmospheres, so the simple barometric formula is used, which should be "close enough" for
-        /// the purposes of this library. Also, this calculation uses the molar mass of air on Earth,
-        /// which is clearly not correct for other atmospheres, but is considered "close enough" for
-        /// the purposes of this library.
-        /// </remarks>
-        private double GetAtmosphericPressureFromTempAndElevation(double temperature, double elevation)
-            => Atmosphere.GetAtmosphericPressure(this, temperature, elevation);
-
         private IMaterial GetComposition(Rehydrator rehydrator, double density, Number mass, IShape shape, double? temperature)
         {
             var coreProportion = PlanetType switch
@@ -8372,111 +5924,11 @@ namespace NeverFoundry.WorldFoundry.Space
             return (_surfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + greenhouseEffect - variation;
         }
 
-        private double GetElevationNoise(double x, double y, double z)
-        {
-            if (MaxElevation.IsNearlyZero())
-            {
-                return 0;
-            }
-
-            // Initial noise map: a simple fractal noise map.
-            var baseNoise = Noise1.GetNoise(x, y, z);
-
-            // Mountain noise map: a more ridged map.
-            var mountains = (-Noise2.GetNoise(x, y, z) - 0.25) * 4 / 3;
-
-            // Scale the base noise to the typical average height of continents, with a degree of
-            // randomness borrowed from the mountain noise function.
-            var scaledBaseNoise = (baseNoise * (0.25 + (mountains * 0.0625))) - 0.04;
-
-            // Modify the mountain map to indicate mountains only in random areas, instead of
-            // uniformly across the globe.
-            mountains *= (Noise3.GetNoise(x, y, z) + 1).Clamp(0, 1);
-
-            // Multiply with itself to produce predominantly low values with high (and low)
-            // extremes, and scale to the typical maximum height of mountains, with a degree of
-            // randomness borrowed from the base noise function.
-            mountains = Math.CopySign(mountains * mountains * (0.525 + (baseNoise * 0.13125)), mountains);
-
-            // The combined value is returned, resulting in mostly broad, low-lying areas,
-            // interrupted by occasional high mountain ranges and low trenches.
-            return scaledBaseNoise + mountains;
-        }
-
         private double GetPolarAirMass(double atmosphericScaleHeight)
         {
             var r = (double)Shape.ContainingRadius / atmosphericScaleHeight;
             var rCosLat = r * CosPolarLatitude;
             return Math.Sqrt((rCosLat * rCosLat) + (2 * r) + 1) - rCosLat;
-        }
-
-        private double GetPrecipitationNoise(
-            double x,
-            double y,
-            double z,
-            double latitude,
-            double seasonalLatitude,
-            double temperature,
-            out double snow)
-        {
-            snow = 0;
-
-            // Noise map with smooth, broad areas. Random range ~0.5-2.
-            var r1 = 1.25 + (Noise4.GetNoise(x, y, z) * 0.75);
-
-            // More detailed noise map. Random range of ~0-1.35.
-            var r2 = 0.675 + (Noise5.GetNoise(x, y, z) * 0.75);
-
-            // Combined map is noise with broad similarity over regions, and minor local
-            // diversity. Range ~0.5-3.35.
-            var r = r1 * r2;
-
-            // Hadley cells alter local conditions.
-            var absLatitude = Math.Abs(latitude);
-            var absSeasonalLatitude = Math.Abs((latitude + seasonalLatitude) / 2);
-            var hadleyValue = 0.0;
-
-            // The polar deserts above ~±10º result in almost no precipitation
-            if (absLatitude > ArcticLatitude)
-            {
-                // Range ~-3-~0.
-                hadleyValue = -3 * ((absLatitude - ArcticLatitude) / ArcticLatitudeRange);
-            }
-
-            // The horse latitudes create the subtropical deserts between ~±35º-30º
-            if (absLatitude < FifthPI)
-            {
-                // Range ~-3-0.
-                hadleyValue = 2 * (r1 - 2) * ((FifthPI - absLatitude) / FifthPI);
-
-                // The ITCZ increases in intensity towards the thermal equator
-                if (absSeasonalLatitude < EighthPI)
-                {
-                    // Range 0-~33.5.
-                    hadleyValue += 10 * r * ((EighthPI - absSeasonalLatitude) / EighthPI).Cube();
-                }
-            }
-
-            // Relative humidity is the Hadley cell value added to the random value. Range ~-2.5-~36.85.
-            var relativeHumidity = r + hadleyValue;
-
-            // In the range betwen 32K and 48K below freezing, the value is scaled down; below that
-            // range it is cut off completely; above it is unchanged.
-            relativeHumidity *= ((temperature - _LowTemp) / 16).Clamp(0, 1);
-
-            if (relativeHumidity <= 0)
-            {
-                return 0;
-            }
-
-            var precipitation = Atmosphere.AveragePrecipitation * relativeHumidity;
-
-            if (temperature <= Substances.All.Water.MeltingPoint)
-            {
-                snow = precipitation * Atmosphere.SnowToRainRatio;
-            }
-
-            return precipitation;
         }
 
         private async ValueTask<Star?> GetPrimaryStarAsync(IDataStore dataStore)
@@ -8536,11 +5988,11 @@ namespace NeverFoundry.WorldFoundry.Space
             Seed = seed ?? Randomizer.Instance.NextUIntInclusive();
 
             var rehydrator = new Rehydrator(Seed);
-            _seed1 = rehydrator.NextInclusive(0);
-            _seed2 = rehydrator.NextInclusive(1);
-            _seed3 = rehydrator.NextInclusive(2);
-            _seed4 = rehydrator.NextInclusive(3);
-            _seed5 = rehydrator.NextInclusive(4);
+            Seed1 = rehydrator.NextInclusive(0);
+            Seed2 = rehydrator.NextInclusive(1);
+            Seed3 = rehydrator.NextInclusive(2);
+            Seed4 = rehydrator.NextInclusive(3);
+            Seed5 = rehydrator.NextInclusive(4);
 
             return rehydrator;
         }

@@ -1,9 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NeverFoundry.MathAndScience.Constants.Numbers;
 using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Maps;
 using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System;
@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Test
 {
@@ -22,16 +21,15 @@ namespace NeverFoundry.WorldFoundry.Test
         private const int Seasons = 12;
 
         [TestMethod]
-        public async Task EarthlikePlanetAsync()
+        public void EarthlikePlanet()
         {
             // First run to ensure timed runs do not include any one-time initialization costs.
-            var planet = Planetoid.GetPlanetForSunlikeStar(out _);
-            Assert.IsNotNull(planet);
+            _ = Planetoid.GetPlanetForSunlikeStar(out _);
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
 
-            planet = Planetoid.GetPlanetForSunlikeStar(out _);
+            var planet = Planetoid.GetPlanetForSunlikeStar(out _);
 
             stopwatch.Stop();
 
@@ -43,32 +41,30 @@ namespace NeverFoundry.WorldFoundry.Test
 
             stopwatch.Restart();
 
-            using (var elevationMap = await planet
-                .GetElevationMapAsync()
-                .ConfigureAwait(false))
+            using (var elevationMap = planet.GetElevationMap(MapResolution))
             {
-                using var temperatureMap = await planet
-                    .GetTemperatureMapAsync()
-                    .ConfigureAwait(false);
-
-                using var precipitationMap = await planet
-                    .GetPrecipitationMapAsync(Seasons)
-                    .ConfigureAwait(false);
-
-                WeatherMaps climateMaps;
-                using var winterTemperatureMap = await planet
-                    .GetTemperatureMapWinterAsync()
-                    .ConfigureAwait(false);
-                using var summerTemperatureMap = await planet
-                    .GetTemperatureMapSummerAsync()
-                    .ConfigureAwait(false);
-                climateMaps = new WeatherMaps(
+                var (winterTemperatureMap, summerTemperatureMap) = planet.GetTemperatureMaps(elevationMap, MapResolution);
+                var (precipitationMaps, snowfallMaps) = planet
+                        .GetPrecipitationAndSnowfallMaps(winterTemperatureMap, summerTemperatureMap, MapResolution, Seasons);
+                for (var i = 0; i < snowfallMaps.Length; i++)
+                {
+                    snowfallMaps[i].Dispose();
+                }
+                using var precipitationMap = SurfaceMapImage.AverageImages(precipitationMaps);
+                for (var i = 0; i < precipitationMaps.Length; i++)
+                {
+                    precipitationMaps[i].Dispose();
+                }
+                _ = new WeatherMaps(
                     planet,
                     elevationMap,
                     winterTemperatureMap,
                     summerTemperatureMap,
                     precipitationMap,
-                    MapResolution);
+                    MapResolution,
+                    MapProjectionOptions.Default);
+                winterTemperatureMap.Dispose();
+                summerTemperatureMap.Dispose();
             }
 
             stopwatch.Stop();
@@ -79,42 +75,37 @@ namespace NeverFoundry.WorldFoundry.Test
 
             stopwatch.Restart();
 
-            using var elevationMapEA = await planet
-                .GetElevationMapProjectionAsync(MapResolution, projection)
-                .ConfigureAwait(false);
-
-            using var temperatureMapEA = await planet
-                .GetTemperatureMapProjectionAsync(MapResolution, projection)
-                .ConfigureAwait(false);
-
-            using var precipitationMapEA = await planet
-                .GetPrecipitationMapProjectionAsync(MapResolution, Seasons, projection)
-                .ConfigureAwait(false);
-
-            WeatherMaps climateMapsEA;
-            using (var winterTemperatureMapEA = await planet
-                .GetTemperatureMapProjectionWinterAsync(MapResolution, projection)
-                .ConfigureAwait(false))
+            using var elevationMapEA = planet.GetElevationMap(MapResolution, projection);
+            var (winterTemperatureMapEA, summerTemperatureMapEA) = planet.GetTemperatureMaps(elevationMapEA, MapResolution, projection, projection);
+            using var temperatureMapEA = SurfaceMapImage.AverageImages(winterTemperatureMapEA, summerTemperatureMapEA);
+            var (precipitationMapsEA, snowfallMapsEA) = planet
+                    .GetPrecipitationAndSnowfallMaps(winterTemperatureMapEA, summerTemperatureMapEA, MapResolution, Seasons, projection, projection);
+            for (var i = 0; i < snowfallMapsEA.Length; i++)
             {
-                using var summerTemperatureMapEA = await planet
-                    .GetTemperatureMapProjectionSummerAsync(MapResolution, projection)
-                    .ConfigureAwait(false);
-                climateMapsEA = new WeatherMaps(
-                    planet,
-                    elevationMapEA,
-                    winterTemperatureMapEA,
-                    summerTemperatureMapEA,
-                    precipitationMapEA,
-                    MapResolution,
-                    projection);
+                snowfallMapsEA[i].Dispose();
             }
+            using var precipitationMapEA = SurfaceMapImage.AverageImages(precipitationMapsEA);
+            for (var i = 0; i < precipitationMapsEA.Length; i++)
+            {
+                precipitationMapsEA[i].Dispose();
+            }
+            var climateMapsEA = new WeatherMaps(
+                planet,
+                elevationMapEA,
+                winterTemperatureMapEA,
+                summerTemperatureMapEA,
+                precipitationMapEA,
+                MapResolution,
+                projection);
+            winterTemperatureMapEA.Dispose();
+            summerTemperatureMapEA.Dispose();
 
             stopwatch.Stop();
 
             Console.WriteLine($"Cylindrical equal-area surface map generation time: {stopwatch.Elapsed:s'.'FFF} s");
 
             var normalizedSeaLevel = planet.SeaLevel / planet.MaxElevation;
-            var elevationRange = elevationMapEA.GetElevationRange(planet);
+            var elevationRange = planet.GetElevationRange(elevationMapEA);
             var landCoords = 0;
             if (planet.Hydrosphere?.IsEmpty == false)
             {
@@ -405,7 +396,7 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
             sb.AppendLine();
 
-            var elevationRange = elevationMap.GetElevationRange(planet);
+            var elevationRange = planet.GetElevationRange(elevationMap);
             if (planet.Hydrosphere?.IsEmpty == false)
             {
                 var totalCoords = (decimal)(elevationMap.Width * elevationMap.Height);

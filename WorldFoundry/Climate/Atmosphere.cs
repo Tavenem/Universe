@@ -17,7 +17,11 @@ namespace NeverFoundry.WorldFoundry.Climate
     [Serializable]
     public class Atmosphere : ISerializable
     {
-        internal const int SnowToRainRatio = 13;
+        /// <summary>
+        /// The ratio by which precipitation is multiplied to obtain an equivalent amount of
+        /// snowfall.
+        /// </summary>
+        public const int SnowToRainRatio = 13;
 
         // The approximate value of 2 * (0.05 + e^1.25). Used to calculate MaxPrecipitation.
         private const double MaxPrecipitationFactor = 7.0806859149236827522610920593445;

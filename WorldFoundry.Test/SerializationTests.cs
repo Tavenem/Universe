@@ -175,11 +175,6 @@ namespace NeverFoundry.WorldFoundry.Test
                 SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
-                null,
-                null,
-                null,
-                null,
-                null,
                 null);
 
             var json = System.Text.Json.JsonSerializer.Serialize(value);
@@ -194,11 +189,6 @@ namespace NeverFoundry.WorldFoundry.Test
                 SurfaceRegion.SurfaceRegionIdItemTypeName,
                 new Sphere(new Number(10)),
                 "Test_Parent_ID",
-                null,
-                null,
-                null,
-                null,
-                null,
                 new Vector3[] { Vector3.Zero, Vector3.UnitX });
 
             json = System.Text.Json.JsonSerializer.Serialize(value);

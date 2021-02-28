@@ -20,7 +20,7 @@ namespace NeverFoundry.WorldFoundry.ConsoleTester
             {
                 while (true)
                 {
-                    using var planet = Planetoid.GetPlanetForSunlikeStar(out _);
+                    var planet = Planetoid.GetPlanetForSunlikeStar(out _);
                     if (planet is null)
                     {
                         Console.WriteLine("Failed to generate planet.");

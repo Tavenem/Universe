@@ -1,27 +1,28 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NeverFoundry.MathAndScience;
 using NeverFoundry.WorldFoundry.Climate;
+using NeverFoundry.WorldFoundry.Maps;
 using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
 using NeverFoundry.WorldFoundry.Space.Planetoids;
-using NeverFoundry.WorldFoundry.SurfaceMapping;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.Processing.Processors.Transforms;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace NeverFoundry.WorldFoundry.Test
 {
     [TestClass]
     public class MappingTests
     {
-        private const int ElevationMapResolution = 960;
-        private const int ElevationMapResolution_Pregen = 2700;
-        private const int PrecipitationMapResolution = 960;
-        private const int TemperatureMapResolution = 960;
+        private const int ElevationMapResolution = 640;
+        private const int PrecipitationMapResolution = 640;
+        private const int TemperatureMapResolution = 640;
         private const int ProjectionResolution = 640;
         private const int Seasons = 12;
 
@@ -40,810 +41,34 @@ namespace NeverFoundry.WorldFoundry.Test
         }
 
         [TestMethod]
-        public async Task RegionMappingPregenTestAsync()
-        {
-            using var planet = await GetPlanetPregenAsync().ConfigureAwait(false);
-
-            using var elevationMap = await planet
-                .GetElevationMapProjectionAsync(ElevationMapResolution_Pregen, MapProjectionOptions.Default)
-                .ConfigureAwait(false);
-
-            var (winterTemperatureMap, summerTemperatureMap) = planet.GenerateTemperatureMaps(elevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(winterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(summerTemperatureMap)
-                .ConfigureAwait(false);
-
-            var region = new SurfaceRegion(planet, -0.9162975, -0.174533, 0.610865);
-            const bool regionEqualArea = true;
-            var regionProjection = region.GetProjection(planet, regionEqualArea);
-
-            using var regionElevationMap = await region
-                .GetElevationMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionElevationMap
-            //    .ElevationMapToImage(planet))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_ElevationImage_Regional.png"));
-            //}
-            using (var img = regionElevationMap
-                .ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_HillShadeImage_Pregen_Regional.png"));
-            }
-
-            using var regionTemperatureMap = await region
-                .GetTemperatureMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionTemperatureMap.TemperatureMapToImage(
-            //    planet,
-            //    regionElevationMap,
-            //    false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_LandTemperatureImage_Regional.png"));
-            //}
-
-            using var regionPrecipitationMap = await region
-                .GetPrecipitationMapAsync(planet, ProjectionResolution, Seasons, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionPrecipitationMap.PrecipitationMapToImage(
-            //    planet,
-            //    regionElevationMap,
-            //    false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_LandPrecipitationImage_Regional.png"));
-            //}
-
-            WeatherMaps regionClimateMaps;
-            using (var regionWinterTemperatureMap = await region
-                .GetTemperatureMapWinterAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false))
-            {
-                using var regionSummerTemperatureMap = await region
-                    .GetTemperatureMapSummerAsync(planet, ProjectionResolution, regionEqualArea)
-                    .ConfigureAwait(false);
-                regionClimateMaps = new WeatherMaps(
-                    planet,
-                    regionElevationMap,
-                    regionWinterTemperatureMap,
-                    regionSummerTemperatureMap,
-                    regionPrecipitationMap,
-                    ProjectionResolution,
-                    regionProjection);
-            }
-
-            using (var img = regionClimateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                regionElevationMap,
-                true,
-                regionProjection,
-                regionProjection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_BiomeOceanHillShadeImage_Regional.png"));
-            }
-
-            using (var img = regionClimateMaps.GetSatelliteImage(
-                planet,
-                regionElevationMap,
-                regionTemperatureMap,
-                regionProjection,
-                regionProjection))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_SatelliteImage_Regional.png"));
-            }
-
-            winterTemperatureMap.Dispose();
-            summerTemperatureMap.Dispose();
-        }
+        public void RegionMappingPregenTest()
+            => RegionMapping(false, "Pregen_", null, true);
 
         [TestMethod]
-        public async Task RegionMappingTestAsync()
-        {
-            var planet = GetPlanet();
-
-            using var elevationMap = planet.GenerateElevationMap(ElevationMapResolution);
-            await planet.AssignElevationMapAsync(elevationMap)
-                .ConfigureAwait(false);
-
-            var (winterTemperatureMap, summerTemperatureMap) = planet.GenerateTemperatureMaps(elevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(winterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(summerTemperatureMap)
-                .ConfigureAwait(false);
-
-            var region = new SurfaceRegion(planet, -0.9162975, -0.174533, 0.610865);
-            const bool regionEqualArea = true;
-            var regionProjection = region.GetProjection(planet, regionEqualArea);
-
-            using var regionElevationMap = await region
-                .GetElevationMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionElevationMap
-            //    .ElevationMapToImage(planet))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "ElevationImage_Regional.png"));
-            //}
-            using (var img = regionElevationMap
-                .ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "HillShadeImage_Regional.png"));
-            }
-
-            using var regionTemperatureMap = await region
-                .GetTemperatureMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionTemperatureMap.TemperatureMapToImage(
-            //    planet,
-            //    regionElevationMap,
-            //    false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "LandTemperatureImage_Regional.png"));
-            //}
-
-            using var regionPrecipitationMap = await region
-                .GetPrecipitationMapAsync(planet, ProjectionResolution, Seasons, regionEqualArea)
-                .ConfigureAwait(false);
-            //using (var img = regionPrecipitationMap.PrecipitationMapToImage(
-            //    planet,
-            //    regionElevationMap,
-            //    false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "LandPrecipitationImage_Regional.png"));
-            //}
-
-            WeatherMaps regionClimateMaps;
-            using (var regionWinterTemperatureMap = await region
-                .GetTemperatureMapWinterAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false))
-            {
-                using var regionSummerTemperatureMap = await region
-                    .GetTemperatureMapSummerAsync(planet, ProjectionResolution, regionEqualArea)
-                    .ConfigureAwait(false);
-                regionClimateMaps = new WeatherMaps(
-                    planet,
-                    regionElevationMap,
-                    regionWinterTemperatureMap,
-                    regionSummerTemperatureMap,
-                    regionPrecipitationMap,
-                    ProjectionResolution,
-                    regionProjection);
-            }
-
-            using (var img = regionClimateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                regionElevationMap,
-                true,
-                regionProjection,
-                regionProjection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "BiomeOceanHillShadeImage_Regional.png"));
-            }
-
-            using (var img = regionClimateMaps.GetSatelliteImage(
-                planet,
-                regionElevationMap,
-                regionTemperatureMap,
-                regionProjection,
-                regionProjection))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "SatelliteImage_Regional.png"));
-            }
-
-            winterTemperatureMap.Dispose();
-            summerTemperatureMap.Dispose();
-        }
+        public void RegionMappingPregenEqualAreaTest()
+            => RegionMapping(true, "Pregen_", "_EA", true);
 
         [TestMethod]
-        public async Task SurfaceMappingPregenTestAsync()
-        {
-            var projection = MapProjectionOptions.Default;
-
-            using var planet = await GetPlanetPregenAsync().ConfigureAwait(false);
-
-            using var elevationMap = await planet
-                .GetElevationMapProjectionAsync(ElevationMapResolution_Pregen, projection)
-                .ConfigureAwait(false);
-            using var elevationProjection = await planet
-                .GetElevationMapProjectionAsync(ProjectionResolution, projection)
-                .ConfigureAwait(false);
-            //using (var img = elevationProjection.ElevationMapToImage(planet))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_ElevationImage.png"));
-            //}
-            using (var img = elevationProjection.ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_HillShadeImage.png"));
-            }
-
-            var (winterTemperatureMap, summerTemperatureMap) = planet.GenerateTemperatureMaps(elevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(winterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(summerTemperatureMap)
-                .ConfigureAwait(false);
-            using var temperatureMap = await planet
-                .GetTemperatureMapProjectionAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false);
-            //using (var tMap = await planet
-            //    .GetTemperatureMapProjectionAsync(ProjectionResolution, projection)
-            //    .ConfigureAwait(false))
-            //{
-            //    using (var img = tMap.TemperatureMapToImage())
-            //    {
-            //        img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_TemperatureImage.png"));
-            //    }
-            //    using var tImg = tMap.TemperatureMapToImage(planet, elevationMap, false, projection, projection);
-            //    tImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_LandTemperatureImage.png"));
-            //}
-
-            using var precipitationMap = await planet
-                .GetPrecipitationMapProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-                .ConfigureAwait(false);
-            //using (var img = precipitationMap.PrecipitationMapToImage())
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_PrecipitationImage.png"));
-            //}
-            //using (var img = precipitationMap.PrecipitationMapToImage(planet, elevationMap, false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_LandPrecipitationImage.png"));
-            //}
-
-            var climateMaps = new WeatherMaps(
-                planet,
-                elevationMap,
-                winterTemperatureMap,
-                summerTemperatureMap,
-                precipitationMap,
-                ProjectionResolution,
-                projection);
-
-            //var seasonsPath = System.IO.Path.Combine(_OutputPath, "Seasons");
-            //if (!System.IO.Directory.Exists(seasonsPath))
-            //{
-            //    System.IO.Directory.CreateDirectory(seasonsPath);
-            //}
-            //var precipitationMaps = await planet
-            //    .GetPrecipitationMapsProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-            //    .ConfigureAwait(false);
-
-            //for (var i = 0; i < Seasons; i++)
-            //{
-            //    var proportionOfYear = i / (float)Seasons;
-            //    using (var map = await planet
-            //        .GetTemperatureMapProjectionAsync(ProjectionResolution, proportionOfYear, projection)
-            //        .ConfigureAwait(false))
-            //    {
-            //        using var img = map.TemperatureMapToImage();
-            //        img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\Pregen_TemperatureImage_{i:00}.png"));
-            //    }
-
-            //    precipitationMaps[i]
-            //        .SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\Pregen_PrecipitationImage_{i:00}.png"));
-
-            //    precipitationMaps[i].Dispose();
-            //}
-
-            //using (var img = climateMaps.SeaIceRangeMap.SurfaceMapToImage(
-            //    planet,
-            //    elevationMap,
-            //    (_, _) => new Rgba32(0, 0, 0),
-            //    (v, _) => new Rgba32(
-            //        (byte)(v.IsZero ? 2 : Math.Round(198 * v.Range) + 2),
-            //        (byte)(v.IsZero ? 5 : Math.Round(235 * v.Range) + 5),
-            //        (byte)(v.IsZero ? 20 : Math.Round(230 * v.Range) + 20)),
-            //    projection,
-            //    projection))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_SeaIceImage.png"));
-            //}
-
-            //using (var img = climateMaps.ClimateMap.SurfaceMapToImage(
-            //    planet,
-            //    elevationMap,
-            //    (v, _) => v switch
-            //    {
-            //        ClimateType.Polar => new Rgba32(255, 255, 255),
-            //        ClimateType.Subpolar => new Rgba32(100, 255, 200),
-            //        ClimateType.Boreal => new Rgba32(0, 50, 0),
-            //        ClimateType.CoolTemperate => new Rgba32(0, 200, 100),
-            //        ClimateType.WarmTemperate => new Rgba32(0, 200, 0),
-            //        ClimateType.Subtropical => new Rgba32(200, 200, 0),
-            //        ClimateType.Tropical => new Rgba32(200, 0, 0),
-            //        ClimateType.Supertropical => new Rgba32(50, 0, 0),
-            //        _ => new Rgba32(127, 127, 127),
-            //    },
-            //    (_, _) => new Rgba32(2, 5, 20),
-            //    projection,
-            //    projection,
-            //    _HillShading))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_ClimateImage.png"));
-            //}
-
-            using (var img = climateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                elevationMap,
-                true,
-                projection,
-                projection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_BiomeOceanHillShadeImage.png"));
-            }
-
-            //using (var snowfallMap = await planet
-            //    .GetSnowfallMapProjectionAsync(PrecipitationMapResolution, Seasons)
-            //    .ConfigureAwait(false))
-            //{
-            //    using var snowfallImg = snowfallMap.SurfaceMapToImage(
-            //        planet,
-            //        elevationMap,
-            //        (v, _) =>
-            //        {
-            //            var value = ((double)v.PackedValue / ushort.MaxValue).Clamp(0, 1);
-            //            return new Rgba32((byte)Math.Round(245 * value), (byte)Math.Round(250 * value), (byte)Math.Round(255 * value));
-            //        },
-            //        (_, _) => new Rgba32(2, 5, 20),
-            //        projection,
-            //        projection);
-            //    snowfallImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_SnowfallImage.png"));
-            //}
-
-            using (var satelliteImg = climateMaps.GetSatelliteImage(
-                planet,
-                elevationMap,
-                temperatureMap,
-                projection,
-                projection))
-            {
-                satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_SatelliteImage.png"));
-            }
-
-            winterTemperatureMap.Dispose();
-            summerTemperatureMap.Dispose();
-        }
+        public void RegionMappingTest() => RegionMapping();
 
         [TestMethod]
-        public async Task SurfaceMappingTestAsync()
-        {
-            var projection = MapProjectionOptions.Default;
-
-            var planet = GetPlanet();
-
-            using var elevationMap = planet.GenerateElevationMap(ElevationMapResolution);
-            await planet.AssignElevationMapAsync(elevationMap)
-                .ConfigureAwait(false);
-            using var elevationProjection = await planet
-                .GetElevationMapProjectionAsync(ProjectionResolution, projection)
-                .ConfigureAwait(false);
-            //using (var img = elevationProjection.ElevationMapToImage(planet))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "ElevationImage.png"));
-            //}
-            using (var img = elevationProjection.ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "HillShadeImage.png"));
-            }
-
-            var (winterTemperatureMap, summerTemperatureMap) = planet.GenerateTemperatureMaps(elevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(winterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(summerTemperatureMap)
-                .ConfigureAwait(false);
-            using var temperatureMap = await planet
-                .GetTemperatureMapProjectionAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false);
-            //using (var tMap = await planet
-            //    .GetTemperatureMapProjectionAsync(ProjectionResolution, projection)
-            //    .ConfigureAwait(false))
-            //{
-            //    using (var img = tMap.TemperatureMapToImage())
-            //    {
-            //        img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "TemperatureImage.png"));
-            //    }
-            //    using var tImg = tMap.TemperatureMapToImage(planet, elevationMap, false, projection, projection);
-            //    tImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "LandTemperatureImage.png"));
-            //}
-
-            using var precipitationMap = await planet
-                .GetPrecipitationMapProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-                .ConfigureAwait(false);
-            //using (var img = precipitationMap.PrecipitationMapToImage())
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "PrecipitationImage.png"));
-            //}
-            //using (var img = precipitationMap.PrecipitationMapToImage(planet, elevationMap, false))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "LandPrecipitationImage.png"));
-            //}
-
-            var climateMaps = new WeatherMaps(
-                planet,
-                elevationMap,
-                winterTemperatureMap,
-                summerTemperatureMap,
-                precipitationMap,
-                ProjectionResolution,
-                projection);
-
-            //var seasonsPath = System.IO.Path.Combine(_OutputPath, "Seasons");
-            //if (!System.IO.Directory.Exists(seasonsPath))
-            //{
-            //    System.IO.Directory.CreateDirectory(seasonsPath);
-            //}
-            //var precipitationMaps = await planet
-            //    .GetPrecipitationMapsProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-            //    .ConfigureAwait(false);
-
-            //for (var i = 0; i < Seasons; i++)
-            //{
-            //    var proportionOfYear = i / (float)Seasons;
-            //    using (var map = await planet
-            //        .GetTemperatureMapProjectionAsync(ProjectionResolution, proportionOfYear, projection)
-            //        .ConfigureAwait(false))
-            //    {
-            //        using var img = map.TemperatureMapToImage();
-            //        img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\TemperatureImage_{i:00}.png"));
-            //    }
-
-            //    precipitationMaps[i]
-            //        .SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\PrecipitationImage_{i:00}.png"));
-
-            //    precipitationMaps[i].Dispose();
-            //}
-
-            //using (var img = climateMaps.SeaIceRangeMap.SurfaceMapToImage(
-            //    planet,
-            //    elevationMap,
-            //    (_, _) => new Rgba32(0, 0, 0),
-            //    (v, _) => new Rgba32(
-            //        (byte)(v.IsZero ? 2 : Math.Round(198 * v.Range) + 2),
-            //        (byte)(v.IsZero ? 5 : Math.Round(235 * v.Range) + 5),
-            //        (byte)(v.IsZero ? 20 : Math.Round(230 * v.Range) + 20)),
-            //    projection,
-            //    projection))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "SeaIceImage.png"));
-            //}
-
-            //using (var img = climateMaps.ClimateMap.SurfaceMapToImage(
-            //    planet,
-            //    elevationMap,
-            //    (v, _) => v switch
-            //    {
-            //        ClimateType.Polar => new Rgba32(255, 255, 255),
-            //        ClimateType.Subpolar => new Rgba32(100, 255, 200),
-            //        ClimateType.Boreal => new Rgba32(0, 50, 0),
-            //        ClimateType.CoolTemperate => new Rgba32(0, 200, 100),
-            //        ClimateType.WarmTemperate => new Rgba32(0, 200, 0),
-            //        ClimateType.Subtropical => new Rgba32(200, 200, 0),
-            //        ClimateType.Tropical => new Rgba32(200, 0, 0),
-            //        ClimateType.Supertropical => new Rgba32(50, 0, 0),
-            //        _ => new Rgba32(127, 127, 127),
-            //    },
-            //    (_, _) => new Rgba32(2, 5, 20),
-            //    projection,
-            //    projection,
-            //    _HillShading))
-            //{
-            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "ClimateImage.png"));
-            //}
-
-            using (var img = climateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                elevationMap,
-                true,
-                projection,
-                projection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "BiomeOceanHillShadeImage.png"));
-            }
-
-            //using (var snowfallMap = await planet
-            //    .GetSnowfallMapProjectionAsync(PrecipitationMapResolution, Seasons)
-            //    .ConfigureAwait(false))
-            //{
-            //    using var snowfallImg = snowfallMap.SurfaceMapToImage(
-            //        planet,
-            //        elevationMap,
-            //        (v, _) =>
-            //        {
-            //            var value = ((double)v.PackedValue / ushort.MaxValue).Clamp(0, 1);
-            //            return new Rgba32((byte)Math.Round(245 * value), (byte)Math.Round(250 * value), (byte)Math.Round(255 * value));
-            //        },
-            //        (_, _) => new Rgba32(2, 5, 20),
-            //        projection,
-            //        projection);
-            //    snowfallImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "SnowfallImage.png"));
-            //}
-
-            using (var satelliteImg = climateMaps.GetSatelliteImage(
-                planet,
-                elevationMap,
-                temperatureMap,
-                projection,
-                projection))
-            {
-                satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "SatelliteImage.png"));
-            }
-
-            winterTemperatureMap.Dispose();
-            summerTemperatureMap.Dispose();
-        }
+        public void RegionMappingEqualAreaTest()
+            => RegionMapping(true, null, "_EA");
 
         [TestMethod]
-        public async Task SurfaceMappingEqualAreaPregenTestAsync()
-        {
-            var projection = new MapProjectionOptions(equalArea: true);
-
-            using var planet = await GetPlanetPregenAsync().ConfigureAwait(false);
-
-            using var stdElevationMap = await planet
-                .GetElevationMapProjectionAsync(ElevationMapResolution_Pregen, MapProjectionOptions.Default)
-                .ConfigureAwait(false);
-            using var elevationMap = await planet
-                .GetElevationMapProjectionAsync(ElevationMapResolution_Pregen, projection)
-                .ConfigureAwait(false);
-            using var elevationProjection = await planet
-                .GetElevationMapProjectionAsync(ProjectionResolution, projection)
-                .ConfigureAwait(false);
-            using (var img = elevationProjection.ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_HillShadeImage_EA.png"));
-            }
-
-            var (stdWinterTemperatureMap, stdSummerTemperatureMap) = planet.GenerateTemperatureMaps(stdElevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(stdWinterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(stdSummerTemperatureMap)
-                .ConfigureAwait(false);
-            using var temperatureMap = await planet
-                .GetTemperatureMapProjectionAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false);
-
-            using var precipitationMap = await planet
-                .GetPrecipitationMapProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-                .ConfigureAwait(false);
-
-            WeatherMaps climateMaps;
-            using (var winterTemperatureMap = await planet.GetTemperatureMapProjectionWinterAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false))
-            {
-                using var summerTemperatureMap = await planet.GetTemperatureMapProjectionSummerAsync(TemperatureMapResolution, projection)
-                    .ConfigureAwait(false);
-                climateMaps = new WeatherMaps(
-                    planet,
-                    elevationMap,
-                    winterTemperatureMap,
-                    summerTemperatureMap,
-                    precipitationMap,
-                    ProjectionResolution,
-                    projection);
-            }
-
-            using (var img = climateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                elevationMap,
-                true,
-                projection,
-                projection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_BiomeOceanHillShadeImage_EA.png"));
-            }
-
-            using (var satelliteImg = climateMaps.GetSatelliteImage(
-                planet,
-                elevationMap,
-                temperatureMap,
-                projection,
-                projection))
-            {
-                satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "Pregen_SatelliteImage_EA.png"));
-            }
-
-            var region = new SurfaceRegion(planet, -0.9162975, -0.174533, 0.610865);
-            const bool regionEqualArea = true;
-            var regionProjection = region.GetProjection(planet, regionEqualArea);
-
-            using var regionElevationMap = await region
-                .GetElevationMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-
-            using var regionTemperatureMap = await region
-                .GetTemperatureMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-
-            using var regionPrecipitationMap = await region
-                .GetPrecipitationMapAsync(planet, ProjectionResolution, Seasons, regionEqualArea)
-                .ConfigureAwait(false);
-
-            WeatherMaps regionClimateMaps;
-            using (var regionWinterTemperatureMap = await region
-                .GetTemperatureMapWinterAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false))
-            {
-                using var regionSummerTemperatureMap = await region
-                    .GetTemperatureMapSummerAsync(planet, ProjectionResolution, regionEqualArea)
-                    .ConfigureAwait(false);
-                regionClimateMaps = new WeatherMaps(
-                    planet,
-                    regionElevationMap,
-                    regionWinterTemperatureMap,
-                    regionSummerTemperatureMap,
-                    regionPrecipitationMap,
-                    ProjectionResolution,
-                    regionProjection);
-            }
-
-            stdWinterTemperatureMap.Dispose();
-            stdSummerTemperatureMap.Dispose();
-
-            var normalizedSeaLevel = planet.SeaLevel / planet.MaxElevation;
-            var elevationRange = elevationProjection.GetElevationRange(planet);
-            var landCoords = 0;
-            if (planet.Hydrosphere?.IsEmpty == false)
-            {
-                for (var x = 0; x < elevationProjection.Width; x++)
-                {
-                    for (var y = 0; y < elevationProjection.Height; y++)
-                    {
-                        var value = (2.0 * elevationProjection[x, y].PackedValue / ushort.MaxValue) - 1;
-                        if (value - normalizedSeaLevel > 0)
-                        {
-                            landCoords++;
-                        }
-                    }
-                }
-            }
-            var sb = new StringBuilder();
-            AddTempString(sb, temperatureMap);
-            sb.AppendLine();
-            AddTerrainString(sb, planet, elevationProjection, regionElevationMap, landCoords);
-            sb.AppendLine();
-            AddClimateString(sb, elevationProjection, normalizedSeaLevel, landCoords, climateMaps);
-            sb.AppendLine();
-            AddPrecipitationString(sb, planet, elevationProjection, precipitationMap, normalizedSeaLevel, landCoords, climateMaps, projection);
-            Console.WriteLine(sb.ToString());
-        }
+        public void SurfaceMappingPregenTest()
+            => SurfaceMapping(MapProjectionOptions.Default, "Pregen_", null, true);
 
         [TestMethod]
-        public async Task SurfaceMappingEqualAreaTestAsync()
-        {
-            var projection = new MapProjectionOptions(equalArea: true);
+        public void SurfaceMappingTest() => SurfaceMapping(MapProjectionOptions.Default, "Random_");
 
-            var planet = GetPlanet();
+        [TestMethod]
+        public void SurfaceMappingEqualAreaPregenTest()
+            => SurfaceMapping(new MapProjectionOptions(equalArea: true), "Pregen_", "_EA", true);
 
-            using var stdElevationMap = planet.GenerateElevationMap(ElevationMapResolution);
-            await planet.AssignElevationMapAsync(stdElevationMap)
-                .ConfigureAwait(false);
-            using var elevationMap = await planet
-                .GetElevationMapProjectionAsync(ElevationMapResolution_Pregen, projection)
-                .ConfigureAwait(false);
-            using var elevationProjection = await planet
-                .GetElevationMapProjectionAsync(ProjectionResolution, projection)
-                .ConfigureAwait(false);
-            using (var img = elevationProjection.ElevationMapToImage(planet, _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "HillShadeImage_EA.png"));
-            }
-
-            var (stdWinterTemperatureMap, stdSummerTemperatureMap) = planet.GenerateTemperatureMaps(stdElevationMap, TemperatureMapResolution);
-            await planet.AssignTemperatureMapWinterAsync(stdWinterTemperatureMap)
-                .ConfigureAwait(false);
-            await planet.AssignTemperatureMapSummerAsync(stdSummerTemperatureMap)
-                .ConfigureAwait(false);
-            using var temperatureMap = await planet
-                .GetTemperatureMapProjectionAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false);
-
-            using var precipitationMap = await planet
-                .GetPrecipitationMapProjectionAsync(PrecipitationMapResolution, Seasons, projection)
-                .ConfigureAwait(false);
-
-            WeatherMaps climateMaps;
-            using (var winterTemperatureMap = await planet.GetTemperatureMapProjectionWinterAsync(TemperatureMapResolution, projection)
-                .ConfigureAwait(false))
-            {
-                using var summerTemperatureMap = await planet.GetTemperatureMapProjectionSummerAsync(TemperatureMapResolution, projection)
-                    .ConfigureAwait(false);
-                climateMaps = new WeatherMaps(
-                    planet,
-                    elevationMap,
-                    winterTemperatureMap,
-                    summerTemperatureMap,
-                    precipitationMap,
-                    ProjectionResolution,
-                    projection);
-            }
-
-            using (var img = climateMaps.BiomeMap.BiomeMapToImage(
-                planet,
-                elevationMap,
-                true,
-                projection,
-                projection,
-                _HillShading))
-            {
-                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "BiomeOceanHillShadeImage_EA.png"));
-            }
-
-            using (var satelliteImg = climateMaps.GetSatelliteImage(
-                planet,
-                elevationMap,
-                temperatureMap,
-                projection,
-                projection))
-            {
-                satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, "SatelliteImage_EA.png"));
-            }
-
-            var region = new SurfaceRegion(planet, -0.9162975, -0.174533, 0.610865);
-            const bool regionEqualArea = true;
-            var regionProjection = region.GetProjection(planet, regionEqualArea);
-
-            using var regionElevationMap = await region
-                .GetElevationMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-
-            using var regionTemperatureMap = await region
-                .GetTemperatureMapAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false);
-
-            using var regionPrecipitationMap = await region
-                .GetPrecipitationMapAsync(planet, ProjectionResolution, Seasons, regionEqualArea)
-                .ConfigureAwait(false);
-
-            WeatherMaps regionClimateMaps;
-            using (var regionWinterTemperatureMap = await region
-                .GetTemperatureMapWinterAsync(planet, ProjectionResolution, regionEqualArea)
-                .ConfigureAwait(false))
-            {
-                using var regionSummerTemperatureMap = await region
-                    .GetTemperatureMapSummerAsync(planet, ProjectionResolution, regionEqualArea)
-                    .ConfigureAwait(false);
-                regionClimateMaps = new WeatherMaps(
-                    planet,
-                    regionElevationMap,
-                    regionWinterTemperatureMap,
-                    regionSummerTemperatureMap,
-                    regionPrecipitationMap,
-                    ProjectionResolution,
-                    regionProjection);
-            }
-
-            stdWinterTemperatureMap.Dispose();
-            stdSummerTemperatureMap.Dispose();
-
-            var normalizedSeaLevel = planet.SeaLevel / planet.MaxElevation;
-            var elevationRange = elevationProjection.GetElevationRange(planet);
-            var landCoords = 0;
-            if (planet.Hydrosphere?.IsEmpty == false)
-            {
-                for (var x = 0; x < elevationProjection.Width; x++)
-                {
-                    for (var y = 0; y < elevationProjection.Height; y++)
-                    {
-                        var value = (2.0 * elevationProjection[x, y].PackedValue / ushort.MaxValue) - 1;
-                        if (value - normalizedSeaLevel > 0)
-                        {
-                            landCoords++;
-                        }
-                    }
-                }
-            }
-            var sb = new StringBuilder();
-            AddTempString(sb, temperatureMap);
-            sb.AppendLine();
-            AddTerrainString(sb, planet, elevationProjection, regionElevationMap, landCoords);
-            sb.AppendLine();
-            AddClimateString(sb, elevationProjection, normalizedSeaLevel, landCoords, climateMaps);
-            sb.AppendLine();
-            AddPrecipitationString(sb, planet, elevationProjection, precipitationMap, normalizedSeaLevel, landCoords, climateMaps, projection);
-            Console.WriteLine(sb.ToString());
-        }
+        [TestMethod]
+        public void SurfaceMappingEqualAreaTest()
+            => SurfaceMapping(new MapProjectionOptions(equalArea: true), "Random_", "_EA");
 
         private static void AddClimateString(
             StringBuilder sb,
@@ -1124,6 +349,50 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendLine();
         }
 
+        private static void AddRegionPrecipitationString(
+            StringBuilder sb,
+            Planetoid planet,
+            Image<L16> precipitationMap)
+        {
+            sb.AppendLine("Precipitation:");
+
+            var list = new List<double>();
+            for (var x = 0; x < precipitationMap.Width; x++)
+            {
+                for (var y = 0; y < precipitationMap.Height; y++)
+                {
+                    list.Add((double)precipitationMap[x, y].PackedValue / ushort.MaxValue * planet.Atmosphere.MaxPrecipitation);
+                }
+            }
+
+            sb.AppendFormat("  Avg:                     {0}mm/hr", Math.Round(list.Average(), 3));
+            sb.AppendLine();
+            sb.AppendLine();
+        }
+
+        private static void AddRegionTempString(StringBuilder sb, Image<L16> temperatureMap)
+        {
+            sb.AppendLine("Temp:");
+            var range = temperatureMap.GetTemperatureRange();
+            sb.AppendFormat("  Avg:                     {0} K", Math.Round(range.Average));
+            sb.AppendLine();
+            sb.AppendFormat("  Min:                     {0} K", Math.Round(range.Min));
+            sb.AppendLine();
+            sb.AppendFormat("  Max:                     {0} K", Math.Round(range.Max));
+            sb.AppendLine();
+        }
+
+        private static void AddRegionTerrainString(StringBuilder sb, Planetoid planet, Image<L16> regionElevationMap)
+        {
+            var regionElevationRange = planet.GetElevationRange(regionElevationMap);
+            sb.AppendFormat("Region Avg Elevation:      {0}m", Math.Round(regionElevationRange.Average));
+            sb.AppendLine();
+            sb.AppendFormat("Region Min Elevation:      {0}m / {1}m", Math.Round(regionElevationRange.Min), Math.Round(planet.MaxElevation));
+            sb.AppendLine();
+            sb.AppendFormat("Region Max Elevation:      {0}m / {1}m", Math.Round(regionElevationRange.Max), Math.Round(planet.MaxElevation));
+            sb.AppendLine();
+        }
+
         private static void AddTempString(StringBuilder sb, Image<L16> temperatureMap)
         {
             sb.AppendLine("Temp:");
@@ -1136,12 +405,12 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendLine();
         }
 
-        private static void AddTerrainString(StringBuilder sb, Planetoid planet, Image<L16> elevationMap, Image<L16> regionElevationMap, int landCoords)
+        private static void AddTerrainString(StringBuilder sb, Planetoid planet, Image<L16> elevationMap, int landCoords)
         {
             sb.AppendFormat("Sea Level:                 {0}m", Math.Round(planet.SeaLevel));
             sb.AppendLine();
 
-            var elevationRange = elevationMap.GetElevationRange(planet);
+            var elevationRange = planet.GetElevationRange(elevationMap);
             if (planet.Hydrosphere?.IsEmpty == false)
             {
                 var totalCoords = (decimal)(elevationMap.Width * elevationMap.Height);
@@ -1158,14 +427,6 @@ namespace NeverFoundry.WorldFoundry.Test
             sb.AppendLine();
             sb.AppendFormat("Max Elevation:             {0}m / {1}m", Math.Round(elevationRange.Max), Math.Round(planet.MaxElevation));
             sb.AppendLine();
-
-            var regionElevationRange = regionElevationMap.GetElevationRange(planet);
-            sb.AppendFormat("Region Avg Elevation:      {0}m", Math.Round(regionElevationRange.Average));
-            sb.AppendLine();
-            sb.AppendFormat("Region Min Elevation:      {0}m / {1}m", Math.Round(regionElevationRange.Min), Math.Round(planet.MaxElevation));
-            sb.AppendLine();
-            sb.AppendFormat("Region Max Elevation:      {0}m / {1}m", Math.Round(regionElevationRange.Max), Math.Round(planet.MaxElevation));
-            sb.AppendLine();
         }
 
         private static Planetoid GetPlanet()
@@ -1176,25 +437,389 @@ namespace NeverFoundry.WorldFoundry.Test
             return planet;
         }
 
-        private static async Task<Planetoid> GetPlanetPregenAsync()
+        public static void RegionMapping(bool equalArea = false, string? filePrefix = null, string? fileSuffix = null, bool pregen = false)
         {
-            var planet = Planetoid.GetPlanetForSunlikeStar(out _, seed: 3246055358);
-            //using var planet = Planetoid.GetPlanetForSunlikeStar(out _);
-            Assert.IsNotNull(planet);
-            //Console.WriteLine($"Planet seed: {planet!.Seed}");
+            var stopwatch1 = new Stopwatch();
+            var stopwatch2 = new Stopwatch();
+            stopwatch1.Start();
+            stopwatch2.Start();
+            var planet = GetPlanet();
+            var region = new SurfaceRegion(planet, -0.95, -0.25, 0.95);
+            var projection = region.GetProjection(planet, equalArea);
 
-            await planet!
-                .AssignElevationMapAsync(Image.Load(@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\avora_elev_5400x2700.png"))
-                .ConfigureAwait(false);
-
-            for (var i = 1; i <= 12; i++)
+            Image<L16> elevationMap;
+            if (pregen)
             {
-                await planet
-                    .AssignPrecipitationMapAsync(Image.Load($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{i:00}.png"))
-                    .ConfigureAwait(false);
+                using var img = Image.Load<L16>(@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\avora_elev_5400x2700.png");
+                elevationMap = img.GetMapProjection(ElevationMapResolution, null, projection)!;
+            }
+            else
+            {
+                elevationMap = region.GetElevationMap(planet, ElevationMapResolution, equalArea);
             }
 
-            return planet;
+            //using (var img = elevationMap
+            //    .ElevationMapToImage(planet))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_ElevationImage{fileSuffix}.png"));
+            //}
+            using (var img = elevationMap
+                .ElevationMapToImage(planet, _HillShading))
+            {
+                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_HillShadeImage{fileSuffix}.png"));
+            }
+            stopwatch1.Stop();
+            Console.WriteLine($"Regional_HillShadeImage time: {stopwatch2.Elapsed:s'.'FFF} s");
+
+            var (winterTemperatureMap, summerTemperatureMap) = region
+                .GetTemperatureMaps(planet, elevationMap, TemperatureMapResolution, equalArea);
+            using var temperatureMap = SurfaceMapImage.AverageImages(winterTemperatureMap, summerTemperatureMap);
+
+            //using (var img = temperatureMap.TemperatureMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    false))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_LandTemperatureImage{fileSuffix}.png"));
+            //}
+
+            Image<L16>[] precipitationMaps;
+            Image<L16>[] snowfallMaps;
+            if (pregen)
+            {
+                precipitationMaps = new Image<L16>[Seasons];
+                snowfallMaps = new Image<L16>[Seasons];
+
+                const double proportionOfYearPerSeason = 1.0 / Seasons;
+                const int step = 12 / Seasons;
+                for (var i = 0; i < Seasons; i++)
+                {
+                    var proportionOfYear = proportionOfYearPerSeason * i;
+                    var seasonTemperatureMap = region.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
+
+                    var m = (i * step) + 1;
+                    using (var img = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{m:00}.png"))
+                    {
+                        precipitationMaps[i] = img.GetMapProjection(PrecipitationMapResolution, null, projection)!;
+                    }
+                    snowfallMaps[i] = precipitationMaps[i].GetSnowfallMap(seasonTemperatureMap);
+                }
+            }
+            else
+            {
+                (precipitationMaps, snowfallMaps) = region
+                    .GetPrecipitationAndSnowfallMaps(planet, winterTemperatureMap, summerTemperatureMap, PrecipitationMapResolution, Seasons, equalArea);
+            }
+
+            for (var i = 0; i < Seasons; i++)
+            {
+                snowfallMaps[i].Dispose();
+            }
+
+            using var precipitationMap = SurfaceMapImage.AverageImages(precipitationMaps);
+
+            for (var i = 0; i < precipitationMaps.Length; i++)
+            {
+                precipitationMaps[i].Dispose();
+            }
+
+            //using (var img = precipitationMap.PrecipitationMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    false))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_LandPrecipitationImage{fileSuffix}.png"));
+            //}
+
+            var weatherMaps = new WeatherMaps(
+                planet,
+                elevationMap,
+                winterTemperatureMap,
+                summerTemperatureMap,
+                precipitationMap,
+                ProjectionResolution,
+                projection);
+
+            winterTemperatureMap.Dispose();
+            summerTemperatureMap.Dispose();
+
+            //using (var img = weatherMaps.BiomeMap.BiomeMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    true,
+            //    projection,
+            //    projection,
+            //    _HillShading))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_BiomeOceanHillShadeImage{fileSuffix}.png"));
+            //}
+
+            using var satelliteImg = weatherMaps.GetSatelliteImage(
+                planet,
+                elevationMap,
+                temperatureMap,
+                projection,
+                projection);
+            satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}Regional_SatelliteImage{fileSuffix}.png"));
+            stopwatch2.Stop();
+            Console.WriteLine($"satelliteImg time: {stopwatch2.Elapsed:s'.'FFF} s");
+
+            if (equalArea && pregen)
+            {
+                var sb = new StringBuilder();
+                AddRegionTempString(sb, temperatureMap);
+                sb.AppendLine();
+                AddRegionTerrainString(sb, planet, elevationMap);
+                sb.AppendLine();
+                AddRegionPrecipitationString(sb, planet, precipitationMap);
+                Console.WriteLine(sb.ToString());
+            }
+
+            elevationMap.Dispose();
+        }
+
+        private static void SurfaceMapping(MapProjectionOptions projection, string? filePrefix = null, string? fileSuffix = null, bool pregen = false)
+        {
+            var stopwatch1 = new Stopwatch();
+            var stopwatch2 = new Stopwatch();
+            stopwatch1.Start();
+            stopwatch2.Start();
+            var planet = GetPlanet();
+
+            Image<L16> elevationMap;
+            if (pregen)
+            {
+                elevationMap = Image.Load<L16>(@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\avora_elev_5400x2700.png");
+                if (projection.EqualArea)
+                {
+                    var projected = elevationMap.GetMapProjection(elevationMap.Height, null, projection)!;
+                    elevationMap.Dispose();
+                    elevationMap = projected;
+                }
+            }
+            else
+            {
+                elevationMap = planet.GetElevationMap(ElevationMapResolution, projection);
+            }
+
+            var elevationMapImage = pregen
+                ? elevationMap.Clone(x => x.Resize(
+                    (int)Math.Floor(ProjectionResolution * projection.AspectRatio),
+                    ProjectionResolution,
+                    KnownResamplers.Spline))
+                : elevationMap;
+            //using (var img = elevationMapImage.ElevationMapToImage(planet))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}ElevationImage{fileSuffix}.png"));
+            //}
+            using (var img = elevationMapImage.ElevationMapToImage(planet, _HillShading))
+            {
+                img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}HillShadeImage{fileSuffix}.png"));
+            }
+            stopwatch1.Stop();
+            Console.WriteLine($"HillShadeImage time: {stopwatch1.Elapsed:s'.'FFF} s");
+            if (pregen)
+            {
+                elevationMapImage.Dispose();
+            }
+
+            var (winterTemperatureMap, summerTemperatureMap) = planet.GetTemperatureMaps(elevationMap, TemperatureMapResolution, projection, projection);
+            using var temperatureMap = SurfaceMapImage.AverageImages(winterTemperatureMap, summerTemperatureMap);
+
+            //using (var img = temperatureMap.TemperatureMapToImage())
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}TemperatureImage{fileSuffix}.png"));
+            //}
+            //using (var tImg = temperatureMap.TemperatureMapToImage(planet, elevationMap, false, projection, projection))
+            //{
+            //    tImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}LandTemperatureImage{fileSuffix}.png"));
+            //}
+
+            Image<L16>[] precipitationMaps;
+            Image<L16>[] snowfallMaps;
+            if (pregen)
+            {
+                precipitationMaps = new Image<L16>[Seasons];
+                snowfallMaps = new Image<L16>[Seasons];
+
+                const double proportionOfYearPerSeason = 1.0 / Seasons;
+                const int step = 12 / Seasons;
+                for (var i = 0; i < Seasons; i++)
+                {
+                    var proportionOfYear = proportionOfYearPerSeason * i;
+                    var seasonTemperatureMap = planet.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear);
+
+                    var m = (i * step) + 1;
+                    precipitationMaps[i] = Image.Load<L16>($@"D:\Documents\Programming\Projects\WorldFoundry\WorldFoundry.Test\Precipitation\{m:00}.png");
+                    if (projection.EqualArea)
+                    {
+                        var projected = precipitationMaps[i].GetMapProjection(precipitationMaps[i].Height, null, projection)!;
+                        precipitationMaps[i].Dispose();
+                        precipitationMaps[i] = projected;
+                    }
+                    snowfallMaps[i] = precipitationMaps[i].GetSnowfallMap(seasonTemperatureMap);
+                }
+            }
+            else
+            {
+                (precipitationMaps, snowfallMaps) = planet
+                    .GetPrecipitationAndSnowfallMaps(winterTemperatureMap, summerTemperatureMap, PrecipitationMapResolution, Seasons, projection, projection);
+            }
+
+            //using (var snowfallMap = SurfaceMapImage.AverageImages(snowfallMaps))
+            //{
+            //    using var snowfallImg = snowfallMap.SurfaceMapToImage(
+            //        planet,
+            //        elevationMap,
+            //        (v, _) =>
+            //        {
+            //            var value = ((double)v.PackedValue / ushort.MaxValue).Clamp(0, 1);
+            //            return new Rgba32((byte)Math.Round(245 * value), (byte)Math.Round(250 * value), (byte)Math.Round(255 * value));
+            //        },
+            //        (_, _) => new Rgba32(2, 5, 20),
+            //        projection,
+            //        projection);
+            //    snowfallImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}SnowfallImage{fileSuffix}.png"));
+            //}
+
+            for (var i = 0; i < snowfallMaps.Length; i++)
+            {
+                snowfallMaps[i].Dispose();
+            }
+
+            using var precipitationMap = SurfaceMapImage.AverageImages(precipitationMaps);
+
+            //using (var img = precipitationMap.PrecipitationMapToImage())
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}PrecipitationImage{fileSuffix}.png"));
+            //}
+            //using (var img = precipitationMap.PrecipitationMapToImage(planet, elevationMap, false, projection, projection))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}LandPrecipitationImage{fileSuffix}.png"));
+            //}
+
+            var weatherMaps = new WeatherMaps(
+                planet,
+                elevationMap,
+                winterTemperatureMap,
+                summerTemperatureMap,
+                precipitationMap,
+                ProjectionResolution,
+                projection);
+
+            //var seasonsPath = System.IO.Path.Combine(_OutputPath, "Seasons");
+            //if (!System.IO.Directory.Exists(seasonsPath))
+            //{
+            //    System.IO.Directory.CreateDirectory(seasonsPath);
+            //}
+            //for (var i = 0; i < Seasons; i++)
+            //{
+            //    var proportionOfYear = i / (float)Seasons;
+            //    using (var map = planet.GetTemperatureMap(winterTemperatureMap, summerTemperatureMap, proportionOfYear))
+            //    {
+            //        using var img = map.TemperatureMapToImage();
+            //        img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\{filePrefix}TemperatureImage{fileSuffix}_{i:00}.png"));
+            //    }
+
+            //    precipitationMaps[i]
+            //        .SaveAsPng(System.IO.Path.Combine(_OutputPath!, @$"Seasons\{filePrefix}PrecipitationImage{fileSuffix}_{i:00}.png"));
+            //}
+
+            winterTemperatureMap.Dispose();
+            summerTemperatureMap.Dispose();
+            for (var i = 0; i < precipitationMaps.Length; i++)
+            {
+                precipitationMaps[i].Dispose();
+            }
+
+            //using (var img = weatherMaps.SeaIceRangeMap.SurfaceMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    (_, _) => new Rgba32(0, 0, 0),
+            //    (v, _) => new Rgba32(
+            //        (byte)(v.IsZero ? 2 : Math.Round(198 * v.Range) + 2),
+            //        (byte)(v.IsZero ? 5 : Math.Round(235 * v.Range) + 5),
+            //        (byte)(v.IsZero ? 20 : Math.Round(230 * v.Range) + 20)),
+            //    projection,
+            //    projection))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}SeaIceImage{fileSuffix}.png"));
+            //}
+
+            //using (var img = weatherMaps.ClimateMap.SurfaceMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    (v, _) => v switch
+            //    {
+            //        ClimateType.Polar => new Rgba32(255, 255, 255),
+            //        ClimateType.Subpolar => new Rgba32(100, 255, 200),
+            //        ClimateType.Boreal => new Rgba32(0, 50, 0),
+            //        ClimateType.CoolTemperate => new Rgba32(0, 200, 100),
+            //        ClimateType.WarmTemperate => new Rgba32(0, 200, 0),
+            //        ClimateType.Subtropical => new Rgba32(200, 200, 0),
+            //        ClimateType.Tropical => new Rgba32(200, 0, 0),
+            //        ClimateType.Supertropical => new Rgba32(50, 0, 0),
+            //        _ => new Rgba32(127, 127, 127),
+            //    },
+            //    (_, _) => new Rgba32(2, 5, 20),
+            //    projection,
+            //    projection,
+            //    _HillShading))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}ClimateImage{fileSuffix}.png"));
+            //}
+
+            //using (var img = weatherMaps.BiomeMap.BiomeMapToImage(
+            //    planet,
+            //    elevationMap,
+            //    true,
+            //    projection,
+            //    projection,
+            //    _HillShading))
+            //{
+            //    img.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}BiomeOceanHillShadeImage{fileSuffix}.png"));
+            //}
+
+            using var satelliteImg = weatherMaps.GetSatelliteImage(
+                planet,
+                elevationMap,
+                temperatureMap,
+                projection,
+                projection);
+            satelliteImg.SaveAsPng(System.IO.Path.Combine(_OutputPath!, $"{filePrefix}SatelliteImage{fileSuffix}.png"));
+            stopwatch2.Stop();
+            Console.WriteLine($"SatelliteImage time: {stopwatch2.Elapsed:s'.'FFF} s");
+
+            if (projection.EqualArea)
+            {
+                var normalizedSeaLevel = planet.SeaLevel / planet.MaxElevation;
+                var landCoords = 0;
+                if (planet.Hydrosphere?.IsEmpty == false)
+                {
+                    for (var x = 0; x < elevationMap.Width; x++)
+                    {
+                        for (var y = 0; y < elevationMap.Height; y++)
+                        {
+                            var value = (2.0 * elevationMap[x, y].PackedValue / ushort.MaxValue) - 1;
+                            if (value - normalizedSeaLevel > 0)
+                            {
+                                landCoords++;
+                            }
+                        }
+                    }
+                }
+                var sb = new StringBuilder();
+                AddTempString(sb, temperatureMap);
+                sb.AppendLine();
+                AddTerrainString(sb, planet, elevationMap, landCoords);
+                sb.AppendLine();
+                AddClimateString(sb, elevationMap, normalizedSeaLevel, landCoords, weatherMaps);
+                sb.AppendLine();
+                AddPrecipitationString(sb, planet, elevationMap, precipitationMap, normalizedSeaLevel, landCoords, weatherMaps, projection);
+                Console.WriteLine(sb.ToString());
+            }
+
+            elevationMap.Dispose();
         }
     }
 }

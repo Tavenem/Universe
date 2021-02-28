@@ -1,8 +1,6 @@
 ﻿using NeverFoundry.MathAndScience;
 using NeverFoundry.MathAndScience.Chemistry;
-using NeverFoundry.MathAndScience.Numerics.Numbers;
 using NeverFoundry.WorldFoundry.Climate;
-using NeverFoundry.WorldFoundry.Place;
 using NeverFoundry.WorldFoundry.Space;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -13,7 +11,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Maps
 {
     /// <summary>
     /// Static methods related to images with surface map data.
@@ -79,6 +77,68 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             (30, (110, 5, 0)),
             (40, (50, 0, 0)),
         };
+
+        /// <summary>
+        /// Produces an average of the given set of images.
+        /// </summary>
+        /// <param name="images">A set of images.</param>
+        /// <returns>A single image that averages the inputs.</returns>
+        /// <exception cref="ArgumentException" />
+        /// <remarks>
+        /// All images must have the same dimensions.
+        /// </remarks>
+        public static Image<L16> AverageImages(params Image<L16>[] images)
+        {
+            if (images.Length == 0)
+            {
+                throw new ArgumentException($"{nameof(images)} cannot be empty");
+            }
+
+            if (images.Length == 1)
+            {
+                return images[0].Clone();
+            }
+
+            var yResolution = images[0].Height;
+            var xResolution = images[0].Width;
+            if (images.Any(x => x.Height != yResolution || x.Width != xResolution))
+            {
+                throw new ArgumentException($"{nameof(images)} must all have the same dimensions");
+            }
+
+            var combined = new Image<L16>(xResolution, yResolution);
+
+            if (images.Length == 2)
+            {
+                for (var y = 0; y < yResolution; y++)
+                {
+                    var img1Span = images[0].GetPixelRowSpan(y);
+                    var img2Span = images[1].GetPixelRowSpan(y);
+                    var combinedSpan = combined.GetPixelRowSpan(y);
+                    for (var x = 0; x < xResolution; x++)
+                    {
+                        combinedSpan[x] = img1Span[x].Average(img2Span[x]);
+                    }
+                }
+                return combined;
+            }
+
+            for (var y = 0; y < yResolution; y++)
+            {
+                var combinedSpan = combined.GetPixelRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    var sum = 0.0;
+                    for (var i = 0; i < images.Length; i++)
+                    {
+                        sum += images[i][x, y].PackedValue;
+                    }
+                    combinedSpan[x] = new L16((ushort)Math.Round(sum / images.Length).Clamp(0, ushort.MaxValue));
+                }
+            }
+
+            return combined;
+        }
 
         /// <summary>
         /// Converts a biome map to an image.
@@ -205,7 +265,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 for (var x = 0; x < xLength; x++)
                 {
                     destinationRowSpan[x] = converter(sourceRowSpan[x])
-                        .ApplyHillShading(elevationMap, x, y, hillShading, sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel > 0);
+                        .ApplyHillShading(elevationMap, x, y, hillShading, sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel > 0);
                 }
             }
             return destination;
@@ -260,7 +320,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 var destinationRowSpan = destination.GetPixelRowSpan(y);
                 for (var x = 0; x < xLength; x++)
                 {
-                    var normalElevation = sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = sourceRowSpan[x].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         destinationRowSpan[x] = landConverter(sourceRowSpan[x])
@@ -300,269 +360,90 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                 hillShading);
 
         /// <summary>
-        /// Generates a new elevation map image.
+        /// Creates a new map projection from the provided map image.
         /// </summary>
-        /// <param name="planet">The planet to be mapped.</param>
-        /// <param name="resolution">The vertical resolution.</param>
-        /// <returns>An elevation map image.</returns>
-        public static Image<L16> GenerateElevationMap(this Planetoid planet, int resolution)
-            => GenerateMapImage(
-                (lat, lon) => planet.GetElevationNoise(planet.LatitudeAndLongitudeToDoubleVector(lat, lon)),
-                resolution,
-                canBeNegative: true);
-
-        /// <summary>
-        /// Generates a new set of precipitation and snowfall map images.
-        /// </summary>
-        /// <param name="planet">The planet being mapped.</param>
-        /// <param name="winterTemperatures">A winter temperature map.</param>
-        /// <param name="summerTemperatues">A summer temperature map.</param>
-        /// <param name="resolution">The vertical resolution.</param>
-        /// <param name="steps">
+        /// <param name="image">The original map image.</param>
+        /// <param name="resolution">The target vertical resolution.</param>
+        /// <param name="originalProjection">
         /// <para>
-        /// The number of maps to generate internally (representing evenly spaced "seasons" during a year,
-        /// starting and ending at the winter solstice in the northern hemisphere), before averaging
-        /// them into a single image.
+        /// The projection used in the original image.
         /// </para>
         /// <para>
-        /// If stored maps exist, they will be used and this parameter will be ignored.
+        /// If omitted an equirectangular projection of the full globe is assumed.
+        /// </para>
+        /// </param>
+        /// <param name="newProjection">
+        /// <para>
+        /// The desired map projection.
+        /// </para>
+        /// <para>
+        /// If omitted an equirectangular projection of the full globe is assumed.
         /// </para>
         /// </param>
         /// <returns>
-        /// A set of precipitation and snowfall map images.
+        /// A new map projection image.
         /// </returns>
-        public static (Image<L16>[] precipitationMaps, Image<L16>[] snowfallMaps) GeneratePrecipitationMaps(
-            this Planetoid planet,
-            Image<L16> winterTemperatures,
-            Image<L16> summerTemperatues,
+        /// <exception cref="ArgumentException">
+        /// <paramref name="newProjection"/> specifies latitudes or longitudes not included in
+        /// <paramref name="originalProjection"/>
+        /// </exception>
+        public static Image<L16>? GetMapProjection(
+            this Image<L16> image,
             int resolution,
-            int steps)
+            MapProjectionOptions? originalProjection = null,
+            MapProjectionOptions? newProjection = null)
         {
-            var precipitationMaps = new Image<L16>[steps];
-            var snowMaps = new Image<L16>[steps];
-            var noPrecipitation = planet.Atmosphere.MaxPrecipitation.IsNearlyZero();
-
-            var proportionOfYear = 1f / steps;
-            var proportionOfYearAtMidpoint = 0f;
-            var trueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var trueAnomalyPerSeason = MathAndScience.Constants.Doubles.MathConstants.TwoPI / steps;
-            for (var i = 0; i < steps; i++)
+            var originalOptions = originalProjection ?? MapProjectionOptions.Default;
+            var xResolution = (int)Math.Floor(resolution * newProjection?.AspectRatio ?? 2);
+            if (newProjection?.Range.HasValue != true
+                || newProjection.Range!.Value <= 0
+                || newProjection.Range.Value >= Math.PI)
             {
-                if (noPrecipitation)
+                if (originalOptions.Range > 0
+                    && originalOptions.Range.Value < Math.PI)
                 {
-                    precipitationMaps[i] = new Image<L16>(resolution * 2, resolution);
-                    snowMaps[i] = new Image<L16>(resolution * 2, resolution);
-                    continue;
+                    throw new ArgumentException($"{nameof(newProjection)} specifies latitudes or longitudes not included in {nameof(originalProjection)}");
                 }
-
-                var solarDeclination = planet.GetSolarDeclination(trueAnomaly);
-                (precipitationMaps[i], snowMaps[i]) = GenerateMapImages(
-                    new[] { winterTemperatures, summerTemperatues },
-                    (lat, lon, temperature) =>
-                    {
-                        var precipitation = planet.GetPrecipitationNoise(
-                            planet.LatitudeAndLongitudeToDoubleVector(lat, lon),
-                            lat,
-                            Planetoid.GetSeasonalLatitudeFromDeclination(lat, solarDeclination),
-                            temperature * TemperatureScaleFactor,
-                            out var snow);
-                        return (
-                            precipitation / planet.Atmosphere.MaxPrecipitation,
-                            snow / planet.Atmosphere.MaxSnowfall);
-                    },
-                    resolution,
-                    proportionOfYearAtMidpoint,
-                    MapProjectionOptions.Default);
-                proportionOfYearAtMidpoint += proportionOfYear;
-                trueAnomaly += trueAnomalyPerSeason;
-                if (trueAnomaly >= MathAndScience.Constants.Doubles.MathConstants.TwoPI)
-                {
-                    trueAnomaly -= MathAndScience.Constants.Doubles.MathConstants.TwoPI;
-                }
+                return image.Clone(x => x.Resize(xResolution, resolution, _Resampler));
             }
-
-            return (precipitationMaps, snowMaps);
-        }
-
-        /// <summary>
-        /// Generates new winter and summer temperature map images.
-        /// </summary>
-        /// <param name="planet">The planet to be mapped.</param>
-        /// <param name="elevationMap">An elevation map.</param>
-        /// <param name="resolution">The vertical resolution.</param>
-        /// <returns>Winter and summer temperature map images.</returns>
-        public static (Image<L16> winter, Image<L16> summer) GenerateTemperatureMaps(
-            this Planetoid planet,
-            Image<L16> elevationMap,
-            int resolution)
-        {
-            var tilt = planet.AxialTilt;
-            var winterTrueAnomaly = planet.WinterSolsticeTrueAnomaly;
-            var summerTrueAnomaly = planet.SummerSolsticeTrueAnomaly;
-            var winterLatitudes = new Dictionary<double, double>();
-            var summerLatitudes = new Dictionary<double, double>();
-            var latitudeTemperatures = new Dictionary<double, double>();
-            var elevationTemperatures = new Dictionary<(double, int), double>();
-            var winter = GenerateMapImage(
-                elevationMap,
-                (lat, _, elevation) =>
-                {
-                    var roundedElevation = (int)Math.Round(Math.Max(0, (elevation - planet._normalizedSeaLevel) * planet.MaxElevation) / 100) * 100;
-
-                    if (!winterLatitudes.TryGetValue(lat, out var winterLat))
-                    {
-                        winterLat = Math.Abs((lat + Planetoid.GetSeasonalLatitudeFromDeclination(lat, tilt)) / 2);
-                        winterLatitudes.Add(lat, winterLat);
-                    }
-                    if (!latitudeTemperatures.TryGetValue(winterLat, out var winterTemp))
-                    {
-                        winterTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(winterTrueAnomaly, winterLat);
-                        latitudeTemperatures.Add(winterLat, winterTemp);
-                    }
-                    if (!elevationTemperatures.TryGetValue((winterTemp, roundedElevation), out var winterTempAtElevation))
-                    {
-                        winterTempAtElevation = planet.GetTemperatureAtElevation(winterTemp, roundedElevation);
-                        elevationTemperatures.Add((winterTemp, roundedElevation), winterTempAtElevation);
-                    }
-
-                    return winterTempAtElevation / TemperatureScaleFactor;
-                },
-                resolution,
-                MapProjectionOptions.Default);
-            var summer = GenerateMapImage(
-                elevationMap,
-                (lat, _, elevation) =>
-                {
-                    var roundedElevation = (int)Math.Round(Math.Max(0, (elevation - planet._normalizedSeaLevel) * planet.MaxElevation) / 100) * 100;
-
-                    if (!summerLatitudes.TryGetValue(lat, out var summerLat))
-                    {
-                        summerLat = Math.Abs((lat + Planetoid.GetSeasonalLatitudeFromDeclination(lat, -tilt)) / 2);
-                        summerLatitudes.Add(lat, summerLat);
-                    }
-                    if (!latitudeTemperatures.TryGetValue(summerLat, out var summerTemp))
-                    {
-                        summerTemp = planet.GetSurfaceTemperatureAtTrueAnomaly(summerTrueAnomaly, summerLat);
-                        latitudeTemperatures.Add(summerLat, summerTemp);
-                    }
-                    if (!elevationTemperatures.TryGetValue((summerTemp, roundedElevation), out var summerTempAtElevation))
-                    {
-                        summerTempAtElevation = planet.GetTemperatureAtElevation(summerTemp, roundedElevation);
-                        elevationTemperatures.Add((summerTemp, roundedElevation), summerTempAtElevation);
-                    }
-
-                    return summerTempAtElevation / TemperatureScaleFactor;
-                },
-                resolution,
-                MapProjectionOptions.Default);
-            return (winter, summer);
-        }
-
-        /// <summary>
-        /// Gets the elevation at the given position indicated by this map image, in meters.
-        /// </summary>
-        /// <param name="image">An elevation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="latitude">The latitude for which to retrieve a value.</param>
-        /// <param name="longitude">The longitude for which to retrieve a value.</param>
-        /// <param name="options">The map projection used.</param>
-        /// <returns>
-        /// The elevation at the given position indicated by this map image, in meters.
-        /// </returns>
-        public static double GetElevation(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
-            => (image.GetValueFromImage(latitude, longitude, options, true) - planet._normalizedSeaLevel) * planet.MaxElevation;
-
-        /// <summary>
-        /// Gets the elevation at the given position indicated by this map image, in meters.
-        /// </summary>
-        /// <param name="image">An elevation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="region">The mapped region.</param>
-        /// <param name="position">
-        /// A position relative to the center of <paramref name="region"/>.
-        /// </param>
-        /// <param name="equalArea">
-        /// Whether the elevation map is a cylindrical equal-area projection (rather than an
-        /// equirectangular projection).
-        /// </param>
-        /// <returns>
-        /// The elevation at the given position indicated by this map image, in meters.
-        /// </returns>
-        public static double GetElevation(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return image.GetElevation(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
-        }
-
-        /// <summary>
-        /// Gets the range of elevations represented by this map image, in meters.
-        /// </summary>
-        /// <param name="image">An elevation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <returns>
-        /// The minimum, maximum, and average elevations represented by this map image, in meters.
-        /// </returns>
-        public static FloatRange GetElevationRange(this Image<L16> image, Planetoid planet)
-        {
-            var range = GetRange(image, true);
-            return new FloatRange(
-                (float)((range.Min - planet._normalizedSeaLevel) * planet.MaxElevation),
-                (float)((range.Average - planet._normalizedSeaLevel) * planet.MaxElevation),
-                (float)((range.Max - planet._normalizedSeaLevel) * planet.MaxElevation));
-        }
-
-        /// <summary>
-        /// Gets the precipitation at the given position indicated by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A precipitation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="latitude">The latitude for which to retrieve a value.</param>
-        /// <param name="longitude">The longitude for which to retrieve a value.</param>
-        /// <param name="options">The map projection used.</param>
-        /// <returns>
-        /// The precipitation at the given position indicated by this map image, in mm/hr.
-        /// </returns>
-        public static double GetPrecipitation(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
-            => image.GetValueFromImage(latitude, longitude, options) * planet.Atmosphere.MaxPrecipitation;
-
-        /// <summary>
-        /// Gets the precipitation at the given position indicated by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A precipitation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="region">The mapped region.</param>
-        /// <param name="position">
-        /// A position relative to the center of <paramref name="region"/>.
-        /// </param>
-        /// <param name="equalArea">
-        /// Whether the precipitation map is a cylindrical equal-area projection (rather than an
-        /// equirectangular projection).
-        /// </param>
-        /// <returns>
-        /// The precipitation at the given position indicated by this map image, in mm/hr.
-        /// </returns>
-        public static double GetPrecipitation(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return image.GetPrecipitation(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
-        }
-
-        /// <summary>
-        /// Gets the range of precipitations represented by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A precipitation map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <returns>
-        /// The minimum, maximum, and average precipitations represented by this map image, in
-        /// mm/hr.
-        /// </returns>
-        public static FloatRange GetPrecipitationRange(this Image<L16> image, Planetoid planet)
-        {
-            var range = GetRange(image);
-            return new FloatRange(
-                (float)(range.Min * planet.Atmosphere.MaxPrecipitation),
-                (float)(range.Average * planet.Atmosphere.MaxPrecipitation),
-                (float)(range.Max * planet.Atmosphere.MaxPrecipitation));
+            var (newNorthLatitude, newWestLongitude, newSouthLatitude, newEastLongitude) = GetBounds(newProjection);
+            var originalScale = SurfaceMap.GetScale(image.Height, originalOptions.Range, originalOptions.EqualArea);
+            var (originalXMin, originalYMin) = originalOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    image.Width,
+                    image.Height,
+                    originalScale,
+                    originalOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    image.Width,
+                    image.Height,
+                    originalScale,
+                    originalOptions);
+            var (originalXMax, originalYMax) = originalOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    image.Width,
+                    image.Height,
+                    originalScale,
+                    originalOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    image.Width,
+                    image.Height,
+                    originalScale,
+                    originalOptions);
+            if (originalXMin < 0
+                || originalYMin < 0
+                || originalXMax > image.Width
+                || originalYMax > image.Height)
+            {
+                throw new ArgumentException($"{nameof(newProjection)} specifies latitudes or longitudes not included in {nameof(originalProjection)}");
+            }
+            return image.Clone(x => x
+                .Crop(new Rectangle(originalXMin, originalYMin, originalXMax - originalXMin, originalYMax - originalYMin))
+                .Resize(xResolution, resolution, _Resampler));
         }
 
         /// <summary>
@@ -621,107 +502,79 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         /// <summary>
-        /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
-        /// point to the point 1 arc-second away in the cardinal direction which is at the steepest
-        /// angle.
+        /// Generates a snowfall map from a precipitation map and a temperature map.
         /// </summary>
-        /// <param name="elevationMap">An elevation map.</param>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="latitude">The latitude of the point.</param>
-        /// <param name="longitude">The longitude of the point.</param>
-        /// <param name="options">
-        /// The map projection options used.
+        /// <param name="precipitationMap">A precipitation map.</param>
+        /// <param name="temperatureMap">A temperature map.</param>
+        /// <param name="projection">
+        /// <para>
+        /// The projection used in the existing maps. Used as the projection of the new snowfall
+        /// map.
+        /// </para>
+        /// <para>
+        /// If omitted an equirectangular projection of the full globe is assumed.
+        /// </para>
         /// </param>
-        /// <returns>The slope at the given coordinates.</returns>
-        public static double GetSlope(
-            this Image<L16> elevationMap,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
+        /// <returns>A snowfall map.</returns>
+        public static Image<L16> GetSnowfallMap(
+            this Image<L16> precipitationMap,
+            Image<L16> temperatureMap,
+            MapProjectionOptions? projection = null)
         {
-            var xResolution = elevationMap.Width;
-            var yResolution = elevationMap.Height;
-            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, xResolution, yResolution, options);
-            return GetSlope(elevationMap, x, y, planet, xResolution, yResolution, options ?? MapProjectionOptions.Default);
-        }
-
-        /// <summary>
-        /// Calculates the slope at the given coordinates, as the ratio of rise over run from the
-        /// point to the point 1 arc-second away in the cardinal direction which is at the steepest
-        /// angle.
-        /// </summary>
-        /// <param name="elevationMap">An elevation map.</param>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="latitude">The latitude of the point.</param>
-        /// <param name="longitude">The longitude of the point.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>The slope at the given coordinates.</returns>
-        public static double GetSlope(
-            this Image elevationMap,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
-        {
-            using var img = elevationMap.CloneAs<L16>();
-            return GetSlope(img, planet, latitude, longitude, options);
-        }
-
-        /// <summary>
-        /// Gets the snowfall at the given position indicated by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A snowfall map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="latitude">The latitude for which to retrieve a value.</param>
-        /// <param name="longitude">The longitude for which to retrieve a value.</param>
-        /// <param name="options">The map projection used.</param>
-        /// <returns>
-        /// The snowfall at the given position indicated by this map image, in mm/hr.
-        /// </returns>
-        public static double GetSnowfall(this Image<L16> image, Planetoid planet, double latitude, double longitude, MapProjectionOptions options)
-            => image.GetValueFromImage(latitude, longitude, options) * planet.Atmosphere.MaxSnowfall;
-
-        /// <summary>
-        /// Gets the snowfall at the given position indicated by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A snowfall map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="region">The mapped region.</param>
-        /// <param name="position">
-        /// A position relative to the center of <paramref name="region"/>.
-        /// </param>
-        /// <param name="equalArea">
-        /// Whether the precipitation map is a cylindrical equal-area projection (rather than an
-        /// equirectangular projection).
-        /// </param>
-        /// <returns>
-        /// The snowfall at the given position indicated by this map image, in mm/hr.
-        /// </returns>
-        public static double GetSnowfall(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return image.GetSnowfall(planet, planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
-        }
-
-        /// <summary>
-        /// Gets the range of snowfall represented by this map image, in mm/hr.
-        /// </summary>
-        /// <param name="image">A snowfall map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <returns>
-        /// The minimum, maximum, and average snowfall represented by this map image, in
-        /// mm/hr.
-        /// </returns>
-        public static FloatRange GetSnowfallRange(this Image<L16> image, Planetoid planet)
-        {
-            var range = GetRange(image);
-            return new FloatRange(
-                (float)(range.Min * planet.Atmosphere.MaxSnowfall),
-                (float)(range.Average * planet.Atmosphere.MaxSnowfall),
-                (float)(range.Max * planet.Atmosphere.MaxSnowfall));
+            var options = projection ?? MapProjectionOptions.Default;
+            var yLength = precipitationMap.Height;
+            var xLength = precipitationMap.Width;
+            var tempYLength = temperatureMap.Height;
+            var tempXLength = temperatureMap.Width;
+            var match = tempXLength == xLength
+                && tempYLength == yLength;
+            var snowImg = new Image<L16>(xLength, yLength);
+            var scale = SurfaceMap.GetScale(yLength, options.Range, options.EqualArea);
+            var tScale = SurfaceMap.GetScale(tempYLength, options.Range, options.EqualArea);
+            var xToX = new Dictionary<int, int>();
+            for (var y = 0; y < yLength; y++)
+            {
+                var snowSpan = snowImg.GetPixelRowSpan(y);
+                var precipSpan = precipitationMap.GetPixelRowSpan(y);
+                int tY;
+                if (match)
+                {
+                    tY = y;
+                }
+                else
+                {
+                    var lat = options.EqualArea
+                        ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(y, yLength, scale, options)
+                        : SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, options);
+                    tY = options.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(lat, tempYLength, tScale, options)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(lat, tempYLength, tScale, options);
+                }
+                var tSpan = temperatureMap.GetPixelRowSpan(tY);
+                for (var x = 0; x < xLength; x++)
+                {
+                    int tX;
+                    if (match)
+                    {
+                        tX = x;
+                    }
+                    else if (!xToX.TryGetValue(x, out tX))
+                    {
+                        var lon = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(x, xLength, scale, options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, scale, options);
+                        tX = options.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(lon, tempXLength, tScale, options)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(lon, tempXLength, tScale, options);
+                        xToX.Add(x, tX);
+                    }
+                    if (tSpan[tX].PackedValue < 17901) // 273.15K / 1000 * ushort.MaxValue
+                    {
+                        snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipSpan[x].PackedValue * Atmosphere.SnowToRainRatio));
+                    }
+                }
+            }
+            return snowImg;
         }
 
         /// <summary>
@@ -736,28 +589,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static double GetTemperature(this Image<L16> image, double latitude, double longitude, MapProjectionOptions options)
             => image.GetValueFromImage(latitude, longitude, options) * TemperatureScaleFactor;
-
-        /// <summary>
-        /// Gets the temperature at the given position indicated by this map image, in K.
-        /// </summary>
-        /// <param name="image">A temperature map image.</param>
-        /// <param name="planet">The planet mapped.</param>
-        /// <param name="region">The mapped region.</param>
-        /// <param name="position">
-        /// A position relative to the center of <paramref name="region"/>.
-        /// </param>
-        /// <param name="equalArea">
-        /// Whether the temperature map is a cylindrical equal-area projection (rather than an
-        /// equirectangular projection).
-        /// </param>
-        /// <returns>
-        /// The temperature at the given position indicated by this map image, in K.
-        /// </returns>
-        public static double GetTemperature(this Image<L16> image, Planetoid planet, SurfaceRegion region, Vector3 position, bool equalArea = false)
-        {
-            var pos = region.PlanetaryPosition + position;
-            return image.GetTemperature(planet.VectorToLatitude(pos), planet.VectorToLongitude(pos), region.GetProjection(planet, equalArea));
-        }
 
         /// <summary>
         /// Gets the range of temperatures represented by this map image, in K.
@@ -808,7 +639,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             MapProjectionOptions? mapProjection = null,
             MapProjectionOptions? elevationMapProjection = null)
         {
-            var elevationRange = elevationMap.GetElevationRange(planet);
+            var elevationRange = planet.GetElevationRange(elevationMap);
             var mp = Substances.All.Water.MeltingPoint ?? 0;
             var projection = mapProjection ?? MapProjectionOptions.Default;
             return maps.BiomeMap.SurfaceMapToImageByLatLon(
@@ -835,85 +666,6 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                   mapProjection,
                   elevationMapProjection,
                   new HillShadingOptions(true, false));
-        }
-
-        /// <summary>
-        /// Determines if the given position is mountainous (see Remarks).
-        /// </summary>
-        /// <param name="elevationMap">An elevation map.</param>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="latitude">The latitude of the position to check.</param>
-        /// <param name="longitude">The longitude of the position to check.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the given position is mountainous; otherwise <see
-        /// langword="false"/>.
-        /// </returns>
-        /// <remarks>
-        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
-        /// elevation of this planet, or a maximum elevation greater than 5% of the maximum and a
-        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
-        /// slope greater than 0.0875.
-        /// </remarks>
-        public static bool IsMountainous(
-            this Image<L16> elevationMap,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
-        {
-            var xResolution = elevationMap.Width;
-            var yResolution = elevationMap.Height;
-            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, xResolution, yResolution, options);
-
-            var elevation = elevationMap[x, y].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
-            if (elevation < 0.035)
-            {
-                return false;
-            }
-            if (elevation > 0.085)
-            {
-                return true;
-            }
-            var slope = GetSlope(elevationMap, x, y, planet, xResolution, yResolution, options ?? MapProjectionOptions.Default);
-            if (elevation > 0.05)
-            {
-                return slope > 0.035;
-            }
-            return slope > 0.0875;
-        }
-
-        /// <summary>
-        /// Determines if the given position is mountainous (see Remarks).
-        /// </summary>
-        /// <param name="elevationMap">An elevation map.</param>
-        /// <param name="planet">The mapped planet.</param>
-        /// <param name="latitude">The latitude of the position to check.</param>
-        /// <param name="longitude">The longitude of the position to check.</param>
-        /// <param name="options">
-        /// The map projection options used.
-        /// </param>
-        /// <returns>
-        /// <see langword="true"/> if the given position is mountainous; otherwise <see
-        /// langword="false"/>.
-        /// </returns>
-        /// <remarks>
-        /// "Mountainous" is defined as having a maximum elevation greater than 8.5% of the maximum
-        /// elevation of this planet, or a maximum elevation greater than 5% of the maximum and a
-        /// slope greater than 0.035, or a maximum elevation greater than 3.5% of the maximum and a
-        /// slope greater than 0.0875.
-        /// </remarks>
-        public static bool IsMountainous(
-            this Image elevationMap,
-            Planetoid planet,
-            double latitude,
-            double longitude,
-            MapProjectionOptions? options = null)
-        {
-            using var img = elevationMap.CloneAs<L16>();
-            return IsMountainous(img, planet, latitude, longitude, options);
         }
 
         /// <summary>
@@ -1303,7 +1055,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         if (landConverter is null)
@@ -1452,7 +1204,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         if (landConverter is null)
@@ -1601,7 +1353,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         destinationRowSpan[x].ApplyHillShading(elevationMap, x, y, hillShading, true);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         if (landConverter is null)
@@ -1753,7 +1505,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         destinationRowSpan[x].ApplyHillShading(elevationMap, elevationX, elevationY, hillShading, true);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         if (landConverter is null)
@@ -2012,7 +1764,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation)
@@ -2130,7 +1882,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, x, y)
@@ -2250,7 +2002,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         elevationX = SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationXLength, elevationScale, elevationProjection);
                     }
 
-                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     if (normalElevation >= 0)
                     {
                         destinationRowSpan[x] = landConverter(surfaceMap[x][y], normalElevation, latitude, longitude)
@@ -2536,7 +2288,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         /// </returns>
         public static Rgba32 ToElevationColor(this L16 value, Planetoid planet) => InterpColorRange_PosNeg(
             value,
-            v => v - planet._normalizedSeaLevel,
+            v => v - planet.NormalizedSeaLevel,
             _ElevationColorProfile);
 
         /// <summary>
@@ -2587,156 +2339,361 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             v => (v * TemperatureScaleFactor) - 273.15,
             _TemperatureColorProfile);
 
-        internal static Image<L16> AverageImages(Image[] images)
-        {
-            var yResolution = images.Max(x => x.Height);
-            var xResolution = yResolution * 2;
-            var imgs = images.Select(x => x.CloneAs<L16>()).ToList();
-            imgs.ForEach(img =>
-            {
-                if (img.Height != yResolution)
-                {
-                    img.Mutate(x => x.Resize(xResolution, yResolution));
-                }
-            });
-
-            var combined = new Image<L16>(xResolution, yResolution);
-            for (var y = 0; y < yResolution; y++)
-            {
-                var combinedSpan = combined.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
-                {
-                    var sum = 0.0;
-                    for (var i = 0; i < imgs.Count; i++)
-                    {
-                        sum += imgs[i][x, y].PackedValue;
-                    }
-                    combinedSpan[x] = new L16((ushort)Math.Round(sum / imgs.Count).Clamp(0, ushort.MaxValue));
-                }
-            }
-
-            imgs.ForEach(x => x.Dispose());
-            return combined;
-        }
-
-        internal static Image<L16> GenerateTemperatureMap(
-            Image winterTemperatures,
-            Image summerTemperatues)
-        {
-            var yResolution = Math.Max(winterTemperatures.Height, summerTemperatues.Height);
-            var xResolution = yResolution * 2;
-            using var winter = winterTemperatures.CloneAs<L16>();
-            using var summer = summerTemperatues.CloneAs<L16>();
-
-            if (winter.Height != yResolution)
-            {
-                winter.Mutate(x => x.Resize(xResolution, yResolution));
-            }
-            if (summer.Height != yResolution)
-            {
-                summer.Mutate(x => x.Resize(xResolution, yResolution));
-            }
-
-            var combined = new Image<L16>(xResolution, yResolution);
-            for (var y = 0; y < yResolution; y++)
-            {
-                var winterSpan = winter.GetPixelRowSpan(y);
-                var summerSpan = summer.GetPixelRowSpan(y);
-                var combinedSpan = combined.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
-                {
-                    combinedSpan[x] = winterSpan[x].Average(summerSpan[x]);
-                }
-            }
-
-            return combined;
-        }
-
-        internal static Image<L16> GetImageAtResolution(
-            Image original,
+        internal static Image<L16> GenerateMapImage(
+            Func<double, double, double> func,
             int resolution,
+            MapProjectionOptions? options = null,
+            bool canBeNegative = false)
+        {
+            if (resolution > 32767)
+            {
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
+            }
+            var projection = options ?? MapProjectionOptions.Default;
+            var xResolution = (int)Math.Floor(resolution * projection.AspectRatio);
+            var scale = SurfaceMap.GetScale(resolution, projection.Range, projection.EqualArea);
+            var stretch = scale / projection.ScaleFactor;
+
+            var image = new Image<L16>(xResolution, resolution);
+            for (var y = 0; y < resolution; y++)
+            {
+                var latitude = projection.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
+                        scale,
+                        projection)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
+                        projection);
+                var span = image.GetPixelRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    var longitude = projection.EqualArea
+                        ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                            x,
+                            xResolution,
+                            scale,
+                            projection)
+                        : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                            x,
+                            xResolution,
+                            stretch,
+                            projection);
+                    span[x] = new L16(DoubleToLuminance(func(latitude, longitude), canBeNegative));
+                }
+            }
+            return image;
+        }
+
+        internal static Image<L16> GenerateMapImage(
+            Image<L16> otherMap,
+            Func<double, double, double, double> func,
+            int resolution,
+            MapProjectionOptions otherOptions,
             MapProjectionOptions options)
         {
-            var img = original.CloneAs<L16>();
-            if (options.EqualArea)
+            if (resolution > 32767)
             {
-                var newImg = GetCylindricalEqualAreaProjectionFromEquirectangularProjection(img, options);
-                img.Dispose();
-                return newImg;
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
             }
-            if (resolution != img.Height)
+            if (!options.Range.HasValue
+                || options.Range.Value <= 0
+                || options.Range.Value >= Math.PI)
             {
-                img.Mutate(x => x.Resize(resolution * 2, resolution, _Resampler));
-            }
-            return img;
-        }
-
-        internal static Image<L16> GetMapImage(
-            Image fullMapImage,
-            int resolution,
-            MapProjectionOptions? options = null)
-        {
-            var (latitudes, longitudes) = GetBounds(options);
-            var width = resolution * 2;
-
-            var img = fullMapImage.CloneAs<L16>();
-            if (latitudes.HasValue && longitudes.HasValue)
-            {
-                img.Mutate(x => x.Crop(new Rectangle(
-                    (img.Width * ((longitudes.Value.Min + Math.PI) / MathAndScience.Constants.Doubles.MathConstants.TwoPI)).RoundToInt(),
-                    (img.Height * ((latitudes.Value.Min + MathAndScience.Constants.Doubles.MathConstants.HalfPI) / Math.PI)).RoundToInt(),
-                    (img.Width * (longitudes.Value.Range / MathAndScience.Constants.Doubles.MathConstants.TwoPI)).RoundToInt(),
-                    (img.Height * (latitudes.Value.Range / Math.PI)).RoundToInt())));
-            }
-            if (width != img.Width || resolution != img.Height)
-            {
-                img.Mutate(x => x.Resize(width, resolution, _Resampler));
-            }
-
-            if (options?.EqualArea == true)
-            {
-                var newImg = GetCylindricalEqualAreaProjectionFromEquirectangularProjection(
-                    img,
-                    options ?? MapProjectionOptions.Default);
-                img.Dispose();
-                return newImg;
-            }
-            return img;
-        }
-
-        internal static Image<L16> GetSnowfallMap(
-            this Image<L16> precipitationMap,
-            Image<L16> temperatureMap)
-        {
-            var yLength = precipitationMap.Height;
-            var xLength = precipitationMap.Width;
-            var tempYLength = temperatureMap.Height;
-            var tempXLength = temperatureMap.Width;
-            var snowImg = new Image<L16>(precipitationMap.Width, yLength);
-            var scale = SurfaceMap.GetScale(yLength);
-            var tScale = SurfaceMap.GetScale(tempYLength);
-            var xToX = new Dictionary<int, int>();
-            for (var y = 0; y < yLength; y++)
-            {
-                var snowSpan = snowImg.GetPixelRowSpan(y);
-                var lat = SurfaceMap.GetLatitudeOfEquirectangularProjection(y, yLength, scale, MapProjectionOptions.Default);
-                var tY = SurfaceMap.GetEquirectangularYFromLatWithScale(lat, tempYLength, tScale, MapProjectionOptions.Default);
-                var tSpan = temperatureMap.GetPixelRowSpan(tY);
-                for (var x = 0; x < xLength; x++)
+                if (otherOptions.Range > 0
+                    && otherOptions.Range.Value < Math.PI)
                 {
-                    if (!xToX.TryGetValue(x, out var tX))
-                    {
-                        var lon = SurfaceMap.GetLongitudeOfEquirectangularProjection(x, xLength, scale, MapProjectionOptions.Default);
-                        tX = SurfaceMap.GetEquirectangularXFromLonWithScale(lon, tempXLength, tScale, MapProjectionOptions.Default);
-                        xToX.Add(x, tX);
-                    }
-                    if (tSpan[tX].PackedValue < 17901) // 273.15K / 1000 * ushort.MaxValue
-                    {
-                        snowSpan[x] = new L16((ushort)Math.Min(ushort.MaxValue, precipitationMap[x, y].PackedValue * Atmosphere.SnowToRainRatio));
-                    }
+                    throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
                 }
             }
-            return snowImg;
+
+            var xResolution = (int)Math.Floor(resolution * options.AspectRatio);
+            var otherResolution = otherMap.Height;
+            var otherXResolution = otherMap.Width;
+            var scale = SurfaceMap.GetScale(resolution, options.Range, options.EqualArea);
+            var match = otherResolution == resolution
+                && otherXResolution == xResolution
+                && otherOptions.Range == options.Range;
+            var otherScale = match
+                ? scale
+                : SurfaceMap.GetScale(otherResolution, otherOptions.Range, otherOptions.EqualArea);
+            var stretch = scale / options.ScaleFactor;
+
+            var (newNorthLatitude, newWestLongitude, newSouthLatitude, newEastLongitude) = GetBounds(options);
+            var (originalXMin, originalYMin) = otherOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions);
+            var (originalXMax, originalYMax) = otherOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions);
+            if (originalXMin < 0
+                || originalYMin < 0
+                || originalXMax > otherXResolution
+                || originalYMax > otherResolution)
+            {
+                throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
+            }
+
+            var image = new Image<L16>(xResolution, resolution);
+            var longitudes = new Dictionary<int, double>();
+            for (var y = 0; y < resolution; y++)
+            {
+                var latitude = options.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options);
+                int otherY;
+                if (match)
+                {
+                    otherY = y;
+                }
+                else
+                {
+                    otherY = otherOptions.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
+                }
+                var span = image.GetPixelRowSpan(y);
+                var otherSpan = otherMap.GetPixelRowSpan(otherY);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    if (!longitudes.TryGetValue(x, out var longitude))
+                    {
+                        longitude = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                                x,
+                                xResolution,
+                                scale,
+                                options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                                x,
+                                xResolution,
+                                stretch,
+                                options);
+                        longitudes.Add(x, longitude);
+                    }
+                    int otherX;
+                    if (match)
+                    {
+                        otherX = x;
+                    }
+                    else
+                    {
+                        otherX = otherOptions.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    }
+                    span[x] = new L16(DoubleToLuminance(func(latitude, longitude, otherSpan[otherX].GetValueFromPixel_PosNeg())));
+                }
+            }
+            return image;
+        }
+
+        internal static (Image<L16> first, Image<L16> second) GenerateMapImages(
+            Image<L16>[] otherMaps,
+            Func<double, double, double, (double first, double second)> func,
+            int resolution,
+            double proportionOfYear,
+            MapProjectionOptions otherOptions,
+            MapProjectionOptions options)
+        {
+            if (resolution > 32767)
+            {
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
+            }
+            if (!options.Range.HasValue
+                || options.Range.Value <= 0
+                || options.Range.Value >= Math.PI)
+            {
+                if (otherOptions.Range > 0
+                    && otherOptions.Range.Value < Math.PI)
+                {
+                    throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
+                }
+            }
+
+            var xResolution = (int)Math.Floor(resolution * options.AspectRatio);
+            var noOtherMaps = otherMaps.Length == 0;
+            var otherResolution = noOtherMaps ? 0 : otherMaps[0].Height;
+            var otherXResolution = noOtherMaps ? 0 : otherMaps[0].Width;
+            var scale = SurfaceMap.GetScale(resolution, options.Range);
+            var match = otherResolution == resolution
+                && otherXResolution == xResolution
+                && otherOptions.Range == options.Range;
+            var otherScale = match || noOtherMaps
+                ? scale
+                : SurfaceMap.GetScale(otherResolution, options.Range);
+            var stretch = scale / options.ScaleFactor;
+
+            var (newNorthLatitude, newWestLongitude, newSouthLatitude, newEastLongitude) = GetBounds(options);
+            var (originalXMin, originalYMin) = otherOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newNorthLatitude, newWestLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions);
+            var (originalXMax, originalYMax) = otherOptions.EqualArea
+                ? SurfaceMap.GetCylindricalEqualAreaProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions)
+                : SurfaceMap.GetEquirectangularProjectionFromLatLongWithScale(
+                    newSouthLatitude, newEastLongitude,
+                    otherXResolution,
+                    otherResolution,
+                    otherScale,
+                    otherOptions);
+            if (originalXMin < 0
+                || originalYMin < 0
+                || originalXMax > otherXResolution
+                || originalYMax > otherResolution)
+            {
+                throw new ArgumentException("Target projection specifies latitudes or longitudes not included in original projection");
+            }
+
+            var first = new Image<L16>(xResolution, resolution);
+            var second = new Image<L16>(xResolution, resolution);
+            var longitudes = new Dictionary<int, double>();
+            for (var y = 0; y < resolution; y++)
+            {
+                var latitude = options.EqualArea
+                    ? SurfaceMap.GetLatitudeOfCylindricalEqualAreaProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options)
+                    : SurfaceMap.GetLatitudeOfEquirectangularProjection(
+                        y,
+                        resolution,
+                        scale,
+                        options);
+                int otherY;
+                if (match || noOtherMaps)
+                {
+                    otherY = y;
+                }
+                else
+                {
+                    otherY = otherOptions.EqualArea
+                        ? SurfaceMap.GetCylindricalEqualAreaYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions)
+                        : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, otherOptions);
+                }
+                var firstSpan = first.GetPixelRowSpan(y);
+                var secondSpan = second.GetPixelRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    if (!longitudes.TryGetValue(x, out var longitude))
+                    {
+                        longitude = options.EqualArea
+                            ? SurfaceMap.GetLongitudeOfCylindricalEqualAreaProjection(
+                                x,
+                                xResolution,
+                                scale,
+                                options)
+                            : SurfaceMap.GetLongitudeOfEquirectangularProjection(
+                                x,
+                                xResolution,
+                                stretch,
+                                options);
+                        longitudes.Add(x, longitude);
+                    }
+                    int otherX;
+                    if (match || noOtherMaps)
+                    {
+                        otherX = x;
+                    }
+                    else
+                    {
+                        otherX = otherOptions.EqualArea
+                            ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions)
+                            : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, otherOptions);
+                    }
+                    var (firstValue, secondValue) = func(
+                        latitude, longitude,
+                        noOtherMaps
+                            ? 0
+                            : InterpolateAmongImages(otherMaps, proportionOfYear, otherX, otherY));
+                    firstSpan[x] = new L16(DoubleToLuminance(firstValue));
+                    secondSpan[x] = new L16(DoubleToLuminance(secondValue));
+                }
+            }
+            return (first, second);
+        }
+
+        internal static Image<L16> GenerateZeroMapImage(
+            int resolution,
+            MapProjectionOptions? options = null,
+            bool canBeNegative = false)
+        {
+            if (resolution > 32767)
+            {
+                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
+            }
+            var projection = options ?? MapProjectionOptions.Default;
+            var xResolution = (int)Math.Floor(resolution * projection.AspectRatio);
+
+            var image = new Image<L16>(xResolution, resolution);
+            if (!canBeNegative)
+            {
+                return image;
+            }
+
+            for (var y = 0; y < resolution; y++)
+            {
+                var span = image.GetPixelRowSpan(y);
+                for (var x = 0; x < xResolution; x++)
+                {
+                    span[x] = new L16(32767);
+                }
+            }
+            return image;
+        }
+
+        internal static double GetValueFromImage(this Image<L16> image, double latitude, double longitude, MapProjectionOptions options, bool canBeNegative = false)
+        {
+            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, image.Width, image.Height, options);
+            return canBeNegative
+                ? image[x, y].GetValueFromPixel_PosNeg()
+                : image[x, y].GetValueFromPixel_Pos();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
@@ -2747,12 +2704,27 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         internal static double GetValueFromPixel_PosNeg(this L16 pixel)
             => (2.0 * pixel.PackedValue / ushort.MaxValue) - 1;
 
+        internal static double InterpolateAmongImages(Image<L16> image1, Image<L16> image2, double weight, int x, int y)
+            => image1[x, y].GetValueFromPixel_Pos()
+            .Lerp(
+                image2[x, y].GetValueFromPixel_Pos(),
+                weight);
+
         internal static double InterpolateAmongImages(Image<L16>[] images, double proportionOfYear, int x, int y)
         {
             if (images.Length == 0)
             {
                 return 0;
             }
+            if (images.Length == 1)
+            {
+                return images[0][x, y].GetValueFromPixel_Pos();
+            }
+            if (images.Length == 2)
+            {
+                return InterpolateAmongImages(images[0], images[1], proportionOfYear, x, y);
+            }
+
             var proportionPerSeason = 1.0 / images.Length;
             var seasonIndex = (int)Math.Floor(proportionOfYear / proportionPerSeason);
             var nextSeasonIndex = seasonIndex == images.Length - 1 ? 0 : seasonIndex + 1;
@@ -2763,33 +2735,25 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         }
 
         internal static Image<L16> InterpolateImages(
-            Image image1,
-            Image image2,
+            Image<L16> image1,
+            Image<L16> image2,
             double weight)
         {
-            var yResolution = Math.Max(image1.Height, image2.Height);
-            var xResolution = yResolution * 2;
-            using var img1 = image1.CloneAs<L16>();
-            using var img2 = image2.CloneAs<L16>();
-
-            if (img1.Height != yResolution)
+            if (image1.Height != image2.Height
+                || image1.Width != image2.Width)
             {
-                img1.Mutate(x => x.Resize(xResolution, yResolution));
-            }
-            if (img2.Height != yResolution)
-            {
-                img2.Mutate(x => x.Resize(xResolution, yResolution));
+                throw new ArgumentException("images must all have the same dimensions");
             }
 
-            var combined = new Image<L16>(xResolution, yResolution);
-            for (var y = 0; y < yResolution; y++)
+            var combined = new Image<L16>(image1.Width, image1.Height);
+            for (var y = 0; y < image1.Height; y++)
             {
-                var winterSpan = img1.GetPixelRowSpan(y);
-                var summerSpan = img2.GetPixelRowSpan(y);
+                var img1Span = image1.GetPixelRowSpan(y);
+                var img2Span = image2.GetPixelRowSpan(y);
                 var combinedSpan = combined.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
+                for (var x = 0; x < image1.Width; x++)
                 {
-                    combinedSpan[x] = winterSpan[x].Lerp(summerSpan[x], weight);
+                    combinedSpan[x] = img1Span[x].Lerp(img2Span[x], weight);
                 }
             }
 
@@ -2866,280 +2830,44 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             return (ushort)Math.Round(value * ushort.MaxValue).Clamp(0, ushort.MaxValue);
         }
 
-        private static Image<L16> GenerateMapImage(
-            Func<double, double, double> func,
-            int resolution,
-            MapProjectionOptions? options = null,
-            bool canBeNegative = false)
+        private static (
+            double northLatitude,
+            double westLongitude,
+            double southLatitude,
+            double eastLongitude) GetBounds(MapProjectionOptions? options = null)
         {
-            if (resolution > 32767)
+            var projection = options ?? MapProjectionOptions.Default;
+            var range = projection.Range ?? 0;
+            if (range >= Math.PI || range <= 0)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
+                return (
+                    -MathAndScience.Constants.Doubles.MathConstants.HalfPI,
+                    -Math.PI,
+                    MathAndScience.Constants.Doubles.MathConstants.HalfPI,
+                    Math.PI);
             }
-            var projection = options?.With(equalArea: false) ?? MapProjectionOptions.Default;
-            var xResolution = resolution * 2;
-            var scale = SurfaceMap.GetScale(resolution, projection.Range);
-            var stretch = scale / projection.ScaleFactor;
-
-            var image = new Image<L16>(xResolution, resolution);
-            for (var y = 0; y < resolution; y++)
+            range /= 2;
+            var minLat = LatitudeBounded(projection.CentralParallel - range);
+            var maxLat = LatitudeBounded(projection.CentralParallel + range);
+            var minLon = LongitudeBounded(projection.CentralMeridian - range);
+            var maxLon = LongitudeBounded(projection.CentralMeridian + range);
+            if (minLat > maxLat)
             {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    projection);
-                var span = image.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
-                {
-                    var longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                        x,
-                        xResolution,
-                        stretch,
-                        projection);
-                    var v = DoubleToLuminance(func(latitude, longitude), canBeNegative);
-                    span[x] = new L16(v);
-                }
+                var tmp = minLat;
+                minLat = maxLat;
+                maxLat = tmp;
             }
-            return image;
-        }
-
-        private static Image<L16> GenerateMapImage(
-            Image<L16> otherMap,
-            Func<double, double, double, double> func,
-            int resolution,
-            MapProjectionOptions options)
-        {
-            if (resolution > 32767)
+            if (minLon > maxLon)
             {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
+                var tmp = minLon;
+                minLon = maxLon;
+                maxLon = tmp;
             }
-            var xResolution = resolution * 2;
-            var otherResolution = otherMap.Height;
-            var otherXResolution = otherMap.Width;
-            var scale = SurfaceMap.GetScale(resolution, options.Range);
-            var match = otherResolution == resolution && otherXResolution == xResolution;
-            var otherScale = match
-                ? scale
-                : SurfaceMap.GetScale(otherResolution, options.Range);
-            var stretch = scale / options.ScaleFactor;
-
-            var image = new Image<L16>(xResolution, resolution);
-            var longitudes = new Dictionary<int, double>();
-            for (var y = 0; y < resolution; y++)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options);
-                var otherY = match
-                    ? y
-                    : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, options);
-                var span = image.GetPixelRowSpan(y);
-                var otherSpan = otherMap.GetPixelRowSpan(otherY);
-                for (var x = 0; x < xResolution; x++)
-                {
-                    if (!longitudes.TryGetValue(x, out var longitude))
-                    {
-                        longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                            x,
-                            xResolution,
-                            stretch,
-                            options);
-                        longitudes.Add(x, longitude);
-                    }
-                    var otherX = match
-                        ? x
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, options);
-                    var v = DoubleToLuminance(func(latitude, longitude, otherSpan[otherX].GetValueFromPixel_PosNeg()));
-                    span[x] = new L16(v);
-                }
-            }
-            return image;
-        }
-
-        private static (Image<L16> first, Image<L16> second) GenerateMapImages(
-            Image<L16>[] otherMaps,
-            Func<double, double, double, (double first, double second)> func,
-            int resolution,
-            double proportionOfYear,
-            MapProjectionOptions options)
-        {
-            if (resolution > 32767)
-            {
-                throw new ArgumentOutOfRangeException(nameof(resolution), $"The value of {nameof(resolution)} cannot exceed 32767.");
-            }
-            var xResolution = resolution * 2;
-            var noOtherMaps = otherMaps.Length == 0;
-            var otherResolution = noOtherMaps ? 0 : otherMaps[0].Height;
-            var otherXResolution = noOtherMaps ? 0 : otherMaps[0].Width;
-            var scale = SurfaceMap.GetScale(resolution, options.Range);
-            var match = otherResolution == resolution && otherXResolution == xResolution;
-            var otherScale = match || noOtherMaps
-                ? scale
-                : SurfaceMap.GetScale(otherResolution, options.Range);
-            var stretch = scale / options.ScaleFactor;
-
-            var first = new Image<L16>(xResolution, resolution);
-            var second = new Image<L16>(xResolution, resolution);
-            var longitudes = new Dictionary<int, double>();
-            for (var y = 0; y < resolution; y++)
-            {
-                var latitude = SurfaceMap.GetLatitudeOfEquirectangularProjection(
-                    y,
-                    resolution,
-                    scale,
-                    options);
-                var otherY = match || noOtherMaps
-                    ? y
-                    : SurfaceMap.GetEquirectangularYFromLatWithScale(latitude, otherResolution, otherScale, options);
-                var firstSpan = first.GetPixelRowSpan(y);
-                var secondSpan = second.GetPixelRowSpan(y);
-                for (var x = 0; x < xResolution; x++)
-                {
-                    if (!longitudes.TryGetValue(x, out var longitude))
-                    {
-                        longitude = SurfaceMap.GetLongitudeOfEquirectangularProjection(
-                            x,
-                            xResolution,
-                            stretch,
-                            options);
-                        longitudes.Add(x, longitude);
-                    }
-                    var otherX = match || noOtherMaps
-                        ? x
-                        : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, otherXResolution, otherScale, options);
-                    var (firstValue, secondValue) = func(
-                        latitude, longitude,
-                        noOtherMaps
-                            ? 0
-                            : InterpolateAmongImages(otherMaps, proportionOfYear, otherX, otherY));
-                    firstSpan[x] = new L16(DoubleToLuminance(firstValue));
-                    secondSpan[x] = new L16(DoubleToLuminance(secondValue));
-                }
-            }
-            return (first, second);
-        }
-
-        private static (FloatRange? latitudes, FloatRange? longitudes) GetBounds(MapProjectionOptions? options = null)
-        {
-            FloatRange? latitudes = null;
-            FloatRange? longitudes = null;
-            if (options?.Range.HasValue == true && options.Range > 0)
-            {
-                var range = options.Range.Value / 2;
-                var xRange = options.Range.Value;
-
-                latitudes = new FloatRange(
-                        (float)(options.CentralParallel - range),
-                        (float)(options.CentralParallel + range));
-                longitudes = new FloatRange(
-                        (float)(options.CentralMeridian - xRange),
-                        (float)(options.CentralMeridian + xRange));
-            }
-            return (latitudes, longitudes);
-        }
-
-        private static Image<L16> GetCylindricalEqualAreaProjectionFromEquirectangularProjection(
-            Image<L16> image,
-            MapProjectionOptions options)
-        {
-            var resolution = image.Height;
-            var halfResolution = resolution / 2;
-            var doubleResolution = resolution * 2;
-
-            var equirectangularScale = SurfaceMap.GetScale(resolution, options.Range);
-
-            var centerMeridian = options.CentralMeridian;
-            var centerParallel = options.CentralParallel;
-            var scaleFactor = options.ScaleFactor;
-            var equalAreaXResolution = (int)Math.Round(resolution * options.AspectRatio);
-            var halfEqualAreaXResolution = equalAreaXResolution / 2;
-            var stretchByScale = scaleFactor / equirectangularScale;
-            var scaleByPi = options.Range < Math.PI && !options.Range.Value.IsNearlyZero()
-                ? options.Range.Value / resolution
-                : 2.0 / resolution;
-            var scaleByAspect = options.Range < Math.PI && !options.Range.Value.IsNearlyZero()
-                ? options.Range.Value / (resolution * options.ScaleFactorSquared)
-                : 2 / (resolution * options.ScaleFactorSquared);
-
-            var newMap = new Image<L16>(equalAreaXResolution, resolution);
-            for (var equalAreaY = 0; equalAreaY < resolution; equalAreaY++)
-            {
-                var span = newMap.GetPixelRowSpan(equalAreaY);
-                for (var equalAreaX = 0; equalAreaX < equalAreaXResolution; equalAreaX++)
-                {
-                    var latitude = Math.Asin(((equalAreaY - halfResolution) * scaleByPi).Clamp(-1, 1)) + centerParallel;
-                    var longitude = ((equalAreaX - halfEqualAreaXResolution) * scaleByAspect) + centerMeridian;
-
-                    var eqirectangularX = (int)Math.Round(((longitude - centerMeridian) * stretchByScale) + resolution)
-                        .Clamp(0, doubleResolution - 1);
-                    var eqirectangularY = (int)Math.Round(halfResolution + ((latitude - centerParallel) / equirectangularScale))
-                        .Clamp(0, resolution - 1);
-
-                    span[equalAreaX] = image[eqirectangularX, eqirectangularY];
-                }
-            }
-            return newMap;
-        }
-
-        private static double GetSlope(
-            Image<L16> elevationMap,
-            int x, int y,
-            Planetoid planet,
-            int xResolution,
-            int yResolution,
-            MapProjectionOptions options)
-        {
-            // Calculations are invalid at the top or bottom, so adjust by 1 pixel.
-            if (y == 0)
-            {
-                y = 1;
-            }
-            if (y == yResolution - 1)
-            {
-                y = yResolution - 2;
-            }
-            // left: x - 1, y
-            var left = x == 0
-                ? 1
-                : x - 1;
-            // up: x, y - 1
-            var up = y == 0
-                ? yResolution - 1
-                : y - 1;
-            // right: x + 1, y
-            var right = x == xResolution - 1
-                ? 0
-                : x + 1;
-            // down: x, y + 1
-            var down = y == yResolution - 1
-                ? yResolution - 2
-                : y + 1;
-
-            var elevation = elevationMap[x, y].GetValueFromPixel_PosNeg();
-            var distance = (double)SurfaceMap.GetSeparationOfPointFromRadiusSquared(planet.RadiusSquared, x, y, yResolution, options);
-
-            // north
-            var slope = Math.Abs(elevation - elevationMap[x, up].GetValueFromPixel_PosNeg()) * planet.MaxElevation / distance;
-
-            // east
-            slope = Math.Max(slope, Math.Abs(elevation - elevationMap[right, y].GetValueFromPixel_PosNeg()) * planet.MaxElevation / distance);
-
-            // south
-            slope = Math.Max(slope, Math.Abs(elevation - elevationMap[x, down].GetValueFromPixel_PosNeg()) * planet.MaxElevation / distance);
-
-            // west
-            return Math.Max(slope, Math.Abs(elevation - elevationMap[left, y].GetValueFromPixel_PosNeg()) * planet.MaxElevation / distance);
-        }
-
-        private static double GetValueFromImage(this Image<L16> image, double latitude, double longitude, MapProjectionOptions options, bool canBeNegative = false)
-        {
-            var (x, y) = SurfaceMap.GetProjectionFromLatLong(latitude, longitude, image.Width, image.Height, options);
-            return canBeNegative
-                ? image[x, y].GetValueFromPixel_PosNeg()
-                : image[x, y].GetValueFromPixel_Pos();
+            return (
+                minLat,
+                minLon,
+                maxLat,
+                maxLon);
         }
 
         private static byte InterpColor(double value, double lowValue, double highValue, double lowColor, double highColor)
@@ -3185,7 +2913,33 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
             (double max, (double r, double g, double b) color)[] ranges)
             => InterpColorRange(transform(value.GetValueFromPixel_PosNeg()), ranges);
 
+        private static double LatitudeBounded(double value)
+        {
+            if (value < -MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                value = -Math.PI - value;
+            }
+            if (value > MathAndScience.Constants.Doubles.MathConstants.HalfPI)
+            {
+                value = Math.PI - value;
+            }
+            return value;
+        }
+
         private static L16 Lerp(this L16 pixel, L16 other, double weight)
             => new((ushort)(pixel.PackedValue + (weight * (other.PackedValue - pixel.PackedValue))).Clamp(0, ushort.MaxValue));
+
+        private static double LongitudeBounded(double value)
+        {
+            if (value < -Math.PI)
+            {
+                value = -MathAndScience.Constants.Doubles.MathConstants.TwoPI - value;
+            }
+            if (value > Math.PI)
+            {
+                value = MathAndScience.Constants.Doubles.MathConstants.TwoPI - value;
+            }
+            return value;
+        }
     }
 }

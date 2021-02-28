@@ -71,6 +71,15 @@ namespace NeverFoundry.WorldFoundry.Space
         /// </summary>
         public Orbit? Orbit { get; internal set; }
 
+        private Number? _radiusSquared;
+        /// <summary>
+        /// The containing radius of the location, squared.
+        /// </summary>
+        /// <remarks>
+        /// The value is calculated on first request and cached.
+        /// </remarks>
+        public Number RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
+
         /// <summary>
         /// A value which deterministically allows this <see cref="CosmicLocation"/> to be
         /// regenerated, given identical values for its other properties.
@@ -144,9 +153,6 @@ namespace NeverFoundry.WorldFoundry.Space
         /// The velocity of the <see cref="CosmicLocation"/> in m/s.
         /// </summary>
         public Vector3 Velocity { get; internal set; }
-
-        private Number? _radiusSquared;
-        internal Number RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
 
         private protected virtual string BaseTypeName => StructureType switch
         {

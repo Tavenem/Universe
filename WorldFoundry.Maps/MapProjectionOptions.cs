@@ -2,7 +2,7 @@
 using NeverFoundry.MathAndScience.Constants.Doubles;
 using System;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Maps
 {
     /// <summary>
     /// Options for projecting a map.

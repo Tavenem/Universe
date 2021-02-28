@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+    <LangVersion>Preview</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NeverFoundry.WorldFoundry.Maps</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Version>0.20.0</Version>
+    <Authors>Wil Stead</Authors>
+    <Description>Planetary mapping for NeverFoundry.WorldFoundry</Description>
+    <Copyright>Copyright (c) 2019-2021 Wil Stead</Copyright>
+    <PackageId>NeverFoundry.WorldFoundry.Maps</PackageId>
+    <Product>NeverFoundry.WorldFoundry.Maps</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WorldFoundry\WorldFoundry.csproj" />
+  </ItemGroup>
+
+</Project>

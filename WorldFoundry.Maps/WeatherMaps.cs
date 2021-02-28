@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 
-namespace NeverFoundry.WorldFoundry.SurfaceMapping
+namespace NeverFoundry.WorldFoundry.Maps
 {
     /// <summary>
     /// A collection of weather maps providing yearlong climate data.
@@ -125,7 +125,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
         {
             var projection = options ?? MapProjectionOptions.Default;
 
-            XLength = (int)Math.Round(projection.AspectRatio * resolution);
+            XLength = (int)Math.Floor(projection.AspectRatio * resolution);
             YLength = resolution;
 
             BiomeMap = new BiomeType[XLength][];
@@ -234,7 +234,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                             ? SurfaceMap.GetCylindricalEqualAreaXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection)
                             : SurfaceMap.GetEquirectangularXFromLonWithScale(longitude, elevationMap.Width, elevationScale, projection);
                         int wX;
-                        if (winterTemperatureMap.Height == elevationMap.Height)
+                        if (winterTemperatureMap.Width == elevationMap.Width)
                         {
                             wX = elevationX;
                         }
@@ -248,7 +248,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         }
 
                         int sX;
-                        if (summerTemperatureMap.Height == elevationMap.Height)
+                        if (summerTemperatureMap.Width == elevationMap.Width)
                         {
                             sX = elevationX;
                         }
@@ -262,7 +262,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                         }
 
                         int pX;
-                        if (precipitationMap.Height == elevationMap.Height)
+                        if (precipitationMap.Width == elevationMap.Width)
                         {
                             pX = elevationX;
                         }
@@ -284,7 +284,7 @@ namespace NeverFoundry.WorldFoundry.SurfaceMapping
                     var summerX = xToSX[x];
                     var precipitationX = xToPX[x];
 
-                    var normalizedElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet._normalizedSeaLevel;
+                    var normalizedElevation = elevationSpan[elevationX].GetValueFromPixel_PosNeg() - planet.NormalizedSeaLevel;
                     totalElevation += normalizedElevation;
 
                     var winterTemperature = (float)(winterSpan[winterX].GetValueFromPixel_Pos() * SurfaceMapImage.TemperatureScaleFactor);
