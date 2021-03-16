@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.20.1</Version>
+    <Version>0.20.2</Version>
     <Authors>Wil Stead</Authors>
     <Description>Planetary mapping for NeverFoundry.WorldFoundry</Description>
     <Copyright>Copyright (c) 2019-2021 Wil Stead</Copyright>
@@ -26,7 +26,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NeverFoundry.WorldFoundry" Version="0.20.1" />
+    <PackageReference Include="NeverFoundry.WorldFoundry" Version="0.20.2" />
     <PackageReference Include="SixLabors.ImageSharp" Version="1.0.3" />
   </ItemGroup>
 
