@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.20.2</Version>
+    <Version>0.20.3</Version>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
     <Copyright>Copyright (c) 2019-2021 Wil Stead</Copyright>
@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <PackageReference Include="NeverFoundry.Extensions" Version="0.2.0" />
-    <PackageReference Include="NeverFoundry.MathAndScience" Version="0.26.2" />
+    <PackageReference Include="NeverFoundry.MathAndScience" Version="0.26.3" />
   </ItemGroup>
 
   <Target Name="NugetAdd" AfterTargets="Pack">
