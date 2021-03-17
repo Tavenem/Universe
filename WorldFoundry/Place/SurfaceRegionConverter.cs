@@ -17,14 +17,25 @@ namespace NeverFoundry.WorldFoundry.Place
         /// <param name="typeToConvert">The type to convert.</param>
         /// <param name="options">An object that specifies serialization options to use.</param>
         /// <returns>The converted value.</returns>
-        [return: MaybeNull]
-        public override SurfaceRegion Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override SurfaceRegion? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType != JsonTokenType.StartObject
                 || !reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals("id")
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            var prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                "id",
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -36,9 +47,21 @@ namespace NeverFoundry.WorldFoundry.Place
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(IIdItem.IdItemTypeName))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(IIdItem.IdItemTypeName),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -51,9 +74,21 @@ namespace NeverFoundry.WorldFoundry.Place
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.Shape))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.Shape),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException();
@@ -69,18 +104,42 @@ namespace NeverFoundry.WorldFoundry.Place
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.ParentId))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.ParentId),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
             var parentId = reader.GetString();
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.AbsolutePosition))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.AbsolutePosition),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
@@ -116,28 +175,48 @@ namespace NeverFoundry.WorldFoundry.Place
         {
             writer.WriteStartObject();
 
-            writer.WriteString("id", value.Id);
-            writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
+            writer.WriteString(
+                options.PropertyNamingPolicy is null
+                    ? "id"
+                    : options.PropertyNamingPolicy.ConvertName("id"),
+                value.Id);
+            writer.WriteString(
+                options.PropertyNamingPolicy is null
+                    ? nameof(IIdItem.IdItemTypeName)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(IIdItem.IdItemTypeName)),
+                value.IdItemTypeName);
 
-            writer.WritePropertyName(nameof(Location.Shape));
+            writer.WritePropertyName(options.PropertyNamingPolicy is null
+                ? nameof(Location.Shape)
+                : options.PropertyNamingPolicy.ConvertName(nameof(Location.Shape)));
             JsonSerializer.Serialize(writer, value.Shape, value.Shape.GetType(), options);
 
             if (value.ParentId is null)
             {
-                writer.WriteNull(nameof(Location.ParentId));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(Location.ParentId)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.ParentId)));
             }
             else
             {
-                writer.WriteString(nameof(Location.ParentId), value.ParentId);
+                writer.WriteString(
+                    options.PropertyNamingPolicy is null
+                        ? nameof(Location.ParentId)
+                        : options.PropertyNamingPolicy.ConvertName(nameof(Location.ParentId)),
+                    value.ParentId);
             }
 
             if (value.AbsolutePosition is null)
             {
-                writer.WriteNull(nameof(Location.AbsolutePosition));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(Location.AbsolutePosition)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.AbsolutePosition)));
             }
             else
             {
-                writer.WritePropertyName(nameof(Location.AbsolutePosition));
+                writer.WritePropertyName(options.PropertyNamingPolicy is null
+                    ? nameof(Location.AbsolutePosition)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.AbsolutePosition)));
                 JsonSerializer.Serialize(writer, value.AbsolutePosition, options);
             }
 

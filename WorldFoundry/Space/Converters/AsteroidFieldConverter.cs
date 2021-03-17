@@ -22,9 +22,21 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             if (reader.TokenType != JsonTokenType.StartObject
                 || !reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals("id")
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            var prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                "id",
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -36,9 +48,21 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(IIdItem.IdItemTypeName))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(IIdItem.IdItemTypeName),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -51,18 +75,42 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals("seed")
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                "seed",
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || !reader.TryGetUInt32(out var seed))
             {
                 throw new JsonException();
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(CosmicLocation.StructureType))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(CosmicLocation.StructureType),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || !reader.TryGetInt32(out var structureTypeInt)
                 || !Enum.IsDefined(typeof(CosmicStructureType), structureTypeInt))
             {
@@ -71,18 +119,42 @@ namespace NeverFoundry.WorldFoundry.Space
             var structureType = (CosmicStructureType)structureTypeInt;
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.ParentId))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.ParentId),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
             var parentId = reader.GetString();
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.AbsolutePosition))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.AbsolutePosition),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
@@ -98,18 +170,42 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(CosmicLocation.Name))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(CosmicLocation.Name),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
             var name = reader.GetString();
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(CosmicLocation.Velocity))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(CosmicLocation.Velocity),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException();
@@ -121,9 +217,21 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(CosmicLocation.Orbit))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(CosmicLocation.Orbit),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
@@ -149,9 +257,21 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(Location.Position))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(Location.Position),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException();
@@ -163,9 +283,21 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(CosmicLocation.Temperature))
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(CosmicLocation.Temperature),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
@@ -184,9 +316,21 @@ namespace NeverFoundry.WorldFoundry.Space
             }
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(AsteroidField.MajorRadius))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(AsteroidField.MajorRadius),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -194,9 +338,21 @@ namespace NeverFoundry.WorldFoundry.Space
             var majorRadius = JsonSerializer.Deserialize<Number>(ref reader, options);
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals(nameof(AsteroidField.MinorRadius))
-                || !reader.Read()
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                nameof(AsteroidField.MinorRadius),
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read()
                 || reader.TokenType != JsonTokenType.String)
             {
                 throw new JsonException();
@@ -213,9 +369,21 @@ namespace NeverFoundry.WorldFoundry.Space
             var toroidal = reader.GetBoolean();
 
             if (!reader.Read()
-                || reader.TokenType != JsonTokenType.PropertyName
-                || !reader.ValueTextEquals("ChildOrbitalParameters")
-                || !reader.Read())
+                || reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException();
+            }
+            prop = reader.GetString();
+            if (!string.Equals(
+                prop,
+                "ChildOrbitalParameters",
+                options.PropertyNameCaseInsensitive
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal))
+            {
+                throw new JsonException();
+            }
+            if (!reader.Read())
             {
                 throw new JsonException();
             }
@@ -271,82 +439,140 @@ namespace NeverFoundry.WorldFoundry.Space
         {
             writer.WriteStartObject();
 
-            writer.WriteString("id", value.Id);
-            writer.WriteString(nameof(IIdItem.IdItemTypeName), value.IdItemTypeName);
+            writer.WriteString(
+                options.PropertyNamingPolicy is null
+                    ? "id"
+                    : options.PropertyNamingPolicy.ConvertName("id"),
+                value.Id);
+            writer.WriteString(
+                options.PropertyNamingPolicy is null
+                    ? nameof(IIdItem.IdItemTypeName)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(IIdItem.IdItemTypeName)),
+                value.IdItemTypeName);
 
-            writer.WriteNumber("seed", value.Seed);
+            writer.WriteNumber(
+                options.PropertyNamingPolicy is null
+                    ? "seed"
+                    : options.PropertyNamingPolicy.ConvertName("seed"),
+                value.Seed);
 
-            writer.WriteNumber(nameof(CosmicLocation.StructureType), (int)value.StructureType);
+            writer.WriteNumber(
+                options.PropertyNamingPolicy is null
+                    ? nameof(CosmicLocation.StructureType)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.StructureType)),
+                (int)value.StructureType);
 
             if (value.ParentId is null)
             {
-                writer.WriteNull(nameof(Location.ParentId));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(Location.ParentId)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.ParentId)));
             }
             else
             {
-                writer.WriteString(nameof(Location.ParentId), value.ParentId);
+                writer.WriteString(
+                    options.PropertyNamingPolicy is null
+                        ? nameof(Location.ParentId)
+                        : options.PropertyNamingPolicy.ConvertName(nameof(Location.ParentId)),
+                    value.ParentId);
             }
 
             if (value.AbsolutePosition is null)
             {
-                writer.WriteNull(nameof(Location.AbsolutePosition));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(Location.AbsolutePosition)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.AbsolutePosition)));
             }
             else
             {
-                writer.WritePropertyName(nameof(Location.AbsolutePosition));
+                writer.WritePropertyName(options.PropertyNamingPolicy is null
+                    ? nameof(Location.AbsolutePosition)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Location.AbsolutePosition)));
                 JsonSerializer.Serialize(writer, value.AbsolutePosition, options);
             }
 
             if (value.Name is null)
             {
-                writer.WriteNull(nameof(CosmicLocation.Name));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(CosmicLocation.Name)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.Name)));
             }
             else
             {
-                writer.WriteString(nameof(CosmicLocation.Name), value.Name);
+                writer.WriteString(
+                    options.PropertyNamingPolicy is null
+                        ? nameof(CosmicLocation.Name)
+                        : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.Name)),
+                    value.Name);
             }
 
-            writer.WritePropertyName(nameof(CosmicLocation.Velocity));
+            writer.WritePropertyName(options.PropertyNamingPolicy is null
+                ? nameof(CosmicLocation.Velocity)
+                : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.Velocity)));
             JsonSerializer.Serialize(writer, value.Velocity, options);
 
             if (value.Orbit.HasValue)
             {
-                writer.WritePropertyName(nameof(CosmicLocation.Orbit));
+                writer.WritePropertyName(options.PropertyNamingPolicy is null
+                    ? nameof(CosmicLocation.Orbit)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.Orbit)));
                 JsonSerializer.Serialize(writer, value.Orbit.Value, options);
             }
             else
             {
-                writer.WriteNull(nameof(CosmicLocation.Orbit));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(CosmicLocation.Orbit)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(CosmicLocation.Orbit)));
             }
 
-            writer.WritePropertyName(nameof(Location.Position));
+            writer.WritePropertyName(options.PropertyNamingPolicy is null
+                ? nameof(Location.Position)
+                : options.PropertyNamingPolicy.ConvertName(nameof(Location.Position)));
             JsonSerializer.Serialize(writer, value.Position, options);
 
             if (value.Material.Temperature.HasValue)
             {
-                writer.WriteNumber(nameof(MathAndScience.Chemistry.IMaterial.Temperature), value.Material.Temperature.Value);
+                writer.WriteNumber(
+                    options.PropertyNamingPolicy is null
+                        ? nameof(MathAndScience.Chemistry.IMaterial.Temperature)
+                        : options.PropertyNamingPolicy.ConvertName(nameof(MathAndScience.Chemistry.IMaterial.Temperature)),
+                    value.Material.Temperature.Value);
             }
             else
             {
-                writer.WriteNull(nameof(MathAndScience.Chemistry.IMaterial.Temperature));
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? nameof(MathAndScience.Chemistry.IMaterial.Temperature)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(MathAndScience.Chemistry.IMaterial.Temperature)));
             }
 
-            writer.WritePropertyName(nameof(AsteroidField.MajorRadius));
+            writer.WritePropertyName(options.PropertyNamingPolicy is null
+                ? nameof(AsteroidField.MajorRadius)
+                : options.PropertyNamingPolicy.ConvertName(nameof(AsteroidField.MajorRadius)));
             JsonSerializer.Serialize(writer, value.MajorRadius, options);
 
-            writer.WritePropertyName(nameof(AsteroidField.MinorRadius));
+            writer.WritePropertyName(options.PropertyNamingPolicy is null
+                ? nameof(AsteroidField.MinorRadius)
+                : options.PropertyNamingPolicy.ConvertName(nameof(AsteroidField.MinorRadius)));
             JsonSerializer.Serialize(writer, value.MinorRadius, options);
 
-            writer.WriteBoolean("Toroidal", value._toroidal);
+            writer.WriteBoolean(
+                options.PropertyNamingPolicy is null
+                    ? "Toroidal"
+                    : options.PropertyNamingPolicy.ConvertName("Toroidal"),
+                value._toroidal);
 
             if (value._childOrbitalParameters.HasValue)
             {
-                writer.WritePropertyName("ChildOrbitalParameters");
+                writer.WritePropertyName(options.PropertyNamingPolicy is null
+                    ? "ChildOrbitalParameters"
+                    : options.PropertyNamingPolicy.ConvertName("ChildOrbitalParameters"));
                 JsonSerializer.Serialize(writer, value._childOrbitalParameters.Value, options);
             }
             else
             {
-                writer.WriteNull("ChildOrbitalParameters");
+                writer.WriteNull(options.PropertyNamingPolicy is null
+                    ? "ChildOrbitalParameters"
+                    : options.PropertyNamingPolicy.ConvertName("ChildOrbitalParameters"));
             }
 
             writer.WriteEndObject();
