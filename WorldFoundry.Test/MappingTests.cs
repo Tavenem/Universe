@@ -444,6 +444,7 @@ namespace NeverFoundry.WorldFoundry.Test
             stopwatch1.Start();
             stopwatch2.Start();
             var planet = GetPlanet();
+            //var region = SurfaceRegion.FromBounds(planet, -1.425, -0.7, -0.475, 0.2);
             var region = new SurfaceRegion(planet, -0.95, -0.25, 0.95);
             var projection = region.GetProjection(planet, equalArea);
             var projectionXResolution = (int)Math.Floor(ProjectionResolution * projection.AspectRatio);

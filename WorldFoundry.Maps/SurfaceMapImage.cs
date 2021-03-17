@@ -2846,11 +2846,14 @@ namespace NeverFoundry.WorldFoundry.Maps
                     MathAndScience.Constants.Doubles.MathConstants.HalfPI,
                     Math.PI);
             }
-            range /= 2;
-            var minLat = LatitudeBounded(projection.CentralParallel - range);
-            var maxLat = LatitudeBounded(projection.CentralParallel + range);
-            var minLon = LongitudeBounded(projection.CentralMeridian - range);
-            var maxLon = LongitudeBounded(projection.CentralMeridian + range);
+            var halfLatRange = range / 2;
+            var halfLonRange = Math.Min(
+                MathAndScience.Constants.Doubles.MathConstants.HalfPI,
+                range * projection.AspectRatio / 2);
+            var minLat = LatitudeBounded(projection.CentralParallel - halfLatRange);
+            var maxLat = LatitudeBounded(projection.CentralParallel + halfLatRange);
+            var minLon = LongitudeBounded(projection.CentralMeridian - halfLonRange);
+            var maxLon = LongitudeBounded(projection.CentralMeridian + halfLonRange);
             if (minLat > maxLat)
             {
                 var tmp = minLat;

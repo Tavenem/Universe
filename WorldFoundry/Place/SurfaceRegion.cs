@@ -130,14 +130,16 @@ namespace NeverFoundry.WorldFoundry.Place
         {
             var latitudeRange = Math.Abs(southLatitude - northLatitude);
             var centerLat = northLatitude + (latitudeRange / 2);
+            var longitudeRange = Math.Abs(eastLongitude - westLongitude);
+            var halfLongitudeRange = longitudeRange / 2;
+
             var position = planet.LatitudeAndLongitudeToVector(
                 centerLat,
-                westLongitude + (Math.Abs(eastLongitude - westLongitude) / 2));
+                westLongitude + halfLongitudeRange);
 
-            var longitudeRange = Math.Abs(eastLongitude - westLongitude);
             latitudeRange = Math.Max(
                 latitudeRange,
-                longitudeRange / 2);
+                halfLongitudeRange);
             var equalAreaAspectRatio = Math.PI * Math.Cos(centerLat).Square();
             latitudeRange = Math.Max(
                 latitudeRange,
@@ -148,10 +150,7 @@ namespace NeverFoundry.WorldFoundry.Place
 
             return new SurfaceRegion(
                 planet,
-                new Vector3(
-                    position.X,
-                    position.Y,
-                    position.Z),
+                position,
                 latitudeRange);
         }
 
@@ -169,8 +168,8 @@ namespace NeverFoundry.WorldFoundry.Place
             double southLatitude,
             double eastLongitude) GetBounds(Planetoid planet)
         {
-            var lat = planet.VectorToLongitude(Position);
-            var lon = planet.VectorToLatitude(Position);
+            var lat = planet.VectorToLatitude(PlanetaryPosition);
+            var lon = planet.VectorToLongitude(PlanetaryPosition);
             var range = (double)((Frustum)Shape).FieldOfViewAngle;
             if (range >= Math.PI || range <= 0)
             {
@@ -180,11 +179,15 @@ namespace NeverFoundry.WorldFoundry.Place
                     MathAndScience.Constants.Doubles.MathConstants.HalfPI,
                     Math.PI);
             }
-            range /= 2;
-            var minLat = LatitudeBounded(lat - range);
-            var maxLat = LatitudeBounded(lat + range);
-            var minLon = LongitudeBounded(lon - range);
-            var maxLon = LongitudeBounded(lon + range);
+            var halfLatRange = range / 2;
+            var equalAreaAspectRatio = Math.PI * Math.Cos(lat).Square();
+            var halfLonRange = Math.Min(
+                MathAndScience.Constants.Doubles.MathConstants.HalfPI,
+                Math.Max(range, range * equalAreaAspectRatio / 2));
+            var minLat = LatitudeBounded(lat - halfLatRange);
+            var maxLat = LatitudeBounded(lat + halfLatRange);
+            var minLon = LongitudeBounded(lon - halfLonRange);
+            var maxLon = LongitudeBounded(lon + halfLonRange);
             if (minLat > maxLat)
             {
                 var tmp = minLat;

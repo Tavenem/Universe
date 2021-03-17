@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.20.4</Version>
+    <Version>0.20.9</Version>
     <Authors>Wil Stead</Authors>
     <Description>Universe sim</Description>
     <Copyright>Copyright (c) 2019-2021 Wil Stead</Copyright>

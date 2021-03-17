@@ -600,6 +600,7 @@ namespace NeverFoundry.WorldFoundry.Space
                 position,
                 temperature,
                 Orbit?.SemiMajorAxis ?? 0);
+            SetAxis();
             ReconstituteHydrosphere(rehydrator);
             GenerateAtmosphere(rehydrator);
             GenerateResources(rehydrator);
