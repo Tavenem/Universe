@@ -6,6 +6,7 @@ namespace Tavenem.Universe.Climate
     /// Describes the general biome of a location. A <see cref="FlagsAttribute"/> <see
     /// cref="Enum"/>.
     /// </summary>
+    [Flags]
     public enum BiomeType
     {
         /// <summary>

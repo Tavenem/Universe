@@ -6,6 +6,7 @@ namespace Tavenem.Universe.Climate
     /// Indicates the relative level of humidity in a location. A <see cref="FlagsAttribute"/> <see
     /// cref="Enum"/>.
     /// </summary>
+    [Flags]
     public enum HumidityType
     {
         /// <summary>

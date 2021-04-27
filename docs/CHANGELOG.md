@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2-preview
+### Fixed
+- Add `Flags` attribute to enums
+
 ## 0.1.1-preview
 ### Updated
 - Update dependencies
