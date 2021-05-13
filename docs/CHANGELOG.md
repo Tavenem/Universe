@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-preview
+### Added
+- Added alternative, synchronous methods to `Planetoid` which assume a sun-like star at
+  `Vector3.Zero`, which can be used in place of the asynchronous methods that attempt to load and
+  utilize local system data.
+
 ## 0.1.3-preview - 0.1.5-preview
 ### Updated
 - Update dependencies

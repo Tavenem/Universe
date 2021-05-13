@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -1263,6 +1264,84 @@ namespace Tavenem.Universe.Space
         }
 
         /// <summary>
+        /// Calculates the total illumination on the given position, as well as the light reflected
+        /// from any natural satellites, modified according to the angle of incidence at the given
+        /// time, in lux (lumens per m²), assuming a single sun-like star at <see
+        /// cref="Vector3.Zero"/>.
+        /// </summary>
+        /// <param name="moment">The time at which to make the calculation.</param>
+        /// <param name="latitude">The latitude at which to make the calculation.</param>
+        /// <param name="longitude">The longitude at which to make the calculation.</param>
+        /// <param name="satellites">Any satellites of this body.</param>
+        /// <returns>The total illumination on the body, in lux (lumens per m²).</returns>
+        /// <remarks>
+        /// <para>
+        /// A conversion of 0.0079 W/m² per lux is used, which is roughly accurate for the sun, but
+        /// may not be as precise for other stellar bodies.
+        /// </para>
+        /// <para>
+        /// This method modifies total illumination based on an angle of incidence calculated from
+        /// the assumed star, or by the body it orbits (in the case of satellites). To get a value
+        /// which accounts for the actual stars in the local system, use <see
+        /// cref="GetIlluminationAsync(IDataStore, Instant, double, double)"/>.
+        /// </para>
+        /// </remarks>
+        public double GetIllumination(Instant moment, double latitude, double longitude, IEnumerable<Planetoid>? satellites = null)
+        {
+            var pos = GetPositionAtTime(moment);
+
+            var distance = pos.Length();
+            var (_, eclipticLongitude) = GetEclipticLatLon(pos, Vector3.Zero);
+            var lux = 0.0;
+
+            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, Vector3.Zero);
+            var longitudeOffset = longitude - solarRightAscension;
+            if (longitudeOffset > Math.PI)
+            {
+                longitudeOffset -= DoubleConstants.TwoPI;
+            }
+
+            var sinSolarElevation = (Math.Sin(solarDeclination) * Math.Sin(latitude))
+                + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
+            var solarElevation = Math.Asin(sinSolarElevation);
+            var star = Star.NewSunlike(null, Vector3.Zero);
+            lux += solarElevation <= 0 || star is null ? 0 : GetLuminousFlux(new[] { star }) * sinSolarElevation;
+
+            if (satellites is not null)
+            {
+                foreach (var satellite in satellites)
+                {
+                    var satPos = satellite.GetPositionAtTime(moment);
+                    var satDist2 = Vector3.DistanceSquared(pos, satPos);
+                    var satDist = satDist2.Sqrt();
+
+                    var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+
+                    var phase = 0.0;
+                    // satellite-centered elongation of the planet from the star (ratio of illuminated
+                    // surface area to total surface area)
+                    var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
+                    var e = Math.Atan2((double)(satDist - (distance * Math.Cos(le))), (double)(distance * Math.Sin(le)));
+                    // fraction of illuminated surface area
+                    phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
+
+                    // Total light from the satellite is the flux incident on the satellite, reduced
+                    // according to the proportion lit (vs. shadowed), further reduced according to the
+                    // albedo, then the distance the light must travel after being reflected.
+                    lux += star is null
+                        ? 0
+                        : satellite.GetLuminousFlux(new[] { star })
+                            * phase
+                            * satellite.Albedo
+                            / DoubleConstants.FourPI
+                            / (double)satDist2;
+                }
+            }
+
+            return lux;
+        }
+
+        /// <summary>
         /// Calculates the total illumination on the given position from nearby sources of light
         /// (stars in the same system), as well as the light reflected from any natural satellites,
         /// modified according to the angle of incidence at the given time, in lux (lumens per m²).
@@ -1444,6 +1523,47 @@ namespace Tavenem.Universe.Space
 
         /// <summary>
         /// Calculate the time of local sunrise and sunset on the current day, based on the planet's
+        /// rotation, as a proportion of a day since midnight, assuming a star at <see
+        /// cref="Vector3.Zero"/>.
+        /// </summary>
+        /// <param name="moment">The time at which to make the calculation.</param>
+        /// <param name="latitude">The latitude at which to make the calculation.</param>
+        /// <returns>
+        /// A pair of <see cref="RelativeDuration"/> instances set to a proportion of a local day
+        /// since midnight. If the sun does not rise and set on the given day (e.g. near the poles),
+        /// then <see langword="null"/> will be returned for sunrise in the case of a polar night,
+        /// and <see langword="null"/> for sunset in the case of a midnight sun.
+        /// </returns>
+        /// <remarks>
+        /// To get the time of local sunrise and sunset taking into account the actual star(s) in
+        /// the local system, <see cref="GetLocalTimeOfDayAsync(IDataStore, Instant, double)"/>
+        /// should be used. This method can be used for a planet which is not part of a complete
+        /// system model, or in cases where the system is known to have only one star at <see
+        /// cref="Vector3.Zero"/>.
+        /// </remarks>
+        public (RelativeDuration? sunrise, RelativeDuration? sunset) GetLocalSunriseAndSunset(Instant moment, double latitude)
+        {
+            var position = GetPositionAtTime(moment);
+
+            var (_, solarDeclination) = GetRightAscensionAndDeclination(position, Vector3.Zero);
+
+            var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
+            if (d.IsNearlyZero())
+            {
+                return (solarDeclination < 0) == latitude.IsNearlyZero()
+                    ? ((RelativeDuration?)RelativeDuration.FromProportionOfDay(HugeNumber.Zero), (RelativeDuration?)null)
+                    : ((RelativeDuration?)null, RelativeDuration.FromProportionOfDay(HugeNumber.Zero));
+            }
+
+            var localSecondsFromSolarNoonAtSunriseAndSet = Math.Acos(-Math.Sin(solarDeclination) * Math.Sin(latitude) / d) / AngularVelocity;
+            var localSecondsSinceMidnightAtSunrise = ((RotationalPeriod / 2) - localSecondsFromSolarNoonAtSunriseAndSet) % RotationalPeriod;
+            var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (RotationalPeriod / 2)) % RotationalPeriod;
+            return (RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunrise / RotationalPeriod),
+                RelativeDuration.FromProportionOfDay(localSecondsSinceMidnightAtSunset / RotationalPeriod));
+        }
+
+        /// <summary>
+        /// Calculate the time of local sunrise and sunset on the current day, based on the planet's
         /// rotation, as a proportion of a day since midnight.
         /// </summary>
         /// <param name="dataStore">
@@ -1458,16 +1578,23 @@ namespace Tavenem.Universe.Space
         /// and <see langword="null"/> for sunset in the case of a midnight sun.
         /// </returns>
         /// <remarks>
+        /// <para>
         /// If this body is in a star system with multiple stars, the sunrise and sunset given will
         /// be for the star closest to the position it orbits. If it is not in orbit, the closest
         /// star is chosen.
+        /// </para>
+        /// <para>
+        /// If there are no stars, or the body is not in a star system, the time of day is given as
+        /// if a star existed at <see cref="Vector3.Zero"/> in local space. This might be used for a
+        /// planet which is not part of a complete system model.
+        /// </para>
         /// </remarks>
         public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(IDataStore dataStore, Instant moment, double latitude)
         {
             var primaryStar = await GetPrimaryStarAsync(dataStore).ConfigureAwait(false);
             if (primaryStar is null)
             {
-                return (null, null);
+                return GetLocalSunriseAndSunset(moment, latitude);
             }
 
             var position = GetPositionAtTime(moment);
@@ -1493,6 +1620,40 @@ namespace Tavenem.Universe.Space
         /// <summary>
         /// Gets the time of day at the given <paramref name="moment"/> and <paramref
         /// name="longitude"/>, based on the planet's rotation, as a proportion of a day since
+        /// midnight, assuming a star at <see cref="Vector3.Zero"/>.
+        /// </summary>
+        /// <param name="moment">The time at which to make the calculation.</param>
+        /// <param name="longitude">The longitude at which to make the calculation.</param>
+        /// <returns>
+        /// A <see cref="RelativeDuration"/> set to a proportion of a local day since midnight.
+        /// </returns>
+        /// <remarks>
+        /// To get the local time of day taking into account the actual star(s) in the local system,
+        /// <see cref="GetLocalTimeOfDayAsync(IDataStore, Instant, double)"/> should be used. This
+        /// method can be used for a planet which is not part of a complete system model, or to
+        /// stand for the local conventional time for a rogue planet which truly has no local star,
+        /// or in cases where the system is known to have only one star at <see
+        /// cref="Vector3.Zero"/>.
+        /// </remarks>
+        public RelativeDuration GetLocalTimeOfDay(Instant moment, double longitude)
+        {
+            var position = GetPositionAtTime(moment);
+
+            var (solarRightAscension, _) = GetRightAscensionAndDeclination(position, Vector3.Zero);
+            var longitudeOffset = longitude - solarRightAscension;
+            if (longitudeOffset > Math.PI)
+            {
+                longitudeOffset -= DoubleConstants.TwoPI;
+            }
+            var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
+
+            var localSecondsSinceMidnight = (localSecondsSinceSolarNoon + (RotationalPeriod / 2)) % RotationalPeriod;
+            return RelativeDuration.FromProportionOfDay(localSecondsSinceMidnight / RotationalPeriod);
+        }
+
+        /// <summary>
+        /// Gets the time of day at the given <paramref name="moment"/> and <paramref
+        /// name="longitude"/>, based on the planet's rotation, as a proportion of a day since
         /// midnight.
         /// </summary>
         /// <param name="dataStore">
@@ -1504,17 +1665,24 @@ namespace Tavenem.Universe.Space
         /// A <see cref="RelativeDuration"/> set to a proportion of a local day since midnight.
         /// </returns>
         /// <remarks>
+        /// <para>
         /// If this body is in a star system with multiple stars, the time of day given will be
         /// based on the star closest to the position it orbits. If it is not in orbit, the closest
-        /// star is chosen. If there are no stars, or the body is not in a star system, the time of
-        /// day is always midnight (relative duration of zero).
+        /// star is chosen.
+        /// </para>
+        /// <para>
+        /// If there are no stars, or the body is not in a star system, the time of day is given as
+        /// if a star existed at <see cref="Vector3.Zero"/> in local space. This might be used for a
+        /// planet which is not part of a complete system model, or to stand for the local
+        /// conventional time for a rogue planet which truly has no local star.
+        /// </para>
         /// </remarks>
         public async Task<RelativeDuration> GetLocalTimeOfDayAsync(IDataStore dataStore, Instant moment, double longitude)
         {
             var primaryStar = await GetPrimaryStarAsync(dataStore).ConfigureAwait(false);
             if (primaryStar is null)
             {
-                return RelativeDuration.Zero;
+                return GetLocalTimeOfDay(moment, longitude);
             }
 
             var position = GetPositionAtTime(moment);
@@ -1543,6 +1711,27 @@ namespace Tavenem.Universe.Space
         /// west.</returns>
         public HugeNumber GetLocalTimeOffset(double longitude)
             => (longitude > Math.PI ? longitude - DoubleConstants.TwoPI : longitude) * RotationalPeriod / HugeNumber.TwoPI;
+
+        /// <summary>
+        /// Calculates the total luminous flux incident on this body from nearby sources of light
+        /// (stars in the same system), in lumens, assuming a sun-like star at <see
+        /// cref="Vector3.Zero"/>.
+        /// </summary>
+        /// <returns>The total illumination on the body, in lumens.</returns>
+        /// <remarks>
+        /// <para>
+        /// A conversion of 0.0079 W/m² per lumen is used, which is roughly accurate for the sun.
+        /// </para>
+        /// <para>
+        /// To get a value which accounts for the actual stars in the local system, use <see
+        /// cref="GetLuminousFluxAsync(IDataStore)"/>.
+        /// </para>
+        /// </remarks>
+        public double GetLuminousFlux()
+        {
+            var star = Star.NewSunlike(null, Vector3.Zero);
+            return star is null ? 0 : GetLuminousFlux(new[] { star });
+        }
 
         /// <summary>
         /// Calculates the total luminous flux incident on this body from nearby sources of light
@@ -1721,15 +1910,54 @@ namespace Tavenem.Universe.Space
         }
 
         /// <summary>
+        /// Gets phase information for the given <paramref name="satellite"/>, assuming a star at
+        /// <see cref="Vector3.Zero"/>.
+        /// </summary>
+        /// <param name="moment">The time at which to make the calculation.</param>
+        /// <param name="satellite">A natural satellite of this body.</param>
+        /// <returns>
+        /// The proportion of the satellite which is currently illuminated, and a boolean value
+        /// indicating whether the body is in the waxing half of its cycle (vs. the waning half).
+        /// </returns>
+        /// <remarks>
+        /// To get a value which accounts for the actual stars in the local system, use <see
+        /// cref="GetSatellitePhaseAsync(IDataStore, Instant, Planetoid)"/>.
+        /// </remarks>
+        public (double phase, bool waxing) GetSatellitePhase(Instant moment, Planetoid satellite)
+        {
+            var position = GetPositionAtTime(moment);
+
+            var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3.Zero);
+            var starDist = position.Length();
+
+            var satellitePosition = satellite.GetPositionAtTime(moment);
+            var phase = 0.0;
+
+            var satDist = Vector3.Distance(position, satellitePosition);
+            var (satLat, satLon) = GetEclipticLatLon(position, satellitePosition);
+
+            // satellite-centered elongation of the planet from the star (ratio of illuminated
+            // surface area to total surface area)
+            var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
+            var e = Math.Atan2((double)(satDist - (starDist * Math.Cos(le))), (double)(starDist * Math.Sin(le)));
+
+            // fraction of illuminated surface area
+            phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
+            var (planetRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, position);
+            var (starRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, Vector3.Zero);
+            var waxing = (starRightAscension - planetRightAscension + DoubleConstants.TwoPI) % DoubleConstants.TwoPI <= Math.PI;
+
+            return (phase, waxing);
+        }
+
+        /// <summary>
         /// Gets phase information for the given <paramref name="satellite"/>.
         /// </summary>
         /// <param name="dataStore">
         /// The <see cref="IDataStore"/> from which to retrieve instances.
         /// </param>
         /// <param name="moment">The time at which to make the calculation.</param>
-        /// <param name="satellite">A natural satellite of this body. If the specified body is not
-        /// one of this one's satellites, the return value will always be <code>(0.0, <see
-        /// langword="false"/>)</code>.</param>
+        /// <param name="satellite">A natural satellite of this body.</param>
         /// <returns>
         /// <para>
         /// The proportion of the satellite which is currently illuminated, and a boolean value
@@ -1746,15 +1974,10 @@ namespace Tavenem.Universe.Space
         /// </returns>
         public async Task<(double phase, bool waxing)> GetSatellitePhaseAsync(IDataStore dataStore, Instant moment, Planetoid satellite)
         {
-            if (_satelliteIDs?.Contains(satellite.Id) != true || !satellite.Orbit.HasValue)
-            {
-                return (0, false);
-            }
-
             var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
             if (system is null)
             {
-                return (0, false);
+                return GetSatellitePhase(moment, this);
             }
 
             var position = GetPositionAtTime(moment);
