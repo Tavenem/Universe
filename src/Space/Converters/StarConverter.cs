@@ -492,8 +492,8 @@ namespace Tavenem.Universe.Space
 
             writer.WriteNumber(
                 options.PropertyNamingPolicy is null
-                    ? nameof(Tavenem.Chemistry.IMaterial.Temperature)
-                    : options.PropertyNamingPolicy.ConvertName(nameof(Tavenem.Chemistry.IMaterial.Temperature)),
+                    ? nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)),
                 value.Temperature);
 
             writer.WriteBoolean(

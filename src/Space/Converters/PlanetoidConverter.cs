@@ -745,15 +745,15 @@ namespace Tavenem.Universe.Space
             {
                 writer.WriteNumber(
                     options.PropertyNamingPolicy is null
-                        ? nameof(IMaterial.Temperature)
-                        : options.PropertyNamingPolicy.ConvertName(nameof(IMaterial.Temperature)),
+                        ? nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)
+                        : options.PropertyNamingPolicy.ConvertName(nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)),
                     value.Material.Temperature.Value);
             }
             else
             {
                 writer.WriteNull(options.PropertyNamingPolicy is null
-                    ? nameof(IMaterial.Temperature)
-                    : options.PropertyNamingPolicy.ConvertName(nameof(IMaterial.Temperature)));
+                    ? nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)
+                    : options.PropertyNamingPolicy.ConvertName(nameof(Tavenem.Chemistry.HugeNumbers.IMaterial.Temperature)));
             }
 
             writer.WriteNumber(
