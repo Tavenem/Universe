@@ -1,4 +1,5 @@
 ﻿using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -30,14 +31,14 @@ namespace Tavenem.Universe.Space
             var mass = randomizer.NextNumber(new HugeNumber(1.99, 29), new HugeNumber(1.99, 30)); // ~0.1–1 solar mass.
 
             Material = new Material(
-                Substances.All.IonizedCloud.GetReference(),
-                mass,
+                Substances.All.IonizedCloud,
 
                 // Actual planetary nebulae are spherical only 20% of the time, but the shapes are irregular
                 // and not considered critical to model precisely, especially given their extremely
                 // attenuated nature. Instead, a ~1 ly sphere is used.
                 new Sphere(_PlanetaryNebulaSpace, position),
-
+                mass,
+                null,
                 temperature);
         }
     }

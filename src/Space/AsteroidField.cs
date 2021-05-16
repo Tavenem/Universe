@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -396,12 +397,13 @@ namespace Tavenem.Universe.Space
             if (StructureType == CosmicStructureType.OortCloud)
             {
                 Material = new Material(
-                    Substances.All.InterplanetaryMedium.GetReference(),
-                    new HugeNumber(3, 25),
+                    Substances.All.InterplanetaryMedium,
                     new HollowSphere(
                         minorRadius,
                         majorRadius,
                         position),
+                    new HugeNumber(3, 25),
+                    null,
                     temperature);
                 return;
             }
@@ -417,9 +419,10 @@ namespace Tavenem.Universe.Space
                     position);
 
             Material = new Material(
-                Substances.All.InterplanetaryMedium.GetReference(),
-                shape.Volume * new HugeNumber(7, -8),
+                Substances.All.InterplanetaryMedium,
                 shape,
+                shape.Volume * new HugeNumber(7, -8),
+                null,
                 temperature);
         }
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -127,8 +128,7 @@ namespace Tavenem.Universe.Space
         private CosmicLocation? ConfigureGalaxyInstance(Vector3 position, double? ambientTemperature = null, CosmicLocation? child = null)
         {
             CosmicLocation? newCore = null;
-            if (child is not null
-                && child.StructureType == CosmicStructureType.BlackHole
+            if (child?.StructureType == CosmicStructureType.BlackHole
                 && (!(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType)
                 || child.Mass > BlackHole.SupermassiveBlackHoleThreshold))
             {
@@ -183,9 +183,10 @@ namespace Tavenem.Universe.Space
             var mass = ((shape.Volume * _GalaxySystemDensity * new HugeNumber(1, 30)) + coreMass) * darkMatterMultiplier;
 
             Material = new Material(
-                Substances.All.InterstellarMedium.GetReference(),
-                mass,
+                Substances.All.InterstellarMedium,
                 shape,
+                mass,
+                null,
                 temperature);
         }
     }

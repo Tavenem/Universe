@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Runtime.Serialization;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.DataStorage;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
@@ -1484,9 +1485,10 @@ namespace Tavenem.Universe.Space
         }
 
         private void Reconstitute(Vector3 position, HugeNumber radius, HugeNumber mass, double? temperature) => Material = new Material(
-            Substances.All.InterplanetaryMedium.GetReference(),
-            mass,
+            Substances.All.InterplanetaryMedium,
             new Sphere(radius, position),
+            mass,
+            null,
             temperature);
 
         private struct PlanetarySystemInfo

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -29,9 +30,10 @@ namespace Tavenem.Universe.Space
             var radius = randomizer.NextNumber(new HugeNumber(3, 23), new HugeNumber(1.5, 24)); // ~1–5 Mpc
 
             Material = new Material(
-                Substances.All.IntraclusterMedium.GetReference(),
-                mass,
+                Substances.All.IntraclusterMedium,
                 new Sphere(radius, position),
+                mass,
+                null,
                 temperature);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -72,9 +73,10 @@ namespace Tavenem.Universe.Space
             var shape = GetSuperclusterShape(position, randomizer);
 
             Material = new Material(
-                Substances.All.IntraclusterMedium.GetReference(),
-                mass,
+                Substances.All.IntraclusterMedium,
                 shape,
+                mass,
+                null,
                 temperature);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -77,7 +78,7 @@ namespace Tavenem.Universe.Space
         private CosmicLocation? ConfigureGlobularClusterInstance(Vector3 position, double? ambientTemperature = null, CosmicLocation? child = null)
         {
             CosmicLocation? newCore = null;
-            if (child is not null && child.StructureType == CosmicStructureType.BlackHole)
+            if (child?.StructureType == CosmicStructureType.BlackHole)
             {
                 Seed = child.Seed;
             }
@@ -110,9 +111,10 @@ namespace Tavenem.Universe.Space
             var mass = ((shape.Volume * _GlobularClusterChildDensity * new HugeNumber(1, 30)) + coreMass) * darkMatterMultiplier;
 
             Material = new Material(
-                Substances.All.InterstellarMedium.GetReference(),
-                mass,
+                Substances.All.InterstellarMedium,
                 shape,
+                mass,
+                null,
                 temperature);
         }
     }

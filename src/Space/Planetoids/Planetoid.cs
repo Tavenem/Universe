@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.DataStorage;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
@@ -208,7 +208,7 @@ namespace Tavenem.Universe.Space
         /// cref="CosmicLocation.Material"/> for ease of reference to both the solid surface
         /// layer, and the hydrosphere.
         /// </remarks>
-        public IMaterial Hydrosphere { get; private set; } = Tavenem.Chemistry.Material.Empty;
+        public IMaterial Hydrosphere { get; private set; } = Tavenem.Chemistry.HugeNumbers.Material.Empty;
 
         /// <summary>
         /// The type discriminator for this type.
@@ -2477,9 +2477,9 @@ namespace Tavenem.Universe.Space
             var innerCoreShape = new Sphere(innerCoreRadius, planetShape.Position);
             yield return new Material(
                 Substances.All.IronNickelAlloy.GetHomogeneousReference(),
-                (double)(innerCoreMass / innerCoreShape.Volume),
-                innerCoreMass,
                 innerCoreShape,
+                innerCoreMass,
+                null,
                 coreTemp);
 
             // Molten rock outer core.
@@ -2487,9 +2487,9 @@ namespace Tavenem.Universe.Space
             var outerCoreShape = new HollowSphere(innerCoreRadius, planetShape.ContainingRadius * coreProportion, planetShape.Position);
             yield return new Material(
                 CosmicSubstances.ChondriticRock,
-                (double)(outerCoreMass / outerCoreShape.Volume),
-                outerCoreMass,
                 outerCoreShape,
+                outerCoreMass,
+                null,
                 coreTemp);
         }
 
@@ -2637,9 +2637,9 @@ namespace Tavenem.Universe.Space
             }
 
             yield return new Material(
-                (double)(crustMass / shape.Volume),
-                crustMass,
                 shape,
+                crustMass,
+                null,
                 null,
                 components.ToArray());
         }
@@ -2673,9 +2673,8 @@ namespace Tavenem.Universe.Space
             }
             yield return new Material(
                 components,
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape);
+                shape,
+                crustMass);
         }
 
         private static IEnumerable<IMaterial> GetCrust_RockyDwarf(
@@ -2707,9 +2706,8 @@ namespace Tavenem.Universe.Space
             }
             yield return new Material(
                 components,
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape);
+                shape,
+                crustMass);
         }
 
         private static IEnumerable<IMaterial> GetCrust_Terrestrial(
@@ -2830,9 +2828,9 @@ namespace Tavenem.Universe.Space
             }
 
             yield return new Material(
-                (double)(crustMass / shape.Volume),
-                crustMass,
                 shape,
+                crustMass,
+                null,
                 null,
                 components.ToArray());
         }
@@ -2907,9 +2905,9 @@ namespace Tavenem.Universe.Space
 
                 yield return new Material(
                     Substances.All.SiliconCarbide.GetHomogeneousReference(),
-                    (double)(lowerLayerMass / lowerLayerShape.Volume),
-                    lowerLayerMass,
                     lowerLayerShape,
+                    lowerLayerMass,
+                    null,
                     lowerLayerTemp);
             }
 
@@ -2928,9 +2926,9 @@ namespace Tavenem.Universe.Space
 
             yield return new Material(
                 Substances.All.Diamond.GetHomogeneousReference(),
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
                 upperLayerShape,
+                upperLayerMass,
+                null,
                 upperLayerTemp);
         }
 
@@ -2972,9 +2970,9 @@ namespace Tavenem.Universe.Space
 
                 yield return new Material(
                     Substances.All.MetallicHydrogen.GetHomogeneousReference(),
-                    (double)(metalHMass / metalHShape.Volume),
-                    metalHMass,
                     metalHShape,
+                    metalHMass,
+                    null,
                     metalHTemp);
             }
 
@@ -3029,9 +3027,9 @@ namespace Tavenem.Universe.Space
             }
 
             yield return new Material(
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
                 upperLayerShape,
+                upperLayerMass,
+                null,
                 upperLayerTemp,
                 components.ToArray());
         }
@@ -3081,9 +3079,9 @@ namespace Tavenem.Universe.Space
 
                 yield return new Material(
                     Substances.All.Diamond.GetHomogeneousReference(),
-                    (double)(diamondMass / diamondShape.Volume),
-                    diamondMass,
                     diamondShape,
+                    diamondMass,
+                    null,
                     diamondTemp);
             }
 
@@ -3119,9 +3117,9 @@ namespace Tavenem.Universe.Space
             }
 
             yield return new Material(
-                (double)(upperLayerMass / upperLayerShape.Volume),
-                upperLayerMass,
                 upperLayerShape,
+                upperLayerMass,
+                null,
                 upperLayerTemp,
                 components.ToArray());
         }
@@ -3844,16 +3842,16 @@ namespace Tavenem.Universe.Space
                         new IMaterial[]
                         {
                         new Material(
-                            Hydrosphere.Density,
-                            Hydrosphere.Mass * bottomProportion,
                             new HollowSphere(Material.Shape.ContainingRadius, bottomOuterRadius, Material.Shape.Position),
+                            Hydrosphere.Mass * bottomProportion,
+                            Hydrosphere.Density,
                             277,
                             (seawater, seawaterProportion),
                             (water, waterProportion)),
                         new Material(
-                            Hydrosphere.Density,
-                            Hydrosphere.Mass * topProportion,
                             new HollowSphere(bottomOuterRadius, Hydrosphere.Shape.ContainingRadius, Material.Shape.Position),
+                            Hydrosphere.Mass * topProportion,
+                            Hydrosphere.Density,
                             (277 + temperature) / 2,
                             (seawater, seawaterProportion),
                             (water, waterProportion)),
@@ -3881,9 +3879,9 @@ namespace Tavenem.Universe.Space
             }
 
             Hydrosphere = new Material(
-                Hydrosphere.Density,
-                Hydrosphere.Mass,
                 Hydrosphere.Shape,
+                Hydrosphere.Mass,
+                Hydrosphere.Density,
                 avgTemp,
                 (seawater, seawaterProportion),
                 (water, waterProportion));
@@ -4793,7 +4791,7 @@ namespace Tavenem.Universe.Space
 
             if (!mass.IsPositive)
             {
-                Hydrosphere = Tavenem.Chemistry.Material.Empty;
+                Hydrosphere = Tavenem.Chemistry.HugeNumbers.Material.Empty;
                 return;
             }
 
@@ -4824,9 +4822,9 @@ namespace Tavenem.Universe.Space
             }
 
             Hydrosphere = new Material(
-                density,
-                mass,
                 shape,
+                mass,
+                density,
                 avgTemp,
                 (seawater, seawaterProportion),
                 (water, waterProportion));
@@ -4932,12 +4930,13 @@ namespace Tavenem.Universe.Space
             {
                 Material = new Material(
                     CosmicSubstances.CometNucleus,
-                    rehydrator.NextDouble(7, 300, 700),
                     // Gaussian distribution with most values between 1km and 19km.
                     new Ellipsoid(
                         rehydrator.NormalDistributionSample(8, 10000, 4500, minimum: 0),
                         rehydrator.NextNumber(9, HugeNumber.Half, 1),
                         position),
+                    rehydrator.NextDouble(7, 300, 700),
+                    null,
                     temperature);
                 return;
             }
@@ -4968,9 +4967,9 @@ namespace Tavenem.Universe.Space
                 var substances = GetAsteroidComposition(rehydrator);
                 Material = new Material(
                     substances,
-                    asteroidDensity,
-                    mass,
                     shape,
+                    mass,
+                    asteroidDensity,
                     temperature);
                 return;
             }
@@ -5839,9 +5838,9 @@ namespace Tavenem.Universe.Space
             }
 
             yield return new Material(
-                (double)(coreMass / shape.Volume),
-                coreMass,
                 shape,
+                coreMass,
+                null,
                 (double)((mantleBoundaryDepth * new HugeNumber(115, -2)) + (planetShape.ContainingRadius - coreRadius - mantleBoundaryDepth)),
                 coreConstituents);
         }
@@ -5957,9 +5956,8 @@ namespace Tavenem.Universe.Space
             }
             yield return new Material(
                 components,
-                (double)(crustMass / shape.Volume),
-                crustMass,
-                shape);
+                shape,
+                crustMass);
         }
 
         /// <summary>
@@ -6128,9 +6126,9 @@ namespace Tavenem.Universe.Space
                     PlanetType.Dwarf => Substances.All.Water.GetHomogeneousReference(),
                     _ => Substances.All.Peridotite.GetReference(),
                 },
-                (double)(mantleMass / shape.Volume),
-                mantleMass,
                 shape,
+                mantleMass,
+                null,
                 mantleTemp);
         }
 

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 
@@ -18,9 +19,10 @@ namespace Tavenem.Universe.Space
         private void ConfigureUniverseInstance() => ReconstituteUniverseInstance();
 
         private void ReconstituteUniverseInstance() => Material = new Material(
-            Substances.All.WarmHotIntergalacticMedium.GetReference(),
-            HugeNumber.PositiveInfinity,
+            Substances.All.WarmHotIntergalacticMedium,
             _UniverseShape,
+            HugeNumber.PositiveInfinity,
+            null,
             UniverseAmbientTemperature);
     }
 }

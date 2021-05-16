@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -18,7 +19,7 @@ namespace Tavenem.Universe.Space
             ReconstituteGalaxyGroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
 
             var amount = Randomizer.Instance.Next(1, 6);
-            if (child is not null && child.StructureType == CosmicStructureType.GalaxySubgroup)
+            if (child?.StructureType == CosmicStructureType.GalaxySubgroup)
             {
                 amount--;
             }
@@ -51,9 +52,10 @@ namespace Tavenem.Universe.Space
             var radius = randomizer.NextNumber(new HugeNumber(1.5, 23), new HugeNumber(3, 23)); // ~500–1000 kpc
 
             Material = new Material(
-                Substances.All.IntraclusterMedium.GetReference(),
-                _GalaxyGroupMass,
+                Substances.All.IntraclusterMedium,
                 new Sphere(radius, position),
+                _GalaxyGroupMass,
+                null,
                 temperature);
         }
     }

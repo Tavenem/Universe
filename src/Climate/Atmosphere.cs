@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
 using Tavenem.Mathematics.HugeNumbers;
@@ -138,7 +139,7 @@ namespace Tavenem.Universe.Climate
         internal Atmosphere(double pressure)
         {
             AtmosphericPressure = pressure;
-            Material = new Material(0, SinglePoint.Origin); // unused; set correctly during initialization
+            Material = new Material(); // unused; set correctly during initialization
         }
 
         internal Atmosphere(Planetoid planet, double pressure, params (ISubstanceReference substance, decimal proportion)[] constituents) : this(pressure)
@@ -166,9 +167,9 @@ namespace Tavenem.Universe.Climate
             var shape = GetShape(planet);
 
             Material = new Material(
-                density,
-                mass,
                 shape,
+                mass,
+                density,
                 temperature,
                 constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
 
@@ -192,7 +193,7 @@ namespace Tavenem.Universe.Climate
         }
 
         private Atmosphere(SerializationInfo info, StreamingContext context) : this(
-            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)) ?? Tavenem.Chemistry.Material.Empty,
+            (IMaterial?)info.GetValue(nameof(Material), typeof(IMaterial)) ?? Tavenem.Chemistry.HugeNumbers.Material.Empty,
             (double?)info.GetValue(nameof(_precipitationFactor), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(AtmosphericHeight), typeof(double)) ?? default,
             (double?)info.GetValue(nameof(AtmosphericPressure), typeof(double)) ?? default,

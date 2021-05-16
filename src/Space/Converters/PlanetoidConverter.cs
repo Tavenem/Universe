@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Tavenem.Chemistry;
 using Tavenem.DataStorage;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;

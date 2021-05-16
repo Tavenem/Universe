@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -63,10 +64,11 @@ namespace Tavenem.Universe.Space
 
             Material = new Material(
                 StructureType == CosmicStructureType.HIIRegion
-                    ? Substances.All.IonizedCloud.GetReference()
-                    : Substances.All.MolecularCloud.GetReference(),
-                mass,
+                    ? Substances.All.IonizedCloud
+                    : Substances.All.MolecularCloud,
                 shape,
+                mass,
+                null,
                 temperature);
         }
     }

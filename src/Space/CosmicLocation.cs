@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.DataStorage;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
@@ -55,7 +55,7 @@ namespace Tavenem.Universe.Space
         /// <summary>
         /// The physical material which comprises this location.
         /// </summary>
-        public IMaterial Material { get; private protected set; } = Tavenem.Chemistry.Material.Empty;
+        public IMaterial Material { get; private protected set; } = Tavenem.Chemistry.HugeNumbers.Material.Empty;
 
         /// <summary>
         /// An optional name for this <see cref="CosmicLocation"/>.

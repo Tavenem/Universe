@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.Serialization;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
 using Tavenem.Mathematics.HugeNumbers;
@@ -159,11 +160,12 @@ namespace Tavenem.Universe.Space
             var mass = GetBlackHoleMassForSeed(Seed, _supermassive);
 
             Material = new Material(
-                Substances.All.Fuzzball.GetReference(),
-                mass,
+                Substances.All.Fuzzball,
 
                 // The shape given is presumed to refer to the shape of the event horizon.
                 new Sphere(HugeNumberConstants.TwoG * mass / HugeNumberConstants.SpeedOfLightSquared, position),
+                mass,
+                null,
 
                 // Hawking radiation = solar mass / mass * constant
                 (double)(new HugeNumber(6.169, -8) * new HugeNumber(1.98847, 30) / mass));

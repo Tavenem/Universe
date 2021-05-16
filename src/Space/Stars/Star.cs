@@ -3,6 +3,7 @@ using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.DataStorage;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics;
@@ -1125,7 +1126,7 @@ namespace Tavenem.Universe.Space
                 }
             }
 
-            Material = new Material(substance, mass, shape, temperature);
+            Material = new Material(substance, shape, mass, null, temperature);
         }
     }
 }

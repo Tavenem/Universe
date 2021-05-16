@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Tavenem.Chemistry;
+using Tavenem.Chemistry.HugeNumbers;
 using Tavenem.HugeNumbers;
 using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
@@ -45,9 +46,10 @@ namespace Tavenem.Universe.Space
             var radius = randomizer.NextNumber(new HugeNumber(6.25, 22), new HugeNumber(1.25, 23)); // ~6 in a ~500–1000 kpc group
 
             Material = new Material(
-                Substances.All.IntraclusterMedium.GetReference(),
-                _GalaxySubgroupMass,
+                Substances.All.IntraclusterMedium,
                 new Sphere(radius, position),
+                _GalaxySubgroupMass,
+                null,
                 temperature);
         }
     }
