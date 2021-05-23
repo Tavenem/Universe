@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.0-preview
+### Changed
+- Allow specifying ring system in `PlanetParams`
+
 ## 0.2.1-preview
 ### Updated
 - Update dependencies

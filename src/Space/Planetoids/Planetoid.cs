@@ -6538,17 +6538,21 @@ namespace Tavenem.Universe.Space
 
         private ulong SetRings(Rehydrator rehydrator)
         {
-            if (PlanetType == PlanetType.Comet
+            if (_planetParams?.HasRings == false
+                || PlanetType == PlanetType.Comet
                 || IsAsteroid
                 || IsDwarf)
             {
                 return 71;
             }
 
-            var ringChance = IsGiant ? 0.9 : 0.1;
-            if (rehydrator.NextDouble(70) > ringChance)
+            if (_planetParams?.HasRings != true)
             {
-                return 71;
+                var ringChance = IsGiant ? 0.9 : 0.1;
+                if (rehydrator.NextDouble(70) > ringChance)
+                {
+                    return 71;
+                }
             }
 
             var innerLimit = (HugeNumber)Atmosphere.AtmosphericHeight;

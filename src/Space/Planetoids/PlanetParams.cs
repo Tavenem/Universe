@@ -76,7 +76,7 @@ namespace Tavenem.Universe.Space.Planetoids
         /// </para>
         /// <para>
         /// See also <seealso cref="NewEarthlike(double?, double?,
-        /// IReadOnlyList{SubstanceRequirement}?, double?, bool, double?, bool, HugeNumber?, byte?,
+        /// IReadOnlyList{SubstanceRequirement}?, double?, bool, double?, bool, bool, HugeNumber?, byte?,
         /// HugeNumber?, HugeNumber?, HugeNumber?, double?, double?, decimal?, decimal?)"/>.
         /// </para>
         /// </summary>
@@ -116,6 +116,11 @@ namespace Tavenem.Universe.Space.Planetoids
         /// Indicates whether a strong magnetosphere is required.
         /// </summary>
         public bool? HasMagnetosphere { get; }
+
+        /// <summary>
+        /// Indicates whether a ring system is present.
+        /// </summary>
+        public bool? HasRings { get; }
 
         /// <summary>
         /// An optional maximum mass for the planet, in kg.
@@ -176,6 +181,9 @@ namespace Tavenem.Universe.Space.Planetoids
         /// <param name="hasMagnetosphere">
         /// Indicates whether a strong magnetosphere is required.
         /// </param>
+        /// <param name="hasRings">
+        /// Indicates whether a ring system is present.
+        /// </param>
         /// <param name="maxMass">An optional maximum mass for the planet, in kg.</param>
         /// <param name="numSatellites">
         /// The number of satellites to place in orbit around the planet.
@@ -198,6 +206,7 @@ namespace Tavenem.Universe.Space.Planetoids
             bool earthlikeAtmosphere = false,
             double? eccentricity = null,
             bool? hasMagnetosphere = null,
+            bool? hasRings = null,
             HugeNumber? maxMass = null,
             byte? numSatellites = null,
             HugeNumber? radius = null,
@@ -217,6 +226,7 @@ namespace Tavenem.Universe.Space.Planetoids
             EarthlikeAtmosphere = earthlikeAtmosphere;
             Eccentricity = eccentricity;
             HasMagnetosphere = hasMagnetosphere;
+            HasRings = hasRings;
             NumSatellites = numSatellites;
             Radius = radius;
             RevolutionPeriod = revolutionPeriod;
@@ -236,6 +246,7 @@ namespace Tavenem.Universe.Space.Planetoids
             (bool?)info.GetValue(nameof(EarthlikeAtmosphere), typeof(bool)) ?? default,
             (double?)info.GetValue(nameof(Eccentricity), typeof(double?)),
             (bool?)info.GetValue(nameof(HasMagnetosphere), typeof(bool?)),
+            (bool?)info.GetValue(nameof(HasRings), typeof(bool?)),
             (HugeNumber?)info.GetValue(nameof(MaxMass), typeof(HugeNumber?)),
             (byte?)info.GetValue(nameof(NumSatellites), typeof(byte?)),
             (HugeNumber?)info.GetValue(nameof(Radius), typeof(HugeNumber?)),
@@ -261,6 +272,9 @@ namespace Tavenem.Universe.Space.Planetoids
         /// <param name="eccentricity">The target orbital eccentricity.</param>
         /// <param name="hasMagnetosphere">
         /// Indicates whether a strong magnetosphere is required.
+        /// </param>
+        /// <param name="hasRings">
+        /// Indicates whether a ring system is present.
         /// </param>
         /// <param name="maxMass">An optional maximum mass for the planet, in kg.</param>
         /// <param name="numSatellites">
@@ -289,6 +303,7 @@ namespace Tavenem.Universe.Space.Planetoids
             bool earthlikeAtmosphere = true,
             double? eccentricity = null,
             bool hasMagnetosphere = true,
+            bool hasRings = true,
             HugeNumber? maxMass = null,
             byte? numSatellites = null,
             HugeNumber? radius = null,
@@ -305,6 +320,7 @@ namespace Tavenem.Universe.Space.Planetoids
                 earthlikeAtmosphere,
                 eccentricity ?? EarthEccentricity,
                 hasMagnetosphere,
+                hasRings,
                 maxMass,
                 numSatellites,
                 radius ?? EarthRadius,
@@ -327,6 +343,7 @@ namespace Tavenem.Universe.Space.Planetoids
             && EarthlikeAtmosphere == other.EarthlikeAtmosphere
             && Eccentricity == other.Eccentricity
             && HasMagnetosphere == other.HasMagnetosphere
+            && HasRings == other.HasRings
             && MaxMass == other.MaxMass
             && NumSatellites == other.NumSatellites
             && Radius == other.Radius
@@ -358,6 +375,7 @@ namespace Tavenem.Universe.Space.Planetoids
             hash.Add(EarthlikeAtmosphere);
             hash.Add(Eccentricity);
             hash.Add(HasMagnetosphere);
+            hash.Add(HasRings);
             hash.Add(MaxMass);
             hash.Add(NumSatellites);
             hash.Add(Radius);
@@ -387,6 +405,7 @@ namespace Tavenem.Universe.Space.Planetoids
             info.AddValue(nameof(EarthlikeAtmosphere), EarthlikeAtmosphere);
             info.AddValue(nameof(Eccentricity), Eccentricity);
             info.AddValue(nameof(HasMagnetosphere), HasMagnetosphere);
+            info.AddValue(nameof(HasRings), HasRings);
             info.AddValue(nameof(MaxMass), MaxMass);
             info.AddValue(nameof(NumSatellites), NumSatellites);
             info.AddValue(nameof(Radius), Radius);
