@@ -76,7 +76,7 @@ namespace Tavenem.Universe.Space.Planetoids
         /// </para>
         /// <para>
         /// See also <seealso cref="NewEarthlike(double?, double?,
-        /// IReadOnlyList{SubstanceRequirement}?, double?, bool, double?, bool, bool, HugeNumber?, byte?,
+        /// IReadOnlyList{SubstanceRequirement}?, double?, bool, double?, bool, bool?, HugeNumber?, byte?,
         /// HugeNumber?, HugeNumber?, HugeNumber?, double?, double?, decimal?, decimal?)"/>.
         /// </para>
         /// </summary>
@@ -303,7 +303,7 @@ namespace Tavenem.Universe.Space.Planetoids
             bool earthlikeAtmosphere = true,
             double? eccentricity = null,
             bool hasMagnetosphere = true,
-            bool hasRings = false,
+            bool? hasRings = null,
             HugeNumber? maxMass = null,
             byte? numSatellites = null,
             HugeNumber? radius = null,
