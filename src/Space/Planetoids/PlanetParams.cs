@@ -303,7 +303,7 @@ namespace Tavenem.Universe.Space.Planetoids
             bool earthlikeAtmosphere = true,
             double? eccentricity = null,
             bool hasMagnetosphere = true,
-            bool hasRings = true,
+            bool hasRings = false,
             HugeNumber? maxMass = null,
             byte? numSatellites = null,
             HugeNumber? radius = null,

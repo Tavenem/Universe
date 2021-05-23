@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1-preview
+### Fixed
+- Correct default value for rings in `PlanetParams` for Earthlike constructor
+
 ## 0.3.0-preview
 ### Changed
 - Allow specifying ring system in `PlanetParams`
