@@ -1,447 +1,403 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.Serialization;
+﻿using System.Text.Json.Serialization;
 using Tavenem.Chemistry;
-using Tavenem.Chemistry.HugeNumbers;
-using Tavenem.HugeNumbers;
-using Tavenem.Mathematics.HugeNumbers;
 using Tavenem.Randomize;
 using Tavenem.Universe.Place;
 using Tavenem.Universe.Space.Planetoids;
 
-namespace Tavenem.Universe.Space
+namespace Tavenem.Universe.Space;
+
+/// <summary>
+/// A region of space with a high concentration of asteroids.
+/// </summary>
+[JsonConverter(typeof(AsteroidFieldConverter))]
+public class AsteroidField : CosmicLocation
 {
-    /// <summary>
-    /// A region of space with a high concentration of asteroids.
-    /// </summary>
-    [Serializable]
-    [System.Text.Json.Serialization.JsonConverter(typeof(AsteroidFieldConverter))]
-    public class AsteroidField : CosmicLocation
+    internal static readonly HugeNumber _AsteroidFieldSpace = new(3.15, 12);
+    internal static readonly HugeNumber _OortCloudSpace = new(7.5, 15);
+
+    private static readonly HugeNumber _AsteroidFieldChildDensity = new(13, -31);
+    private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions = new()
     {
-        internal static readonly HugeNumber AsteroidFieldSpace = new(3.15, 12);
-        internal static readonly HugeNumber OortCloudSpace = new(7.5, 15);
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(74, -2), PlanetType.AsteroidC),
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(14, -2), PlanetType.AsteroidS),
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * HugeNumberConstants.Deci, PlanetType.AsteroidM),
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(2, -2), PlanetType.Comet),
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(3, -10), PlanetType.Dwarf),
+        new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(1, -10), PlanetType.RockyDwarf),
+    };
 
-        private static readonly HugeNumber _AsteroidFieldChildDensity = new(13, -31);
-        private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions = new()
+    private static readonly HugeNumber _OortCloudChildDensity = new(8.31, -38);
+    private static readonly List<ChildDefinition> _OortCloudChildDefinitions = new()
+    {
+        new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(85, -2), PlanetType.Comet),
+        new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(11, -2), PlanetType.AsteroidC),
+        new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(25, -3), PlanetType.AsteroidS),
+        new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(15, -3), PlanetType.AsteroidM),
+    };
+
+    internal OrbitalParameters? _childOrbitalParameters;
+    internal bool _toroidal;
+
+    /// <summary>
+    /// The type discriminator for this type.
+    /// </summary>
+    public const string AsteroidFieldIdItemTypeName = ":Location:CosmicLocation:AsteroidField:";
+    /// <summary>
+    /// A built-in, read-only type discriminator.
+    /// </summary>
+    public override string IdItemTypeName => AsteroidFieldIdItemTypeName;
+
+    internal HugeNumber MajorRadius
+    {
+        get
         {
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(74, -2), PlanetType.AsteroidC),
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(14, -2), PlanetType.AsteroidS),
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * HugeNumber.Deci, PlanetType.AsteroidM),
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(2, -2), PlanetType.Comet),
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(3, -10), PlanetType.Dwarf),
-            new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(1, -10), PlanetType.RockyDwarf),
-        };
-
-        private static readonly HugeNumber _OortCloudChildDensity = new(8.31, -38);
-        private static readonly List<ChildDefinition> _OortCloudChildDefinitions = new()
-        {
-            new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(85, -2), PlanetType.Comet),
-            new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(11, -2), PlanetType.AsteroidC),
-            new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(25, -3), PlanetType.AsteroidS),
-            new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(15, -3), PlanetType.AsteroidM),
-        };
-
-        internal OrbitalParameters? _childOrbitalParameters;
-        internal bool _toroidal;
-
-        /// <summary>
-        /// The type discriminator for this type.
-        /// </summary>
-        public const string AsteroidFieldIdItemTypeName = ":Location:CosmicLocation:AsteroidField:";
-        /// <summary>
-        /// A built-in, read-only type discriminator.
-        /// </summary>
-        public override string IdItemTypeName => AsteroidFieldIdItemTypeName;
-
-        internal HugeNumber MajorRadius
-        {
-            get
+            if (Material.Shape is HollowSphere<HugeNumber> hollowSphere)
             {
-                if (Material.Shape is HollowSphere hollowSphere)
-                {
-                    return hollowSphere.OuterRadius;
-                }
-                if (Material.Shape is Torus torus)
-                {
-                    return torus.MajorRadius;
-                }
-                if (Material.Shape is Ellipsoid ellipsoid)
-                {
-                    return ellipsoid.AxisX;
-                }
-                return HugeNumber.Zero;
+                return hollowSphere.OuterRadius;
             }
+            if (Material.Shape is Torus<HugeNumber> torus)
+            {
+                return torus.MajorRadius;
+            }
+            if (Material.Shape is Ellipsoid<HugeNumber> ellipsoid)
+            {
+                return ellipsoid.AxisX;
+            }
+            return HugeNumber.Zero;
+        }
+    }
+
+    internal HugeNumber MinorRadius
+    {
+        get
+        {
+            if (Material.Shape is HollowSphere<HugeNumber> hollowSphere)
+            {
+                return hollowSphere.InnerRadius;
+            }
+            if (Material.Shape is Torus<HugeNumber> torus)
+            {
+                return torus.MinorRadius;
+            }
+            return HugeNumber.Zero;
+        }
+    }
+
+    private protected override IEnumerable<ChildDefinition> ChildDefinitions => StructureType == CosmicStructureType.OortCloud
+        ? _OortCloudChildDefinitions
+        : _AsteroidFieldChildDefinitions;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="AsteroidField"/> with the given parameters.
+    /// </summary>
+    /// <param name="parent">
+    /// The containing parent location for which to generate a child.
+    /// </param>
+    /// <param name="position">The position for the child.</param>
+    /// <param name="orbit">
+    /// <para>
+    /// An optional orbit to assign to the child.
+    /// </para>
+    /// <para>
+    /// Depending on the parameters, may override <paramref name="position"/>.
+    /// </para>
+    /// </param>
+    /// <param name="oort">
+    /// If <see langword="true"/>, generates an Oort cloud. Otherwise, generates an asteroid field.
+    /// </param>
+    /// <param name="majorRadius">
+    /// <para>
+    /// The major radius of the field.
+    /// </para>
+    /// <para>
+    /// In the case of an Oort cloud, this should refer instead to the radius of the star system.
+    /// </para>
+    /// </param>
+    /// <param name="minorRadius">
+    /// The minor radius of the field.
+    /// </param>
+    /// <param name="childOrbit">
+    /// The orbital parameters to assign to any new child instances (if any).
+    /// </param>
+    public AsteroidField(
+        CosmicLocation? parent,
+        Vector3<HugeNumber> position,
+        OrbitalParameters? orbit = null,
+        bool oort = false,
+        HugeNumber? majorRadius = null,
+        HugeNumber? minorRadius = null,
+        OrbitalParameters? childOrbit = null) : base(parent?.Id, oort ? CosmicStructureType.OortCloud : CosmicStructureType.AsteroidField)
+    {
+        _childOrbitalParameters = childOrbit;
+
+        if (oort)
+        {
+            Configure(parent, position, majorRadius);
+        }
+        else
+        {
+            Configure(parent, position, majorRadius, minorRadius);
         }
 
-        internal HugeNumber MinorRadius
+        if (parent is not null && !orbit.HasValue)
         {
-            get
+            if (parent is AsteroidField asteroidField)
             {
-                if (Material.Shape is HollowSphere hollowSphere)
-                {
-                    return hollowSphere.InnerRadius;
-                }
-                if (Material.Shape is Torus torus)
-                {
-                    return torus.MinorRadius;
-                }
-                return HugeNumber.Zero;
-            }
-        }
-
-        private protected override IEnumerable<ChildDefinition> ChildDefinitions => StructureType == CosmicStructureType.OortCloud
-            ? _OortCloudChildDefinitions
-            : _AsteroidFieldChildDefinitions;
-
-        /// <summary>
-        /// Initializes a new instance of <see cref="AsteroidField"/> with the given parameters.
-        /// </summary>
-        /// <param name="parent">
-        /// The containing parent location for which to generate a child.
-        /// </param>
-        /// <param name="position">The position for the child.</param>
-        /// <param name="orbit">
-        /// <para>
-        /// An optional orbit to assign to the child.
-        /// </para>
-        /// <para>
-        /// Depending on the parameters, may override <paramref name="position"/>.
-        /// </para>
-        /// </param>
-        /// <param name="oort">
-        /// If <see langword="true"/>, generates an Oort cloud. Otherwise, generates an asteroid field.
-        /// </param>
-        /// <param name="majorRadius">
-        /// <para>
-        /// The major radius of the field.
-        /// </para>
-        /// <para>
-        /// In the case of an Oort cloud, this should refer instead to the radius of the star system.
-        /// </para>
-        /// </param>
-        /// <param name="minorRadius">
-        /// The minor radius of the field.
-        /// </param>
-        /// <param name="childOrbit">
-        /// The orbital parameters to assign to any new child instances (if any).
-        /// </param>
-        public AsteroidField(
-            CosmicLocation? parent,
-            Vector3 position,
-            OrbitalParameters? orbit = null,
-            bool oort = false,
-            HugeNumber? majorRadius = null,
-            HugeNumber? minorRadius = null,
-            OrbitalParameters? childOrbit = null) : base(parent?.Id, oort ? CosmicStructureType.OortCloud : CosmicStructureType.AsteroidField)
-        {
-            _childOrbitalParameters = childOrbit;
-
-            if (oort)
-            {
-                Configure(parent, position, majorRadius);
+                orbit = asteroidField.GetChildOrbit();
             }
             else
             {
-                Configure(parent, position, majorRadius, minorRadius);
+                orbit = parent.StructureType switch
+                {
+                    CosmicStructureType.GalaxySubgroup => Position == Vector3<HugeNumber>.Zero
+                        ? null
+                        : parent.GetGalaxySubgroupChildOrbit(),
+                    CosmicStructureType.SpiralGalaxy
+                        or CosmicStructureType.EllipticalGalaxy
+                        or CosmicStructureType.DwarfGalaxy => Position == Vector3<HugeNumber>.Zero
+                        ? null
+                        : parent.GetGalaxyChildOrbit(),
+                    CosmicStructureType.GlobularCluster => Position == Vector3<HugeNumber>.Zero
+                        ? null
+                        : parent.GetGlobularClusterChildOrbit(),
+                    CosmicStructureType.StarSystem => parent is StarSystem && Position != Vector3<HugeNumber>.Zero
+                        ? OrbitalParameters.GetFromEccentricity(parent.Mass, parent.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
+                        : null,
+                    _ => null,
+                };
             }
+        }
+        if (orbit.HasValue)
+        {
+            Space.Orbit.AssignOrbit(this, orbit.Value);
+        }
+    }
 
-            if (parent is not null && !orbit.HasValue)
+    private AsteroidField(string? parentId, CosmicStructureType structureType = CosmicStructureType.AsteroidField) : base(parentId, structureType) { }
+
+    internal AsteroidField(
+        string id,
+        uint seed,
+        CosmicStructureType structureType,
+        string? parentId,
+        Vector3<HugeNumber>[]? absolutePosition,
+        string? name,
+        Vector3<HugeNumber> velocity,
+        Orbit? orbit,
+        Vector3<HugeNumber> position,
+        double? temperature,
+        HugeNumber majorRadius,
+        HugeNumber minorRadius,
+        bool toroidal,
+        OrbitalParameters? childOrbitalParameters) : base(
+            id,
+            seed,
+            structureType,
+            parentId,
+            absolutePosition,
+            name,
+            velocity,
+            orbit)
+    {
+        _toroidal = toroidal;
+        _childOrbitalParameters = childOrbitalParameters;
+        Reconstitute(position, temperature, majorRadius, minorRadius);
+    }
+
+    /// <summary>
+    /// Generates a new <see cref="AsteroidField"/> as the containing parent location of the
+    /// given <paramref name="child"/> location.
+    /// </summary>
+    /// <param name="child">The child location for which to generate a parent.</param>
+    /// <param name="position">
+    /// An optional position for the child within the new containing parent. If no position is
+    /// given, one is randomly determined.
+    /// </param>
+    /// <param name="orbit">
+    /// <para>
+    /// An optional orbit for the child to follow in the new parent.
+    /// </para>
+    /// <para>
+    /// Depending on the type of parent location generated, the child may also be placed in a
+    /// randomly-determined orbit if none is given explicitly, usually based on its position.
+    /// </para>
+    /// </param>
+    /// <param name="oort">
+    /// If <see langword="true"/>, generates an Oort cloud. Otherwise, generates an asteroid field.
+    /// </param>
+    /// <param name="majorRadius">
+    /// <para>
+    /// The major radius of the field.
+    /// </para>
+    /// <para>
+    /// In the case of an Oort cloud, this should refer instead to the radius of the star system.
+    /// </para>
+    /// </param>
+    /// <param name="minorRadius">
+    /// The minor radius of the field.
+    /// </param>
+    /// <param name="childOrbit">
+    /// The orbital parameters to assign to any new child instances (if any).
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// The generated containing parent. Also sets the <see cref="Location.ParentId"/> of the
+    /// <paramref name="child"/> accordingly.
+    /// </para>
+    /// <para>
+    /// If no parent could be generated, returns <see langword="null"/>.
+    /// </para>
+    /// </returns>
+    public static CosmicLocation? GetParentForChild(
+        CosmicLocation child,
+        Vector3<HugeNumber>? position = null,
+        OrbitalParameters? orbit = null,
+        bool oort = false,
+        HugeNumber? majorRadius = null,
+        HugeNumber? minorRadius = null,
+        OrbitalParameters? childOrbit = null)
+    {
+        var instance = oort
+            ? new AsteroidField(null, CosmicStructureType.OortCloud)
+            : new AsteroidField(null);
+        instance._childOrbitalParameters = childOrbit;
+        child.AssignParent(instance);
+
+        switch (instance.StructureType)
+        {
+            case CosmicStructureType.AsteroidField:
+                instance.Configure(null, Vector3<HugeNumber>.Zero, majorRadius, minorRadius);
+                break;
+            case CosmicStructureType.OortCloud:
+                instance.Configure(null, Vector3<HugeNumber>.Zero, majorRadius);
+                break;
+        }
+
+        if (!position.HasValue)
+        {
+            if (child.StructureType == CosmicStructureType.Universe)
             {
-                if (parent is AsteroidField asteroidField)
-                {
-                    orbit = asteroidField.GetChildOrbit();
-                }
-                else
-                {
-                    orbit = parent.StructureType switch
-                    {
-                        CosmicStructureType.GalaxySubgroup => Position.IsZero() ? null : parent.GetGalaxySubgroupChildOrbit(),
-                        CosmicStructureType.SpiralGalaxy
-                            or CosmicStructureType.EllipticalGalaxy
-                            or CosmicStructureType.DwarfGalaxy => Position.IsZero() ? (OrbitalParameters?)null : parent.GetGalaxyChildOrbit(),
-                        CosmicStructureType.GlobularCluster => Position.IsZero() ? (OrbitalParameters?)null : parent.GetGlobularClusterChildOrbit(),
-                        CosmicStructureType.StarSystem => parent is StarSystem && !Position.IsZero()
-                            ? OrbitalParameters.GetFromEccentricity(parent.Mass, parent.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
-                            : (OrbitalParameters?)null,
-                        _ => null,
-                    };
-                }
+                position = Vector3<HugeNumber>.Zero;
             }
+            else
+            {
+                var space = child.StructureType switch
+                {
+                    CosmicStructureType.Supercluster => _SuperclusterSpace,
+                    CosmicStructureType.GalaxyCluster => _GalaxyClusterSpace,
+                    CosmicStructureType.GalaxyGroup => _GalaxyGroupSpace,
+                    CosmicStructureType.GalaxySubgroup => _GalaxySubgroupSpace,
+                    CosmicStructureType.SpiralGalaxy => _GalaxySpace,
+                    CosmicStructureType.EllipticalGalaxy => _GalaxySpace,
+                    CosmicStructureType.DwarfGalaxy => _DwarfGalaxySpace,
+                    CosmicStructureType.GlobularCluster => _GlobularClusterSpace,
+                    CosmicStructureType.Nebula => _NebulaSpace,
+                    CosmicStructureType.HIIRegion => _NebulaSpace,
+                    CosmicStructureType.PlanetaryNebula => _PlanetaryNebulaSpace,
+                    CosmicStructureType.StarSystem => StarSystem._StarSystemSpace,
+                    CosmicStructureType.AsteroidField => _AsteroidFieldSpace,
+                    CosmicStructureType.OortCloud => _OortCloudSpace,
+                    CosmicStructureType.BlackHole => BlackHole._BlackHoleSpace,
+                    CosmicStructureType.Star => StarSystem._StarSystemSpace,
+                    CosmicStructureType.Planetoid => Planetoid._GiantSpace,
+                    _ => HugeNumber.Zero,
+                };
+                position = instance.GetOpenSpace(space, new List<Location>());
+            }
+        }
+        if (position.HasValue)
+        {
+            child.Position = position.Value;
+        }
+
+        if (!child.Orbit.HasValue)
+        {
+            orbit ??= instance.GetChildOrbit();
             if (orbit.HasValue)
             {
-                Space.Orbit.AssignOrbit(this, orbit.Value);
+                Space.Orbit.AssignOrbit(child, orbit.Value);
             }
         }
 
-        private AsteroidField(string? parentId, CosmicStructureType structureType = CosmicStructureType.AsteroidField) : base(parentId, structureType) { }
+        return instance;
+    }
 
-        internal AsteroidField(
-            string id,
-            uint seed,
-            CosmicStructureType structureType,
-            string? parentId,
-            Vector3[]? absolutePosition,
-            string? name,
-            Vector3 velocity,
-            Orbit? orbit,
-            Vector3 position,
-            double? temperature,
-            HugeNumber majorRadius,
-            HugeNumber minorRadius,
-            bool toroidal,
-            OrbitalParameters? childOrbitalParameters) : base(
-                id,
-                seed,
-                structureType,
-                parentId,
-                absolutePosition,
-                name,
-                velocity,
-                orbit)
+    private void Configure(CosmicLocation? parent, Vector3<HugeNumber> position, HugeNumber? majorRadius = null, HugeNumber? minorRadius = null)
+    {
+        if (StructureType == CosmicStructureType.OortCloud)
         {
-            _toroidal = toroidal;
-            _childOrbitalParameters = childOrbitalParameters;
-            Reconstitute(position, temperature, majorRadius, minorRadius);
+            majorRadius = majorRadius.HasValue ? majorRadius.Value + _OortCloudSpace : _OortCloudSpace;
+            minorRadius = majorRadius.HasValue ? majorRadius.Value + new HugeNumber(3, 15) : new HugeNumber(3, 15);
+        }
+        else if (position != Vector3<HugeNumber>.Zero || parent is not StarSystem || !majorRadius.HasValue)
+        {
+            majorRadius ??= Randomizer.Instance.Next<HugeNumber>(new HugeNumber(1.5, 11), _AsteroidFieldSpace);
+            minorRadius = HugeNumber.Zero;
+        }
+        else
+        {
+            _toroidal = true;
+            majorRadius ??= HugeNumber.Zero;
+            minorRadius ??= HugeNumber.Zero;
         }
 
-        private AsteroidField(SerializationInfo info, StreamingContext context) : this(
-            (string?)info.GetValue(nameof(Id), typeof(string)) ?? string.Empty,
-            (uint?)info.GetValue(nameof(Seed), typeof(uint)) ?? default,
-            (CosmicStructureType?)info.GetValue(nameof(StructureType), typeof(CosmicStructureType)) ?? CosmicStructureType.AsteroidField,
-            (string?)info.GetValue(nameof(ParentId), typeof(string)) ?? string.Empty,
-            (Vector3[]?)info.GetValue(nameof(AbsolutePosition), typeof(Vector3[])),
-            (string?)info.GetValue(nameof(Name), typeof(string)),
-            (Vector3?)info.GetValue(nameof(Velocity), typeof(Vector3)) ?? default,
-            (Orbit?)info.GetValue(nameof(Orbit), typeof(Orbit?)),
-            (Vector3?)info.GetValue(nameof(Position), typeof(Vector3)) ?? Vector3.Zero,
-            (double?)info.GetValue(nameof(Temperature), typeof(double?)) ?? default,
-            (HugeNumber?)info.GetValue(nameof(MajorRadius), typeof(HugeNumber)) ?? HugeNumber.Zero,
-            (HugeNumber?)info.GetValue(nameof(MinorRadius), typeof(HugeNumber)) ?? HugeNumber.Zero,
-            (bool?)info.GetValue(nameof(_toroidal), typeof(bool)) ?? default,
-            (OrbitalParameters?)info.GetValue(nameof(_childOrbitalParameters), typeof(OrbitalParameters)))
-        { }
+        Seed = Randomizer.Instance.NextUIntInclusive();
+        Reconstitute(
+            position,
+            parent?.Material.Temperature ?? UniverseAmbientTemperature,
+            majorRadius.Value,
+            minorRadius.Value);
+    }
 
-        /// <summary>
-        /// Generates a new <see cref="AsteroidField"/> as the containing parent location of the
-        /// given <paramref name="child"/> location.
-        /// </summary>
-        /// <param name="child">The child location for which to generate a parent.</param>
-        /// <param name="position">
-        /// An optional position for the child within the new containing parent. If no position is
-        /// given, one is randomly determined.
-        /// </param>
-        /// <param name="orbit">
-        /// <para>
-        /// An optional orbit for the child to follow in the new parent.
-        /// </para>
-        /// <para>
-        /// Depending on the type of parent location generated, the child may also be placed in a
-        /// randomly-determined orbit if none is given explicitly, usually based on its position.
-        /// </para>
-        /// </param>
-        /// <param name="oort">
-        /// If <see langword="true"/>, generates an Oort cloud. Otherwise, generates an asteroid field.
-        /// </param>
-        /// <param name="majorRadius">
-        /// <para>
-        /// The major radius of the field.
-        /// </para>
-        /// <para>
-        /// In the case of an Oort cloud, this should refer instead to the radius of the star system.
-        /// </para>
-        /// </param>
-        /// <param name="minorRadius">
-        /// The minor radius of the field.
-        /// </param>
-        /// <param name="childOrbit">
-        /// The orbital parameters to assign to any new child instances (if any).
-        /// </param>
-        /// <returns>
-        /// <para>
-        /// The generated containing parent. Also sets the <see cref="Location.ParentId"/> of the
-        /// <paramref name="child"/> accordingly.
-        /// </para>
-        /// <para>
-        /// If no parent could be generated, returns <see langword="null"/>.
-        /// </para>
-        /// </returns>
-        public static CosmicLocation? GetParentForChild(
-            CosmicLocation child,
-            Vector3? position = null,
-            OrbitalParameters? orbit = null,
-            bool oort = false,
-            HugeNumber? majorRadius = null,
-            HugeNumber? minorRadius = null,
-            OrbitalParameters? childOrbit = null)
+    private void Reconstitute(Vector3<HugeNumber> position, double? temperature, HugeNumber majorRadius, HugeNumber minorRadius)
+    {
+        if (StructureType == CosmicStructureType.OortCloud)
         {
-            var instance = oort
-                ? new AsteroidField(null, CosmicStructureType.OortCloud)
-                : new AsteroidField(null);
-            instance._childOrbitalParameters = childOrbit;
-            child.AssignParent(instance);
-
-            switch (instance.StructureType)
-            {
-                case CosmicStructureType.AsteroidField:
-                    instance.Configure(null, Vector3.Zero, majorRadius, minorRadius);
-                    break;
-                case CosmicStructureType.OortCloud:
-                    instance.Configure(null, Vector3.Zero, majorRadius);
-                    break;
-            }
-
-            if (!position.HasValue)
-            {
-                if (child.StructureType == CosmicStructureType.Universe)
-                {
-                    position = Vector3.Zero;
-                }
-                else
-                {
-                    var space = child.StructureType switch
-                    {
-                        CosmicStructureType.Supercluster => _SuperclusterSpace,
-                        CosmicStructureType.GalaxyCluster => _GalaxyClusterSpace,
-                        CosmicStructureType.GalaxyGroup => _GalaxyGroupSpace,
-                        CosmicStructureType.GalaxySubgroup => _GalaxySubgroupSpace,
-                        CosmicStructureType.SpiralGalaxy => _GalaxySpace,
-                        CosmicStructureType.EllipticalGalaxy => _GalaxySpace,
-                        CosmicStructureType.DwarfGalaxy => _DwarfGalaxySpace,
-                        CosmicStructureType.GlobularCluster => _GlobularClusterSpace,
-                        CosmicStructureType.Nebula => _NebulaSpace,
-                        CosmicStructureType.HIIRegion => _NebulaSpace,
-                        CosmicStructureType.PlanetaryNebula => _PlanetaryNebulaSpace,
-                        CosmicStructureType.StarSystem => StarSystem.StarSystemSpace,
-                        CosmicStructureType.AsteroidField => AsteroidFieldSpace,
-                        CosmicStructureType.OortCloud => OortCloudSpace,
-                        CosmicStructureType.BlackHole => BlackHole.BlackHoleSpace,
-                        CosmicStructureType.Star => StarSystem.StarSystemSpace,
-                        CosmicStructureType.Planetoid => Planetoid.GiantSpace,
-                        _ => HugeNumber.Zero,
-                    };
-                    position = instance.GetOpenSpace(space, new List<Location>());
-                }
-            }
-            if (position.HasValue)
-            {
-                child.Position = position.Value;
-            }
-
-            if (!child.Orbit.HasValue)
-            {
-                orbit ??= instance.GetChildOrbit();
-                if (orbit.HasValue)
-                {
-                    Space.Orbit.AssignOrbit(child, orbit.Value);
-                }
-            }
-
-            return instance;
-        }
-
-        /// <summary>Populates a <see cref="SerializationInfo"></see> with the data needed to
-        /// serialize the target object.</summary>
-        /// <param name="info">The <see cref="SerializationInfo"></see> to populate with
-        /// data.</param>
-        /// <param name="context">The destination (see <see cref="StreamingContext"></see>) for this
-        /// serialization.</param>
-        /// <exception cref="System.Security.SecurityException">The caller does not have the
-        /// required permission.</exception>
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            info.AddValue(nameof(Id), Id);
-            info.AddValue(nameof(Seed), Seed);
-            info.AddValue(nameof(StructureType), StructureType);
-            info.AddValue(nameof(ParentId), ParentId);
-            info.AddValue(nameof(AbsolutePosition), AbsolutePosition);
-            info.AddValue(nameof(Name), Name);
-            info.AddValue(nameof(Velocity), Velocity);
-            info.AddValue(nameof(Orbit), Orbit);
-            info.AddValue(nameof(Position), Position);
-            info.AddValue(nameof(Temperature), Material.Temperature);
-            info.AddValue(nameof(MajorRadius), MajorRadius);
-            info.AddValue(nameof(MinorRadius), MinorRadius);
-            info.AddValue(nameof(_toroidal), _toroidal);
-            info.AddValue(nameof(_childOrbitalParameters), _childOrbitalParameters);
-        }
-
-        private void Configure(CosmicLocation? parent, Vector3 position, HugeNumber? majorRadius = null, HugeNumber? minorRadius = null)
-        {
-            if (StructureType == CosmicStructureType.OortCloud)
-            {
-                majorRadius = majorRadius.HasValue ? majorRadius.Value + OortCloudSpace : OortCloudSpace;
-                minorRadius = majorRadius.HasValue ? majorRadius.Value + new HugeNumber(3, 15) : new HugeNumber(3, 15);
-            }
-            else if (position != Vector3.Zero || parent is not StarSystem || !majorRadius.HasValue)
-            {
-                majorRadius ??= Randomizer.Instance.NextNumber(new HugeNumber(1.5, 11), AsteroidFieldSpace);
-                minorRadius = HugeNumber.Zero;
-            }
-            else
-            {
-                _toroidal = true;
-                majorRadius ??= HugeNumber.Zero;
-                minorRadius ??= HugeNumber.Zero;
-            }
-
-            Seed = Randomizer.Instance.NextUIntInclusive();
-            Reconstitute(
-                position,
-                parent?.Material.Temperature ?? UniverseAmbientTemperature,
-                majorRadius.Value,
-                minorRadius.Value);
-        }
-
-        private void Reconstitute(Vector3 position, double? temperature, HugeNumber majorRadius, HugeNumber minorRadius)
-        {
-            if (StructureType == CosmicStructureType.OortCloud)
-            {
-                Material = new Material(
-                    Substances.All.InterplanetaryMedium,
-                    new HollowSphere(
-                        minorRadius,
-                        majorRadius,
-                        position),
-                    new HugeNumber(3, 25),
-                    null,
-                    temperature);
-                return;
-            }
-
-            var randomizer = new Randomizer(Seed);
-
-            var shape = _toroidal
-                ? new Torus(majorRadius, minorRadius, position)
-                : (IShape)new Ellipsoid(
-                    majorRadius,
-                    randomizer.NextNumber(HugeNumber.Half, new HugeNumber(15, -1)) * majorRadius,
-                    randomizer.NextNumber(HugeNumber.Half, new HugeNumber(15, -1)) * majorRadius,
-                    position);
-
-            Material = new Material(
+            Material = new Material<HugeNumber>(
                 Substances.All.InterplanetaryMedium,
-                shape,
-                shape.Volume * new HugeNumber(7, -8),
+                new HollowSphere<HugeNumber>(
+                    minorRadius,
+                    majorRadius,
+                    position),
+                new HugeNumber(3, 25),
                 null,
                 temperature);
+            return;
         }
 
-        internal OrbitalParameters? GetChildOrbit()
+        var randomizer = new Randomizer(Seed);
+
+        var shape = _toroidal
+            ? new Torus<HugeNumber>(majorRadius, minorRadius, position)
+            : (IShape<HugeNumber>)new Ellipsoid<HugeNumber>(
+                majorRadius,
+                randomizer.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)) * majorRadius,
+                randomizer.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)) * majorRadius,
+                position);
+
+        Material = new Material<HugeNumber>(
+            Substances.All.InterplanetaryMedium,
+            shape,
+            shape.Volume * new HugeNumber(7, -8),
+            null,
+            temperature);
+    }
+
+    internal OrbitalParameters? GetChildOrbit()
+    {
+        if (_childOrbitalParameters.HasValue)
         {
-            if (_childOrbitalParameters.HasValue)
-            {
-                return _childOrbitalParameters;
-            }
-
-            if (Orbit.HasValue)
-            {
-                return OrbitalParameters.GetFromEccentricity(
-                    Orbit.Value.OrbitedMass,
-                    Orbit.Value.OrbitedPosition,
-                    Orbit.Value.Eccentricity);
-            }
-
-            return null;
+            return _childOrbitalParameters;
         }
+
+        if (Orbit.HasValue)
+        {
+            return OrbitalParameters.GetFromEccentricity(
+                Orbit.Value.OrbitedMass,
+                Orbit.Value.OrbitedPosition,
+                Orbit.Value.Eccentricity);
+        }
+
+        return null;
     }
 }
