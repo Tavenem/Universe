@@ -37,7 +37,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Tavenem.Chemistry" Version="0.3.4-preview" />
-    <PackageReference Include="Tavenem.HugeNumber" Version="2.0.0-preview.6" />
+    <PackageReference Include="Tavenem.HugeNumber" Version="2.0.0-preview.7" />
     <PackageReference Include="Tavenem.Mathematics" Version="2.0.0-preview.11" />
     <PackageReference Include="Tavenem.Randomize" Version="2.0.0-preview.1" />
     <PackageReference Include="Tavenem.Time" Version="2.0.0-preview.3" />
