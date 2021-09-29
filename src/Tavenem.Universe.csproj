@@ -5,6 +5,7 @@
 	<LangVersion>preview</LangVersion>
 	<EnablePreviewFeatures>true</EnablePreviewFeatures>
     <Nullable>enable</Nullable>
+	<ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -36,7 +37,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Tavenem.Chemistry" Version="0.3.4-preview" />
+    <PackageReference Include="Tavenem.Chemistry" Version="0.4.0-preview" />
     <PackageReference Include="Tavenem.HugeNumber" Version="2.0.0-preview.7" />
     <PackageReference Include="Tavenem.Mathematics" Version="2.0.0-preview.11" />
     <PackageReference Include="Tavenem.Randomize" Version="2.0.0-preview.1" />
