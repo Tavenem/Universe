@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.4-preview
+### Changed
+- Update to .NET 7 preview
+
 ## 0.4.1-preview - 0.4.3-preview
 ### Updated
 - Update dependencies

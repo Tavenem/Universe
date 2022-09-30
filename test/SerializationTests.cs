@@ -62,7 +62,7 @@ public class SerializationTests
     [TestMethod]
     public void LocationTest()
     {
-        var value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere<HugeNumber>(new HugeNumber(10)), null, null);
+        var value = new Location("Test_ID", new Sphere<HugeNumber>(new HugeNumber(10)), null, null);
 
         var json = JsonSerializer.Serialize(value);
         Console.WriteLine();
@@ -71,7 +71,7 @@ public class SerializationTests
         Assert.AreEqual(value, deserialized);
         Assert.AreEqual(json, JsonSerializer.Serialize(deserialized));
 
-        value = new Location("Test_ID", Location.LocationIdItemTypeName, new Sphere<HugeNumber>(new HugeNumber(10)), "Test_Parent_ID", new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX });
+        value = new Location("Test_ID", new Sphere<HugeNumber>(new HugeNumber(10)), "Test_Parent_ID", new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX });
 
         json = JsonSerializer.Serialize(value);
         Console.WriteLine();
@@ -84,7 +84,7 @@ public class SerializationTests
     [TestMethod]
     public void TerritoryTest()
     {
-        var value = new Territory("Test_ID", Territory.TerritoryIdItemTypeName, new Sphere<HugeNumber>(new HugeNumber(10)), new string[] { "Test_Child_ID" });
+        var value = new Territory("Test_ID", new Sphere<HugeNumber>(new HugeNumber(10)), new string[] { "Test_Child_ID" });
 
         var json = JsonSerializer.Serialize(value);
         Console.WriteLine();
@@ -95,7 +95,6 @@ public class SerializationTests
 
         value = new Territory(
             "Test_ID",
-            Territory.TerritoryIdItemTypeName,
             new Sphere<HugeNumber>(new HugeNumber(10)),
             new string[] { "Test_Child_ID" },
             "Test_Parent_ID",
@@ -172,7 +171,6 @@ public class SerializationTests
     {
         var value = new SurfaceRegion(
             "Test_ID",
-            SurfaceRegion.SurfaceRegionIdItemTypeName,
             new Sphere<HugeNumber>(new HugeNumber(10)),
             "Test_Parent_ID",
             null);
@@ -186,7 +184,6 @@ public class SerializationTests
 
         value = new SurfaceRegion(
             "Test_ID",
-            SurfaceRegion.SurfaceRegionIdItemTypeName,
             new Sphere<HugeNumber>(new HugeNumber(10)),
             "Test_Parent_ID",
             new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX });

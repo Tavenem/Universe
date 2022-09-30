@@ -22,6 +22,7 @@ public class Territory : Location
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
+    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
     public override string IdItemTypeName => TerritoryIdItemTypeName;
 
     /// <summary>
@@ -47,7 +48,6 @@ public class Territory : Location
     /// Initializes a new instance of <see cref="Territory"/>.
     /// </summary>
     /// <param name="id">The unique ID of this item.</param>
-    /// <param name="idItemTypeName">The type discriminator.</param>
     /// <param name="shape">The shape of the location.</param>
     /// <param name="childIds">
     /// The ids of the child locations contained within this instance.
@@ -74,9 +74,6 @@ public class Territory : Location
     [JsonConstructor]
     public Territory(
         string id,
-#pragma warning disable IDE0060 // Remove unused parameter: Used by deserializers.
-        string idItemTypeName,
-#pragma warning restore IDE0060 // Remove unused parameter
         IShape<HugeNumber> shape,
         IReadOnlyList<string> childIds,
         string? parentId = null,

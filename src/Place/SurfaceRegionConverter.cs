@@ -158,7 +158,6 @@ public class SurfaceRegionConverter : JsonConverter<SurfaceRegion>
 
         return new SurfaceRegion(
             id,
-            idItemTypeName,
             shape,
             parentId,
             absolutePosition);

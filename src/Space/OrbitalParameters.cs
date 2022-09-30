@@ -3,7 +3,7 @@
 /// <summary>
 /// The parameters which describe an orbit.
 /// </summary>
-public readonly struct OrbitalParameters : IEqualityOperators<OrbitalParameters, OrbitalParameters>
+public readonly struct OrbitalParameters : IEqualityOperators<OrbitalParameters, OrbitalParameters, bool>
 {
     /// <summary>
     /// The angle between the X-axis and the plane of the orbit (at the intersection where the

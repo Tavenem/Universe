@@ -3,7 +3,7 @@
 /// <summary>
 /// Contains information about a planetary ring (usually one of a collection that makes up a ring system).
 /// </summary>
-public readonly struct PlanetaryRing : IEqualityOperators<PlanetaryRing, PlanetaryRing>
+public readonly struct PlanetaryRing : IEqualityOperators<PlanetaryRing, PlanetaryRing, bool>
 {
     /// <summary>
     /// Indicates that the <see cref="PlanetaryRing"/> is icy, rather than rocky.

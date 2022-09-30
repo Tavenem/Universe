@@ -7,7 +7,7 @@ namespace Tavenem.Universe.Space.Planetoids;
 /// A collection of parameters for habitability by a given form of life which a <see
 /// cref="Planetoid"/> must meet in order for such life to survive unaided.
 /// </summary>
-public readonly struct HabitabilityRequirements : IEqualityOperators<HabitabilityRequirements, HabitabilityRequirements>
+public readonly struct HabitabilityRequirements : IEqualityOperators<HabitabilityRequirements, HabitabilityRequirements, bool>
 {
     /// <summary>
     /// The <see cref="HabitabilityRequirements"/> for humans.

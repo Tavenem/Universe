@@ -17,6 +17,7 @@ public class SurfaceRegion : Location
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
+    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
     public override string IdItemTypeName => SurfaceRegionIdItemTypeName;
 
     /// <summary>
@@ -65,7 +66,6 @@ public class SurfaceRegion : Location
     /// Initializes a new instance of <see cref="SurfaceRegion"/>.
     /// </summary>
     /// <param name="id">The unique ID of this item.</param>
-    /// <param name="idItemTypeName">The type discriminator.</param>
     /// <param name="shape">The shape of the location.</param>
     /// <param name="parentId">The ID of the location which contains this one.</param>
     /// <param name="absolutePosition">
@@ -90,9 +90,6 @@ public class SurfaceRegion : Location
     /// </remarks>
     public SurfaceRegion(
         string id,
-#pragma warning disable IDE0060 // Remove unused parameter: required for deserialization
-        string idItemTypeName,
-#pragma warning restore IDE0060 // Remove unused parameter
         IShape<HugeNumber> shape,
         string? parentId,
         Vector3<HugeNumber>[]? absolutePosition = null) : base(id, shape, parentId, absolutePosition)
@@ -176,15 +173,11 @@ public class SurfaceRegion : Location
         var maxLon = LongitudeBounded(lon + halfLonRange);
         if (minLat > maxLat)
         {
-            var tmp = minLat;
-            minLat = maxLat;
-            maxLat = tmp;
+            (maxLat, minLat) = (minLat, maxLat);
         }
         if (minLon > maxLon)
         {
-            var tmp = minLon;
-            minLon = maxLon;
-            maxLon = tmp;
+            (maxLon, minLon) = (minLon, maxLon);
         }
         return (
             minLat,

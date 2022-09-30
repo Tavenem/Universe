@@ -6,7 +6,7 @@ namespace Tavenem.Universe.Space.Planetoids;
 /// <summary>
 /// A set of parameters which constrains the random generation of a <see cref="Planetoid"/>.
 /// </summary>
-public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetParams>
+public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetParams, bool>
 {
     /// <summary>
     /// The approximate albedo of Earth.

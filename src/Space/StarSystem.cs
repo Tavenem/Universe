@@ -24,7 +24,7 @@ public class StarSystem : CosmicLocation
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyOrder(-1)]
+    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
     public override string IdItemTypeName => StarSystemIdItemTypeName;
 
     /// <summary>

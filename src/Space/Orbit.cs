@@ -7,7 +7,7 @@ namespace Tavenem.Universe.Space;
 /// <summary>
 /// Defines an orbit by the Kepler elements.
 /// </summary>
-public struct Orbit : IEqualityOperators<Orbit, Orbit>
+public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
 {
     private const double Tolerance = 1.0e-8;
 

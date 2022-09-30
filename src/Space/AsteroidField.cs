@@ -45,6 +45,7 @@ public class AsteroidField : CosmicLocation
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
+    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
     public override string IdItemTypeName => AsteroidFieldIdItemTypeName;
 
     internal HugeNumber MajorRadius

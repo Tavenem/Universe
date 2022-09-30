@@ -41,8 +41,8 @@ public class Location : IdItem
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyOrder(-1)]
-    public virtual string IdItemTypeName => LocationIdItemTypeName;
+    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
+    public override string IdItemTypeName => LocationIdItemTypeName;
 
     /// <summary>
     /// The id of the parent location which contains this instance, if any.
@@ -148,22 +148,10 @@ public class Location : IdItem
         AbsolutePosition = absolutePosition;
     }
 
-    private protected Location(
-        string id,
-        IShape<HugeNumber> shape,
-        string? parentId,
-        Vector3<HugeNumber>[]? absolutePosition) : base(id)
-    {
-        Shape = shape;
-        ParentId = parentId;
-        AbsolutePosition = absolutePosition;
-    }
-
     /// <summary>
     /// Initializes a new instance of <see cref="Location"/>.
     /// </summary>
     /// <param name="id">The unique ID of this item.</param>
-    /// <param name="idItemTypeName">The type discriminator.</param>
     /// <param name="shape">The shape of the location.</param>
     /// <param name="parentId">The ID of the location which contains this one.</param>
     /// <param name="absolutePosition">
@@ -187,9 +175,6 @@ public class Location : IdItem
     [JsonConstructor]
     public Location(
         string id,
-#pragma warning disable IDE0060 // Remove unused parameter: Used by deserializers.
-        string idItemTypeName,
-#pragma warning restore IDE0060 // Remove unused parameter
         IShape<HugeNumber> shape,
         string? parentId,
         Vector3<HugeNumber>[]? absolutePosition) : base(id)

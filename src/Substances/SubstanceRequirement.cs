@@ -113,7 +113,7 @@ public readonly struct SubstanceRequirement : IEquatable<SubstanceRequirement>
     /// <param name="pressure">A pressure, in kPa.</param>
     /// <returns><see langword="true"/> if the <paramref name="material"/> satisfies this
     /// requirement; otherwise <see langword="false"/>.</returns>
-    public bool IsSatisfiedBy<T>(IMaterial<T> material, double pressure) where T : IFloatingPoint<T>
+    public bool IsSatisfiedBy<T>(IMaterial<T> material, double pressure) where T : IFloatingPointIeee754<T>
     {
         if (material.IsEmpty)
         {
