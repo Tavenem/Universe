@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.5-preview
+### Changed
+- Update to .NET 7
+
 ## 0.4.4-preview
 ### Changed
 - Update to .NET 7 preview
