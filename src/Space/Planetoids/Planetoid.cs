@@ -5637,7 +5637,7 @@ public class Planetoid : CosmicLocation
 
             var platinum = 0.05m - gold;
 
-            foreach (var (material, proportion) in CosmicSubstances.ChondriticRockMixture_NoMetal)
+            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture_NoMetal)
             {
                 substances.Add((material, proportion * rock));
             }
@@ -5649,7 +5649,7 @@ public class Planetoid : CosmicLocation
         {
             var gold = rehydrator.NextDecimal(9, 0.005m);
 
-            foreach (var (material, proportion) in CosmicSubstances.ChondriticRockMixture_NoMetal)
+            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture_NoMetal)
             {
                 substances.Add((material, proportion * 0.427m));
             }
@@ -5669,7 +5669,7 @@ public class Planetoid : CosmicLocation
                 : rehydrator.NextDecimal(10, 0.22m);
             rock -= ice;
 
-            foreach (var (material, proportion) in CosmicSubstances.ChondriticRockMixture)
+            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture)
             {
                 substances.Add((material, proportion * rock));
             }

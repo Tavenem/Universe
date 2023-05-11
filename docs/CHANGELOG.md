@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6-preview
+### Updated
+- Update dependencies
+
 ## 0.4.5-preview
 ### Changed
 - Update to .NET 7
@@ -47,7 +51,7 @@
 
 ## 0.1.2-preview
 ### Fixed
-- Add `Flags` attribute to enums
+- Add `Flags` attribute to enumerations
 
 ## 0.1.1-preview
 ### Updated

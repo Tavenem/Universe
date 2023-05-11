@@ -14,9 +14,12 @@ public static class CosmicSubstances
     /// </summary>
     public static ISubstanceReference ChondriticRock
         => _ChondriticRock ??= Substances.Register(new Mixture(
-            ChondriticRockMixture,
+            _ChondriticRockMixture,
             "Chondritic Rock",
-            densitySolid: 3440))
+            densitySolid: 3440)
+        {
+            Categories = new[] { Substances.Category_Cosmic, Substances.Category_Stone, }
+        })
         .GetReference();
 
     private static ISubstanceReference? _CometNucleus;
@@ -41,7 +44,10 @@ public static class CosmicSubstances
                 (Substances.All.AmorphousCarbon.GetHomogeneousReference(), 0.0002m),
             },
             "Comet Nucleus",
-            densitySolid: 600))
+            densitySolid: 600)
+        {
+            Categories = new[] { Substances.Category_Cosmic }
+        })
         .GetReference();
 
     /// <summary>
@@ -66,7 +72,10 @@ public static class CosmicSubstances
             "Electron-Degenerate Carbon",
             densitySpecial: 1e9,
             isConductive: true,
-            fixedPhase: PhaseType.ElectronDegenerateMatter))
+            fixedPhase: PhaseType.ElectronDegenerateMatter)
+        {
+            Categories = new[] { Substances.Category_Cosmic }
+        })
         .GetHomogeneousReference();
 
     private static HomogeneousReference? _ElectronDegenerateOxygen;
@@ -79,7 +88,10 @@ public static class CosmicSubstances
             "Electron-Degenerate Oxygen",
             densitySpecial: 1e9,
             isConductive: true,
-            fixedPhase: PhaseType.ElectronDegenerateMatter))
+            fixedPhase: PhaseType.ElectronDegenerateMatter)
+        {
+            Categories = new[] { Substances.Category_Cosmic }
+        })
         .GetHomogeneousReference();
 
     private static ISubstanceReference? _StellarMaterial;
@@ -102,7 +114,10 @@ public static class CosmicSubstances
                 (Substances.All.S6Pos.GetHomogeneousReference(), 0.0004m),
             },
             "Stellar Material",
-            densitySpecial: 1410))
+            densitySpecial: 1410)
+        {
+            Categories = new[] { Substances.Category_Cosmic, Substances.Category_Plasma }
+        })
         .GetReference();
 
     private static ISubstanceReference? _StellarMaterialPopulationII;
@@ -120,7 +135,10 @@ public static class CosmicSubstances
                 (Substances.All.Neon.GetHomogeneousReference(), 0.00002m),
             },
             "Stellar Material, Population II",
-            densitySpecial: 1410))
+            densitySpecial: 1410)
+        {
+            Categories = new[] { Substances.Category_Cosmic, Substances.Category_Plasma }
+        })
         .GetReference();
 
     private static ISubstanceReference? _StellarMaterialWhiteDwarf;
@@ -135,7 +153,10 @@ public static class CosmicSubstances
                 (ElectronDegenerateCarbon, 0.3m),
             },
             "Stellar Material, White Dwarf",
-            densitySpecial: 1e9))
+            densitySpecial: 1e9)
+        {
+            Categories = new[] { Substances.Category_Cosmic }
+        })
         .GetReference();
 
     /// <summary>
@@ -153,7 +174,7 @@ public static class CosmicSubstances
             (Substances.All.SodiumChloride.GetHomogeneousReference(), 0.001m),
         };
 
-    internal static readonly (HomogeneousReference material, decimal proportion)[] ChondriticRockMixture
+    internal static readonly (HomogeneousReference material, decimal proportion)[] _ChondriticRockMixture
         = new (HomogeneousReference material, decimal proportion)[]
         {
             (Substances.All.Olivine.GetHomogeneousReference(), 0.45m),
@@ -171,7 +192,7 @@ public static class CosmicSubstances
             (Substances.All.Corundum.GetHomogeneousReference(), 0.0001m),
         };
 
-    internal static readonly (HomogeneousReference material, decimal proportion)[] ChondriticRockMixture_NoMetal
+    internal static readonly (HomogeneousReference material, decimal proportion)[] _ChondriticRockMixture_NoMetal
         = new (HomogeneousReference material, decimal proportion)[]
         {
             (Substances.All.Olivine.GetHomogeneousReference(), 0.52m),
