@@ -368,7 +368,7 @@ public class Planetoid : CosmicLocation
         % DoubleConstants.TwoPi;
 
     /// <summary>
-    /// The total temperature of this <see cref="Planetoid"/>, not including atmosphereic
+    /// The total temperature of this <see cref="Planetoid"/>, not including atmospheric
     /// effects, averaged over its orbit, in K.
     /// </summary>
     internal double AverageBlackbodyTemperature { get; private set; }
@@ -613,8 +613,8 @@ public class Planetoid : CosmicLocation
     /// <param name="children">
     /// <para>
     /// When this method returns, will be set to a <see cref="List{T}"/> of <see
-    /// cref="CosmicLocation"/>s containing any child objects generated for the location during
-    /// the creation process.
+    /// cref="CosmicLocation"/>s containing any child objects generated for the location during the
+    /// creation process.
     /// </para>
     /// <para>
     /// This list may be useful, for instance, to ensure that these additional objects are also
@@ -648,8 +648,8 @@ public class Planetoid : CosmicLocation
     /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
     /// </param>
     /// <param name="habitabilityRequirements">
-    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
     /// </param>
     /// <returns>A planet with the given parameters.</returns>
     public static Planetoid? GetPlanetForNewStar(
@@ -699,7 +699,7 @@ public class Planetoid : CosmicLocation
         } while (sanityCheck <= 100);
         if (planet is not null)
         {
-            // Clear pregenerated planets whose orbits are too close to this one.
+            // Clear pre-generated planets whose orbits are too close to this one.
             if (planet.Orbit.HasValue)
             {
                 var planetOrbitalPath = new Torus<HugeNumber>(
@@ -753,7 +753,7 @@ public class Planetoid : CosmicLocation
     /// </param>
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// habitability requirements will be used.
     /// </param>
     /// <param name="seed">
     /// A value used to seed the random generator.
@@ -841,7 +841,7 @@ public class Planetoid : CosmicLocation
     /// </param>
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// habitability requirements will be used.
     /// </param>
     /// <returns>
     /// <para>
@@ -919,7 +919,7 @@ public class Planetoid : CosmicLocation
     /// </param>
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// habitability requirements will be used.
     /// </param>
     /// <returns>
     /// <para>
@@ -978,7 +978,7 @@ public class Planetoid : CosmicLocation
     /// </param>
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// habitability requirements will be used.
     /// </param>
     /// <returns>
     /// <para>
@@ -1058,7 +1058,7 @@ public class Planetoid : CosmicLocation
     /// </param>
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habiltability requirements will be used.
+    /// habitability requirements will be used.
     /// </param>
     /// <returns>
     /// <para>
@@ -1264,13 +1264,13 @@ public class Planetoid : CosmicLocation
     /// </remarks>
     public double GetIllumination(Instant moment, double latitude, double longitude, IEnumerable<Planetoid>? satellites = null)
     {
-        var pos = GetPositionAtTime(moment);
+        var position = GetPositionAtTime(moment);
 
-        var distance = pos.Length();
-        var (_, eclipticLongitude) = GetEclipticLatLon(pos, Vector3<HugeNumber>.Zero);
+        var distance = position.Length();
+        var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3<HugeNumber>.Zero);
         var lux = 0.0;
 
-        var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, Vector3<HugeNumber>.Zero);
+        var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(position, Vector3<HugeNumber>.Zero);
         var longitudeOffset = longitude - solarRightAscension;
         if (longitudeOffset > Math.PI)
         {
@@ -1287,17 +1287,17 @@ public class Planetoid : CosmicLocation
         {
             foreach (var satellite in satellites)
             {
-                var satPos = satellite.GetPositionAtTime(moment);
-                var satDist2 = Vector3<HugeNumber>.DistanceSquared(pos, satPos);
-                var satDist = satDist2.Sqrt();
+                var satellitePosition = satellite.GetPositionAtTime(moment);
+                var satelliteDistance2 = Vector3<HugeNumber>.DistanceSquared(position, satellitePosition);
+                var satelliteDistance = satelliteDistance2.Sqrt();
 
-                var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+                var (satLat, satLon) = GetEclipticLatLon(position, satellitePosition);
 
                 var phase = 0.0;
                 // satellite-centered elongation of the planet from the star (ratio of illuminated
                 // surface area to total surface area)
                 var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
-                var e = Math.Atan2((double)(satDist - (distance * Math.Cos(le))), (double)(distance * Math.Sin(le)));
+                var e = Math.Atan2((double)(satelliteDistance - (distance * Math.Cos(le))), (double)(distance * Math.Sin(le)));
                 // fraction of illuminated surface area
                 phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
 
@@ -1310,7 +1310,7 @@ public class Planetoid : CosmicLocation
                         * phase
                         * satellite.Albedo
                         / DoubleConstants.FourPi
-                        / (double)satDist2;
+                        / (double)satelliteDistance2;
             }
         }
 
@@ -1357,17 +1357,17 @@ public class Planetoid : CosmicLocation
             return 0;
         }
 
-        var pos = GetPositionAtTime(moment);
+        var position = GetPositionAtTime(moment);
 
         var stars = new List<(Star star, Vector3<HugeNumber> position, HugeNumber distance, double eclipticLongitude)>();
         await foreach (var star in system.GetStarsAsync(dataStore))
         {
             var starPosition = star.GetPositionAtTime(moment);
-            var (_, eclipticLongitude) = GetEclipticLatLon(pos, starPosition);
+            var (_, eclipticLongitude) = GetEclipticLatLon(position, starPosition);
             stars.Add((
                 star,
                 starPosition,
-                Vector3<HugeNumber>.Distance(pos, starPosition),
+                Vector3<HugeNumber>.Distance(position, starPosition),
                 eclipticLongitude));
         }
         if (stars.Count == 0)
@@ -1378,7 +1378,7 @@ public class Planetoid : CosmicLocation
 
         foreach (var (star, starPosition, _, _) in stars)
         {
-            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(pos, starPosition);
+            var (solarRightAscension, solarDeclination) = GetRightAscensionAndDeclination(position, starPosition);
             var longitudeOffset = longitude - solarRightAscension;
             if (longitudeOffset > Math.PI)
             {
@@ -1393,11 +1393,11 @@ public class Planetoid : CosmicLocation
 
         await foreach (var satellite in GetSatellitesAsync(dataStore))
         {
-            var satPos = satellite.GetPositionAtTime(moment);
-            var satDist2 = Vector3<HugeNumber>.DistanceSquared(pos, satPos);
-            var satDist = satDist2.Sqrt();
+            var satellitePosition = satellite.GetPositionAtTime(moment);
+            var satelliteDistance2 = Vector3<HugeNumber>.DistanceSquared(position, satellitePosition);
+            var satelliteDistance = satelliteDistance2.Sqrt();
 
-            var (satLat, satLon) = GetEclipticLatLon(pos, satPos);
+            var (satLat, satLon) = GetEclipticLatLon(position, satellitePosition);
 
             var phase = 0.0;
             foreach (var (star, starPosition, starDistance, eclipticLongitude) in stars)
@@ -1405,7 +1405,7 @@ public class Planetoid : CosmicLocation
                 // satellite-centered elongation of the planet from the star (ratio of illuminated
                 // surface area to total surface area)
                 var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
-                var e = Math.Atan2((double)(satDist - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
+                var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
                 // fraction of illuminated surface area
                 phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
             }
@@ -1417,15 +1417,15 @@ public class Planetoid : CosmicLocation
                 * phase
                 * satellite.Albedo
                 / DoubleConstants.FourPi
-                / (double)satDist2;
+                / (double)satelliteDistance2;
         }
 
         return lux;
     }
 
     /// <summary>
-    /// Given an initial position, a bearing, and a distance, calculates the final position
-    /// along the great circle arc described by the resulting motion.
+    /// Given an initial position, a bearing, and a distance, calculates the final position along
+    /// the great circle arc described by the resulting motion.
     /// </summary>
     /// <param name="latitude">An initial latitude.</param>
     /// <param name="longitude">An initial longitude.</param>
@@ -1434,14 +1434,14 @@ public class Planetoid : CosmicLocation
     /// <returns>The destination latitude and longitude.</returns>
     /// <remarks>
     /// <para>
-    /// The results are inaccurate for highly ellipsoidal planets, as no compensation is
-    /// attempted for the non-spherical shape of the planet.
+    /// The results are inaccurate for highly ellipsoidal planets, as no compensation is attempted
+    /// for the non-spherical shape of the planet.
     /// </para>
     /// <para>
-    /// Great circle arcs are the shortest distance between two points on a sphere. Traveling
-    /// along a great circle that is not the equator or a meridian requires continually changing
-    /// one's compass heading during travel (unlike a rhumb line, which is not the shortest
-    /// path, but requires no bearing adjustements).
+    /// Great circle arcs are the shortest distance between two points on a sphere. Traveling along
+    /// a great circle that is not the equator or a meridian requires continually changing one's
+    /// compass heading during travel (unlike a rhumb line, which is not the shortest path, but
+    /// requires no bearing adjustments).
     /// </para>
     /// <seealso cref="GetLatLonAtDistanceOnRhumbLine(double, double, HugeNumber, double)"/>
     /// </remarks>
@@ -1452,12 +1452,12 @@ public class Planetoid : CosmicLocation
         double bearing)
     {
         var angularDistance = (double)(distance / Shape.ContainingRadius);
-        var sinDist = Math.Sin(angularDistance);
-        var cosDist = Math.Cos(angularDistance);
-        var sinLat = Math.Sin(latitude);
-        var cosLat = Math.Cos(latitude);
-        var finalLatitude = Math.Asin((sinLat * cosDist) + (cosLat * sinDist * Math.Cos(bearing)));
-        var finalLongitude = longitude + Math.Atan2(Math.Sin(bearing) * sinDist * cosLat, cosDist - (sinLat * Math.Sin(finalLatitude)));
+        var sinDistance = Math.Sin(angularDistance);
+        var cosDistance = Math.Cos(angularDistance);
+        var sinLatitude = Math.Sin(latitude);
+        var cosLatitude = Math.Cos(latitude);
+        var finalLatitude = Math.Asin((sinLatitude * cosDistance) + (cosLatitude * sinDistance * Math.Cos(bearing)));
+        var finalLongitude = longitude + Math.Atan2(Math.Sin(bearing) * sinDistance * cosLatitude, cosDistance - (sinLatitude * Math.Sin(finalLatitude)));
         finalLongitude = ((finalLongitude + DoubleConstants.ThreeHalvesPi) % DoubleConstants.TwoPi) - DoubleConstants.HalfPi;
         return (finalLatitude, finalLongitude);
     }
@@ -1871,18 +1871,18 @@ public class Planetoid : CosmicLocation
         var position = GetPositionAtTime(moment);
 
         var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3<HugeNumber>.Zero);
-        var starDist = position.Length();
+        var starDistance = position.Length();
 
         var satellitePosition = satellite.GetPositionAtTime(moment);
         var phase = 0.0;
 
-        var satDist = Vector3<HugeNumber>.Distance(position, satellitePosition);
-        var (satLat, satLon) = GetEclipticLatLon(position, satellitePosition);
+        var satelliteDistance = Vector3<HugeNumber>.Distance(position, satellitePosition);
+        var (satelliteLatitude, satelliteLongitude) = GetEclipticLatLon(position, satellitePosition);
 
         // satellite-centered elongation of the planet from the star (ratio of illuminated
         // surface area to total surface area)
-        var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
-        var e = Math.Atan2((double)(satDist - (starDist * Math.Cos(le))), (double)(starDist * Math.Sin(le)));
+        var le = Math.Acos(Math.Cos(satelliteLatitude) * Math.Cos(eclipticLongitude - satelliteLongitude));
+        var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
 
         // fraction of illuminated surface area
         phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
@@ -1943,15 +1943,15 @@ public class Planetoid : CosmicLocation
 
         var satellitePosition = satellite.GetPositionAtTime(moment);
         var phase = 0.0;
-        foreach (var (star, starPosition, starDist, eclipticLongitude) in stars)
+        foreach (var (star, starPosition, starDistance, eclipticLongitude) in stars)
         {
-            var satDist = Vector3<HugeNumber>.Distance(position, satellitePosition);
-            var (satLat, satLon) = GetEclipticLatLon(position, satellitePosition);
+            var satelliteDistance = Vector3<HugeNumber>.Distance(position, satellitePosition);
+            var (satelliteLatitude, satelliteLongitude) = GetEclipticLatLon(position, satellitePosition);
 
             // satellite-centered elongation of the planet from the star (ratio of illuminated
             // surface area to total surface area)
-            var le = Math.Acos(Math.Cos(satLat) * Math.Cos(eclipticLongitude - satLon));
-            var e = Math.Atan2((double)(satDist - (starDist * Math.Cos(le))), (double)(starDist * Math.Sin(le)));
+            var le = Math.Acos(Math.Cos(satelliteLatitude) * Math.Cos(eclipticLongitude - satelliteLongitude));
+            var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
             // fraction of illuminated surface area
             phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
         }
@@ -2151,7 +2151,7 @@ public class Planetoid : CosmicLocation
                 return value;
             }
 
-            // Represent the effect of near-surface atmospheric convection by resturning the
+            // Represent the effect of near-surface atmospheric convection by returning the
             // average of the raw surface temperature and the result, weighted by the elevation.
             var weight = Math.Min(1, elevation * 4 / MaxElevation);
 
@@ -3198,8 +3198,8 @@ public class Planetoid : CosmicLocation
         // No need to check for ozone, since it is only added to atmospheres on planets with
         // liquid surface water, which means temperatures too high for liquid or solid ozone.
 
-        var sulphurDioxide = Substances.All.SulphurDioxide.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, sulphurDioxide, surfaceTemp, adjustedAtmosphericPressure);
+        var sulfurDioxide = Substances.All.SulphurDioxide.GetHomogeneousReference();
+        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, sulfurDioxide, surfaceTemp, adjustedAtmosphericPressure);
 
         // Water is handled differently, since the planet may already have surface water.
         if (counter > 0) // Not performed on first pass, since it was already done.
@@ -5151,7 +5151,8 @@ public class Planetoid : CosmicLocation
     private void GenerateResources(Rehydrator rehydrator)
     {
         AddResources(Material.GetSurface()
-                .Constituents.Where(x => x.Key.Substance.IsGemstone || x.Key.Substance.IsMetalOre())
+                .Constituents.Where(x => x.Key.Substance.Categories?.Contains(Substances.Category_Gem) == true
+                    || x.Key.Substance.IsMetalOre())
                 .Select(x => (x.Key, x.Value, true))
                 ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
         AddResources(Material.GetSurface()
@@ -6223,7 +6224,7 @@ public class Planetoid : CosmicLocation
         {
             return system;
         }
-        // Allow a second level of containment for asteroid fields and oort clouds. Custom
+        // Allow a second level of containment for asteroid fields and Oort clouds. Custom
         // containment scenarios with deeply nested entities are not considered.
         if (parent is not null)
         {
@@ -6244,7 +6245,7 @@ public class Planetoid : CosmicLocation
         {
             return temp;
         }
-        // Represent the effect of atmospheric convection by resturning the average of the raw
+        // Represent the effect of atmospheric convection by returning the average of the raw
         // result and the equatorial result, weighted by the distance to the equator.
         var equatorialTemp = (blackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
         var weight = Math.Sin(2.5 * Math.Sqrt(Math.Abs(seasonalLatitude))) / 1.75;
