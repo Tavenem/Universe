@@ -50,7 +50,7 @@ public partial class CosmicLocation
 
         new StarSystemChildDefinition(_GalaxySystemDensity * new HugeNumber(4, -4), StarType.Neutron),
 
-        new ChildDefinition(BlackHole._BlackHoleSpace, _GalaxySystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
+        new ChildDefinition(_BlackHoleSpace, _GalaxySystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
 
         new StarSystemChildDefinition(_GalaxyMainSequenceDensity * new HugeNumber(6, -3), SpectralClass.A, LuminosityClass.V),
 
@@ -110,7 +110,7 @@ public partial class CosmicLocation
 
         new StarSystemChildDefinition(_GalaxySystemDensity * new HugeNumber(4, -4), StarType.Neutron),
 
-        new ChildDefinition(BlackHole._BlackHoleSpace, _GalaxySystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
+        new ChildDefinition(_BlackHoleSpace, _GalaxySystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
 
         new StarSystemChildDefinition(_GalaxyGiantDensity * new HugeNumber(9997, -4), StarType.RedGiant),
         new StarSystemChildDefinition(_GalaxyGiantDensity * new HugeNumber(3, -4), StarType.RedGiant, null, LuminosityClass.II),
@@ -121,60 +121,64 @@ public partial class CosmicLocation
     internal OrbitalParameters GetGalaxyChildOrbit()
         => OrbitalParameters.GetFromEccentricity(Mass, Vector3<HugeNumber>.Zero, Randomizer.Instance.NextDouble(0.1));
 
-    private CosmicLocation? ConfigureGalaxyInstance(Vector3<HugeNumber> position, double? ambientTemperature = null, CosmicLocation? child = null)
+    private CosmicLocation? ConfigureGalaxyInstance(
+        Vector3<HugeNumber> position,
+        double? ambientTemperature = null,
+        CosmicLocation? child = null)
     {
         CosmicLocation? newCore = null;
-        if (child?.StructureType == CosmicStructureType.BlackHole
-            && (!(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType)
-            || child.Mass > BlackHole._SupermassiveBlackHoleThreshold))
+        if (child?.StructureType != CosmicStructureType.BlackHole
+            || ((CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType)
+            && child.Mass <= _SupermassiveBlackHoleThreshold))
         {
-            Seed = child.Seed;
-        }
-        else
-        {
-            var core = new BlackHole(this, Vector3<HugeNumber>.Zero, null, supermassive: (CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(StructureType));
-            Seed = core?.Seed ?? Randomizer.Instance.NextUIntInclusive();
-            newCore = core;
+            newCore = new CosmicLocation(Id, CosmicStructureType.BlackHole);
+            newCore.ConfigureBlackHoleInstance(
+                Vector3<HugeNumber>.Zero,
+                (CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy)
+                    .HasFlag(StructureType));
         }
 
-        ReconstituteGalaxyInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
-
-        return newCore;
-    }
-
-    private void ReconstituteGalaxyInstance(Vector3<HugeNumber> position, double? temperature)
-    {
-        var randomizer = new Randomizer(Seed);
+        var temperature = ambientTemperature ?? UniverseAmbientTemperature;
 
         HugeNumber radius;
         HugeNumber axis;
         if (StructureType == CosmicStructureType.SpiralGalaxy)
         {
-            radius = randomizer.Next(new HugeNumber(2.4, 20), new HugeNumber(2.5, 21)); // 25000–75000 ly
-            axis = radius * randomizer.NormalDistributionSample(0.02, 0.001);
+            radius = Randomizer.Instance.Next(
+                new HugeNumber(2.4, 20),
+                new HugeNumber(2.5, 21)); // 25000–75000 ly
+            axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 0.001);
         }
         else if (StructureType == CosmicStructureType.EllipticalGalaxy)
         {
-            radius = randomizer.Next(new HugeNumber(1.5, 18), new HugeNumber(1.5, 21)); // ~160–160000 ly
-            axis = radius * randomizer.NormalDistributionSample(0.5, 1);
+            radius = Randomizer.Instance.Next(
+                new HugeNumber(1.5, 18),
+                new HugeNumber(1.5, 21)); // ~160–160000 ly
+            axis = radius * Randomizer.Instance.NormalDistributionSample(0.5, 1);
         }
         else if (StructureType == CosmicStructureType.DwarfGalaxy)
         {
-            radius = randomizer.Next(new HugeNumber(9.5, 18), new HugeNumber(2.5, 18)); // ~200–1800 ly
-            axis = radius * randomizer.NormalDistributionSample(0.02, 1);
+            radius = Randomizer.Instance.Next(
+                new HugeNumber(9.5, 18),
+                new HugeNumber(2.5, 18)); // ~200–1800 ly
+            axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 1);
         }
         else
         {
-            radius = randomizer.Next(new HugeNumber(1.55, 19), new HugeNumber(1.55, 21)); // ~1600–160000 ly
-            axis = radius * randomizer.NormalDistributionSample(0.02, 0.001);
+            radius = Randomizer.Instance.Next(
+                new HugeNumber(1.55, 19),
+                new HugeNumber(1.55, 21)); // ~1600–160000 ly
+            axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 0.001);
         }
         var shape = new Ellipsoid<HugeNumber>(radius, axis, position);
 
         // Randomly determines a factor by which the mass of this galaxy will be
         // multiplied due to the abundance of dark matter.
-        var darkMatterMultiplier = randomizer.Next(5, 15);
+        var darkMatterMultiplier = Randomizer.Instance.Next(5, 15);
 
-        var coreMass = BlackHole.GetBlackHoleMassForSeed(Seed, supermassive: true);
+        var coreMass = newCore is null
+            ? child!.Mass
+            : newCore.Mass;
 
         var mass = ((shape.Volume * _GalaxySystemDensity * new HugeNumber(1, 30)) + coreMass) * darkMatterMultiplier;
 
@@ -184,5 +188,7 @@ public partial class CosmicLocation
             mass,
             null,
             temperature);
+
+        return newCore;
     }
 }

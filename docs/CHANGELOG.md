@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0-preview
+### Added
+- Source generated (de)serialization support
+### Changed
+- Change `Planetoid.Rings` type to `IReadOnlyList<PlanetaryRing>`
+- Change `Planetoid.Resources` type to `IReadOnlyList<Resource>`
+- Replace most read-only structs with records
+### Updated
+- Update to .NET 8 preview
+
 ## 0.4.6-preview
 ### Updated
 - Update dependencies

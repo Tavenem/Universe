@@ -1,10 +1,11 @@
-﻿using System.Data;
+﻿using System.Collections.ObjectModel;
+using System.Data;
+using System.Text;
 using System.Text.Json.Serialization;
 using Tavenem.Chemistry;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Time;
-using Tavenem.Universe.Chemistry;
 using Tavenem.Universe.Climate;
 using Tavenem.Universe.Place;
 using Tavenem.Universe.Space.Planetoids;
@@ -14,8 +15,7 @@ namespace Tavenem.Universe.Space;
 /// <summary>
 /// Any non-stellar celestial body, such as a planet or asteroid.
 /// </summary>
-[JsonConverter(typeof(PlanetoidConverter))]
-public class Planetoid : CosmicLocation
+public partial class Planetoid : CosmicLocation
 {
     internal const double DefaultTerrestrialMaxDensity = 6000;
     internal const int GiantMaxDensity = 1650;
@@ -40,6 +40,11 @@ public class Planetoid : CosmicLocation
     /// The minimum radius required to achieve hydrostatic equilibrium, in meters.
     /// </summary>
     private const int MinimumRadius = 600000;
+
+    private const PlanetType WaterlessPlanetTypes = PlanetType.Carbon
+        | PlanetType.Iron
+        | PlanetType.Lava
+        | PlanetType.LavaDwarf;
 
     internal static readonly HugeNumber _GiantSpace = new(2.5, 8);
 
@@ -89,20 +94,22 @@ public class Planetoid : CosmicLocation
 
     private static readonly HugeNumber _TerrestrialSpace = new(1.75, 7);
 
-    internal readonly bool _earthlike;
-    internal readonly HabitabilityRequirements? _habitabilityRequirements;
-    internal readonly PlanetParams? _planetParams;
-
-    internal double _blackbodyTemperature;
-    internal List<string>? _satelliteIDs;
-    internal double _surfaceTemperatureAtApoapsis;
-    internal double _surfaceTemperatureAtPeriapsis;
+    private readonly HabitabilityRequirements? _habitabilityRequirements;
+    private readonly PlanetParams? _planetParams;
 
     private double? _averageSurfaceTemperature;
     private double? _diurnalTemperatureVariation;
     private double? _maxSurfaceTemperature;
     private double? _minSurfaceTemperature;
+
+    /// <summary>
+    /// The albedo of this planetoid's surface (a value between 0 and 1).
+    /// </summary>
+    /// <remarks>
+    /// This refers to the albedo of the surface of the main body, not including any atmosphere.
+    /// </remarks>
     private double _surfaceAlbedo;
+
     private double? _surfaceTemperature;
 
     /// <summary>
@@ -131,6 +138,7 @@ public class Planetoid : CosmicLocation
     /// The angular velocity of this <see cref="Planetoid"/>, in radians per second. Read-only;
     /// set via <see cref="RotationalPeriod"/>.
     /// </summary>
+    [JsonIgnore]
     public HugeNumber AngularVelocity
         => _angularVelocity ??= RotationalPeriod == HugeNumber.Zero
         ? HugeNumber.Zero
@@ -140,11 +148,24 @@ public class Planetoid : CosmicLocation
     /// <summary>
     /// The atmosphere possessed by this <see cref="Planetoid"/>.
     /// </summary>
+    [JsonIgnore]
     public Atmosphere Atmosphere
     {
-        get => _atmosphere ?? new Atmosphere(0);
-        private set => _atmosphere = value;
+        get => _atmosphere ??= new();
+        private set => _atmosphere = value.IsEmpty ? null : value;
     }
+
+    /// <summary>
+    /// The composition of this planetoid's atmosphere, if any.
+    /// </summary>
+    public IReadOnlyDictionary<ISubstanceReference, decimal> AtmosphericComposition
+        => _atmosphere?.Material.Constituents
+        ?? ReadOnlyDictionary<ISubstanceReference, decimal>.Empty;
+
+    /// <summary>
+    /// The atmospheric pressure at the surface of this planetoid, in kPa.
+    /// </summary>
+    public double AtmosphericPressure => _atmosphere?.AtmosphericPressure ?? 0;
 
     /// <summary>
     /// The angle between the X-axis and the orbital vector at which the vernal equinox of the
@@ -162,24 +183,37 @@ public class Planetoid : CosmicLocation
     /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
     /// rotation.
     /// </remarks>
+    [JsonIgnore]
     public double AxialTilt => _axialTilt ??= Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
 
     /// <summary>
-    /// A <see cref="System.Numerics.Vector3"/> which represents the axis of this <see
-    /// cref="Planetoid"/>. Read-only. Set with <see cref="SetAxialTilt(double)"/> or <see
+    /// A <see cref="Vector3"/> which represents the axis of this <see cref="Planetoid"/>.
+    /// </summary>
+    /// <remarks>
+    /// Read-only. Set with <see cref="SetAxialTilt(double)"/> or <see
     /// cref="SetAngleOfRotation(double)"/>.
-    /// </summary>
-    public System.Numerics.Vector3 Axis { get; private set; } = System.Numerics.Vector3.UnitY;
+    /// </remarks>
+    [JsonIgnore]
+    public Vector3 Axis { get; private set; } = Vector3.UnitY;
 
     /// <summary>
-    /// A <see cref="System.Numerics.Quaternion"/> representing the rotation of the axis of this
-    /// <see cref="Planetoid"/>. Read-only; set with <see cref="SetAxialTilt(double)"/> or
-    /// <see cref="SetAngleOfRotation(double)"/>"/>
+    /// A <see cref="Quaternion"/> representing the rotation of the axis of this <see
+    /// cref="Planetoid"/>.
     /// </summary>
-    public System.Numerics.Quaternion AxisRotation { get; private set; } = System.Numerics.Quaternion.Identity;
+    /// <remarks>
+    /// Read-only; set with <see cref="SetAxialTilt(double)"/> or <see
+    /// cref="SetAngleOfRotation(double)"/>
+    /// </remarks>
+    [JsonIgnore]
+    public Quaternion AxisRotation { get; private set; } = Quaternion.Identity;
 
     /// <summary>
-    /// Indicates whether or not this planet has a native population of living organisms.
+    /// The blackbody temperature of this planetoid.
+    /// </summary>
+    public double BlackbodyTemperature { get; private set; }
+
+    /// <summary>
+    /// Whether or not this planet has a native population of living organisms.
     /// </summary>
     /// <remarks>
     /// The complexity of life is not presumed. If a planet is basically habitable (liquid
@@ -189,10 +223,11 @@ public class Planetoid : CosmicLocation
     public bool HasBiosphere { get; set; }
 
     /// <summary>
-    /// Indicates whether this <see cref="Planetoid"/> has a strong magnetosphere.
+    /// Whether this <see cref="Planetoid"/> has a strong magnetosphere.
     /// </summary>
     public bool HasMagnetosphere { get; private set; }
 
+    private IMaterial<HugeNumber>? _hydrosphere;
     /// <summary>
     /// This planet's surface liquids and ices (not necessarily water).
     /// </summary>
@@ -201,7 +236,11 @@ public class Planetoid : CosmicLocation
     /// cref="CosmicLocation.Material"/> for ease of reference to both the solid surface
     /// layer, and the hydrosphere.
     /// </remarks>
-    public IMaterial<HugeNumber> Hydrosphere { get; private set; } = Material<HugeNumber>.Empty;
+    public IMaterial<HugeNumber> Hydrosphere
+    {
+        get => _hydrosphere ??= new Material<HugeNumber>();
+        private set => _hydrosphere = value.IsEmpty ? null : value;
+    }
 
     /// <summary>
     /// The type discriminator for this type.
@@ -210,38 +249,44 @@ public class Planetoid : CosmicLocation
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => PlanetoidIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => PlanetoidIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// Indicates whether this is an asteroid.
     /// </summary>
+    [JsonIgnore]
     public bool IsAsteroid => PlanetType.Asteroid.HasFlag(PlanetType);
 
     /// <summary>
     /// Indicates whether this is a dwarf planet.
     /// </summary>
+    [JsonIgnore]
     public bool IsDwarf => PlanetType.AnyDwarf.HasFlag(PlanetType);
 
     /// <summary>
     /// Indicates whether this is a giant planet (including ice giants).
     /// </summary>
+    [JsonIgnore]
     public bool IsGiant => PlanetType.Giant.HasFlag(PlanetType);
 
     /// <summary>
-    /// <para>
     /// Whether this planet is inhospitable to life.
-    /// </para>
-    /// <para>
+    /// </summary>
+    /// <remarks>
     /// Typically due to a highly energetic or volatile star, which either produces a great deal
     /// of ionizing radiation, or has a rapidly shifting habitable zone, or both.
-    /// </para>
-    /// </summary>
+    /// </remarks>
     public bool IsInhospitable { get; private set; }
 
     /// <summary>
     /// Indicates whether this is a terrestrial planet.
     /// </summary>
+    [JsonIgnore]
     public bool IsTerrestrial => PlanetType.AnyTerrestrial.HasFlag(PlanetType);
 
     private double? _maxElevation;
@@ -262,6 +307,7 @@ public class Planetoid : CosmicLocation
     /// even close to this value.
     /// </para>
     /// </summary>
+    [JsonIgnore]
     public double MaxElevation => _maxElevation ??= (IsGiant || PlanetType == PlanetType.Ocean ? 0 : 200000 / (double)SurfaceGravity);
 
     /// <summary>
@@ -275,67 +321,53 @@ public class Planetoid : CosmicLocation
     /// </summary>
     public PlanetType PlanetType { get; }
 
-    internal List<PlanetaryRing>? _rings;
+    private IReadOnlyList<PlanetaryRing>? _rings;
     /// <summary>
     /// The collection of rings around this <see cref="Planetoid"/>.
     /// </summary>
-    public IEnumerable<PlanetaryRing> Rings => _rings ?? Enumerable.Empty<PlanetaryRing>();
+    public IReadOnlyList<PlanetaryRing> Rings => _rings
+        ?? ReadOnlyCollection<PlanetaryRing>.Empty;
 
     /// <summary>
-    /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis, in seconds.
+    /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis,
+    /// in seconds.
     /// </summary>
     public HugeNumber RotationalPeriod { get; private set; }
 
-    private readonly List<Resource> _resources = new();
+    private List<Resource>? _resources;
     /// <summary>
     /// The resources of this <see cref="Planetoid"/>.
     /// </summary>
-    public IEnumerable<Resource> Resources => _resources;
+    public IReadOnlyList<Resource> Resources => _resources?.AsReadOnly()
+        ?? ReadOnlyCollection<Resource>.Empty;
+
+    private IReadOnlyList<string>? _satelliteIds;
+    /// <summary>
+    /// The IDs of any natural satellites which orbit this <see cref="Planetoid"/>.
+    /// </summary>
+    public IReadOnlyList<string> SatelliteIds => _satelliteIds
+        ?? ReadOnlyCollection<string>.Empty;
 
     private double? _seaLevel;
     /// <summary>
     /// The elevation of sea level relative to the mean surface elevation of the planet, in
     /// meters.
     /// </summary>
-    public double SeaLevel
-    {
-        get => _seaLevel ??= NormalizedSeaLevel * MaxElevation;
-        private set
-        {
-            _seaLevel = value;
-            NormalizedSeaLevel = value / MaxElevation;
-        }
-    }
+    [JsonIgnore]
+    public double SeaLevel => _seaLevel ??= NormalizedSeaLevel * MaxElevation;
 
     /// <summary>
     /// A value which can be used to deterministically generate random values for this <see
     /// cref="Planetoid"/>.
     /// </summary>
-    public int Seed1 { get; private set; }
+    public uint Seed { get; private set; }
 
     /// <summary>
-    /// A value which can be used to deterministically generate random values for this <see
-    /// cref="Planetoid"/>.
+    /// A set of seed values which can be used to deterministically generate random values for this
+    /// <see cref="Planetoid"/>.
     /// </summary>
-    public int Seed2 { get; private set; }
-
-    /// <summary>
-    /// A value which can be used to deterministically generate random values for this <see
-    /// cref="Planetoid"/>.
-    /// </summary>
-    public int Seed3 { get; private set; }
-
-    /// <summary>
-    /// A value which can be used to deterministically generate random values for this <see
-    /// cref="Planetoid"/>.
-    /// </summary>
-    public int Seed4 { get; private set; }
-
-    /// <summary>
-    /// A value which can be used to deterministically generate random values for this <see
-    /// cref="Planetoid"/>.
-    /// </summary>
-    public int Seed5 { get; private set; }
+    [JsonIgnore]
+    public SeedArray SeedArray { get; private set; }
 
     private double? _summerSolsticeTrueAnomaly;
     /// <summary>
@@ -347,10 +379,46 @@ public class Planetoid : CosmicLocation
     /// Will be zero for a planet not in orbit.
     /// </para>
     /// </summary>
+    [JsonIgnore]
     public double SummerSolsticeTrueAnomaly
         => _summerSolsticeTrueAnomaly ??= (DoubleConstants.HalfPi
         - (Orbit?.LongitudeOfPeriapsis ?? 0))
         % DoubleConstants.TwoPi;
+
+    /// <summary>
+    /// The surface temperature of this planetoid at the apoapsis of its orbit.
+    /// </summary>
+    public double SurfaceTemperatureAtApoapsis { get; private set; }
+
+    /// <summary>
+    /// The surface temperature of this planetoid at the periapsis of its orbit.
+    /// </summary>
+    public double SurfaceTemperatureAtPeriapsis { get; private set; }
+
+    private string? _typeName;
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string TypeName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_typeName))
+            {
+                var sb = new StringBuilder();
+                if (!string.IsNullOrEmpty(TypeNamePrefix))
+                {
+                    sb.Append(TypeNamePrefix).Append(' ');
+                }
+                sb.Append(BaseTypeName);
+                if (!string.IsNullOrEmpty(TypeNameSuffix))
+                {
+                    sb.Append(' ').Append(TypeNameSuffix);
+                }
+                _typeName = sb.ToString();
+            }
+            return _typeName;
+        }
+    }
 
     private double? _winterSolsticeTrueAnomaly;
     /// <summary>
@@ -362,10 +430,54 @@ public class Planetoid : CosmicLocation
     /// Will be zero for a planet not in orbit.
     /// </para>
     /// </summary>
+    [JsonIgnore]
     public double WinterSolsticeTrueAnomaly
         => _winterSolsticeTrueAnomaly ??= (DoubleConstants.ThreeHalvesPi
         - (Orbit?.LongitudeOfPeriapsis ?? 0))
         % DoubleConstants.TwoPi;
+
+    /// <summary>
+    /// A name for this main type of this planetoid.
+    /// </summary>
+    protected string BaseTypeName => PlanetType switch
+    {
+        PlanetType.AsteroidC => "C-Type Asteroid",
+        PlanetType.AsteroidM => "M-Type Asteroid",
+        PlanetType.AsteroidS => "S-Type Asteroid",
+        PlanetType.Comet => "Comet",
+        PlanetType.Dwarf => "Dwarf Planet",
+        PlanetType.LavaDwarf => "Dwarf Planet",
+        PlanetType.RockyDwarf => "Dwarf Planet",
+        PlanetType.GasGiant => "Gas Giant",
+        PlanetType.IceGiant => "Ice Giant",
+        _ => "Planet",
+    };
+
+    /// <summary>
+    /// A prefix to the <see cref="BaseTypeName"/> for this planetoid.
+    /// </summary>
+    protected string? TypeNamePrefix => PlanetType switch
+    {
+        PlanetType.LavaDwarf => "Lava",
+        PlanetType.RockyDwarf => "Rocky",
+        PlanetType.Terrestrial => "Terrestrial",
+        PlanetType.Carbon => "Carbon",
+        PlanetType.Iron => "Iron",
+        PlanetType.Lava => "Lava",
+        PlanetType.Ocean => "Ocean",
+        _ => null,
+    };
+
+    /// <summary>
+    /// A suffix to the <see cref="BaseTypeName"/> for this planetoid.
+    /// </summary>
+    protected string? TypeNameSuffix => PlanetType switch
+    {
+        PlanetType.AsteroidC => "c",
+        PlanetType.AsteroidM => "m",
+        PlanetType.AsteroidS => "s",
+        _ => null,
+    };
 
     /// <summary>
     /// The total temperature of this <see cref="Planetoid"/>, not including atmospheric
@@ -382,54 +494,11 @@ public class Planetoid : CosmicLocation
         set => _insolationFactor_Equatorial = value;
     }
 
-    private protected override string BaseTypeName => PlanetType switch
-    {
-        PlanetType.AsteroidC => "C-Type Asteroid",
-        PlanetType.AsteroidM => "M-Type Asteroid",
-        PlanetType.AsteroidS => "S-Type Asteroid",
-        PlanetType.Comet => "Comet",
-        PlanetType.Dwarf => "Dwarf Planet",
-        PlanetType.LavaDwarf => "Dwarf Planet",
-        PlanetType.RockyDwarf => "Dwarf Planet",
-        PlanetType.GasGiant => "Gas Giant",
-        PlanetType.IceGiant => "Ice Giant",
-        _ => "Planet",
-    };
-
-    private bool CanHaveWater => PlanetType switch
-    {
-        PlanetType.Carbon => false,
-        PlanetType.Iron => false,
-        PlanetType.Lava => false,
-        PlanetType.LavaDwarf => false,
-        _ => true,
-    };
-
     private double? _insolationFactor_Polar;
     private double InsolationFactor_Polar => _insolationFactor_Polar ??= GetInsolationFactor(true);
 
     private double? _lapseRateDry;
     private double LapseRateDry => _lapseRateDry ??= (double)SurfaceGravity / DoubleConstants.CpDryAir;
-
-    private protected override string? TypeNamePrefix => PlanetType switch
-    {
-        PlanetType.LavaDwarf => "Lava",
-        PlanetType.RockyDwarf => "Rocky",
-        PlanetType.Terrestrial => "Terrestrial",
-        PlanetType.Carbon => "Carbon",
-        PlanetType.Iron => "Iron",
-        PlanetType.Lava => "Lava",
-        PlanetType.Ocean => "Ocean",
-        _ => null,
-    };
-
-    private protected override string? TypeNameSuffix => PlanetType switch
-    {
-        PlanetType.AsteroidC => "c",
-        PlanetType.AsteroidM => "m",
-        PlanetType.AsteroidS => "s",
-        _ => null,
-    };
 
     /// <summary>
     /// Initializes a new instance of <see cref="Planetoid"/> with the given parameters.
@@ -478,9 +547,6 @@ public class Planetoid : CosmicLocation
     /// If <see langword="true"/>, indicates that this <see cref="Planetoid"/> is being
     /// generated as a satellite of another.
     /// </param>
-    /// <param name="seed">
-    /// A value used to seed the random generator.
-    /// </param>
     public Planetoid(
         PlanetType planetType,
         CosmicLocation? parent,
@@ -491,32 +557,25 @@ public class Planetoid : CosmicLocation
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
         HabitabilityRequirements? habitabilityRequirements = null,
-        bool satellite = false,
-        uint? seed = null) : base(parent?.Id, CosmicStructureType.Planetoid)
+        bool satellite = false) : base(parent?.Id, CosmicStructureType.Planetoid)
     {
         PlanetType = planetType;
         _planetParams = planetParams;
         _habitabilityRequirements = habitabilityRequirements;
-        if (planetParams.HasValue
-            && habitabilityRequirements.HasValue
-            && planetParams.Value.Equals(PlanetParams.Earthlike)
-            && habitabilityRequirements.Value.Equals(HabitabilityRequirements.HumanHabitabilityRequirements))
-        {
-            _earthlike = true;
-        }
 
         if (star is null && !orbit.HasValue)
         {
             star = Randomizer.Instance.Next(stars);
         }
 
-        satellites = Configure(parent, stars, star, position, satellite, orbit, seed);
+        satellites = Configure(parent, stars, star, position, satellite, orbit);
 
         if (parent is not null && !orbit.HasValue && !Orbit.HasValue)
         {
-            if (parent is AsteroidField asteroidField)
+            if (parent.StructureType is CosmicStructureType.AsteroidField
+                or CosmicStructureType.OortCloud)
             {
-                orbit = asteroidField.GetChildOrbit();
+                orbit = parent.GetAsteroidChildOrbit();
             }
             else
             {
@@ -546,7 +605,115 @@ public class Planetoid : CosmicLocation
         }
     }
 
-    internal Planetoid(
+    /// <summary>
+    /// Initialize a new instance of <see cref="Planetoid"/>.
+    /// </summary>
+    /// <param name="id">
+    /// The unique ID of this item.
+    /// </param>
+    /// <param name="seed">
+    /// A value which can be used to deterministically generate random values for this planetoid.
+    /// </param>
+    /// <param name="planetType">
+    /// The <see cref="PlanetType"/> of this planetoid.
+    /// </param>
+    /// <param name="parentId">
+    /// The ID of the location which contains this one.
+    /// </param>
+    /// <param name="absolutePosition">
+    /// <para>
+    /// The position of this location, as a set of relative positions starting with the position of
+    /// its outermost containing parent within the universe, down to the relative position of its
+    /// most immediate parent.
+    /// </para>
+    /// <para>
+    /// The location's own relative <see cref="Location.Position"/> is not expected to be included.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> for a location with no containing parent, or whose parent is
+    /// the universe itself (i.e. there is no intermediate container).
+    /// </para>
+    /// </param>
+    /// <param name="name">
+    /// An optional name for this <see cref="CosmicLocation"/>.
+    /// </param>
+    /// <param name="velocity">
+    /// The velocity of the <see cref="CosmicLocation"/> in m/s.
+    /// </param>
+    /// <param name="orbit">
+    /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
+    /// </param>
+    /// <param name="material">The physical material which comprises this location.</param>
+    /// <param name="albedo">
+    /// <para>
+    /// The average albedo of this planetoid (a value between 0 and 1).
+    /// </para>
+    /// <para>
+    /// This refers to the total albedo of the body, including any atmosphere, not just the surface
+    /// albedo of the main body.
+    /// </para>
+    /// </param>
+    /// <param name="angleOfRotation">
+    /// The angle between the Y-axis and the axis of rotation of this planetoid. Values greater than
+    /// π/2 indicate clockwise rotation.
+    /// </param>
+    /// <param name="atmosphericComposition">
+    /// The composition of this planetoid's atmosphere, if any.
+    /// </param>
+    /// <param name="atmosphericPressure">
+    /// The atmospheric pressure at the surface of this planetoid, in kPa.
+    /// </param>
+    /// <param name="axialPrecession">
+    /// The angle between the X-axis and the orbital vector at which the vernal equinox of the
+    /// northern hemisphere occurs.
+    /// </param>
+    /// <param name="blackbodyTemperature">
+    /// The blackbody temperature of this planetoid.
+    /// </param>
+    /// <param name="hasBiosphere">
+    /// Indicates whether or not this planet has a native population of living organisms.
+    /// </param>
+    /// <param name="hasMagnetosphere">
+    /// Whether this planetoid has a strong magnetosphere.
+    /// </param>
+    /// <param name="hydrosphere">
+    /// This planet's surface liquids and ices (not necessarily water).
+    /// </param>
+    /// <param name="isInhospitable">
+    /// <para>
+    /// Whether this planetoid is inhospitable to life.
+    /// </para>
+    /// <para>
+    /// Typically due to a highly energetic or volatile star, which either produces a great deal of
+    /// ionizing radiation, or has a rapidly shifting habitable zone, or both.
+    /// </para>
+    /// </param>
+    /// <param name="normalizedSeaLevel">
+    /// The elevation of sea level relative to the mean surface elevation of the planet, as a
+    /// fraction of <see cref="MaxElevation"/>.
+    /// </param>
+    /// <param name="resources">The resources of this planetoid.</param>
+    /// <param name="rings">
+    /// The collection of rings around this planetoid.
+    /// </param>
+    /// <param name="rotationalPeriod">
+    /// The length of time it takes for this planetoid to rotate once about its axis, in seconds.
+    /// </param>
+    /// <param name="satelliteIds">
+    /// The IDs of any natural satellites which orbit this planetoid.
+    /// </param>
+    /// <param name="surfaceTemperatureAtApoapsis">
+    /// The surface temperature of this planetoid at the apoapsis of its orbit.
+    /// </param>
+    /// <param name="surfaceTemperatureAtPeriapsis">
+    /// The surface temperature of this planetoid at the periapsis of its orbit.
+    /// </param>
+    /// <remarks>
+    /// Note: this constructor is most useful for deserialization. Consider using one of the
+    /// <c>GetPlanet</c>... static methods to generate a new instance instead.
+    /// </remarks>
+    [JsonConstructor]
+    public Planetoid(
         string id,
         uint seed,
         PlanetType planetType,
@@ -555,56 +722,74 @@ public class Planetoid : CosmicLocation
         string? name,
         Vector3<HugeNumber> velocity,
         Orbit? orbit,
-        Vector3<HugeNumber> position,
-        double? temperature,
+        IMaterial<HugeNumber> material,
+        double albedo,
         double angleOfRotation,
-        HugeNumber rotationalPeriod,
-        List<string>? satelliteIds,
-        List<PlanetaryRing>? rings,
+        IReadOnlyDictionary<ISubstanceReference, decimal> atmosphericComposition,
+        double atmosphericPressure,
+        double axialPrecession,
         double blackbodyTemperature,
-        double surfaceTemperatureAtApoapsis,
-        double surfaceTemperatureAtPeriapsis,
+        bool hasBiosphere,
+        bool hasMagnetosphere,
+        IMaterial<HugeNumber> hydrosphere,
         bool isInhospitable,
-        bool earthlike,
-        PlanetParams? planetParams,
-        HabitabilityRequirements? habitabilityRequirements)
+        double normalizedSeaLevel,
+        IReadOnlyList<Resource> resources,
+        IReadOnlyList<PlanetaryRing> rings,
+        HugeNumber rotationalPeriod,
+        IReadOnlyList<string> satelliteIds,
+        double surfaceTemperatureAtApoapsis,
+        double surfaceTemperatureAtPeriapsis)
         : base(
             id,
-            seed,
             CosmicStructureType.Planetoid,
             parentId,
             absolutePosition,
             name,
             velocity,
-            orbit)
+            orbit,
+            material)
     {
         PlanetType = planetType;
+        Material = material;
+        Albedo = albedo;
         AngleOfRotation = angleOfRotation;
-        RotationalPeriod = rotationalPeriod;
-        _satelliteIDs = satelliteIds;
-        _rings = rings;
-        _blackbodyTemperature = blackbodyTemperature;
-        _surfaceTemperatureAtApoapsis = surfaceTemperatureAtApoapsis;
-        _surfaceTemperatureAtPeriapsis = surfaceTemperatureAtPeriapsis;
+        AxialPrecession = axialPrecession;
+        BlackbodyTemperature = blackbodyTemperature;
+        HasBiosphere = hasBiosphere;
+        HasMagnetosphere = hasMagnetosphere;
+        Hydrosphere = hydrosphere;
         IsInhospitable = isInhospitable;
-        _earthlike = earthlike;
-        _planetParams = earthlike ? PlanetParams.Earthlike : planetParams;
-        _habitabilityRequirements = earthlike ? HabitabilityRequirements.HumanHabitabilityRequirements : habitabilityRequirements;
+        NormalizedSeaLevel = normalizedSeaLevel;
+        _resources = resources.Count == 0
+            ? null
+            : resources.ToList();
+        _rings = rings.Count == 0
+            ? null
+            : rings;
+        RotationalPeriod = rotationalPeriod;
+        _satelliteIds = satelliteIds.Count == 0
+            ? null
+            : satelliteIds;
+        SurfaceTemperatureAtApoapsis = surfaceTemperatureAtApoapsis;
+        SurfaceTemperatureAtPeriapsis = surfaceTemperatureAtPeriapsis;
 
         AverageBlackbodyTemperature = Orbit.HasValue
-            ? ((_surfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (_surfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
-            : _blackbodyTemperature;
+            ? ((SurfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (SurfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
+            : BlackbodyTemperature;
 
-        var rehydrator = GetRehydrator(seed);
-        ReconstituteMaterial(
-            rehydrator,
-            position,
-            temperature,
-            Orbit?.SemiMajorAxis ?? 0);
+        Atmosphere = new(this, atmosphericPressure, atmosphericComposition);
+
+        Seed = seed;
+        var randomizer = new Randomizer(Seed);
+        var seedArray = new SeedArray();
+        for (var i = 0; i < 5; i++)
+        {
+            seedArray[i] = randomizer.NextInclusive();
+        }
+        SeedArray = seedArray;
+
         SetAxis();
-        ReconstituteHydrosphere(rehydrator);
-        GenerateAtmosphere(rehydrator);
-        GenerateResources(rehydrator);
     }
 
     /// <summary>
@@ -755,17 +940,13 @@ public class Planetoid : CosmicLocation
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
     /// habitability requirements will be used.
     /// </param>
-    /// <param name="seed">
-    /// A value used to seed the random generator.
-    /// </param>
     /// <returns>A planet with the given parameters.</returns>
     public static Planetoid? GetPlanetForSunlikeStar(
         out List<CosmicLocation> children,
         PlanetType planetType = PlanetType.Terrestrial,
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null,
-        uint? seed = null)
+        HabitabilityRequirements? habitabilityRequirements = null)
     {
         var pParams = planetParams ?? PlanetParams.Earthlike;
         var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
@@ -793,8 +974,7 @@ public class Planetoid : CosmicLocation
                 orbit,
                 pParams,
                 requirements,
-                false,
-                seed);
+                false);
             sanityCheck++;
             if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
             {
@@ -1761,7 +1941,7 @@ public class Planetoid : CosmicLocation
         if (!_maxSurfaceTemperature.HasValue)
         {
             var greenhouseEffect = GetGreenhouseEffect();
-            _maxSurfaceTemperature = (_surfaceTemperatureAtPeriapsis * InsolationFactor_Equatorial) + greenhouseEffect;
+            _maxSurfaceTemperature = (SurfaceTemperatureAtPeriapsis * InsolationFactor_Equatorial) + greenhouseEffect;
         }
         return _maxSurfaceTemperature.Value;
     }
@@ -1784,7 +1964,7 @@ public class Planetoid : CosmicLocation
         {
             var variation = GetDiurnalTemperatureVariation();
             var greenhouseEffect = GetGreenhouseEffect();
-            _minSurfaceTemperature = (_surfaceTemperatureAtApoapsis * InsolationFactor_Polar) + greenhouseEffect - variation;
+            _minSurfaceTemperature = (SurfaceTemperatureAtApoapsis * InsolationFactor_Polar) + greenhouseEffect - variation;
         }
         return _minSurfaceTemperature.Value;
     }
@@ -1980,11 +2160,11 @@ public class Planetoid : CosmicLocation
     /// </remarks>
     public async IAsyncEnumerable<Planetoid> GetSatellitesAsync(IDataStore dataStore)
     {
-        if (_satelliteIDs is null)
+        if (_satelliteIds is null)
         {
             yield break;
         }
-        foreach (var id in _satelliteIDs)
+        foreach (var id in _satelliteIds)
         {
             var satellite = await dataStore.GetItemAsync<Planetoid>(id).ConfigureAwait(false);
             if (satellite is not null)
@@ -2078,7 +2258,7 @@ public class Planetoid : CosmicLocation
         if (!_surfaceTemperature.HasValue)
         {
             var greenhouseEffect = GetGreenhouseEffect();
-            _surfaceTemperature = (_blackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
+            _surfaceTemperature = (BlackbodyTemperature * InsolationFactor_Equatorial) + greenhouseEffect;
         }
         return _surfaceTemperature.Value;
     }
@@ -2184,7 +2364,7 @@ public class Planetoid : CosmicLocation
             reason |= UninhabitabilityReason.NoWater;
         }
 
-        if (habitabilityRequirements.AtmosphericRequirements != null
+        if (habitabilityRequirements.AtmosphericRequirements is not null
             && !Atmosphere.MeetsRequirements(habitabilityRequirements.AtmosphericRequirements))
         {
             reason |= UninhabitabilityReason.UnbreathableAtmosphere;
@@ -2317,30 +2497,30 @@ public class Planetoid : CosmicLocation
     /// </summary>
     /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
     /// <returns>A latitude, as an angle in radians from the equator.</returns>
-    public double VectorToLatitude(Vector3<HugeNumber> v) => VectorToLatitude((System.Numerics.Vector3)v);
+    public double VectorToLatitude(Vector3<HugeNumber> v) => VectorToLatitude((Vector3)v);
 
     /// <summary>
     /// Converts a <see cref="Vector3{TScalar}"/> to a latitude, in radians.
     /// </summary>
     /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
     /// <returns>A latitude, as an angle in radians from the equator.</returns>
-    public double VectorToLatitude(System.Numerics.Vector3 v) => DoubleConstants.HalfPi - (double)Axis.Angle(v);
+    public double VectorToLatitude(Vector3 v) => DoubleConstants.HalfPi - (double)Axis.Angle(v);
 
     /// <summary>
     /// Converts a <see cref="Vector3{TScalar}"/> to a longitude, in radians.
     /// </summary>
     /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
     /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
-    public double VectorToLongitude(Vector3<HugeNumber> v) => VectorToLongitude((System.Numerics.Vector3)v);
+    public double VectorToLongitude(Vector3<HugeNumber> v) => VectorToLongitude((Vector3)v);
 
     /// <summary>
     /// Converts a <see cref="Vector3{TScalar}"/> to a longitude, in radians.
     /// </summary>
     /// <param name="v">A vector representing a position on the surface of this <see cref="Planetoid"/>.</param>
     /// <returns>A longitude, as an angle in radians from the X-axis at 0 rotation.</returns>
-    public double VectorToLongitude(System.Numerics.Vector3 v)
+    public double VectorToLongitude(Vector3 v)
     {
-        var u = System.Numerics.Vector3.Transform(v, AxisRotation);
+        var u = Vector3.Transform(v, AxisRotation);
         return u.X.IsNearlyZero() && u.Z.IsNearlyZero()
             ? 0
             : Math.Atan2(u.X, u.Z);
@@ -2405,3550 +2585,6 @@ public class Planetoid : CosmicLocation
         ResetAllCachedTemperatures(stars);
     }
 
-    private static IEnumerable<IMaterial<HugeNumber>> GetCore_Giant(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber coreProportion,
-        HugeNumber planetMass)
-    {
-        var coreMass = planetMass * coreProportion;
-
-        var coreTemp = (double)(planetShape.ContainingRadius / 3);
-
-        var innerCoreProportion = HugeNumber.Min(rehydrator.Next(12, new HugeNumber(2, -2), new HugeNumber(2, -1)), _GiantMinMassForType / coreMass);
-        var innerCoreMass = coreMass * innerCoreProportion;
-        var innerCoreRadius = planetShape.ContainingRadius * coreProportion * innerCoreProportion;
-        var innerCoreShape = new Sphere<HugeNumber>(innerCoreRadius, planetShape.Position);
-        yield return new Material<HugeNumber>(
-            Substances.All.IronNickelAlloy.GetHomogeneousReference(),
-            innerCoreShape,
-            innerCoreMass,
-            null,
-            coreTemp);
-
-        // Molten rock outer core.
-        var outerCoreMass = coreMass - innerCoreMass;
-        var outerCoreShape = new HollowSphere<HugeNumber>(innerCoreRadius, planetShape.ContainingRadius * coreProportion, planetShape.Position);
-        yield return new Material<HugeNumber>(
-            CosmicSubstances.ChondriticRock,
-            outerCoreShape,
-            outerCoreMass,
-            null,
-            coreTemp);
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetCrust_Carbon(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        var crustMass = planetMass * crustProportion;
-
-        var shape = new HollowSphere<HugeNumber>(
-            planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-            planetShape.ContainingRadius,
-            planetShape.Position);
-
-        // Carbonaceous crust of graphite, diamond, and hydrocarbons, with trace minerals
-
-        var graphite = 1m;
-
-        var aluminium = (decimal)rehydrator.NormalDistributionSample(14, 0.026, 4e-3, minimum: 0);
-        var iron = (decimal)rehydrator.NormalDistributionSample(15, 1.67e-2, 2.75e-3, minimum: 0);
-        var titanium = (decimal)rehydrator.NormalDistributionSample(16, 5.7e-3, 9e-4, minimum: 0);
-
-        var chalcopyrite = (decimal)rehydrator.NormalDistributionSample(17, 1.1e-3, 1.8e-4, minimum: 0); // copper
-        graphite -= chalcopyrite;
-        var chromite = (decimal)rehydrator.NormalDistributionSample(18, 5.5e-4, 9e-5, minimum: 0);
-        graphite -= chromite;
-        var sphalerite = (decimal)rehydrator.NormalDistributionSample(19, 8.1e-5, 1.3e-5, minimum: 0); // zinc
-        graphite -= sphalerite;
-        var galena = (decimal)rehydrator.NormalDistributionSample(20, 2e-5, 3.3e-6, minimum: 0); // lead
-        graphite -= galena;
-        var uraninite = (decimal)rehydrator.NormalDistributionSample(21, 7.15e-6, 1.1e-6, minimum: 0);
-        graphite -= uraninite;
-        var cassiterite = (decimal)rehydrator.NormalDistributionSample(22, 6.7e-6, 1.1e-6, minimum: 0); // tin
-        graphite -= cassiterite;
-        var cinnabar = (decimal)rehydrator.NormalDistributionSample(23, 1.35e-7, 2.3e-8, minimum: 0); // mercury
-        graphite -= cinnabar;
-        var acanthite = (decimal)rehydrator.NormalDistributionSample(24, 5e-8, 8.3e-9, minimum: 0); // silver
-        graphite -= acanthite;
-        var sperrylite = (decimal)rehydrator.NormalDistributionSample(25, 1.17e-8, 2e-9, minimum: 0); // platinum
-        graphite -= sperrylite;
-        var gold = (decimal)rehydrator.NormalDistributionSample(26, 2.75e-9, 4.6e-10, minimum: 0);
-        graphite -= gold;
-
-        var bauxite = aluminium * 1.57m;
-        graphite -= bauxite;
-
-        var hematiteIron = iron * 3 / 4 * (decimal)rehydrator.NormalDistributionSample(27, 1, 0.167, minimum: 0);
-        var hematite = hematiteIron * 2.88m;
-        graphite -= hematite;
-        var magnetite = (iron - hematiteIron) * 4.14m;
-        graphite -= magnetite;
-
-        var ilmenite = titanium * 2.33m;
-        graphite -= ilmenite;
-
-        var coal = graphite * (decimal)rehydrator.NormalDistributionSample(28, 0.25, 0.042, minimum: 0);
-        graphite -= coal * 2;
-        var oil = graphite * (decimal)rehydrator.NormalDistributionSample(29, 0.25, 0.042, minimum: 0);
-        graphite -= oil;
-        var gas = graphite * (decimal)rehydrator.NormalDistributionSample(30, 0.25, 0.042, minimum: 0);
-        graphite -= gas;
-        var diamond = graphite * (decimal)rehydrator.NormalDistributionSample(31, 0.125, 0.021, minimum: 0);
-        graphite -= diamond;
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        if (graphite > 0)
-        {
-            components.Add((Substances.All.AmorphousCarbon.GetHomogeneousReference(), graphite));
-        }
-        if (coal > 0)
-        {
-            components.Add((Substances.All.Anthracite.GetReference(), coal));
-            components.Add((Substances.All.BituminousCoal.GetReference(), coal));
-        }
-        if (oil > 0)
-        {
-            components.Add((Substances.All.Petroleum.GetReference(), oil));
-        }
-        if (gas > 0)
-        {
-            components.Add((Substances.All.NaturalGas.GetReference(), gas));
-        }
-        if (diamond > 0)
-        {
-            components.Add((Substances.All.Diamond.GetHomogeneousReference(), diamond));
-        }
-
-        if (chalcopyrite > 0)
-        {
-            components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
-        }
-        if (chromite > 0)
-        {
-            components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
-        }
-        if (sphalerite > 0)
-        {
-            components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
-        }
-        if (galena > 0)
-        {
-            components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
-        }
-        if (uraninite > 0)
-        {
-            components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
-        }
-        if (cassiterite > 0)
-        {
-            components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
-        }
-        if (cinnabar > 0)
-        {
-            components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
-        }
-        if (acanthite > 0)
-        {
-            components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
-        }
-        if (sperrylite > 0)
-        {
-            components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
-        }
-        if (gold > 0)
-        {
-            components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-        }
-        if (bauxite > 0)
-        {
-            components.Add((Substances.All.Bauxite.GetReference(), bauxite));
-        }
-        if (hematite > 0)
-        {
-            components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
-        }
-        if (magnetite > 0)
-        {
-            components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
-        }
-        if (ilmenite > 0)
-        {
-            components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
-        }
-
-        yield return new Material<HugeNumber>(
-            shape,
-            crustMass,
-            null,
-            null,
-            components.ToArray());
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetCrust_LavaDwarf(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        var crustMass = planetMass * crustProportion;
-
-        var shape = new HollowSphere<HugeNumber>(
-            planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-            planetShape.ContainingRadius,
-            planetShape.Position);
-
-        // rocky crust
-        // 50% chance of dust
-        var dust = Math.Max(0, rehydrator.NextDecimal(13, -0.5m, 0.5m));
-        var rock = 1 - dust;
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        foreach (var (material, proportion) in CosmicSubstances.DryPlanetaryCrustConstituents)
-        {
-            components.Add((material, proportion * rock));
-        }
-        if (dust > 0)
-        {
-            components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
-        }
-        yield return new Material<HugeNumber>(
-            components,
-            shape,
-            crustMass);
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetCrust_RockyDwarf(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        var crustMass = planetMass * crustProportion;
-
-        var shape = new HollowSphere<HugeNumber>(
-            planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-            planetShape.ContainingRadius,
-            planetShape.Position);
-
-        // rocky crust
-        // 50% chance of dust
-        var dust = Math.Max(0, rehydrator.NextDecimal(13, -0.5m, 0.5m));
-        var rock = 1 - dust;
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        foreach (var (material, proportion) in CosmicSubstances.DryPlanetaryCrustConstituents)
-        {
-            components.Add((material, proportion * rock));
-        }
-        if (dust > 0)
-        {
-            components.Add((Substances.All.CosmicDust.GetHomogeneousReference(), dust));
-        }
-        yield return new Material<HugeNumber>(
-            components,
-            shape,
-            crustMass);
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetCrust_Terrestrial(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        var crustMass = planetMass * crustProportion;
-
-        var shape = new HollowSphere<HugeNumber>(
-            planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-            planetShape.ContainingRadius,
-            planetShape.Position);
-
-        // Rocky crust with trace minerals
-
-        var rock = 1m;
-
-        var aluminium = (decimal)rehydrator.NormalDistributionSample(12, 0.026, 4e-3, minimum: 0);
-        var iron = (decimal)rehydrator.NormalDistributionSample(13, 1.67e-2, 2.75e-3, minimum: 0);
-        var titanium = (decimal)rehydrator.NormalDistributionSample(14, 5.7e-3, 9e-4, minimum: 0);
-
-        var chalcopyrite = (decimal)rehydrator.NormalDistributionSample(15, 1.1e-3, 1.8e-4, minimum: 0); // copper
-        rock -= chalcopyrite;
-        var chromite = (decimal)rehydrator.NormalDistributionSample(16, 5.5e-4, 9e-5, minimum: 0);
-        rock -= chromite;
-        var sphalerite = (decimal)rehydrator.NormalDistributionSample(17, 8.1e-5, 1.3e-5, minimum: 0); // zinc
-        rock -= sphalerite;
-        var galena = (decimal)rehydrator.NormalDistributionSample(18, 2e-5, 3.3e-6, minimum: 0); // lead
-        rock -= galena;
-        var uraninite = (decimal)rehydrator.NormalDistributionSample(19, 7.15e-6, 1.1e-6, minimum: 0);
-        rock -= uraninite;
-        var cassiterite = (decimal)rehydrator.NormalDistributionSample(20, 6.7e-6, 1.1e-6, minimum: 0); // tin
-        rock -= cassiterite;
-        var cinnabar = (decimal)rehydrator.NormalDistributionSample(21, 1.35e-7, 2.3e-8, minimum: 0); // mercury
-        rock -= cinnabar;
-        var acanthite = (decimal)rehydrator.NormalDistributionSample(22, 5e-8, 8.3e-9, minimum: 0); // silver
-        rock -= acanthite;
-        var sperrylite = (decimal)rehydrator.NormalDistributionSample(23, 1.17e-8, 2e-9, minimum: 0); // platinum
-        rock -= sperrylite;
-        var gold = (decimal)rehydrator.NormalDistributionSample(24, 2.75e-9, 4.6e-10, minimum: 0);
-        rock -= gold;
-
-        var bauxite = aluminium * 1.57m;
-        rock -= bauxite;
-
-        var hematiteIron = iron * 3 / 4 * (decimal)rehydrator.NormalDistributionSample(25, 1, 0.167, minimum: 0);
-        var hematite = hematiteIron * 2.88m;
-        rock -= hematite;
-        var magnetite = (iron - hematiteIron) * 4.14m;
-        rock -= magnetite;
-
-        var ilmenite = titanium * 2.33m;
-        rock -= ilmenite;
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        foreach (var (material, proportion) in CosmicSubstances.DryPlanetaryCrustConstituents)
-        {
-            components.Add((material, proportion * rock));
-        }
-
-        if (chalcopyrite > 0)
-        {
-            components.Add((Substances.All.Chalcopyrite.GetHomogeneousReference(), chalcopyrite));
-        }
-        if (chromite > 0)
-        {
-            components.Add((Substances.All.Chromite.GetHomogeneousReference(), chromite));
-        }
-        if (sphalerite > 0)
-        {
-            components.Add((Substances.All.Sphalerite.GetHomogeneousReference(), sphalerite));
-        }
-        if (galena > 0)
-        {
-            components.Add((Substances.All.Galena.GetHomogeneousReference(), galena));
-        }
-        if (uraninite > 0)
-        {
-            components.Add((Substances.All.Uraninite.GetHomogeneousReference(), uraninite));
-        }
-        if (cassiterite > 0)
-        {
-            components.Add((Substances.All.Cassiterite.GetHomogeneousReference(), cassiterite));
-        }
-        if (cinnabar > 0)
-        {
-            components.Add((Substances.All.Cinnabar.GetHomogeneousReference(), cinnabar));
-        }
-        if (acanthite > 0)
-        {
-            components.Add((Substances.All.Acanthite.GetHomogeneousReference(), acanthite));
-        }
-        if (sperrylite > 0)
-        {
-            components.Add((Substances.All.Sperrylite.GetHomogeneousReference(), sperrylite));
-        }
-        if (gold > 0)
-        {
-            components.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-        }
-        if (bauxite > 0)
-        {
-            components.Add((Substances.All.Bauxite.GetReference(), bauxite));
-        }
-        if (hematite > 0)
-        {
-            components.Add((Substances.All.Hematite.GetHomogeneousReference(), hematite));
-        }
-        if (magnetite > 0)
-        {
-            components.Add((Substances.All.Magnetite.GetHomogeneousReference(), magnetite));
-        }
-        if (ilmenite > 0)
-        {
-            components.Add((Substances.All.Ilmenite.GetHomogeneousReference(), ilmenite));
-        }
-
-        yield return new Material<HugeNumber>(
-            shape,
-            crustMass,
-            null,
-            null,
-            components.ToArray());
-    }
-
-    private static double GetDensity(Rehydrator rehydrator, PlanetType planetType)
-    {
-        if (planetType == PlanetType.GasGiant)
-        {
-            // Relatively low chance of a "puffy" giant (Saturn-like, low-density).
-            return rehydrator.NextDouble(7) <= 0.2
-                ? rehydrator.NextDouble(8, GiantSubMinDensity, GiantMinDensity)
-                : rehydrator.NextDouble(8, GiantMinDensity, GiantMaxDensity);
-        }
-        if (planetType == PlanetType.IceGiant)
-        {
-            // No "puffy" ice giants.
-            return rehydrator.NextDouble(7, GiantMinDensity, GiantMaxDensity);
-        }
-        if (planetType == PlanetType.Iron)
-        {
-            return rehydrator.NextDouble(7, 5250, 8000);
-        }
-        if (PlanetType.AnyTerrestrial.HasFlag(planetType))
-        {
-            return rehydrator.NextDouble(8, 3750, DefaultTerrestrialMaxDensity);
-        }
-
-        return planetType switch
-        {
-            PlanetType.Dwarf => DensityForDwarf,
-            PlanetType.LavaDwarf => 4000,
-            PlanetType.RockyDwarf => 4000,
-            _ => 2000,
-        };
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetMantle_Carbon(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber mantleProportion,
-        HugeNumber crustProportion,
-        HugeNumber planetMass,
-        IShape<HugeNumber> coreShape,
-        double coreTemp)
-    {
-        var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-        var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new HugeNumber(115, -2));
-
-        var innerTemp = coreTemp;
-
-        var innerBoundary = planetShape.ContainingRadius;
-        var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-        var mantleMass = planetMass * mantleProportion;
-
-        // Molten silicon carbide lower mantle
-        var lowerLayer = HugeNumber.Max(0, rehydrator.Next(13, -HugeNumberConstants.Deci, new HugeNumber(55, -2))) / mantleProportion;
-        if (lowerLayer.IsPositive())
-        {
-            var lowerLayerMass = mantleMass * lowerLayer;
-
-            var lowerLayerBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-            var lowerLayerShape = new HollowSphere<HugeNumber>(
-                innerBoundary,
-                lowerLayerBoundary,
-                planetShape.Position);
-            innerBoundary = lowerLayerBoundary;
-
-            var lowerLayerBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)lowerLayer);
-            var lowerLayerTemp = (lowerLayerBoundaryTemp + innerTemp) / 2;
-            innerTemp = lowerLayerTemp;
-
-            yield return new Material<HugeNumber>(
-                Substances.All.SiliconCarbide.GetHomogeneousReference(),
-                lowerLayerShape,
-                lowerLayerMass,
-                null,
-                lowerLayerTemp);
-        }
-
-        // Diamond upper layer
-        var upperLayerProportion = 1 - lowerLayer;
-
-        var upperLayerMass = mantleMass * upperLayerProportion;
-
-        var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-        var upperLayerShape = new HollowSphere<HugeNumber>(
-            innerBoundary,
-            upperLayerBoundary,
-            planetShape.Position);
-
-        var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-        yield return new Material<HugeNumber>(
-            Substances.All.Diamond.GetHomogeneousReference(),
-            upperLayerShape,
-            upperLayerMass,
-            null,
-            upperLayerTemp);
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetMantle_Giant(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber mantleProportion,
-        HugeNumber crustProportion,
-        HugeNumber planetMass,
-        IShape<HugeNumber> coreShape,
-        double coreTemp)
-    {
-        var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-        var mantleBoundaryTemp = (double)mantleBoundaryDepth * 1.15;
-
-        var innerTemp = coreTemp;
-
-        var innerBoundary = planetShape.ContainingRadius;
-        var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-        var mantleMass = planetMass * mantleProportion;
-
-        // Metallic hydrogen lower mantle
-        var metalH = HugeNumber.Max(HugeNumber.Zero, rehydrator.Next(13, -HugeNumberConstants.Deci, new HugeNumber(55, -2))) / mantleProportion;
-        if (metalH.IsPositive())
-        {
-            var metalHMass = mantleMass * metalH;
-
-            var metalHBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-            var metalHShape = new HollowSphere<HugeNumber>(
-                innerBoundary,
-                metalHBoundary,
-                planetShape.Position);
-            innerBoundary = metalHBoundary;
-
-            var metalHBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)metalH);
-            var metalHTemp = (metalHBoundaryTemp + innerTemp) / 2;
-            innerTemp = metalHTemp;
-
-            yield return new Material<HugeNumber>(
-                Substances.All.MetallicHydrogen.GetHomogeneousReference(),
-                metalHShape,
-                metalHMass,
-                null,
-                metalHTemp);
-        }
-
-        // Supercritical fluid upper layer (blends seamlessly with lower atmosphere)
-        var upperLayerProportion = 1 - metalH;
-
-        var upperLayerMass = mantleMass * upperLayerProportion;
-
-        var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-        var upperLayerShape = new HollowSphere<HugeNumber>(
-            innerBoundary,
-            upperLayerBoundary,
-            planetShape.Position);
-
-        var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-        var water = (decimal)upperLayerProportion;
-        var fluidH = water * 0.71m;
-        water -= fluidH;
-        var fluidHe = water * 0.24m;
-        water -= fluidHe;
-        var ne = rehydrator.NextDecimal(14) * water;
-        water -= ne;
-        var ch4 = rehydrator.NextDecimal(15) * water;
-        water = Math.Max(0, water - ch4);
-        var nh4 = rehydrator.NextDecimal(16) * water;
-        water = Math.Max(0, water - nh4);
-        var c2h6 = rehydrator.NextDecimal(17) * water;
-        water = Math.Max(0, water - c2h6);
-
-        var components = new List<(ISubstanceReference, decimal)>()
-        {
-            (Substances.All.Hydrogen.GetHomogeneousReference(), 0.71m),
-            (Substances.All.Helium.GetHomogeneousReference(), 0.24m),
-            (Substances.All.Neon.GetHomogeneousReference(), ne),
-        };
-        if (ch4 > 0)
-        {
-            components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-        }
-        if (nh4 > 0)
-        {
-            components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
-        }
-        if (c2h6 > 0)
-        {
-            components.Add((Substances.All.Ethane.GetHomogeneousReference(), c2h6));
-        }
-        if (water > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), water));
-        }
-
-        yield return new Material<HugeNumber>(
-            upperLayerShape,
-            upperLayerMass,
-            null,
-            upperLayerTemp,
-            components.ToArray());
-    }
-
-    private static IEnumerable<IMaterial<HugeNumber>> GetMantle_IceGiant(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber mantleProportion,
-        HugeNumber crustProportion,
-        HugeNumber planetMass,
-        IShape<HugeNumber> coreShape,
-        double coreTemp)
-    {
-        var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-        var mantleBoundaryTemp = (double)(mantleBoundaryDepth * new HugeNumber(115, -2));
-
-        var innerTemp = coreTemp;
-
-        var innerBoundary = planetShape.ContainingRadius;
-        var mantleTotalDepth = (innerBoundary * mantleProportion) - coreShape.ContainingRadius;
-
-        var mantleMass = planetMass * mantleProportion;
-
-        var diamond = 1m;
-        var water = Math.Max(0, rehydrator.NextDecimal(13) * diamond);
-        diamond -= water;
-        var nh4 = Math.Max(0, rehydrator.NextDecimal(14) * diamond);
-        diamond -= nh4;
-        var ch4 = Math.Max(0, rehydrator.NextDecimal(15) * diamond);
-        diamond -= ch4;
-
-        // Liquid diamond mantle
-        if (diamond > 0)
-        {
-            var diamondMass = mantleMass * (HugeNumber)diamond;
-
-            var diamondBoundary = innerBoundary + (mantleTotalDepth * mantleProportion);
-            var diamondShape = new HollowSphere<HugeNumber>(
-                innerBoundary,
-                diamondBoundary,
-                planetShape.Position);
-            innerBoundary = diamondBoundary;
-
-            var diamondBoundaryTemp = innerTemp.Lerp(mantleBoundaryTemp, (double)diamond);
-            var diamondTemp = (diamondBoundaryTemp + innerTemp) / 2;
-            innerTemp = diamondTemp;
-
-            yield return new Material<HugeNumber>(
-                Substances.All.Diamond.GetHomogeneousReference(),
-                diamondShape,
-                diamondMass,
-                null,
-                diamondTemp);
-        }
-
-        // Supercritical water-ammonia ocean layer (blends seamlessly with lower atmosphere)
-        var upperLayerProportion = 1 - diamond;
-
-        var upperLayerMass = mantleMass * (HugeNumber)upperLayerProportion;
-
-        var upperLayerBoundary = planetShape.ContainingRadius + mantleBoundaryDepth;
-        var upperLayerShape = new HollowSphere<HugeNumber>(
-            innerBoundary,
-            upperLayerBoundary,
-            planetShape.Position);
-
-        var upperLayerTemp = (mantleBoundaryTemp + innerTemp) / 2;
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        if (ch4 > 0 || nh4 > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), water));
-            if (ch4 > 0)
-            {
-                components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-            }
-            if (nh4 > 0)
-            {
-                components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh4));
-            }
-        }
-        else
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), 1));
-        }
-
-        yield return new Material<HugeNumber>(
-            upperLayerShape,
-            upperLayerMass,
-            null,
-            upperLayerTemp,
-            components.ToArray());
-    }
-
-    private static HugeNumber GetMass(PlanetType planetType, HugeNumber semiMajorAxis, HugeNumber? maxMass, double gravity, IShape<HugeNumber>? shape)
-    {
-        var min = HugeNumber.Zero;
-        if (!PlanetType.AnyDwarf.HasFlag(planetType))
-        {
-            // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
-            // at which the planet would be able to do so at this orbital distance. We set the
-            // minimum at two orders of magnitude more than this (planets in our solar system
-            // all have masses above 5 orders of magnitude more). Note that since lambda is
-            // proportional to the square of mass, it is multiplied by 10 to obtain a difference
-            // of 2 orders of magnitude, rather than by 100.
-            var sternLevisonLambdaMass = (HugeNumber.Pow(semiMajorAxis, new HugeNumber(15, -1)) / new HugeNumber(2.5, -28)).Sqrt();
-            min = HugeNumber.Max(min, sternLevisonLambdaMass * 10);
-            if (min > maxMass && maxMass.HasValue)
-            {
-                min = maxMass.Value; // sanity check; may result in a "planet" which *can't* clear its neighborhood
-            }
-        }
-
-        var mass = shape is null ? HugeNumber.Zero : gravity * shape.ContainingRadius * shape.ContainingRadius / HugeNumberConstants.G;
-        return HugeNumber.Max(min, maxMass.HasValue ? HugeNumber.Min(maxMass.Value, mass) : mass);
-    }
-
-    private static HugeNumber GetMaxMassForType(PlanetType planetType) => planetType switch
-    {
-        PlanetType.Dwarf => _DwarfMaxMassForType,
-        PlanetType.LavaDwarf => _DwarfMaxMassForType,
-        PlanetType.RockyDwarf => _DwarfMaxMassForType,
-        PlanetType.GasGiant => _GiantMaxMassForType,
-        PlanetType.IceGiant => _GiantMaxMassForType,
-        _ => _TerrestrialMaxMassForType,
-    };
-
-    private static HugeNumber GetRadiusForMass(HugeNumber density, HugeNumber mass)
-        => (mass / density / HugeNumberConstants.FourThirdsPi).Cbrt();
-
-    private int AddResource(ISubstanceReference substance, decimal proportion, bool isVein, bool isPerturbation = false, int? seed = null)
-    {
-        var resource = new Resource(substance, proportion, isVein, isPerturbation, seed);
-        _resources.Add(resource);
-        return resource.Seed;
-    }
-
-    private void AddResources(IEnumerable<(ISubstanceReference substance, decimal proportion, bool vein)> resources)
-    {
-        foreach (var (substance, proportion, vein) in resources)
-        {
-            AddResource(substance, proportion, vein);
-        }
-    }
-
-    private double CalculateGasPhaseMix(
-        Rehydrator rehydrator,
-        HomogeneousReference substance,
-        double surfaceTemp,
-        double adjustedAtmosphericPressure)
-    {
-        var proportionInHydrosphere = Hydrosphere.GetProportion(substance);
-        var water = Substances.All.Water.GetHomogeneousReference();
-        var isWater = substance.Equals(water);
-        if (isWater)
-        {
-            proportionInHydrosphere = Hydrosphere.GetProportion(x =>
-                x.Equals(Substances.All.Seawater.GetHomogeneousReference())
-                || x.Equals(water));
-        }
-
-        var vaporProportion = Atmosphere.Material.GetProportion(substance);
-
-        var sub = substance.Homogeneous;
-        var vaporPressure = sub.GetVaporPressure(surfaceTemp) ?? 0;
-
-        if (surfaceTemp < sub.AntoineMinimumTemperature
-            || (surfaceTemp <= sub.AntoineMaximumTemperature
-            && Atmosphere.AtmosphericPressure > vaporPressure))
-        {
-            CondenseAtmosphericComponent(
-                sub,
-                surfaceTemp,
-                proportionInHydrosphere,
-                vaporProportion,
-                vaporPressure,
-                ref adjustedAtmosphericPressure);
-        }
-        // This indicates that the chemical will fully boil off.
-        else if (proportionInHydrosphere > 0)
-        {
-            EvaporateAtmosphericComponent(
-                rehydrator,
-                sub,
-                proportionInHydrosphere,
-                vaporProportion,
-                ref adjustedAtmosphericPressure);
-        }
-
-        if (isWater && _planetParams?.EarthlikeAtmosphere != true)
-        {
-            CheckCO2Reduction(rehydrator, vaporPressure);
-        }
-
-        return adjustedAtmosphericPressure;
-    }
-
-    private double CalculatePhases(Rehydrator rehydrator, int counter, double adjustedAtmosphericPressure)
-    {
-        var surfaceTemp = GetAverageSurfaceTemperature();
-
-        // Despite the theoretical possibility of an atmosphere cold enough to precipitate some
-        // of the noble gases, or hydrogen, they are ignored and presumed to exist always as
-        // trace atmospheric gases, never surface liquids or ices, or in large enough quantities
-        // to form precipitation.
-
-        var methane = Substances.All.Methane.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, methane, surfaceTemp, adjustedAtmosphericPressure);
-
-        var carbonMonoxide = Substances.All.CarbonMonoxide.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, carbonMonoxide, surfaceTemp, adjustedAtmosphericPressure);
-
-        var carbonDioxide = Substances.All.CarbonDioxide.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, carbonDioxide, surfaceTemp, adjustedAtmosphericPressure);
-
-        var nitrogen = Substances.All.Nitrogen.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, nitrogen, surfaceTemp, adjustedAtmosphericPressure);
-
-        var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, oxygen, surfaceTemp, adjustedAtmosphericPressure);
-
-        // No need to check for ozone, since it is only added to atmospheres on planets with
-        // liquid surface water, which means temperatures too high for liquid or solid ozone.
-
-        var sulfurDioxide = Substances.All.SulphurDioxide.GetHomogeneousReference();
-        adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, sulfurDioxide, surfaceTemp, adjustedAtmosphericPressure);
-
-        // Water is handled differently, since the planet may already have surface water.
-        if (counter > 0) // Not performed on first pass, since it was already done.
-        {
-            var water = Substances.All.Water.GetHomogeneousReference();
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            if (Hydrosphere.Contains(water)
-                || Hydrosphere.Contains(seawater)
-                || Atmosphere.Material.Contains(water))
-            {
-                adjustedAtmosphericPressure = CalculateGasPhaseMix(rehydrator, water, surfaceTemp, adjustedAtmosphericPressure);
-            }
-        }
-
-        // Ices and clouds significantly impact albedo.
-        var pressure = adjustedAtmosphericPressure;
-        var iceAmount = (double)Math.Min(1,
-            Hydrosphere.GetSurface()?.GetOverallValue(x => (double)x.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid).First().proportion) ?? 0);
-        var cloudCover = Atmosphere.AtmosphericPressure
-            * (double)Atmosphere.Material.GetOverallValue(x => (double)x.SeparateByPhase(surfaceTemp, pressure, PhaseType.Solid | PhaseType.Liquid).First().proportion) / 100;
-        var reflectiveSurface = Math.Max(iceAmount, cloudCover);
-        if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-        {
-            _surfaceAlbedo = ((Albedo - (0.9 * reflectiveSurface)) / (1 - reflectiveSurface)).Clamp(0, 1);
-        }
-        else
-        {
-            Albedo = ((_surfaceAlbedo * (1 - reflectiveSurface)) + (0.9 * reflectiveSurface)).Clamp(0, 1);
-            Atmosphere.ResetTemperatureDependentProperties(this);
-
-            // An albedo change might significantly alter surface temperature, which may require a
-            // re-calculation (but not too many). 5K is used as the threshold for re-calculation,
-            // which may lead to some inaccuracies, but should avoid over-repetition for small changes.
-            if (counter < 10 && Math.Abs(surfaceTemp - GetAverageSurfaceTemperature()) > 5)
-            {
-                adjustedAtmosphericPressure = CalculatePhases(rehydrator, counter + 1, adjustedAtmosphericPressure);
-            }
-        }
-
-        return adjustedAtmosphericPressure;
-    }
-
-    private void CheckCO2Reduction(Rehydrator rehydrator, double vaporPressure)
-    {
-        // At least 1% humidity leads to a reduction of CO2 to a trace gas, by a presumed
-        // carbon-silicate cycle.
-
-        var water = Substances.All.Water.GetHomogeneousReference();
-        var air = Atmosphere.Material.GetCore();
-        if ((double)(air?.GetProportion(water) ?? 0) * Atmosphere.AtmosphericPressure >= 0.01 * vaporPressure)
-        {
-            var carbonDioxide = Substances.All.CarbonDioxide.GetHomogeneousReference();
-            var co2 = air?.GetProportion(carbonDioxide) ?? 0;
-            if (co2 >= 1e-3m) // reduce CO2 if not already trace
-            {
-                co2 = rehydrator.NextDecimal(62, 15e-6m, 0.001m);
-
-                // Replace most of the CO2 with inert gases.
-                var nitrogen = Substances.All.Nitrogen.GetHomogeneousReference();
-                var n2 = Atmosphere.Material.GetProportion(nitrogen) + Atmosphere.Material.GetProportion(carbonDioxide) - co2;
-                Atmosphere.Material.Add(carbonDioxide, co2);
-
-                // Some portion of the N2 may be Ar instead.
-                var argon = Substances.All.Argon.GetHomogeneousReference();
-                var ar = Math.Max(Atmosphere.Material.GetProportion(argon), n2 * rehydrator.NextDecimal(63, -0.02m, 0.04m));
-                Atmosphere.Material.Add(argon, ar);
-                n2 -= ar;
-
-                // An even smaller fraction may be Kr.
-                var krypton = Substances.All.Krypton.GetHomogeneousReference();
-                var kr = Math.Max(Atmosphere.Material.GetProportion(krypton), n2 * rehydrator.NextDecimal(64, -25e-5m, 0.0005m));
-                Atmosphere.Material.Add(krypton, kr);
-                n2 -= kr;
-
-                // An even smaller fraction may be Xe or Ne.
-                var xenon = Substances.All.Xenon.GetHomogeneousReference();
-                var xe = Math.Max(Atmosphere.Material.GetProportion(xenon), n2 * rehydrator.NextDecimal(65, -18e-6m, 35e-6m));
-                Atmosphere.Material.Add(xenon, xe);
-                n2 -= xe;
-
-                var neon = Substances.All.Neon.GetHomogeneousReference();
-                var ne = Math.Max(Atmosphere.Material.GetProportion(neon), n2 * rehydrator.NextDecimal(66, -18e-6m, 35e-6m));
-                Atmosphere.Material.Add(neon, ne);
-                n2 -= ne;
-
-                Atmosphere.Material.Add(nitrogen, n2);
-
-                Atmosphere.ResetGreenhouseFactor();
-                ResetCachedTemperatures();
-            }
-        }
-    }
-
-    private void CondenseAtmosphericComponent(
-        IHomogeneous substance,
-        double surfaceTemp,
-        decimal proportionInHydrosphere,
-        decimal vaporProportion,
-        double vaporPressure,
-        ref double adjustedAtmosphericPressure)
-    {
-        var water = Substances.All.Water.GetHomogeneousReference();
-
-        // Fully precipitate out of the atmosphere when below the freezing point.
-        if (!substance.MeltingPoint.HasValue || surfaceTemp < substance.MeltingPoint.Value)
-        {
-            vaporProportion = 0;
-
-            Atmosphere.Material.Remove(substance);
-
-            if (Atmosphere.Material.Constituents.Count == 0)
-            {
-                adjustedAtmosphericPressure = 0;
-            }
-
-            if (substance.Equals(water))
-            {
-                Atmosphere.ResetWater();
-            }
-        }
-        else
-        {
-            // Adjust vapor present in the atmosphere based on the vapor pressure.
-            var pressureRatio = (vaporPressure / Atmosphere.AtmosphericPressure).Clamp(0, 1);
-            if (substance.Equals(water) && _planetParams?.WaterVaporRatio.HasValue == true)
-            {
-                vaporProportion = _planetParams!.Value.WaterVaporRatio!.Value;
-            }
-            else
-            {
-                // This would represent 100% humidity. Since this is the case, in principle, only at the
-                // surface of bodies of liquid, and should decrease exponentially with altitude, an
-                // approximation of 25% average humidity overall is used.
-                vaporProportion = (proportionInHydrosphere + vaporProportion) * (decimal)pressureRatio;
-                vaporProportion *= 0.25m;
-            }
-            if (vaporProportion > 0)
-            {
-                var previousGasFraction = 0m;
-                var gasFraction = vaporProportion;
-                Atmosphere.Material.Add(substance, vaporProportion);
-
-                if (substance.Equals(water))
-                {
-                    Atmosphere.ResetWater();
-
-                    // For water, also add a corresponding amount of oxygen, if it's not already present.
-                    if (_planetParams?.EarthlikeAtmosphere != true && PlanetType != PlanetType.Carbon)
-                    {
-                        var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-                        var o2 = Atmosphere.Material.GetProportion(oxygen);
-                        previousGasFraction += o2;
-                        o2 = Math.Max(o2, vaporProportion * 0.0001m);
-                        gasFraction += o2;
-                        Atmosphere.Material.Add(oxygen, o2);
-                    }
-                }
-
-                adjustedAtmosphericPressure += adjustedAtmosphericPressure * (double)(gasFraction - previousGasFraction);
-
-                // At least some precipitation will occur. Ensure a troposphere.
-                Atmosphere.DifferentiateTroposphere();
-            }
-        }
-
-        var hydro = proportionInHydrosphere;
-        var hydrosphereAtmosphereRatio = Atmosphere.Material.IsEmpty ? 0 : GetHydrosphereAtmosphereRatio();
-        hydro = Math.Max(hydro, hydrosphereAtmosphereRatio <= 0 ? vaporProportion : vaporProportion / hydrosphereAtmosphereRatio);
-        if (hydro > proportionInHydrosphere)
-        {
-            Hydrosphere.GetSurface().Add(substance, hydro);
-        }
-    }
-
-    private List<Planetoid> Configure(
-        CosmicLocation? parent,
-        List<Star> stars,
-        Star? star,
-        Vector3<HugeNumber> position,
-        bool satellite,
-        OrbitalParameters? orbit,
-        uint? seed = null)
-    {
-        var rehydrator = GetRehydrator(seed);
-
-        IsInhospitable = stars.Any(x => !x.IsHospitable);
-
-        double eccentricity;
-        if (_planetParams?.Eccentricity.HasValue == true)
-        {
-            eccentricity = _planetParams!.Value.Eccentricity!.Value;
-        }
-        else if (orbit.HasValue)
-        {
-            eccentricity = orbit.Value.Circular ? 0 : orbit.Value.Eccentricity;
-        }
-        else if (PlanetType == PlanetType.Comet)
-        {
-            eccentricity = rehydrator.NextDouble(33);
-        }
-        else if (IsAsteroid)
-        {
-            eccentricity = rehydrator.NextDouble(33, 0.4);
-        }
-        else
-        {
-            eccentricity = rehydrator.PositiveNormalDistributionSample(33, 0, 0.05);
-        }
-
-        HugeNumber semiMajorAxis;
-        if (_planetParams?.RevolutionPeriod.HasValue == true
-            && (orbit.HasValue || star is not null))
-        {
-            var orbitedMass = orbit.HasValue ? orbit.Value.OrbitedMass : star?.Mass;
-            semiMajorAxis = Space.Orbit.GetSemiMajorAxisForPeriod(Mass, orbitedMass!.Value, _planetParams!.Value.RevolutionPeriod!.Value);
-            position = position == Vector3<HugeNumber>.Zero
-                ? Vector3<HugeNumber>.UnitX * semiMajorAxis
-                : position.Normalize() * semiMajorAxis;
-        }
-        else if (orbit.HasValue)
-        {
-            var periapsis = orbit.Value.Circular ? position.Distance(orbit.Value.OrbitedPosition) : orbit.Value.Periapsis;
-            semiMajorAxis = eccentricity == 1
-                ? periapsis
-                : periapsis * (1 + eccentricity) / (1 - (eccentricity * eccentricity));
-            position = position == Vector3<HugeNumber>.Zero
-                ? Vector3<HugeNumber>.UnitX * periapsis
-                : position.Normalize() * periapsis;
-        }
-        else
-        {
-            var distance = star is null
-                ? position.Length()
-                : star.Position.Distance(position);
-            semiMajorAxis = distance * ((1 + eccentricity) / (1 - eccentricity));
-        }
-
-        ReconstituteMaterial(
-            rehydrator,
-            position,
-            parent?.Material.Temperature ?? UniverseAmbientTemperature,
-            semiMajorAxis);
-
-        if (_planetParams?.RotationalPeriod.HasValue == true)
-        {
-            RotationalPeriod = HugeNumber.Max(0, _planetParams!.Value.RotationalPeriod!.Value);
-        }
-        else
-        {
-            // Check for tidal locking.
-            var rotationalPeriodSet = false;
-            if (orbit.HasValue)
-            {
-                // Invent an orbit age. Precision isn't important here, and some inaccuracy and
-                // inconsistency between satellites is desirable. The age of the Solar system is used
-                // as an arbitrary norm.
-                var years = rehydrator.LogisticDistributionSample(34, 0, 1) * new HugeNumber(4.6, 9);
-
-                var rigidity = PlanetType == PlanetType.Comet ? new HugeNumber(4, 9) : new HugeNumber(3, 10);
-                if (HugeNumber.Pow(years / new HugeNumber(6, 11)
-                    * Mass
-                    * orbit.Value.OrbitedMass.Square()
-                    / (Shape.ContainingRadius * rigidity)
-                    , HugeNumber.One / new HugeNumber(6)) >= semiMajorAxis)
-                {
-                    RotationalPeriod = HugeNumberConstants.TwoPi * HugeNumber.Sqrt(semiMajorAxis.Cube() / (HugeNumberConstants.G * (orbit.Value.OrbitedMass + Mass)));
-                    rotationalPeriodSet = true;
-                }
-            }
-            if (!rotationalPeriodSet)
-            {
-                var rotationalPeriodLimit = IsTerrestrial ? new HugeNumber(6500000) : new HugeNumber(100000);
-                if (rehydrator.NextDouble(35) <= 0.05) // low chance of an extreme period
-                {
-                    RotationalPeriod = rehydrator.Next(
-                        36,
-                        rotationalPeriodLimit,
-                        IsTerrestrial ? new HugeNumber(22000000) : new HugeNumber(1100000));
-                }
-                else
-                {
-                    RotationalPeriod = rehydrator.Next(
-                        36,
-                        IsTerrestrial ? new HugeNumber(40000) : new HugeNumber(8000),
-                        rotationalPeriodLimit);
-                }
-            }
-        }
-
-        GenerateOrbit(
-            rehydrator,
-            orbit,
-            star,
-            eccentricity,
-            semiMajorAxis);
-
-        if (_planetParams?.AxialTilt.HasValue == true)
-        {
-            var axialTilt = _planetParams!.Value.AxialTilt!.Value;
-            if (Orbit.HasValue)
-            {
-                axialTilt += Orbit.Value.Inclination;
-            }
-            while (axialTilt > Math.PI)
-            {
-                axialTilt -= Math.PI;
-            }
-            while (axialTilt < 0)
-            {
-                axialTilt += Math.PI;
-            }
-            AngleOfRotation = axialTilt;
-        }
-        else if (rehydrator.NextDouble(42) <= 0.2) // low chance of an extreme tilt
-        {
-            AngleOfRotation = rehydrator.NextDouble(43, DoubleConstants.QuarterPi, Math.PI);
-        }
-        else
-        {
-            AngleOfRotation = rehydrator.NextDouble(43, DoubleConstants.QuarterPi);
-        }
-        SetAxis();
-
-        SetTemperatures(stars);
-
-        var surfaceTemp = ReconstituteHydrosphere(rehydrator);
-
-        if (star is not null
-            && (_planetParams?.SurfaceTemperature.HasValue == true
-            || _habitabilityRequirements?.MinimumTemperature.HasValue == true
-            || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
-        {
-            CorrectSurfaceTemperature(rehydrator, stars, star, surfaceTemp);
-        }
-        else
-        {
-            GenerateAtmosphere(rehydrator);
-        }
-
-        GenerateResources(rehydrator);
-
-        var index = SetRings(rehydrator);
-
-        return satellite
-            ? new List<Planetoid>()
-            : GenerateSatellites(rehydrator, parent, stars, index);
-    }
-
-    private void CorrectSurfaceTemperature(
-        Rehydrator rehydrator,
-        List<Star> stars,
-        Star star,
-        double surfaceTemp)
-    {
-        // Convert the target average surface temperature to an estimated target equatorial
-        // surface temperature, for which orbit/luminosity requirements can be calculated.
-        var targetEquatorialTemp = surfaceTemp * 1.06;
-        // Use the typical average elevation to determine average surface
-        // temperature, since the average temperature at sea level is not the same
-        // as the average overall surface temperature.
-        var avgElevation = MaxElevation * 0.04;
-        var totalTargetEffectiveTemp = targetEquatorialTemp + (avgElevation * LapseRateDry);
-
-        var greenhouseEffect = 30.0; // naïve initial guess, corrected if possible with param values
-        if (_planetParams?.AtmosphericPressure.HasValue == true
-            && (_planetParams?.WaterVaporRatio.HasValue == true
-            || _planetParams?.WaterRatio.HasValue == true))
-        {
-            var pressure = _planetParams!.Value.AtmosphericPressure!.Value;
-
-            var vaporRatio = _planetParams?.WaterVaporRatio.HasValue == true
-                ? (double)_planetParams!.Value.WaterVaporRatio!.Value
-                : (Substances.All.Water.GetVaporPressure(totalTargetEffectiveTemp) ?? 0) / pressure * 0.25;
-            greenhouseEffect = GetGreenhouseEffect(
-                GetInsolationFactor(Atmosphere.GetAtmosphericMass(this, pressure), 0), // scale height will be ignored since this isn't a polar calculation
-                Atmosphere.GetGreenhouseFactor(Substances.All.Water.GreenhousePotential * vaporRatio, pressure));
-        }
-        var targetEffectiveTemp = totalTargetEffectiveTemp - greenhouseEffect;
-
-        var currentTargetTemp = targetEffectiveTemp;
-
-        // Due to atmospheric effects, the target is likely to be missed considerably on the
-        // first attempt, since the calculations for orbit/luminosity will not be able to
-        // account for greenhouse warming. By determining the degree of over/undershoot, the
-        // target can be adjusted. This is repeated until the real target is approached to
-        // within an acceptable tolerance, but not to excess.
-        var count = 0;
-        double prevDelta;
-        var delta = 0.0;
-        var originalHydrosphere = Hydrosphere.GetClone();
-        var newAtmosphere = true;
-        do
-        {
-            prevDelta = delta;
-
-            // Orbital distance averaged over time (mean anomaly) = semi-major axis * (1 + eccentricity^2 / 2).
-            // This allows calculation of the correct distance/orbit for an average
-            // orbital temperature (rather than the temperature at the current position).
-            if (_planetParams?.RevolutionPeriod.HasValue == true)
-            {
-                // Do not attempt a correction on the first pass; the albedo delta due to
-                // atmospheric effects will not yet have a meaningful value.
-                if (Albedo != _surfaceAlbedo)
-                {
-                    var albedoDelta = Albedo - _surfaceAlbedo;
-                    _surfaceAlbedo = GetSurfaceAlbedoForTemperature(star, currentTargetTemp - Temperature);
-                    Albedo = _surfaceAlbedo + albedoDelta;
-                }
-            }
-            else
-            {
-                var semiMajorAxis = GetDistanceForTemperature(star, currentTargetTemp - Temperature) / (1 + (Orbit!.Value.Eccentricity * Orbit.Value.Eccentricity / 2));
-                GenerateOrbit(rehydrator, star, Orbit.Value.Eccentricity, semiMajorAxis, Orbit.Value.TrueAnomaly);
-            }
-            ResetAllCachedTemperatures(stars);
-
-            // Reset hydrosphere to negate effects of runaway evaporation or freezing.
-            Hydrosphere = originalHydrosphere;
-
-            if (newAtmosphere)
-            {
-                GenerateAtmosphere(rehydrator);
-                newAtmosphere = false;
-            }
-
-            if (_planetParams?.SurfaceTemperature.HasValue == true)
-            {
-                delta = targetEquatorialTemp - GetTemperatureAtElevation(GetAverageSurfaceTemperature(), avgElevation);
-            }
-            else if (_habitabilityRequirements.HasValue)
-            {
-                var tooCold = false;
-                if (_habitabilityRequirements.Value.MinimumTemperature.HasValue)
-                {
-                    var coolestEquatorialTemp = GetMinEquatorTemperature();
-                    if (coolestEquatorialTemp < _habitabilityRequirements.Value.MinimumTemperature)
-                    {
-                        delta = _habitabilityRequirements.Value.MaximumTemperature.HasValue
-                            ? _habitabilityRequirements.Value.MaximumTemperature.Value - coolestEquatorialTemp
-                            : _habitabilityRequirements.Value.MinimumTemperature.Value - coolestEquatorialTemp;
-                        tooCold = true;
-                    }
-                }
-                if (!tooCold && _habitabilityRequirements.Value.MaximumTemperature.HasValue)
-                {
-                    var warmestPolarTemp = GetMaxPolarTemperature();
-                    if (warmestPolarTemp > _habitabilityRequirements.Value.MaximumTemperature)
-                    {
-                        delta = _habitabilityRequirements!.Value.MaximumTemperature.Value - warmestPolarTemp;
-                    }
-                }
-            }
-
-            // Avoid oscillation by reducing deltas which bounce around zero.
-            var deltaAdjustment = prevDelta != 0 && Math.Sign(delta) != Math.Sign(prevDelta)
-                ? delta / 2
-                : 0;
-            // If the corrections are resulting in a runaway drift in the wrong direction,
-            // reset by deleting the atmosphere and targeting the original temp; do not
-            // reset the count, to prevent this from repeating indefinitely.
-            if (prevDelta != 0
-                && (delta >= 0) == (prevDelta >= 0)
-                && Math.Abs(delta) > Math.Abs(prevDelta))
-            {
-                newAtmosphere = true;
-                ResetCachedTemperatures();
-                currentTargetTemp = targetEffectiveTemp;
-            }
-            else
-            {
-                currentTargetTemp = Math.Max(0, currentTargetTemp + (delta - deltaAdjustment));
-            }
-
-            count++;
-        } while (count < 10 && Math.Abs(delta) > 0.5);
-    }
-
-    private void EvaporateAtmosphericComponent(
-        Rehydrator rehydrator,
-        IHomogeneous substance,
-        decimal hydrosphereProportion,
-        decimal vaporProportion,
-        ref double adjustedAtmosphericPressure)
-    {
-        if (hydrosphereProportion <= 0)
-        {
-            return;
-        }
-
-        var water = Substances.All.Water.GetHomogeneousReference();
-        if (substance.Equals(water))
-        {
-            Hydrosphere = Hydrosphere.GetHomogenized();
-            Atmosphere.ResetWater();
-        }
-
-        var gasProportion = Atmosphere.Material.Mass == HugeNumber.Zero
-            ? 0
-            : hydrosphereProportion * GetHydrosphereAtmosphereRatio();
-        var previousGasProportion = vaporProportion;
-
-        Hydrosphere.GetSurface().Remove(substance);
-        if (Hydrosphere.IsEmpty)
-        {
-            SeaLevel = -MaxElevation * 1.1;
-        }
-
-        if (substance.Equals(water))
-        {
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            Hydrosphere.GetSurface().Remove(seawater);
-            if (Hydrosphere.IsEmpty)
-            {
-                SeaLevel = -MaxElevation * 1.1;
-            }
-
-            // It is presumed that photodissociation will eventually reduce the amount of water
-            // vapor to a trace gas (the H2 will be lost due to atmospheric escape, and the
-            // oxygen will be lost to surface oxidation).
-            var waterVapor = Math.Min(gasProportion, rehydrator.NextDecimal(61, 0.001m));
-            gasProportion = waterVapor;
-
-            var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-            previousGasProportion += Atmosphere.Material.GetProportion(oxygen);
-            var o2 = gasProportion * 0.0001m;
-            gasProportion += o2;
-
-            Atmosphere.Material.Add(substance, waterVapor);
-            if (PlanetType != PlanetType.Carbon)
-            {
-                Atmosphere.Material.Add(oxygen, o2);
-            }
-        }
-        else
-        {
-            Atmosphere.Material.Add(substance, gasProportion);
-        }
-
-        adjustedAtmosphericPressure += adjustedAtmosphericPressure * (double)(gasProportion - previousGasProportion);
-    }
-
-    private void FractionHydrophere(double temperature)
-    {
-        if (Hydrosphere.IsEmpty)
-        {
-            return;
-        }
-
-        var seawater = Substances.All.Seawater.GetHomogeneousReference();
-        var water = Substances.All.Water.GetHomogeneousReference();
-
-        var seawaterProportion = Hydrosphere.GetProportion(seawater);
-        var waterProportion = 1 - seawaterProportion;
-
-        var depth = SeaLevel + (MaxElevation / 2);
-        if (depth > 0)
-        {
-            var stateTop = Substances.All.Seawater.MeltingPoint <= temperature
-                ? PhaseType.Liquid
-                : PhaseType.Solid;
-
-            double tempBottom;
-            if (depth > 1000)
-            {
-                tempBottom = 277;
-            }
-            else if (depth < 200)
-            {
-                tempBottom = temperature;
-            }
-            else
-            {
-                tempBottom = temperature.Lerp(277, (depth - 200) / 800);
-            }
-
-            var stateBottom = Substances.All.Seawater.MeltingPoint <= tempBottom
-                ? PhaseType.Liquid
-                : PhaseType.Solid;
-
-            // subsurface ocean indicated
-            if (stateTop != stateBottom)
-            {
-                var topProportion = 1000 / depth;
-                var bottomProportion = 1 - topProportion;
-                var bottomOuterRadius = Hydrosphere.Shape.ContainingRadius * bottomProportion;
-                Hydrosphere = new Composite<HugeNumber>(
-                    new IMaterial<HugeNumber>[]
-                    {
-                        new Material<HugeNumber>(
-                            new HollowSphere<HugeNumber>(
-                                Material.Shape.ContainingRadius,
-                                bottomOuterRadius,
-                                Material.Shape.Position),
-                            Hydrosphere.Mass * bottomProportion,
-                            Hydrosphere.Density,
-                            277,
-                            (seawater, seawaterProportion),
-                            (water, waterProportion)),
-                        new Material<HugeNumber>(
-                            new HollowSphere<HugeNumber>(
-                                bottomOuterRadius,
-                                Hydrosphere.Shape.ContainingRadius,
-                                Material.Shape.Position),
-                            Hydrosphere.Mass * topProportion,
-                            Hydrosphere.Density,
-                            (277 + temperature) / 2,
-                            (seawater, seawaterProportion),
-                            (water, waterProportion)),
-                    },
-                    Hydrosphere.Shape,
-                    Hydrosphere.Mass,
-                    Hydrosphere.Density);
-                return;
-            }
-        }
-
-        var avgDepth = (double)(Hydrosphere.Shape.ContainingRadius - Material.Shape.ContainingRadius) / 2;
-        double avgTemp;
-        if (avgDepth > 1000)
-        {
-            avgTemp = 277;
-        }
-        else if (avgDepth < 200)
-        {
-            avgTemp = temperature;
-        }
-        else
-        {
-            avgTemp = temperature.Lerp(277, (avgDepth - 200) / 800);
-        }
-
-        Hydrosphere = new Material<HugeNumber>(
-            Hydrosphere.Shape,
-            Hydrosphere.Mass,
-            Hydrosphere.Density,
-            avgTemp,
-            (seawater, seawaterProportion),
-            (water, waterProportion));
-    }
-
-    private void GenerateAtmosphere_Dwarf(Rehydrator rehydrator)
-    {
-        // Atmosphere is based solely on the volatile ices present.
-        var crust = Material.GetSurface();
-
-        var water = crust.GetProportion(Substances.All.Water.GetHomogeneousReference());
-        var anyIces = water > 0;
-
-        var n2 = crust.GetProportion(Substances.All.Nitrogen.GetHomogeneousReference());
-        anyIces &= n2 > 0;
-
-        var ch4 = crust.GetProportion(Substances.All.Methane.GetHomogeneousReference());
-        anyIces &= ch4 > 0;
-
-        var co = crust.GetProportion(Substances.All.CarbonMonoxide.GetHomogeneousReference());
-        anyIces &= co > 0;
-
-        var co2 = crust.GetProportion(Substances.All.CarbonDioxide.GetHomogeneousReference());
-        anyIces &= co2 > 0;
-
-        var nh3 = crust.GetProportion(Substances.All.Ammonia.GetHomogeneousReference());
-        anyIces &= nh3 > 0;
-
-        if (!anyIces)
-        {
-            return;
-        }
-
-        var components = new List<(ISubstanceReference, decimal)>();
-        if (water > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), water));
-        }
-        if (n2 > 0)
-        {
-            components.Add((Substances.All.Nitrogen.GetHomogeneousReference(), n2));
-        }
-        if (ch4 > 0)
-        {
-            components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-        }
-        if (co > 0)
-        {
-            components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-        }
-        if (co2 > 0)
-        {
-            components.Add((Substances.All.CarbonDioxide.GetHomogeneousReference(), co2));
-        }
-        if (nh3 > 0)
-        {
-            components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh3));
-        }
-        Atmosphere = new Atmosphere(this, rehydrator.NextDouble(47, 2.5), components.ToArray());
-
-        var ice = Atmosphere.Material.GetOverallValue(x =>
-            (double)x.SeparateByPhase(
-                Material.Temperature ?? 0,
-                Atmosphere.AtmosphericPressure,
-                PhaseType.Solid)
-            .First().proportion);
-        if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-        {
-            _surfaceAlbedo = ((Albedo - (0.9 * ice)) / (1 - ice)).Clamp(0, 1);
-        }
-        else
-        {
-            Albedo = ((_surfaceAlbedo * (1 - ice)) + (0.9 * ice)).Clamp(0, 1);
-        }
-    }
-
-    private void GenerateAtmosphere_Giant(Rehydrator rehydrator)
-    {
-        var trace = rehydrator.NextDecimal(47, 0.025m);
-
-        var h = rehydrator.NextDecimal(48, 0.75m, 0.97m);
-        var he = 1 - h - trace;
-
-        var ch4 = rehydrator.NextDecimal(49) * trace;
-        trace -= ch4;
-
-        // 50% chance not to have each of these components
-        var c2h6 = Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
-        var traceTotal = c2h6;
-        var nh3 = Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
-        traceTotal += nh3;
-        var waterVapor = Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
-        traceTotal += waterVapor;
-
-        var nh4sh = rehydrator.NextDecimal(53);
-        traceTotal += nh4sh;
-
-        var ratio = trace / traceTotal;
-        c2h6 *= ratio;
-        nh3 *= ratio;
-        waterVapor *= ratio;
-        nh4sh *= ratio;
-
-        var components = new List<(ISubstanceReference, decimal)>()
-            {
-                (Substances.All.Hydrogen.GetHomogeneousReference(), h),
-                (Substances.All.Helium.GetHomogeneousReference(), he),
-                (Substances.All.Methane.GetHomogeneousReference(), ch4),
-            };
-        if (c2h6 > 0)
-        {
-            components.Add((Substances.All.Ethane.GetHomogeneousReference(), c2h6));
-        }
-        if (nh3 > 0)
-        {
-            components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh3));
-        }
-        if (waterVapor > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), waterVapor));
-        }
-        if (nh4sh > 0)
-        {
-            components.Add((Substances.All.AmmoniumHydrosulfide.GetHomogeneousReference(), nh4sh));
-        }
-        Atmosphere = new Atmosphere(this, 1000, components.ToArray());
-    }
-
-    private void GenerateAtmosphere_SmallBody(Rehydrator rehydrator)
-    {
-        var dust = 1.0m;
-
-        var water = rehydrator.NextDecimal(47, 0.75m, 0.9m);
-        dust -= water;
-
-        var co = rehydrator.NextDecimal(48, 0.05m, 0.15m);
-        dust -= co;
-
-        if (dust < 0)
-        {
-            water -= 0.1m;
-            dust += 0.1m;
-        }
-
-        var co2 = rehydrator.NextDecimal(49, 0.01m);
-        dust -= co2;
-
-        var nh3 = rehydrator.NextDecimal(50, 0.01m);
-        dust -= nh3;
-
-        var ch4 = rehydrator.NextDecimal(51, 0.01m);
-        dust -= ch4;
-
-        var h2s = rehydrator.NextDecimal(52, 0.01m);
-        dust -= h2s;
-
-        var so2 = rehydrator.NextDecimal(53, 0.001m);
-        dust -= so2;
-
-        Atmosphere = new Atmosphere(
-            this,
-            1e-8,
-            (Substances.All.Water.GetHomogeneousReference(), water),
-            (Substances.All.CosmicDust.GetHomogeneousReference(), dust),
-            (Substances.All.CarbonMonoxide.GetHomogeneousReference(), co),
-            (Substances.All.CarbonDioxide.GetHomogeneousReference(), co2),
-            (Substances.All.Ammonia.GetHomogeneousReference(), nh3),
-            (Substances.All.Methane.GetHomogeneousReference(), ch4),
-            (Substances.All.HydrogenSulfide.GetHomogeneousReference(), h2s),
-            (Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
-    }
-
-    private void GenerateAtmosphere(Rehydrator rehydrator)
-    {
-        if (PlanetType == PlanetType.Comet
-            || IsAsteroid)
-        {
-            GenerateAtmosphere_SmallBody(rehydrator);
-            return;
-        }
-
-        if (IsGiant)
-        {
-            GenerateAtmosphere_Giant(rehydrator);
-            return;
-        }
-
-        if (!IsTerrestrial)
-        {
-            GenerateAtmosphere_Dwarf(rehydrator);
-            return;
-        }
-
-        if (AverageBlackbodyTemperature >= GetTempForThinAtmosphere())
-        {
-            GenerateAtmosphereTrace(rehydrator);
-        }
-        else
-        {
-            GenerateAtmosphereThick(rehydrator);
-        }
-
-        var adjustedAtmosphericPressure = Atmosphere.AtmosphericPressure;
-
-        var water = Substances.All.Water.GetHomogeneousReference();
-        var seawater = Substances.All.Seawater.GetHomogeneousReference();
-        // Water may be removed, or if not may remove CO2 from the atmosphere, depending on
-        // planetary conditions.
-        if (Hydrosphere.Contains(water)
-            || Hydrosphere.Contains(seawater)
-            || Atmosphere.Material.Contains(water))
-        {
-            // First calculate water phases at effective temp, to establish a baseline
-            // for the presence of water and its effect on CO2.
-            // If a desired temp has been established, use that instead.
-            double surfaceTemp;
-            if (_planetParams?.SurfaceTemperature.HasValue == true)
-            {
-                surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
-            }
-            else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-            {
-                surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                    ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
-                        + _habitabilityRequirements!.Value.MaximumTemperature!.Value)
-                        / 2
-                    : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
-            }
-            else
-            {
-                surfaceTemp = AverageBlackbodyTemperature;
-            }
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                rehydrator,
-                water,
-                surfaceTemp,
-                adjustedAtmosphericPressure);
-
-            // Recalculate temperatures based on the new atmosphere.
-            ResetCachedTemperatures();
-
-            FractionHydrophere(GetAverageSurfaceTemperature());
-
-            // Recalculate the phases of water based on the new temperature.
-            adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                rehydrator,
-                water,
-                GetAverageSurfaceTemperature(),
-                adjustedAtmosphericPressure);
-
-            // If life alters the greenhouse potential, temperature and water phase must be
-            // recalculated once again.
-            if (GenerateLife(rehydrator))
-            {
-                adjustedAtmosphericPressure = CalculateGasPhaseMix(
-                    rehydrator,
-                    water,
-                    GetAverageSurfaceTemperature(),
-                    adjustedAtmosphericPressure);
-                ResetCachedTemperatures();
-                FractionHydrophere(GetAverageSurfaceTemperature());
-            }
-        }
-        else
-        {
-            // Recalculate temperature based on the new atmosphere.
-            ResetCachedTemperatures();
-        }
-
-        var modified = false;
-        foreach (var requirement in Atmosphere.ConvertRequirementsForPressure(_habitabilityRequirements?.AtmosphericRequirements)
-            .Concat(Atmosphere.ConvertRequirementsForPressure(_planetParams?.AtmosphericRequirements)))
-        {
-            var proportion = Atmosphere.Material.GetProportion(requirement.Substance);
-            if (proportion < requirement.MinimumProportion
-                || (requirement.MaximumProportion.HasValue && proportion > requirement.MaximumProportion.Value))
-            {
-                Atmosphere.Material.Add(
-                    requirement.Substance,
-                    requirement.MaximumProportion.HasValue
-                        ? (requirement.MinimumProportion + requirement.MaximumProportion.Value) / 2
-                        : requirement.MinimumProportion);
-                if (requirement.Substance.Equals(water))
-                {
-                    Atmosphere.ResetWater();
-                }
-                modified = true;
-            }
-        }
-        if (modified)
-        {
-            Atmosphere.ResetGreenhouseFactor();
-            ResetCachedTemperatures();
-        }
-
-        adjustedAtmosphericPressure = CalculatePhases(rehydrator, 0, adjustedAtmosphericPressure);
-        FractionHydrophere(GetAverageSurfaceTemperature());
-
-        if (_planetParams?.AtmosphericPressure.HasValue != true && _habitabilityRequirements is null)
-        {
-            SetAtmosphericPressure(Math.Max(0, adjustedAtmosphericPressure));
-            Atmosphere.ResetPressureDependentProperties(this);
-        }
-
-        // If the adjustments have led to the loss of liquid water, then there is no life after
-        // all (this may be interpreted as a world which once supported life, but became
-        // inhospitable due to the environmental changes that life produced).
-        if (!HasLiquidWater())
-        {
-            HasBiosphere = false;
-        }
-    }
-
-    private void GenerateAtmosphereThick(Rehydrator rehydrator)
-    {
-        double pressure;
-        if (_planetParams?.AtmosphericPressure.HasValue == true)
-        {
-            pressure = Math.Max(0, _planetParams!.Value.AtmosphericPressure!.Value);
-        }
-        else if (_planetParams?.EarthlikeAtmosphere == true)
-        {
-            pressure = PlanetParams.EarthAtmosphericPressure;
-        }
-        else if (_habitabilityRequirements?.MinimumPressure.HasValue == true
-            || _habitabilityRequirements?.MaximumPressure.HasValue == true)
-        {
-            // If there is a minimum but no maximum, a half-Gaussian distribution with the minimum as both mean and the basis for the sigma is used.
-            if (_habitabilityRequirements.HasValue
-                && _habitabilityRequirements.Value.MinimumPressure.HasValue)
-            {
-                if (!_habitabilityRequirements.Value.MaximumPressure.HasValue)
-                {
-                    pressure = _habitabilityRequirements.Value.MinimumPressure.Value
-                        + Math.Abs(rehydrator.NormalDistributionSample(47, 0, _habitabilityRequirements.Value.MinimumPressure.Value / 3));
-                }
-                else
-                {
-                    pressure = rehydrator.NextDouble(47, _habitabilityRequirements.Value.MinimumPressure ?? 0, _habitabilityRequirements.Value.MaximumPressure.Value);
-                }
-            }
-            else
-            {
-                pressure = 0;
-            }
-        }
-        else
-        {
-            HugeNumber mass;
-            // Low-gravity planets without magnetospheres are less likely to hold onto the bulk
-            // of their atmospheres over long periods.
-            if (Mass >= 1.5e24 || HasMagnetosphere)
-            {
-                mass = Mass / rehydrator.NormalDistributionSample(47, 1158568, 38600, minimum: 579300, maximum: 1737900);
-            }
-            else
-            {
-                mass = Mass / rehydrator.NormalDistributionSample(47, 7723785, 258000, minimum: 3862000, maximum: 11586000);
-            }
-
-            pressure = (double)(mass * SurfaceGravity / (1000 * HugeNumberConstants.FourPi * RadiusSquared));
-        }
-
-        // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
-        // atmospheric escape.
-        var h = _planetParams?.EarthlikeAtmosphere == true ? 3.8e-8m : rehydrator.NextDecimal(48, 1e-8m, 2e-7m);
-        var he = _planetParams?.EarthlikeAtmosphere == true ? 7.24e-6m : rehydrator.NextDecimal(49, 2.6e-7m, 1e-5m);
-
-        // 50% chance not to have these components at all.
-        var ch4 = _planetParams?.EarthlikeAtmosphere == true ? 2.9e-6m : Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
-        var traceTotal = ch4;
-
-        var co = _planetParams?.EarthlikeAtmosphere == true ? 2.5e-7m : Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
-        traceTotal += co;
-
-        var so2 = _planetParams?.EarthlikeAtmosphere == true ? 1e-7m : Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
-        traceTotal += so2;
-
-        decimal trace;
-        if (_planetParams?.EarthlikeAtmosphere == true)
-        {
-            trace = traceTotal;
-        }
-        else if (traceTotal == 0)
-        {
-            trace = 0;
-        }
-        else
-        {
-            trace = rehydrator.NextDecimal(53, 1e-6m, 2.5e-4m);
-        }
-        if (_planetParams?.EarthlikeAtmosphere != true)
-        {
-            var traceRatio = traceTotal == 0 ? 0 : trace / traceTotal;
-            ch4 *= traceRatio;
-            co *= traceRatio;
-            so2 *= traceRatio;
-        }
-
-        // CO2 makes up the bulk of a thick atmosphere by default (although the presence of water
-        // may change this later).
-        var co2 = _planetParams?.EarthlikeAtmosphere == true ? 5.3e-4m : rehydrator.NextDecimal(54, 0.97m, 0.99m) - trace;
-
-        // If there is water on the surface, the water in the air will be determined based on
-        // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
-        // chance of water vapor without significant surface water (results of cometary deposits, etc.)
-        var waterVapor = _planetParams?.EarthlikeAtmosphere == true ? PlanetParams.EarthWaterVaporRatio : 0.0m;
-        var surfaceWater = false;
-        if (_planetParams?.EarthlikeAtmosphere != true)
-        {
-            var water = Substances.All.Water.GetHomogeneousReference();
-            var seawater = Substances.All.Seawater.GetHomogeneousReference();
-            surfaceWater = Hydrosphere.Contains(water) || Hydrosphere.Contains(seawater);
-            if (CanHaveWater && !surfaceWater)
-            {
-                waterVapor = Math.Max(0, rehydrator.NextDecimal(55, -0.05m, 0.001m));
-            }
-        }
-
-        // Always at least some oxygen if there is water, planetary composition allowing
-        var o2 = _planetParams?.EarthlikeAtmosphere == true ? 0.23133m : 0.0m;
-        if (_planetParams?.EarthlikeAtmosphere != true && PlanetType != PlanetType.Carbon)
-        {
-            if (waterVapor != 0)
-            {
-                o2 = waterVapor * 0.0001m;
-            }
-            else if (surfaceWater)
-            {
-                o2 = rehydrator.NextDecimal(56, 0.002m);
-            }
-        }
-
-        var o3 = _planetParams?.EarthlikeAtmosphere == true ? o2 * 4.5e-5m : 0;
-
-        // N2 (largely inert gas) comprises whatever is left after the other components have been
-        // determined. This is usually a trace amount, unless CO2 has been reduced to a trace, in
-        // which case it will comprise the bulk of the atmosphere.
-        var n2 = 1 - (h + he + co2 + waterVapor + o2 + o3 + trace);
-
-        // Some portion of the N2 may be Ar instead.
-        var ar = _planetParams?.EarthlikeAtmosphere == true ? 1.288e-3m : Math.Max(0, n2 * rehydrator.NextDecimal(57, -0.02m, 0.04m));
-        n2 -= ar;
-        // An even smaller fraction may be Kr.
-        var kr = _planetParams?.EarthlikeAtmosphere == true ? 3.3e-6m : Math.Max(0, n2 * rehydrator.NextDecimal(58, -2.5e-4m, 5.0e-4m));
-        n2 -= kr;
-        // An even smaller fraction may be Xe or Ne.
-        var xe = _planetParams?.EarthlikeAtmosphere == true ? 8.7e-8m : Math.Max(0, n2 * rehydrator.NextDecimal(59, -1.8e-5m, 3.5e-5m));
-        n2 -= xe;
-        var ne = _planetParams?.EarthlikeAtmosphere == true ? 1.267e-5m : Math.Max(0, n2 * rehydrator.NextDecimal(60, -1.8e-5m, 3.5e-5m));
-        n2 -= ne;
-
-        var components = new List<(ISubstanceReference, decimal)>()
-        {
-            (Substances.All.CarbonDioxide.GetHomogeneousReference(), co2),
-            (Substances.All.Helium.GetHomogeneousReference(), he),
-            (Substances.All.Hydrogen.GetHomogeneousReference(), h),
-            (Substances.All.Nitrogen.GetHomogeneousReference(), n2),
-        };
-        if (ar > 0)
-        {
-            components.Add((Substances.All.Argon.GetHomogeneousReference(), ar));
-        }
-        if (co > 0)
-        {
-            components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-        }
-        if (kr > 0)
-        {
-            components.Add((Substances.All.Krypton.GetHomogeneousReference(), kr));
-        }
-        if (ch4 > 0)
-        {
-            components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-        }
-        if (o2 > 0)
-        {
-            components.Add((Substances.All.Oxygen.GetHomogeneousReference(), o2));
-        }
-        if (o3 > 0)
-        {
-            components.Add((Substances.All.Ozone.GetHomogeneousReference(), o3));
-        }
-        if (so2 > 0)
-        {
-            components.Add((Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
-        }
-        if (waterVapor > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), waterVapor));
-        }
-        if (xe > 0)
-        {
-            components.Add((Substances.All.Xenon.GetHomogeneousReference(), xe));
-        }
-        if (ne > 0)
-        {
-            components.Add((Substances.All.Neon.GetHomogeneousReference(), ne));
-        }
-        Atmosphere = new Atmosphere(this, pressure, components.ToArray());
-    }
-
-    private void GenerateAtmosphereTrace(Rehydrator rehydrator)
-    {
-        // For terrestrial (non-giant) planets, these gases remain at low concentrations due to
-        // atmospheric escape.
-        var h = rehydrator.NextDecimal(47, 5e-8m, 2e-7m);
-        var he = rehydrator.NextDecimal(48, 2.6e-7m, 1e-5m);
-
-        // 50% chance not to have these components at all.
-        var ch4 = Math.Max(0, rehydrator.NextDecimal(49, -0.5m, 0.5m));
-        var total = ch4;
-
-        var co = Math.Max(0, rehydrator.NextDecimal(50, -0.5m, 0.5m));
-        total += co;
-
-        var so2 = Math.Max(0, rehydrator.NextDecimal(51, -0.5m, 0.5m));
-        total += so2;
-
-        var n2 = Math.Max(0, rehydrator.NextDecimal(52, -0.5m, 0.5m));
-        total += n2;
-
-        // Noble traces: selected as fractions of N2, if present, to avoid over-representation.
-        var ar = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(53, -0.02m, 0.04m)) : 0;
-        n2 -= ar;
-        var kr = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(54, -0.02m, 0.04m)) : 0;
-        n2 -= kr;
-        var xe = n2 > 0 ? Math.Max(0, n2 * rehydrator.NextDecimal(55, -0.02m, 0.04m)) : 0;
-        n2 -= xe;
-
-        // Carbon monoxide means at least some carbon dioxide, as well.
-        var co2 = co > 0
-            ? rehydrator.NextDecimal(56, 0.5m)
-            : Math.Max(0, rehydrator.NextDecimal(56, -0.5m, 0.5m));
-        total += co2;
-
-        // If there is water on the surface, the water in the air will be determined based on
-        // vapor pressure later, and should not be randomly assigned. Otherwise, there is a small
-        // chance of water vapor without significant surface water (results of cometary deposits, etc.)
-        var waterVapor = 0.0m;
-        var water = Substances.All.Water.GetHomogeneousReference();
-        var seawater = Substances.All.Seawater.GetHomogeneousReference();
-        if (CanHaveWater
-            && !Hydrosphere.Contains(water)
-            && !Hydrosphere.Contains(seawater))
-        {
-            waterVapor = Math.Max(0, rehydrator.NextDecimal(57, -0.05m, 0.001m));
-        }
-        total += waterVapor;
-
-        var o2 = 0.0m;
-        if (PlanetType != PlanetType.Carbon)
-        {
-            // Always at least some oxygen if there is water, planetary composition allowing
-            o2 = waterVapor > 0
-                ? waterVapor * 1e-4m
-                : Math.Max(0, rehydrator.NextDecimal(58, -0.05m, 0.5m));
-        }
-        total += o2;
-
-        var ratio = total == 0 ? 0 : (1 - h - he) / total;
-        ch4 *= ratio;
-        co *= ratio;
-        so2 *= ratio;
-        n2 *= ratio;
-        ar *= ratio;
-        kr *= ratio;
-        xe *= ratio;
-        co2 *= ratio;
-        waterVapor *= ratio;
-        o2 *= ratio;
-
-        // H and He are always assumed to be present in small amounts if a planet has any
-        // atmosphere, but without any other gases making up the bulk of the atmosphere, they are
-        // presumed lost to atmospheric escape entirely, and no atmosphere at all is indicated.
-        if (total == 0)
-        {
-            Atmosphere = new Atmosphere(this, 0);
-        }
-        else
-        {
-            var components = new List<(ISubstanceReference, decimal)>()
-            {
-                (Substances.All.Helium.GetHomogeneousReference(), he),
-                (Substances.All.Hydrogen.GetHomogeneousReference(), h),
-            };
-            if (ar > 0)
-            {
-                components.Add((Substances.All.Argon.GetHomogeneousReference(), ar));
-            }
-            if (co2 > 0)
-            {
-                components.Add((Substances.All.CarbonDioxide.GetHomogeneousReference(), co2));
-            }
-            if (co > 0)
-            {
-                components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-            }
-            if (kr > 0)
-            {
-                components.Add((Substances.All.Krypton.GetHomogeneousReference(), kr));
-            }
-            if (ch4 > 0)
-            {
-                components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-            }
-            if (n2 > 0)
-            {
-                components.Add((Substances.All.Nitrogen.GetHomogeneousReference(), n2));
-            }
-            if (o2 > 0)
-            {
-                components.Add((Substances.All.Oxygen.GetHomogeneousReference(), o2));
-            }
-            if (so2 > 0)
-            {
-                components.Add((Substances.All.SulphurDioxide.GetHomogeneousReference(), so2));
-            }
-            if (waterVapor > 0)
-            {
-                components.Add((Substances.All.Water.GetHomogeneousReference(), waterVapor));
-            }
-            if (xe > 0)
-            {
-                components.Add((Substances.All.Xenon.GetHomogeneousReference(), xe));
-            }
-            Atmosphere = new Atmosphere(this, rehydrator.NextDouble(59, 25), components.ToArray());
-        }
-    }
-
-    private Planetoid? GenerateGiantSatellite(
-        Rehydrator rehydrator,
-        ref ulong index,
-        CosmicLocation? parent,
-        List<Star> stars,
-        HugeNumber periapsis,
-        double eccentricity,
-        HugeNumber maxMass)
-    {
-        var orbit = new OrbitalParameters(
-            Mass,
-            Position,
-            periapsis,
-            eccentricity,
-            rehydrator.NextDouble(index++, 0.5),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi));
-        double chance;
-
-        // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-        if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
-        {
-            // Select from the standard distribution of types.
-            chance = rehydrator.NextDouble(index++);
-
-            // Planets with very low orbits are lava planets due to tidal
-            // stress (plus a small percentage of others due to impact trauma).
-
-            // The maximum mass and density are used to calculate an outer
-            // Roche limit (may not be the actual Roche limit for the body
-            // which gets generated).
-            if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new HugeNumber(105, -2) || chance <= 0.01)
-            {
-                return new Planetoid(
-                    PlanetType.Lava,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.65) // Most will be standard terrestrial.
-            {
-                return new Planetoid(
-                    PlanetType.Terrestrial,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.75)
-            {
-                return new Planetoid(
-                    PlanetType.Iron,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.Ocean,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-        else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
-        {
-            chance = rehydrator.NextDouble(index++);
-            // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-            if (periapsis < GetRocheLimit(DensityForDwarf) * new HugeNumber(105, -2) || chance <= 0.01)
-            {
-                return new Planetoid(
-                    PlanetType.LavaDwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.75) // Most will be standard.
-            {
-                return new Planetoid(
-                    PlanetType.Dwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.RockyDwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        // Otherwise, it is an asteroid, selected from the standard distribution of types.
-        else if (maxMass > 0)
-        {
-            chance = rehydrator.NextDouble(index++);
-            if (chance <= 0.75)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidC,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.9)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidS,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidM,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        return null;
-    }
-
-    private void GenerateHydrocarbons(Rehydrator rehydrator)
-    {
-        // It is presumed that it is statistically likely that the current eon is not the first
-        // with life, and therefore that some fossilized hydrocarbon deposits exist.
-        var coal = (decimal)rehydrator.NormalDistributionSample(67, 1e-13, 1.7e-14);
-
-        AddResource(Substances.All.Anthracite.GetReference(), coal, false);
-        AddResource(Substances.All.BituminousCoal.GetReference(), coal, false);
-
-        var petroleum = (decimal)rehydrator.NormalDistributionSample(68, 1e-8, 1.6e-9);
-        var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false);
-
-        // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
-        AddResource(Substances.All.NaturalGas.GetReference(), petroleum, false, true, petroleumSeed);
-    }
-
-    private void GenerateHydrosphere(Rehydrator rehydrator, double surfaceTemp)
-    {
-        // Most terrestrial planets will (at least initially) have a hydrosphere layer (oceans,
-        // icecaps, etc.). This might be removed later, depending on the planet's conditions.
-
-        if (!CanHaveWater || !IsTerrestrial)
-        {
-            SeaLevel = -MaxElevation * 1.1;
-            return;
-        }
-
-        decimal ratio;
-        if (_planetParams.HasValue && _planetParams.Value.WaterRatio.HasValue)
-        {
-            ratio = _planetParams.Value.WaterRatio.Value;
-        }
-        else if (PlanetType == PlanetType.Ocean)
-        {
-            ratio = (decimal)(1 + rehydrator.NormalDistributionSample(44, 1, 0.2));
-        }
-        else
-        {
-            ratio = rehydrator.NextDecimal(44);
-        }
-
-        var mass = HugeNumber.Zero;
-        var seawater = Substances.All.Seawater.GetHomogeneousReference();
-
-        if (ratio <= 0)
-        {
-            SeaLevel = -MaxElevation * 1.1;
-        }
-        else if (ratio >= 1)
-        {
-            SeaLevel = MaxElevation * (double)ratio;
-            mass = new HollowSphere<HugeNumber>(Shape.ContainingRadius, Shape.ContainingRadius + SeaLevel).Volume * (seawater.Homogeneous.DensityLiquid ?? 0);
-        }
-        else
-        {
-            var seaLevel = 0.0;
-            SeaLevel = 0;
-            const double RandomMapElevationFactor = 0.33975352675545284; // proportion of MaxElevation of a random elevation map * 1/(e-1)
-            var variance = ratio == 0.5m
-                ? 0
-                : (Math.Exp(Math.Abs(((double)ratio) - 0.5)) - 1) * RandomMapElevationFactor;
-            if (ratio != 0.5m)
-            {
-                seaLevel = ratio > 0.5m
-                    ? variance
-                    : -variance;
-                SeaLevel = seaLevel * MaxElevation;
-            }
-            const double HalfVolume = 85183747862278.266; // empirical sum of random map pixel columns with 0 sea level
-            var volume = seaLevel > 0
-                ? HalfVolume + (HalfVolume * variance)
-                : HalfVolume - (HalfVolume * variance);
-            mass = volume
-                * MaxElevation
-                * (seawater.Homogeneous.DensityLiquid ?? 0);
-        }
-
-        if (!mass.IsPositive())
-        {
-            Hydrosphere = Material<HugeNumber>.Empty;
-            return;
-        }
-
-        // Surface water is mostly salt water.
-        var seawaterProportion = (decimal)rehydrator.NormalDistributionSample(45, 0.945, 0.015);
-        var waterProportion = 1 - seawaterProportion;
-        var water = Substances.All.Water.GetHomogeneousReference();
-        var density = ((seawater.Homogeneous.DensityLiquid ?? 0) * (double)seawaterProportion) + ((water.Homogeneous.DensityLiquid ?? 0) * (double)waterProportion);
-
-        var outerRadius = (3 * ((mass / density) + new Sphere<HugeNumber>(Material.Shape.ContainingRadius).Volume) / HugeNumberConstants.FourPi).Cbrt();
-        var shape = new HollowSphere<HugeNumber>(
-            Material.Shape.ContainingRadius,
-            outerRadius,
-            Material.Shape.Position);
-        var avgDepth = (double)(outerRadius - Material.Shape.ContainingRadius) / 2;
-        double avgTemp;
-        if (avgDepth > 1000)
-        {
-            avgTemp = 277;
-        }
-        else if (avgDepth < 200)
-        {
-            avgTemp = surfaceTemp;
-        }
-        else
-        {
-            avgTemp = surfaceTemp.Lerp(277, (avgDepth - 200) / 800);
-        }
-
-        Hydrosphere = new Material<HugeNumber>(
-            shape,
-            mass,
-            density,
-            avgTemp,
-            (seawater, seawaterProportion),
-            (water, waterProportion));
-
-        FractionHydrophere(surfaceTemp);
-
-        if (Material.GetSurface() is Material<HugeNumber> material)
-        {
-            material.AddConstituents(CosmicSubstances.WetPlanetaryCrustConstituents);
-        }
-    }
-
-    /// <summary>
-    /// Determines whether this planet is capable of sustaining life, and whether or not it
-    /// actually does. If so, the atmosphere may be adjusted.
-    /// </summary>
-    /// <returns>
-    /// True if the atmosphere's greenhouse potential is adjusted; false if not.
-    /// </returns>
-    private bool GenerateLife(Rehydrator rehydrator)
-    {
-        if (IsInhospitable || !HasLiquidWater())
-        {
-            HasBiosphere = false;
-            return false;
-        }
-
-        // If the planet already has a biosphere, there is nothing left to do.
-        if (HasBiosphere)
-        {
-            return false;
-        }
-
-        HasBiosphere = true;
-
-        GenerateHydrocarbons(rehydrator);
-
-        // If the habitable zone is a subsurface ocean, no further adjustments occur.
-        if (Hydrosphere is Composite<HugeNumber>)
-        {
-            return false;
-        }
-
-        if (_planetParams?.EarthlikeAtmosphere == true)
-        {
-            return false;
-        }
-
-        // If there is a habitable surface layer, it is presumed that an initial population of a
-        // cyanobacteria analogue will produce a significant amount of free oxygen, which in turn
-        // will transform most CH4 to CO2 and H2O, and also produce an ozone layer.
-        var o2 = rehydrator.NextDecimal(69, 0.2m, 0.25m);
-        var oxygen = Substances.All.Oxygen.GetHomogeneousReference();
-        Atmosphere.Material.Add(oxygen, o2);
-
-        // Calculate ozone based on level of free oxygen.
-        var o3 = o2 * 4.5e-5m;
-        var ozone = Substances.All.Ozone.GetHomogeneousReference();
-        if (Atmosphere.Material is not Composite<HugeNumber> lc || lc.Components.Count < 3)
-        {
-            Atmosphere.DifferentiateTroposphere(); // First ensure troposphere is differentiated.
-            (Atmosphere.Material as Composite<HugeNumber>)?.CopyComponent(1, HugeNumberConstants.Centi);
-        }
-        (Atmosphere.Material as Composite<HugeNumber>)?.Components[2].Add(ozone, o3);
-
-        // Convert most methane to CO2 and H2O.
-        var methane = Substances.All.Methane.GetHomogeneousReference();
-        var ch4 = Atmosphere.Material.GetProportion(methane);
-        if (ch4 != 0)
-        {
-            // The levels of CO2 and H2O are not adjusted; it is presumed that the levels already
-            // determined for them take the amounts derived from CH4 into account. If either gas
-            // is entirely missing, however, it is added.
-            var carbonDioxide = Substances.All.CarbonDioxide.GetHomogeneousReference();
-            if (Atmosphere.Material.GetProportion(carbonDioxide) <= 0)
-            {
-                Atmosphere.Material.Add(carbonDioxide, ch4 / 3);
-            }
-
-            if (Atmosphere.Material.GetProportion(Substances.All.Water) <= 0)
-            {
-                Atmosphere.Material.Add(Substances.All.Water, ch4 * 2 / 3);
-                Atmosphere.ResetWater();
-            }
-
-            Atmosphere.Material.Add(methane, ch4 * 0.001m);
-
-            Atmosphere.ResetGreenhouseFactor();
-            ResetCachedTemperatures();
-            return true;
-        }
-
-        return false;
-    }
-
-    private void GenerateMaterial(
-        Rehydrator rehydrator,
-        double? temperature,
-        Vector3<HugeNumber> position,
-        HugeNumber semiMajorAxis)
-    {
-        if (PlanetType == PlanetType.Comet)
-        {
-            Material = new Material<HugeNumber>(
-                CosmicSubstances.CometNucleus,
-                // Gaussian distribution with most values between 1km and 19km.
-                new Ellipsoid<HugeNumber>(
-                    rehydrator.NormalDistributionSample(8, 10000, 4500, minimum: 0),
-                    rehydrator.Next(9, HugeNumberConstants.Half, 1),
-                    position),
-                rehydrator.NextDouble(7, 300, 700),
-                null,
-                temperature);
-            return;
-        }
-
-        if (IsAsteroid)
-        {
-            var doubleMaxMass = _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                ? (double)_planetParams.Value.MaxMass.Value
-                : AsteroidMaxMassForType;
-            var mass = rehydrator.PositiveNormalDistributionSample(
-                7,
-                AsteroidMinMassForType,
-                (doubleMaxMass - AsteroidMinMassForType) / 3,
-                doubleMaxMass);
-
-            var asteroidDensity = PlanetType switch
-            {
-                PlanetType.AsteroidC => 1380,
-                PlanetType.AsteroidM => 5320,
-                PlanetType.AsteroidS => 2710,
-                _ => 2000,
-            };
-
-            var axis = (mass * new HugeNumber(75, -2) / (asteroidDensity * HugeNumber.Pi)).Cbrt();
-            var irregularity = rehydrator.Next(8, HugeNumberConstants.Half, HugeNumber.One);
-            var shape = new Ellipsoid<HugeNumber>(axis, axis * irregularity, axis / irregularity, position);
-
-            var substances = GetAsteroidComposition(rehydrator);
-            Material = new Material<HugeNumber>(
-                substances,
-                shape,
-                mass,
-                asteroidDensity,
-                temperature);
-            return;
-        }
-
-        if (PlanetType is PlanetType.Lava
-            or PlanetType.LavaDwarf)
-        {
-            temperature = rehydrator.NextDouble(7, 974, 1574);
-        }
-
-        var density = GetDensity(rehydrator, PlanetType);
-
-        double? gravity = null;
-        if (_planetParams?.SurfaceGravity.HasValue == true)
-        {
-            gravity = _planetParams!.Value.SurfaceGravity!.Value;
-        }
-        else if (_habitabilityRequirements?.MinimumGravity.HasValue == true
-            || _habitabilityRequirements?.MaximumGravity.HasValue == true)
-        {
-            double maxGravity;
-            if (_habitabilityRequirements?.MaximumGravity.HasValue == true)
-            {
-                maxGravity = _habitabilityRequirements!.Value.MaximumGravity!.Value;
-            }
-            else // Determine the maximum gravity the planet could have by calculating from its maximum mass.
-            {
-                var max = _planetParams?.MaxMass ?? GetMaxMassForType(PlanetType);
-                var maxVolume = max / density;
-                var maxRadius = (maxVolume / HugeNumberConstants.FourThirdsPi).Cbrt();
-                maxGravity = (double)(HugeNumberConstants.G * max / (maxRadius * maxRadius));
-            }
-            gravity = rehydrator.NextDouble(9, _habitabilityRequirements?.MinimumGravity ?? 0, maxGravity);
-        }
-
-        HugeNumber MassFromUnknownGravity(Rehydrator rehydrator, HugeNumber semiMajorAxis, ulong index)
-        {
-            var min = HugeNumber.Zero;
-            if (!PlanetType.AnyDwarf.HasFlag(PlanetType))
-            {
-                // Stern-Levison parameter for neighborhood-clearing used to determined minimum mass
-                // at which the planet would be able to do so at this orbital distance. We set the
-                // minimum at two orders of magnitude more than this (planets in our solar system
-                // all have masses above 5 orders of magnitude more). Note that since lambda is
-                // proportional to the square of mass, it is multiplied by 10 to obtain a difference
-                // of 2 orders of magnitude, rather than by 100.
-                var sternLevisonLambdaMass = (HugeNumber.Pow(semiMajorAxis, new HugeNumber(15, -1)) / new HugeNumber(2.5, -28)).Sqrt();
-                min = HugeNumber.Max(min, sternLevisonLambdaMass * 10);
-
-                // sanity check; may result in a "planet" which *can't* clear its neighborhood
-                if (_planetParams.HasValue
-                    && _planetParams.Value.MaxMass.HasValue
-                    && min > _planetParams.Value.MaxMass.Value)
-                {
-                    min = _planetParams.Value.MaxMass.Value;
-                }
-            }
-            return _planetParams.HasValue && _planetParams.Value.MaxMass.HasValue
-                ? rehydrator.Next(index, min, _planetParams.Value.MaxMass.Value)
-                : min;
-        }
-
-        if (_planetParams?.Radius.HasValue == true)
-        {
-            var radius = HugeNumber.Max(MinimumRadius, _planetParams!.Value.Radius!.Value);
-            var flattening = rehydrator.Next(10, HugeNumberConstants.Deci);
-            var shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            HugeNumber mass;
-            if (gravity.HasValue)
-            {
-                mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
-            }
-            else
-            {
-                mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 11);
-            }
-
-            Material = GetComposition(rehydrator, density, mass, shape, temperature);
-        }
-        else if (gravity.HasValue)
-        {
-            var radius = HugeNumber.Max(MinimumRadius, HugeNumber.Min(GetRadiusForSurfaceGravity(gravity.Value), GetRadiusForMass(density, GetMaxMassForType(PlanetType))));
-            var flattening = rehydrator.Next(10, HugeNumberConstants.Deci);
-            var shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            var mass = GetMass(PlanetType, semiMajorAxis, _planetParams?.MaxMass, gravity.Value, shape);
-
-            Material = GetComposition(rehydrator, density, mass, shape, temperature);
-        }
-        else
-        {
-            HugeNumber mass;
-            if (IsGiant)
-            {
-                mass = rehydrator.Next(10, _GiantMinMassForType, _planetParams?.MaxMass ?? _GiantMaxMassForType);
-            }
-            else if (IsDwarf)
-            {
-                var maxMass = _planetParams?.MaxMass;
-                if (!string.IsNullOrEmpty(ParentId))
-                {
-                    var sternLevisonLambdaMass = (HugeNumber.Pow(semiMajorAxis, new HugeNumber(15, -1)) / new HugeNumber(2.5, -28)).Sqrt();
-                    maxMass = HugeNumber.Min(_planetParams?.MaxMass ?? _DwarfMaxMassForType, sternLevisonLambdaMass / 100);
-                    if (maxMass < _DwarfMinMassForType)
-                    {
-                        maxMass = _DwarfMinMassForType; // sanity check; may result in a "dwarf" planet which *can* clear its neighborhood
-                    }
-                }
-                mass = rehydrator.Next(10, _DwarfMinMassForType, maxMass ?? _DwarfMaxMassForType);
-            }
-            else
-            {
-                mass = MassFromUnknownGravity(rehydrator, semiMajorAxis, 10);
-            }
-
-            // An approximate radius as if the shape was a sphere is determined, which is no less
-            // than the minimum required for hydrostatic equilibrium.
-            var radius = HugeNumber.Max(MinimumRadius, GetRadiusForMass(density, mass));
-            var flattening = rehydrator.Next(11, HugeNumberConstants.Deci);
-            var shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            Material = GetComposition(rehydrator, density, mass, shape, temperature);
-        }
-    }
-
-    private void GenerateOrbit(
-        Rehydrator rehydrator,
-        OrbitalParameters? orbit,
-        CosmicLocation? orbitedObject,
-        double eccentricity,
-        HugeNumber semiMajorAxis)
-    {
-        if (orbit.HasValue)
-        {
-            Space.Orbit.AssignOrbit(this, orbit.Value);
-            return;
-        }
-
-        if (orbitedObject is null)
-        {
-            return;
-        }
-
-        if (PlanetType == PlanetType.Comet)
-        {
-            Space.Orbit.AssignOrbit(
-                this,
-                orbitedObject,
-
-                // Current distance is presumed to be apoapsis for comets, which are presumed to
-                // originate in an Oort cloud, and have eccentricities which may either leave
-                // them there, or send them into the inner solar system.
-                (1 - eccentricity) / (1 + eccentricity) * GetDistanceTo(orbitedObject),
-
-                eccentricity,
-                rehydrator.NextDouble(37, Math.PI),
-                rehydrator.NextDouble(38, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(39, DoubleConstants.TwoPi),
-                Math.PI);
-            return;
-        }
-
-        if (IsAsteroid)
-        {
-            Space.Orbit.AssignOrbit(
-                this,
-                orbitedObject,
-                GetDistanceTo(orbitedObject),
-                eccentricity,
-                rehydrator.NextDouble(37, 0.5),
-                rehydrator.NextDouble(38, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(39, DoubleConstants.TwoPi),
-                0);
-            return;
-        }
-
-        if (!IsTerrestrial)
-        {
-            Space.Orbit.AssignOrbit(
-                this,
-                orbitedObject,
-                GetDistanceTo(orbitedObject),
-                eccentricity,
-                rehydrator.NextDouble(37, 0.9),
-                rehydrator.NextDouble(38, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(39, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(40, DoubleConstants.TwoPi));
-            return;
-        }
-
-        var ta = rehydrator.NextDouble(37, DoubleConstants.TwoPi);
-        if (_planetParams?.RevolutionPeriod.HasValue == true)
-        {
-            GenerateOrbit(rehydrator, orbitedObject, eccentricity, semiMajorAxis, ta);
-        }
-        else
-        {
-            Space.Orbit.AssignOrbit(
-                this,
-                orbitedObject,
-                GetDistanceTo(orbitedObject),
-                eccentricity,
-                rehydrator.NextDouble(38, 0.9),
-                rehydrator.NextDouble(39, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(40, DoubleConstants.TwoPi),
-                rehydrator.NextDouble(41, DoubleConstants.TwoPi));
-        }
-    }
-
-    private void GenerateOrbit(
-        Rehydrator rehydrator,
-        CosmicLocation orbitedObject,
-        double eccentricity,
-        HugeNumber semiMajorAxis,
-        double trueAnomaly) => Space.Orbit.AssignOrbit(
-        this,
-        orbitedObject,
-        (1 - eccentricity) * semiMajorAxis,
-        eccentricity,
-        rehydrator.NextDouble(38, 0.9),
-        rehydrator.NextDouble(39, DoubleConstants.TwoPi),
-        rehydrator.NextDouble(40, DoubleConstants.TwoPi),
-        trueAnomaly);
-
-    private void GenerateResources(Rehydrator rehydrator)
-    {
-        AddResources(Material.GetSurface()
-                .Constituents.Where(x => x.Key.Substance.Categories?.Contains(Substances.Category_Gem) == true
-                    || x.Key.Substance.IsMetalOre())
-                .Select(x => (x.Key, x.Value, true))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
-        AddResources(Material.GetSurface()
-                .Constituents.Where(x => x.Key.Substance.IsHydrocarbon())
-                .Select(x => (x.Key, x.Value, false))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
-
-        // Also add halite (rock salt) as a resource, despite not being an ore or gem.
-        AddResources(Material.GetSurface()
-                .Constituents.Where(x => x.Key.Equals(Substances.All.SodiumChloride.GetHomogeneousReference()))
-                .Select(x => (x.Key, x.Value, false))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
-
-        // A magnetosphere is presumed to indicate tectonic, and hence volcanic, activity.
-        // This, in turn, indicates elemental sulfur at the surface.
-        if (HasMagnetosphere)
-        {
-            var sulfurProportion = (decimal)rehydrator.NormalDistributionSample(70, 3.5e-5, 1.75e-6);
-            if (sulfurProportion > 0)
-            {
-                AddResource(Substances.All.Sulfur.GetHomogeneousReference(), sulfurProportion, false);
-            }
-        }
-
-        if (IsTerrestrial)
-        {
-            var beryl = (decimal)rehydrator.NormalDistributionSample(71, 4e-6, 6.7e-7, minimum: 0);
-            var emerald = beryl * 1.58e-4m;
-            var corundum = (decimal)rehydrator.NormalDistributionSample(72, 2.6e-4, 4e-5, minimum: 0);
-            var ruby = corundum * 1.58e-4m;
-            var sapphire = corundum * 5.7e-3m;
-
-            var diamond = PlanetType == PlanetType.Carbon
-                ? 0 // Carbon planets have diamond in the crust, which will have been added earlier.
-                : (decimal)rehydrator.NormalDistributionSample(73, 1.5e-7, 2.5e-8, minimum: 0);
-
-            if (beryl > 0)
-            {
-                AddResource(Substances.All.Beryl.GetHomogeneousReference(), beryl, true);
-            }
-            if (emerald > 0)
-            {
-                AddResource(Substances.All.Emerald.GetHomogeneousReference(), emerald, true);
-            }
-            if (corundum > 0)
-            {
-                AddResource(Substances.All.Corundum.GetHomogeneousReference(), corundum, true);
-            }
-            if (ruby > 0)
-            {
-                AddResource(Substances.All.Ruby.GetHomogeneousReference(), ruby, true);
-            }
-            if (sapphire > 0)
-            {
-                AddResource(Substances.All.Sapphire.GetHomogeneousReference(), sapphire, true);
-            }
-            if (diamond > 0)
-            {
-                AddResource(Substances.All.Diamond.GetHomogeneousReference(), diamond, true);
-            }
-        }
-    }
-
-    private Planetoid? GenerateSatellite(
-        Rehydrator rehydrator,
-        ref ulong index,
-        CosmicLocation? parent,
-        List<Star> stars,
-        HugeNumber periapsis,
-        double eccentricity,
-        HugeNumber maxMass)
-    {
-        if (PlanetType is PlanetType.GasGiant
-            or PlanetType.IceGiant)
-        {
-            return GenerateGiantSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
-        }
-        if (PlanetType == PlanetType.AsteroidC)
-        {
-            return new Planetoid(
-                PlanetType.AsteroidC,
-                parent,
-                null,
-                stars,
-                Vector3<HugeNumber>.Zero,
-                out _,
-                GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                new PlanetParams(maxMass: maxMass),
-                null,
-                true,
-                rehydrator.NextUIntInclusive(index++));
-        }
-        if (PlanetType == PlanetType.AsteroidM)
-        {
-            return new Planetoid(
-                PlanetType.AsteroidM,
-                parent,
-                null,
-                stars,
-                Vector3<HugeNumber>.Zero,
-                out _,
-                GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                new PlanetParams(maxMass: maxMass),
-                null,
-                true,
-                rehydrator.NextUIntInclusive(index++));
-        }
-        if (PlanetType == PlanetType.AsteroidS)
-        {
-            return new Planetoid(
-                PlanetType.AsteroidS,
-                parent,
-                null,
-                stars,
-                Vector3<HugeNumber>.Zero,
-                out _,
-                GetAsteroidSatelliteOrbit(rehydrator, ref index, periapsis, eccentricity),
-                new PlanetParams(maxMass: maxMass),
-                null,
-                true,
-                rehydrator.NextUIntInclusive(index++));
-        }
-        if (PlanetType == PlanetType.Comet)
-        {
-            return null;
-        }
-        var orbit = new OrbitalParameters(
-            Mass,
-            Position,
-            periapsis,
-            eccentricity,
-            rehydrator.NextDouble(index++, 0.5),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi));
-        double chance;
-
-        // If the mass limit allows, there is an even chance that the satellite is a smaller planet.
-        if (maxMass > _TerrestrialMinMassForType && rehydrator.NextBool(index++))
-        {
-            // Select from the standard distribution of types.
-            chance = rehydrator.NextDouble(index++);
-
-            // Planets with very low orbits are lava planets due to tidal
-            // stress (plus a small percentage of others due to impact trauma).
-
-            // Most will be standard terrestrial.
-            double terrestrialChance;
-            if (PlanetType == PlanetType.Carbon)
-            {
-                terrestrialChance = 0.45;
-            }
-            else if (IsGiant)
-            {
-                terrestrialChance = 0.65;
-            }
-            else
-            {
-                terrestrialChance = 0.77;
-            }
-
-            // The maximum mass and density are used to calculate an outer
-            // Roche limit (may not be the actual Roche limit for the body
-            // which gets generated).
-            if (periapsis < GetRocheLimit(DefaultTerrestrialMaxDensity) * new HugeNumber(105, -2) || chance <= 0.01)
-            {
-                return new Planetoid(
-                    PlanetType.Lava,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= terrestrialChance)
-            {
-                return new Planetoid(
-                    PlanetType.Terrestrial,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (PlanetType == PlanetType.Carbon && chance <= 0.77) // Carbon planets alone have a chance for carbon satellites.
-            {
-                return new Planetoid(
-                    PlanetType.Carbon,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (IsGiant && chance <= 0.75)
-            {
-                return new Planetoid(
-                    PlanetType.Iron,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.Ocean,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        // Otherwise, if the mass limit allows, there is an even chance that the satellite is a dwarf planet.
-        else if (maxMass > _DwarfMinMassForType && rehydrator.NextBool(index++))
-        {
-            chance = rehydrator.NextDouble(index++);
-            // Dwarf planets with very low orbits are lava planets due to tidal stress (plus a small percentage of others due to impact trauma).
-            if (periapsis < GetRocheLimit(DensityForDwarf) * new HugeNumber(105, -2) || chance <= 0.01)
-            {
-                return new Planetoid(
-                    PlanetType.LavaDwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.75) // Most will be standard.
-            {
-                return new Planetoid(
-                    PlanetType.Dwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.RockyDwarf,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        // Otherwise, it is an asteroid, selected from the standard distribution of types.
-        else if (maxMass > 0)
-        {
-            chance = rehydrator.NextDouble(index++);
-            if (chance <= 0.75)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidC,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else if (chance <= 0.9)
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidS,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-            else
-            {
-                return new Planetoid(
-                    PlanetType.AsteroidM,
-                    parent,
-                    null,
-                    stars,
-                    Vector3<HugeNumber>.Zero,
-                    out _,
-                    orbit,
-                    new PlanetParams(maxMass: maxMass),
-                    null,
-                    true,
-                    rehydrator.NextUIntInclusive(index++));
-            }
-        }
-
-        return null;
-    }
-
-    private List<Planetoid> GenerateSatellites(Rehydrator rehydrator, CosmicLocation? parent, List<Star> stars, ulong index)
-    {
-        var addedSatellites = new List<Planetoid>();
-
-        int maxSatellites;
-        if (_planetParams?.NumSatellites.HasValue == true)
-        {
-            maxSatellites = _planetParams!.Value.NumSatellites!.Value;
-        }
-        else
-        {
-            maxSatellites = PlanetType switch
-            {
-                // 5 for most Planemos. For reference, Pluto has 5 moons, the most of any planemo in the
-                // Solar System apart from the giants. No others are known to have more than 2.
-                PlanetType.Terrestrial => 5,
-                PlanetType.Carbon => 5,
-                PlanetType.Iron => 5,
-                PlanetType.Ocean => 5,
-                PlanetType.Dwarf => 5,
-                PlanetType.RockyDwarf => 5,
-
-                // Lava planets are too unstable for satellites.
-                PlanetType.Lava => 0,
-                PlanetType.LavaDwarf => 0,
-
-                // Set to 75 for Giant. For reference, Jupiter has 67 moons, and Saturn has 62
-                // (non-ring) moons.
-                PlanetType.GasGiant => 75,
-
-                // Set to 40 for IceGiant. For reference, Uranus has 27 moons, and Neptune has 14 moons.
-                PlanetType.IceGiant => 40,
-
-                _ => 1,
-            };
-        }
-
-        if (_satelliteIDs != null || maxSatellites <= 0)
-        {
-            return addedSatellites;
-        }
-
-        var minPeriapsis = Shape.ContainingRadius + 20;
-        var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3 : Shape.ContainingRadius * 100;
-
-        while (minPeriapsis <= maxApoapsis && (_satelliteIDs?.Count ?? 0) < maxSatellites)
-        {
-            var periapsis = rehydrator.Next(index++, minPeriapsis, maxApoapsis);
-
-            var maxEccentricity = (double)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
-            var eccentricity = maxEccentricity < 0.01
-                ? rehydrator.NextDouble(index++, 0, maxEccentricity)
-                : rehydrator.PositiveNormalDistributionSample(index++, 0, 0.05, maximum: maxEccentricity);
-
-            var semiLatusRectum = periapsis * (1 + eccentricity);
-            var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
-
-            // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
-            var maxMass = HugeNumber.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
-
-            var satellite = GenerateSatellite(rehydrator, ref index, parent, stars, periapsis, eccentricity, maxMass);
-            if (satellite is null)
-            {
-                break;
-            }
-            addedSatellites.Add(satellite);
-
-            (_satelliteIDs ??= new List<string>()).Add(satellite.Id);
-
-            minPeriapsis = (satellite.Orbit?.Apoapsis ?? 0) + satellite.GetSphereOfInfluenceRadius();
-        }
-
-        return addedSatellites;
-    }
-
-    /// <summary>
-    /// Calculates the surface albedo this <see cref="Planetoid"/> would need in order to have
-    /// the given effective temperature at its average distance from the given <paramref
-    /// name="star"/> (assuming it is either orbiting the star or not in orbit at all, and that
-    /// the current difference between its surface and total albedo remained constant).
-    /// </summary>
-    /// <remarks>
-    /// The effects of other nearby stars are ignored.
-    /// </remarks>
-    /// <param name="star">
-    /// The <see cref="Star"/> for which the calculation is to be made.
-    /// </param>
-    /// <param name="temperature">The desired temperature, in K.</param>
-    private double GetSurfaceAlbedoForTemperature(Star star, double temperature)
-    {
-        var areaRatio = 1;
-        if (RotationalPeriod > 2500)
-        {
-            if (RotationalPeriod <= 75000)
-            {
-                areaRatio = 4;
-            }
-            else if (RotationalPeriod <= 150000)
-            {
-                areaRatio = 3;
-            }
-            else if (RotationalPeriod <= 300000)
-            {
-                areaRatio = 2;
-            }
-        }
-
-        var averageDistanceSq = Orbit.HasValue
-            ? ((Orbit.Value.Apoapsis + Orbit.Value.Periapsis) / 2).Square()
-            : Position.DistanceSquared(star.Position);
-
-        var albedo = 1 - (averageDistanceSq
-            * Math.Pow(temperature - Temperature, 4)
-            * DoubleConstants.FourPi
-            * DoubleConstants.sigma
-            * areaRatio
-            / star.Luminosity);
-
-        var delta = Albedo - _surfaceAlbedo;
-
-        return Math.Max(0, (double)albedo - delta);
-    }
-
-    private List<(ISubstanceReference, decimal)> GetAsteroidComposition(Rehydrator rehydrator)
-    {
-        var substances = new List<(ISubstanceReference, decimal)>();
-
-        if (PlanetType == PlanetType.AsteroidM)
-        {
-            var ironNickel = 0.95m;
-
-            var rock = rehydrator.NextDecimal(9, 0.2m);
-            ironNickel -= rock;
-
-            var gold = rehydrator.NextDecimal(10, 0.05m);
-
-            var platinum = 0.05m - gold;
-
-            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture_NoMetal)
-            {
-                substances.Add((material, proportion * rock));
-            }
-            substances.Add((Substances.All.IronNickelAlloy.GetHomogeneousReference(), ironNickel));
-            substances.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-            substances.Add((Substances.All.Platinum.GetHomogeneousReference(), platinum));
-        }
-        else if (PlanetType == PlanetType.AsteroidS)
-        {
-            var gold = rehydrator.NextDecimal(9, 0.005m);
-
-            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture_NoMetal)
-            {
-                substances.Add((material, proportion * 0.427m));
-            }
-            substances.Add((Substances.All.IronNickelAlloy.GetHomogeneousReference(), 0.568m));
-            substances.Add((Substances.All.Gold.GetHomogeneousReference(), gold));
-            substances.Add((Substances.All.Platinum.GetHomogeneousReference(), 0.005m - gold));
-        }
-        else
-        {
-            var rock = 1m;
-
-            var clay = rehydrator.NextDecimal(9, 0.1m, 0.2m);
-            rock -= clay;
-
-            var ice = PlanetType.AnyDwarf.HasFlag(PlanetType)
-                ? rehydrator.NextDecimal(10)
-                : rehydrator.NextDecimal(10, 0.22m);
-            rock -= ice;
-
-            foreach (var (material, proportion) in CosmicSubstances._ChondriticRockMixture)
-            {
-                substances.Add((material, proportion * rock));
-            }
-            substances.Add((Substances.All.BallClay.GetReference(), clay));
-            substances.Add((Substances.All.Water.GetHomogeneousReference(), ice));
-        }
-
-        return substances;
-    }
-
-    private OrbitalParameters GetAsteroidSatelliteOrbit(Rehydrator rehydrator, ref ulong index, HugeNumber periapsis, double eccentricity)
-        => new(
-            Mass,
-            Position,
-            periapsis,
-            eccentricity,
-            rehydrator.NextDouble(index++, 0.5),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi),
-            rehydrator.NextDouble(index++, DoubleConstants.TwoPi));
-
-    private IMaterial<HugeNumber> GetComposition(Rehydrator rehydrator, double density, HugeNumber mass, IShape<HugeNumber> shape, double? temperature)
-    {
-        var coreProportion = PlanetType switch
-        {
-            PlanetType.Dwarf or PlanetType.LavaDwarf or PlanetType.RockyDwarf => rehydrator
-                .Next(12, new HugeNumber(2, -1), new HugeNumber(55, -2)),
-            PlanetType.Carbon or PlanetType.Iron => new HugeNumber(4, -1),
-            _ => new HugeNumber(15, -2),
-        };
-
-        var crustProportion = IsGiant
-            ? HugeNumber.Zero
-            // Smaller planemos have thicker crusts due to faster proto-planetary cooling.
-            : 400000 / HugeNumber.Pow(shape.ContainingRadius, new HugeNumber(16, -1));
-
-        var coreLayers = IsGiant
-            ? GetCore_Giant(rehydrator, shape, coreProportion, mass).ToList()
-            : GetCore(rehydrator, shape, coreProportion, crustProportion, mass).ToList();
-        var topCoreLayer = coreLayers.Last();
-        var coreShape = topCoreLayer.Shape;
-        var coreTemp = topCoreLayer.Temperature ?? 0;
-
-        var mantleProportion = 1 - (coreProportion + crustProportion);
-        var mantleLayers = GetMantle(rehydrator, shape, mantleProportion, crustProportion, mass, coreShape, coreTemp).ToList();
-        if (mantleLayers.Count == 0
-            && mantleProportion.IsPositive())
-        {
-            crustProportion += mantleProportion;
-        }
-
-        var crustLayers = GetCrust(rehydrator, shape, crustProportion, mass).ToList();
-        if (crustLayers.Count == 0
-            && crustProportion.IsPositive())
-        {
-            if (mantleLayers.Count == 0)
-            {
-                var ratio = 1 / coreProportion;
-                foreach (var layer in coreLayers)
-                {
-                    layer.Mass *= ratio;
-                }
-            }
-            else
-            {
-                var ratio = 1 / (coreProportion + mantleProportion);
-                foreach (var layer in coreLayers)
-                {
-                    layer.Mass *= ratio;
-                }
-                foreach (var layer in mantleLayers)
-                {
-                    layer.Mass *= ratio;
-                }
-            }
-        }
-
-        var layers = new List<IMaterial<HugeNumber>>();
-        layers.AddRange(coreLayers);
-        layers.AddRange(mantleLayers);
-        layers.AddRange(crustLayers);
-        return new Composite<HugeNumber>(
-            layers,
-            shape,
-            mass,
-            density,
-            temperature);
-    }
-
-    private IEnumerable<IMaterial<HugeNumber>> GetCore(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber coreProportion,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        var coreMass = planetMass * coreProportion;
-
-        var coreRadius = planetShape.ContainingRadius * coreProportion;
-        var shape = new Sphere<HugeNumber>(coreRadius, planetShape.Position);
-
-        var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-
-        (ISubstanceReference, decimal)[] coreConstituents;
-        if (PlanetType == PlanetType.Carbon)
-        {
-            // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
-            var coreSteel = rehydrator.NextDecimal(12, 0.945m);
-            coreConstituents = new (ISubstanceReference, decimal)[]
-            {
-                (Substances.All.Iron.GetHomogeneousReference(), 0.945m - coreSteel),
-                (Substances.All.CarbonSteel.GetHomogeneousReference(), coreSteel),
-                (Substances.All.Nickel.GetHomogeneousReference(), 0.055m),
-            };
-        }
-        else
-        {
-            coreConstituents = new (ISubstanceReference, decimal)[] { (Substances.All.IronNickelAlloy.GetHomogeneousReference(), 1) };
-        }
-
-        yield return new Material<HugeNumber>(
-            shape,
-            coreMass,
-            null,
-            (double)((mantleBoundaryDepth * new HugeNumber(115, -2)) + (planetShape.ContainingRadius - coreRadius - mantleBoundaryDepth)),
-            coreConstituents);
-    }
-
-    private IEnumerable<IMaterial<HugeNumber>> GetCrust(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber crustProportion,
-        HugeNumber planetMass)
-    {
-        if (IsGiant)
-        {
-            yield break;
-        }
-        else if (PlanetType == PlanetType.RockyDwarf)
-        {
-            foreach (var item in GetCrust_RockyDwarf(rehydrator, planetShape, crustProportion, planetMass))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-        else if (PlanetType == PlanetType.LavaDwarf)
-        {
-            foreach (var item in GetCrust_LavaDwarf(rehydrator, planetShape, crustProportion, planetMass))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-        else if (PlanetType == PlanetType.Carbon)
-        {
-            foreach (var item in GetCrust_Carbon(rehydrator, planetShape, crustProportion, planetMass))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-        else if (IsTerrestrial)
-        {
-            foreach (var item in GetCrust_Terrestrial(rehydrator, planetShape, crustProportion, planetMass))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-
-        var crustMass = planetMass * crustProportion;
-
-        var shape = new HollowSphere<HugeNumber>(
-            planetShape.ContainingRadius - (planetShape.ContainingRadius * crustProportion),
-            planetShape.ContainingRadius,
-            planetShape.Position);
-
-        var dust = rehydrator.NextDecimal(13);
-        var total = dust;
-
-        // 50% chance of not including the following:
-        var waterIce = Math.Max(0, rehydrator.NextDecimal(14, -0.5m, 0.5m));
-        total += waterIce;
-
-        var n2 = Math.Max(0, rehydrator.NextDecimal(15, -0.5m, 0.5m));
-        total += n2;
-
-        var ch4 = Math.Max(0, rehydrator.NextDecimal(16, -0.5m, 0.5m));
-        total += ch4;
-
-        var co = Math.Max(0, rehydrator.NextDecimal(17, -0.5m, 0.5m));
-        total += co;
-
-        var co2 = Math.Max(0, rehydrator.NextDecimal(18, -0.5m, 0.5m));
-        total += co2;
-
-        var nh3 = Math.Max(0, rehydrator.NextDecimal(19, -0.5m, 0.5m));
-        total += nh3;
-
-        var ratio = 1 / total;
-        dust *= ratio;
-        waterIce *= ratio;
-        n2 *= ratio;
-        ch4 *= ratio;
-        co *= ratio;
-        co2 *= ratio;
-        nh3 *= ratio;
-
-        var components = new List<(ISubstanceReference, decimal)>()
-        {
-            (Substances.All.CosmicDust.GetHomogeneousReference(), dust),
-        };
-        if (waterIce > 0)
-        {
-            components.Add((Substances.All.Water.GetHomogeneousReference(), waterIce));
-        }
-        if (n2 > 0)
-        {
-            components.Add((Substances.All.Nitrogen.GetHomogeneousReference(), n2));
-        }
-        if (ch4 > 0)
-        {
-            components.Add((Substances.All.Methane.GetHomogeneousReference(), ch4));
-        }
-        if (co > 0)
-        {
-            components.Add((Substances.All.CarbonMonoxide.GetHomogeneousReference(), co));
-        }
-        if (co2 > 0)
-        {
-            components.Add((Substances.All.CarbonDioxide.GetHomogeneousReference(), co2));
-        }
-        if (nh3 > 0)
-        {
-            components.Add((Substances.All.Ammonia.GetHomogeneousReference(), nh3));
-        }
-        yield return new Material<HugeNumber>(
-            components,
-            shape,
-            crustMass);
-    }
-
-    /// <summary>
-    /// Calculates the distance (in meters) this <see cref="Planetoid"/> would have to be
-    /// from a <see cref="Star"/> in order to have the given effective temperature.
-    /// </summary>
-    /// <remarks>
-    /// The effects of other nearby stars are ignored.
-    /// </remarks>
-    /// <param name="star">The <see cref="Star"/> for which the calculation is to be made.</param>
-    /// <param name="temperature">The desired temperature, in K.</param>
-    private HugeNumber GetDistanceForTemperature(Star star, double temperature)
-    {
-        var areaRatio = 1;
-        if (RotationalPeriod > 2500)
-        {
-            if (RotationalPeriod <= 75000)
-            {
-                areaRatio = 4;
-            }
-            else if (RotationalPeriod <= 150000)
-            {
-                areaRatio = 3;
-            }
-            else if (RotationalPeriod <= 300000)
-            {
-                areaRatio = 2;
-            }
-        }
-
-        return Math.Sqrt(star.Luminosity * (1 - Albedo)
-            / (Math.Pow(temperature - Temperature, 4)
-            * DoubleConstants.FourPi
-            * DoubleConstants.sigma
-            * areaRatio));
-    }
-
     private (double latitude, double longitude) GetEclipticLatLon(Vector3<HugeNumber> position, Vector3<HugeNumber> otherPosition)
     {
         var precessionQ = Quaternion<HugeNumber>.CreateFromYawPitchRoll(AxialPrecession, 0, 0);
@@ -5969,8 +2605,6 @@ public class Planetoid : CosmicLocation
 
     private double GetGreenhouseEffect(double insolationFactor, double greenhouseFactor)
         => Math.Max(0, (AverageBlackbodyTemperature * insolationFactor * greenhouseFactor) - AverageBlackbodyTemperature);
-
-    private decimal GetHydrosphereAtmosphereRatio() => Math.Min(1, (decimal)(Hydrosphere.Mass / Atmosphere.Material.Mass));
 
     private double GetInsolationFactor(bool polar = false)
         => GetInsolationFactor(Atmosphere.Material.Mass, Atmosphere.AtmosphericScaleHeight, polar);
@@ -6028,68 +2662,10 @@ public class Planetoid : CosmicLocation
         return sum;
     }
 
-    private IEnumerable<IMaterial<HugeNumber>> GetMantle(
-        Rehydrator rehydrator,
-        IShape<HugeNumber> planetShape,
-        HugeNumber mantleProportion,
-        HugeNumber crustProportion,
-        HugeNumber planetMass,
-        IShape<HugeNumber> coreShape,
-        double coreTemp)
-    {
-        if (PlanetType == PlanetType.RockyDwarf)
-        {
-            yield break;
-        }
-        else if (PlanetType == PlanetType.GasGiant)
-        {
-            foreach (var item in GetMantle_Giant(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-        else if (PlanetType == PlanetType.IceGiant)
-        {
-            foreach (var item in GetMantle_IceGiant(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-        else if (PlanetType == PlanetType.Carbon)
-        {
-            foreach (var item in GetMantle_Carbon(rehydrator, planetShape, mantleProportion, crustProportion, planetMass, coreShape, coreTemp))
-            {
-                yield return item;
-            }
-            yield break;
-        }
-
-        var mantleBoundaryDepth = planetShape.ContainingRadius * crustProportion;
-        var mantleBoundaryTemp = (double)mantleBoundaryDepth * 1.15;
-        var mantleTemp = (mantleBoundaryTemp + coreTemp) / 2;
-
-        var shape = new HollowSphere<HugeNumber>(coreShape.ContainingRadius, planetShape.ContainingRadius * mantleProportion, planetShape.Position);
-
-        var mantleMass = planetMass * mantleProportion;
-
-        yield return new Material<HugeNumber>(
-            PlanetType switch
-            {
-                PlanetType.Dwarf => Substances.All.Water.GetHomogeneousReference(),
-                _ => Substances.All.Peridotite.GetReference(),
-            },
-            shape,
-            mantleMass,
-            null,
-            mantleTemp);
-    }
-
     private double GetMaxPolarTemperature()
     {
         var greenhouseEffect = GetGreenhouseEffect();
-        var temp = _surfaceTemperatureAtPeriapsis;
+        var temp = SurfaceTemperatureAtPeriapsis;
         return (temp * InsolationFactor_Polar) + greenhouseEffect;
     }
 
@@ -6097,7 +2673,7 @@ public class Planetoid : CosmicLocation
     {
         var variation = GetDiurnalTemperatureVariation();
         var greenhouseEffect = GetGreenhouseEffect();
-        return (_surfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + greenhouseEffect - variation;
+        return (SurfaceTemperatureAtApoapsis * InsolationFactor_Equatorial) + greenhouseEffect - variation;
     }
 
     private double GetPolarAirMass(double atmosphericScaleHeight)
@@ -6157,22 +2733,6 @@ public class Planetoid : CosmicLocation
         return primaryStar;
     }
 
-    private HugeNumber GetRadiusForSurfaceGravity(double gravity) => (Mass * HugeNumberConstants.G / gravity).Sqrt();
-
-    private Rehydrator GetRehydrator(uint? seed = null)
-    {
-        Seed = seed ?? Randomizer.Instance.NextUIntInclusive();
-
-        var rehydrator = new Rehydrator(Seed);
-        Seed1 = rehydrator.NextInclusive(0);
-        Seed2 = rehydrator.NextInclusive(1);
-        Seed3 = rehydrator.NextInclusive(2);
-        Seed4 = rehydrator.NextInclusive(3);
-        Seed5 = rehydrator.NextInclusive(4);
-
-        return rehydrator;
-    }
-
     private (double rightAscension, double declination) GetRightAscensionAndDeclination(
         Vector3<HugeNumber> position,
         Vector3<HugeNumber> otherPosition)
@@ -6202,20 +2762,6 @@ public class Planetoid : CosmicLocation
         }
         return (rightAscension, declination);
     }
-
-    /// <summary>
-    /// Calculates the approximate outer distance at which rings of the given density may be
-    /// found, in meters.
-    /// </summary>
-    /// <param name="density">The density of the rings, in kg/m³.</param>
-    /// <returns>The approximate outer distance at which rings of the given density may be
-    /// found, in meters.</returns>
-    private HugeNumber GetRingDistance(HugeNumber density)
-        => new HugeNumber(126, -2)
-        * Shape.ContainingRadius
-        * (Material.Density / density).Cbrt();
-
-    private HugeNumber GetSphereOfInfluenceRadius() => Orbit?.GetSphereOfInfluenceRadius(Mass) ?? HugeNumber.Zero;
 
     private async ValueTask<StarSystem?> GetStarSystemAsync(IDataStore dataStore)
     {
@@ -6328,20 +2874,8 @@ public class Planetoid : CosmicLocation
     /// </remarks>
     private double GetTemperatureAtTrueAnomaly(double trueAnomaly)
         => Orbit.HasValue
-        ? _surfaceTemperatureAtPeriapsis.Lerp(_surfaceTemperatureAtApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI))
-        : _blackbodyTemperature;
-
-    /// <summary>
-    /// Calculates the temperature at which this <see cref="Planetoid"/> will retain only
-    /// a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
-    /// </summary>
-    /// <returns>A temperature, in K.</returns>
-    /// <remarks>
-    /// If the planet is not massive enough or too hot to hold onto carbon dioxide gas, it is
-    /// presumed that it will have a minimal atmosphere of out-gassed volatiles (comparable to Mercury).
-    /// </remarks>
-    private double GetTempForThinAtmosphere()
-        => (double)(HugeNumberConstants.TwoG * Mass * new HugeNumber(70594833834763, -18) / Shape.ContainingRadius);
+        ? SurfaceTemperatureAtPeriapsis.Lerp(SurfaceTemperatureAtApoapsis, trueAnomaly <= Math.PI ? trueAnomaly / Math.PI : 2 - (trueAnomaly / Math.PI))
+        : BlackbodyTemperature;
 
     private bool HasLiquidWater()
     {
@@ -6359,85 +2893,6 @@ public class Planetoid : CosmicLocation
             || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, minTemp, pressure)
             || Hydrosphere.Contains(Substances.All.Water.GetHomogeneousReference(), PhaseType.Liquid, avgTemp, pressure)
             || Hydrosphere.Contains(Substances.All.Seawater.GetHomogeneousReference(), PhaseType.Liquid, avgTemp, pressure);
-    }
-
-    private double ReconstituteHydrosphere(Rehydrator rehydrator)
-    {
-        double surfaceTemp;
-        if (_planetParams?.SurfaceTemperature.HasValue == true)
-        {
-            surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
-        }
-        else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-        {
-            surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
-                    + _habitabilityRequirements!.Value.MaximumTemperature.Value)
-                    / 2
-                : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
-        }
-        else
-        {
-            surfaceTemp = _blackbodyTemperature;
-        }
-
-        GenerateHydrosphere(rehydrator, surfaceTemp);
-
-        HasMagnetosphere = _planetParams?.HasMagnetosphere.HasValue == true
-            ? _planetParams!.Value.HasMagnetosphere!.Value
-            : rehydrator.Next(46) <= Mass * new HugeNumber(2.88, -19) / RotationalPeriod * (PlanetType switch
-            {
-                PlanetType.Iron => new HugeNumber(5),
-                PlanetType.Ocean => HugeNumberConstants.Half,
-                _ => HugeNumber.One,
-            });
-
-        return surfaceTemp;
-    }
-
-    private void ReconstituteMaterial(
-        Rehydrator rehydrator,
-        Vector3<HugeNumber> position,
-        double? temperature,
-        HugeNumber semiMajorAxis)
-    {
-        AxialPrecession = rehydrator.NextDouble(6, DoubleConstants.TwoPi);
-
-        GenerateMaterial(
-            rehydrator,
-            temperature,
-            position,
-            semiMajorAxis);
-
-        if (_planetParams.HasValue && _planetParams.Value.Albedo.HasValue)
-        {
-            _surfaceAlbedo = _planetParams.Value.Albedo.Value;
-        }
-        else if (PlanetType == PlanetType.Comet)
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.025, 0.055);
-        }
-        else if (PlanetType == PlanetType.AsteroidC)
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.03, 0.1);
-        }
-        else if (PlanetType == PlanetType.AsteroidM)
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.2);
-        }
-        else if (PlanetType == PlanetType.AsteroidS)
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.22);
-        }
-        else if (PlanetType.Giant.HasFlag(PlanetType))
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.275, 0.35);
-        }
-        else
-        {
-            _surfaceAlbedo = rehydrator.NextDouble(32, 0.1, 0.6);
-        }
-        Albedo = _surfaceAlbedo;
     }
 
     private void ResetAllCachedTemperatures(List<Star> stars)
@@ -6484,108 +2939,37 @@ public class Planetoid : CosmicLocation
 
     private void SetAxis()
     {
-        var precessionQ = System.Numerics.Quaternion.CreateFromYawPitchRoll((float)AxialPrecession, 0, 0);
-        var precessionVector = System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitX, precessionQ);
-        var q = System.Numerics.Quaternion.CreateFromAxisAngle(precessionVector, (float)AngleOfRotation);
-        Axis = System.Numerics.Vector3.Transform(System.Numerics.Vector3.UnitY, q);
-        AxisRotation = System.Numerics.Quaternion.Conjugate(q);
+        var precessionQ = Quaternion.CreateFromYawPitchRoll((float)AxialPrecession, 0, 0);
+        var precessionVector = Vector3.Transform(Vector3.UnitX, precessionQ);
+        var q = Quaternion.CreateFromAxisAngle(precessionVector, (float)AngleOfRotation);
+        Axis = Vector3.Transform(Vector3.UnitY, q);
+        AxisRotation = Quaternion.Conjugate(q);
 
         ResetCachedTemperatures();
     }
 
-    private ulong SetRings(Rehydrator rehydrator)
-    {
-        if (_planetParams?.HasRings == false
-            || PlanetType == PlanetType.Comet
-            || IsAsteroid
-            || IsDwarf)
-        {
-            return 71;
-        }
-
-        if (_planetParams?.HasRings != true)
-        {
-            var ringChance = IsGiant ? 0.9 : 0.1;
-            if (rehydrator.NextDouble(70) > ringChance)
-            {
-                return 71;
-            }
-        }
-
-        var innerLimit = (HugeNumber)Atmosphere.AtmosphericHeight;
-
-        var outerLimit_Icy = GetRingDistance(_IcyRingDensity);
-        if (Orbit != null)
-        {
-            outerLimit_Icy = HugeNumber.Min(outerLimit_Icy, GetHillSphereRadius() / 3);
-        }
-        if (innerLimit >= outerLimit_Icy)
-        {
-            return 71;
-        }
-
-        var outerLimit_Rocky = GetRingDistance(_RockyRingDensity);
-        if (Orbit != null)
-        {
-            outerLimit_Rocky = HugeNumber.Min(outerLimit_Rocky, GetHillSphereRadius() / 3);
-        }
-
-        var numRings = IsGiant
-            ? (int)Math.Round(rehydrator.PositiveNormalDistributionSample(71, 1, 1), MidpointRounding.AwayFromZero)
-            : (int)Math.Round(rehydrator.PositiveNormalDistributionSample(72, 1, 0.1667), MidpointRounding.AwayFromZero);
-        var index = 73UL;
-        for (var i = 0; i < numRings && innerLimit <= outerLimit_Icy; i++)
-        {
-            if (innerLimit < outerLimit_Rocky && rehydrator.NextBool(index++))
-            {
-                var innerRadius = rehydrator.Next(index++, innerLimit, outerLimit_Rocky);
-
-                (_rings ??= new List<PlanetaryRing>()).Add(new PlanetaryRing(false, innerRadius, outerLimit_Rocky));
-
-                outerLimit_Rocky = innerRadius;
-                if (outerLimit_Rocky <= outerLimit_Icy)
-                {
-                    outerLimit_Icy = innerRadius;
-                }
-            }
-            else
-            {
-                var innerRadius = rehydrator.Next(index++, innerLimit, outerLimit_Icy);
-
-                (_rings ??= new List<PlanetaryRing>()).Add(new PlanetaryRing(true, innerRadius, outerLimit_Icy));
-
-                outerLimit_Icy = innerRadius;
-                if (outerLimit_Icy <= outerLimit_Rocky)
-                {
-                    outerLimit_Rocky = innerRadius;
-                }
-            }
-        }
-        return index;
-    }
-
     private void SetTemperatures(List<Star> stars)
     {
-        _blackbodyTemperature = GetTemperatureAtPosition(Position, stars);
+        BlackbodyTemperature = GetTemperatureAtPosition(Position, stars);
 
         if (!Orbit.HasValue)
         {
-            _surfaceTemperatureAtApoapsis = _blackbodyTemperature;
-            _surfaceTemperatureAtPeriapsis = _blackbodyTemperature;
+            SurfaceTemperatureAtApoapsis = BlackbodyTemperature;
+            SurfaceTemperatureAtPeriapsis = BlackbodyTemperature;
         }
         else
         {
             // Actual position doesn't matter for temperature, only distance.
-            _surfaceTemperatureAtApoapsis = Orbit.Value.Apoapsis.IsInfinity()
-                ? _blackbodyTemperature
+            SurfaceTemperatureAtApoapsis = Orbit.Value.Apoapsis.IsInfinity()
+                ? BlackbodyTemperature
                 : GetTemperatureAtPosition(Orbit.Value.OrbitedPosition + (Vector3<HugeNumber>.UnitX * Orbit.Value.Apoapsis), stars);
 
             // Actual position doesn't matter for temperature, only distance.
-            _surfaceTemperatureAtPeriapsis = GetTemperatureAtPosition(Orbit.Value.OrbitedPosition + (Vector3<HugeNumber>.UnitX * Orbit.Value.Periapsis), stars);
+            SurfaceTemperatureAtPeriapsis = GetTemperatureAtPosition(Orbit.Value.OrbitedPosition + (Vector3<HugeNumber>.UnitX * Orbit.Value.Periapsis), stars);
         }
 
         AverageBlackbodyTemperature = Orbit.HasValue
-            ? ((_surfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (_surfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
-            : _blackbodyTemperature;
+            ? ((SurfaceTemperatureAtPeriapsis * (1 + Orbit.Value.Eccentricity)) + (SurfaceTemperatureAtApoapsis * (1 - Orbit.Value.Eccentricity))) / 2
+            : BlackbodyTemperature;
     }
 }

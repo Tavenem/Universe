@@ -11,8 +11,16 @@ public partial class CosmicLocation
 
     private List<CosmicLocation> ConfigureGalaxyGroupInstance(Vector3<HugeNumber> position, double? ambientTemperature = null, CosmicLocation? child = null)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
-        ReconstituteGalaxyGroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
+        Material = new Material<HugeNumber>(
+            Substances.All.IntraclusterMedium,
+            new Sphere<HugeNumber>(
+                Randomizer.Instance.Next(
+                    new HugeNumber(1.5, 23),
+                    new HugeNumber(3, 23)), // ~500–1000 kpc
+                position),
+            _GalaxyGroupMass,
+            null,
+            ambientTemperature ?? UniverseAmbientTemperature);
 
         var amount = Randomizer.Instance.Next(1, 6);
         if (child?.StructureType == CosmicStructureType.GalaxySubgroup)
@@ -31,7 +39,7 @@ public partial class CosmicLocation
             }
 
             var subgroup = New(CosmicStructureType.GalaxySubgroup, this, location.Value, out var subgroupChildren);
-            if (subgroup != null)
+            if (subgroup is not null)
             {
                 subgroups.Add(subgroup);
                 children.Add(subgroup);
@@ -39,19 +47,5 @@ public partial class CosmicLocation
             }
         }
         return children;
-    }
-
-    private void ReconstituteGalaxyGroupInstance(Vector3<HugeNumber> position, double? temperature)
-    {
-        var randomizer = new Randomizer(Seed);
-
-        var radius = randomizer.Next(new HugeNumber(1.5, 23), new HugeNumber(3, 23)); // ~500–1000 kpc
-
-        Material = new Material<HugeNumber>(
-            Substances.All.IntraclusterMedium,
-            new Sphere<HugeNumber>(radius, position),
-            _GalaxyGroupMass,
-            null,
-            temperature);
     }
 }

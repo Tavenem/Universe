@@ -12,7 +12,6 @@ namespace Tavenem.Universe.Space;
 /// <summary>
 /// A region of space containing a system of stars, and the bodies which orbit that system.
 /// </summary>
-[JsonConverter(typeof(StarSystemConverter))]
 public class StarSystem : CosmicLocation
 {
     internal static readonly HugeNumber _StarSystemSpace = new(3.5, 16);
@@ -24,8 +23,12 @@ public class StarSystem : CosmicLocation
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => StarSystemIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => StarSystemIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// True if the primary <see cref="Star"/> in this system is a Population II <see
@@ -55,7 +58,9 @@ public class StarSystem : CosmicLocation
     /// </summary>
     public StarType StarType { get; }
 
-    private protected override string BaseTypeName => "Star System";
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string TypeName => "Star System";
 
     /// <summary>
     /// Initializes a new instance of <see cref="StarSystem"/> with the given parameters.
@@ -122,9 +127,10 @@ public class StarSystem : CosmicLocation
 
         if (parent is not null && !orbit.HasValue)
         {
-            if (parent is AsteroidField asteroidField)
+            if (parent.StructureType is CosmicStructureType.AsteroidField
+                or CosmicStructureType.OortCloud)
             {
-                orbit = asteroidField.GetChildOrbit();
+                orbit = parent.GetAsteroidChildOrbit();
             }
             else
             {
@@ -157,39 +163,87 @@ public class StarSystem : CosmicLocation
 
     private StarSystem(string? parentId) : base(parentId, CosmicStructureType.StarSystem) => StarIDs = ImmutableList<string>.Empty;
 
-    internal StarSystem(
+    /// <summary>
+    /// Initialize a new instance of <see cref="StarSystem"/>.
+    /// </summary>
+    /// <param name="id">
+    /// The unique ID of this item.
+    /// </param>
+    /// <param name="starType">
+    /// The type of the primary <see cref="Star"/> in this system.
+    /// </param>
+    /// <param name="parentId">
+    /// The ID of the location which contains this one.
+    /// </param>
+    /// <param name="absolutePosition">
+    /// <para>
+    /// The position of this location, as a set of relative positions starting with the position of
+    /// its outermost containing parent within the universe, down to the relative position of its
+    /// most immediate parent.
+    /// </para>
+    /// <para>
+    /// The location's own relative <see cref="Location.Position"/> is not expected to be included.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> for a location with no containing parent, or whose parent is
+    /// the universe itself (i.e. there is no intermediate container).
+    /// </para>
+    /// </param>
+    /// <param name="name">
+    /// An optional name for this <see cref="CosmicLocation"/>.
+    /// </param>
+    /// <param name="velocity">
+    /// The velocity of the <see cref="CosmicLocation"/> in m/s.
+    /// </param>
+    /// <param name="orbit">
+    /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
+    /// </param>
+    /// <param name="material">The physical material which comprises this location.</param>
+    /// <param name="starIds">
+    /// The IDs of the stars in this system.
+    /// </param>
+    /// <param name="isPopulationII">
+    /// Whether the primary <see cref="Star"/> in this system is to be a Population II.
+    /// </param>
+    /// <param name="luminosityClass">
+    /// The <see cref="Stars.LuminosityClass"/> of the primary <see cref="Star"/> in this system.
+    /// </param>
+    /// <param name="spectralClass">
+    /// The <see cref="Stars.SpectralClass"/> of the primary <see cref="Star"/> in this system.
+    /// </param>
+    /// <remarks>
+    /// Note: this constructor is most useful for deserialization. Consider using another
+    /// constructor to generate a new instance instead.
+    /// </remarks>
+    [JsonConstructor]
+    public StarSystem(
         string id,
-        uint seed,
         StarType starType,
         string? parentId,
         Vector3<HugeNumber>[]? absolutePosition,
         string? name,
         Vector3<HugeNumber> velocity,
         Orbit? orbit,
-        Vector3<HugeNumber> position,
-        double? temperature,
-        HugeNumber radius,
-        HugeNumber mass,
+        IMaterial<HugeNumber> material,
         IReadOnlyList<string> starIds,
         bool isPopulationII,
         LuminosityClass luminosityClass,
         SpectralClass spectralClass)
         : base(
             id,
-            seed,
             CosmicStructureType.StarSystem,
             parentId,
             absolutePosition,
             name,
             velocity,
-            orbit)
+            orbit,
+            material)
     {
         StarIDs = starIds;
         StarType = starType;
         IsPopulationII = isPopulationII;
         LuminosityClass = luminosityClass;
         SpectralClass = spectralClass;
-        Reconstitute(position, radius, mass, temperature);
     }
 
     /// <summary>
@@ -282,11 +336,12 @@ public class StarSystem : CosmicLocation
                     CosmicStructureType.HIIRegion => _NebulaSpace,
                     CosmicStructureType.PlanetaryNebula => _PlanetaryNebulaSpace,
                     CosmicStructureType.StarSystem => _StarSystemSpace,
-                    CosmicStructureType.AsteroidField => AsteroidField._AsteroidFieldSpace,
-                    CosmicStructureType.BlackHole => BlackHole._BlackHoleSpace,
+                    CosmicStructureType.AsteroidField => _AsteroidFieldSpace,
+                    CosmicStructureType.OortCloud => _OortCloudSpace,
+                    CosmicStructureType.BlackHole => _BlackHoleSpace,
                     _ => HugeNumber.Zero,
                 };
-                position = instance.GetOpenSpace(space, children.Select(x => x as Location).ToList());
+                position = instance.GetOpenSpace(space, children.ConvertAll(x => x as Location));
             }
         }
         if (position.HasValue)
@@ -307,26 +362,6 @@ public class StarSystem : CosmicLocation
         }
 
         return instance;
-    }
-
-    private static HugeNumber GetTotalApoapsis(
-        List<(
-        Star star,
-        Star orbited,
-        double eccentricity,
-        HugeNumber semiMajorAxis,
-        HugeNumber periapsis,
-        HugeNumber apoapsis)> companions,
-        Star star,
-        HugeNumber value)
-    {
-        var match = companions.FirstOrNull(x => x.star == star);
-        if (match != null)
-        {
-            value += match.Value.apoapsis;
-            return GetTotalApoapsis(companions, match.Value.orbited, value);
-        }
-        return value;
     }
 
     /// <summary>
@@ -411,7 +446,7 @@ public class StarSystem : CosmicLocation
         }
         // If there are already any planets and this planet is a giant, it is placed in a higher
         // orbit, never a lower one.
-        else if (innerPlanet != null && isGiant)
+        else if (innerPlanet is not null && isGiant)
         {
             // Forces reassignment to a higher orbit below.
             periapsis = medianOrbit;
@@ -427,7 +462,7 @@ public class StarSystem : CosmicLocation
             periapsis = medianOrbit;
         }
 
-        if (outerPlanet != null)
+        if (outerPlanet is not null)
         {
             var otherMass = isGiant ? new HugeNumber(1.25, 28) : new HugeNumber(3, 25);
             if (periapsis < medianOrbit)
@@ -562,7 +597,7 @@ public class StarSystem : CosmicLocation
     {
         HugeNumber? maxApoapsis = null;
         HugeNumber? minPeriapsis = null;
-        if (star.Orbit != null)
+        if (star.Orbit is not null)
         {
             maxApoapsis = star.GetHillSphereRadius() * 1 / 3;
         }
@@ -849,7 +884,7 @@ public class StarSystem : CosmicLocation
             star = new Star(this, Vector3<HugeNumber>.Zero, spectralClass: GetSpectralClassForCompanionStar(orbited));
         }
 
-        if (star != null)
+        if (star is not null)
         {
             // Eccentricity tends to be low but increase with longer periods.
             var eccentricity = Math.Abs((double)(Randomizer.Instance.NormalDistributionSample(0, 0.0001) * (period / new HugeNumber(3.1536, 9))));
@@ -867,7 +902,11 @@ public class StarSystem : CosmicLocation
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi),
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi));
 
-            var companion = (star, orbitedTotalApoapsis.HasValue ? orbitedTotalApoapsis.Value + star.Orbit!.Value.Apoapsis : star.Orbit!.Value.Apoapsis);
+            var companion = (
+                star,
+                orbitedTotalApoapsis.HasValue
+                    ? orbitedTotalApoapsis.Value + star.Orbit!.Value.Apoapsis
+                    : star.Orbit!.Value.Apoapsis);
             companions.Add(companion);
             return companion;
         }
@@ -918,7 +957,17 @@ public class StarSystem : CosmicLocation
 
         // If the second star was given a close orbit, the third will automatically orbit the
         // original star with a long period.
-        orbited = close || !companion.HasValue || Randomizer.Instance.NextBool() ? primary : companion!.Value.star;
+        HugeNumber? orbitedTotalApoapsis;
+        if (close || !companion.HasValue || Randomizer.Instance.NextBool())
+        {
+            orbited = primary;
+            orbitedTotalApoapsis = primary.Orbit?.Apoapsis;
+        }
+        else
+        {
+            orbited = companion!.Value.star;
+            orbitedTotalApoapsis = companion.Value.totalApoapsis;
+        }
 
         // Long periods are about 50 years, in a log normal distribution, shifted out to avoid
         // being too close to the 2nd star's close orbit.
@@ -927,7 +976,7 @@ public class StarSystem : CosmicLocation
             var c = AddCompanionStar(
                 companions,
                 orbited,
-                orbited.Orbit?.Apoapsis,
+                orbitedTotalApoapsis,
                 (Randomizer.Instance.LogNormalDistributionSample(0, 1) * new HugeNumber(1.5768, 9))
                 + (Space.Orbit.GetHillSphereRadius(
                     companion!.Value.star.Mass,
@@ -942,7 +991,7 @@ public class StarSystem : CosmicLocation
         }
         else
         {
-            var c = AddCompanionStar(companions, orbited, orbited.Orbit?.Apoapsis, GetClosePeriod(), child);
+            var c = AddCompanionStar(companions, orbited, orbitedTotalApoapsis, GetClosePeriod(), child);
             if (c.HasValue && c.Value.star == child)
             {
                 child = null;
@@ -955,10 +1004,19 @@ public class StarSystem : CosmicLocation
         }
         // A fourth star will orbit whichever star of the original two does not already have a
         // close companion, in a close orbit of its own.
-        orbited = orbited == primary && companion.HasValue ? companion.Value.star : primary;
-        if (orbited != null)
+        if (orbited == primary && companion.HasValue)
         {
-            AddCompanionStar(companions, orbited, orbited.Orbit?.Apoapsis, GetClosePeriod(), child);
+            orbited = companion.Value.star;
+            orbitedTotalApoapsis = companion.Value.totalApoapsis;
+        }
+        else
+        {
+            orbited = primary;
+            orbitedTotalApoapsis = primary.Orbit?.Apoapsis;
+        }
+        if (orbited is not null)
+        {
+            AddCompanionStar(companions, orbited, orbitedTotalApoapsis, GetClosePeriod(), child);
         }
 
         return companions;
@@ -1047,9 +1105,16 @@ public class StarSystem : CosmicLocation
             ? primary.Mass * new HugeNumber(1001, -3)
             : (primary.Mass + companions.Sum(s => s.star.Mass)) * new HugeNumber(1001, -3);
 
-        Reconstitute(position, radius, mass, parent?.Material.Temperature ?? UniverseAmbientTemperature);
+        Material = new Material<HugeNumber>(
+            Substances.All.InterplanetaryMedium,
+            new Sphere<HugeNumber>(radius, position),
+            mass,
+            null,
+            parent?.Material.Temperature ?? UniverseAmbientTemperature);
 
-        StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).AddRange(stars.Select(x => x.Id));
+        StarIDs = ImmutableList<string>.Empty
+            .AddRange(StarIDs)
+            .AddRange(stars.Select(x => x.Id));
 
         // All single and close-binary systems are presumed to have Oort clouds. Systems with
         // higher multiplicity are presumed to disrupt any Oort clouds.
@@ -1063,7 +1128,11 @@ public class StarSystem : CosmicLocation
             }
             else
             {
-                var cloud = new AsteroidField(this, Vector3<HugeNumber>.Zero, null, oort: true, Shape.ContainingRadius);
+                var cloud = NewOortCloud(
+                    this,
+                    Vector3<HugeNumber>.Zero,
+                    null,
+                    Shape.ContainingRadius);
                 if (cloud is not null)
                 {
                     addedChildren.Add(cloud);
@@ -1095,7 +1164,12 @@ public class StarSystem : CosmicLocation
         if (width > 0)
         {
             var radius = width / 2;
-            return new AsteroidField(this, star.Position, majorRadius: innerRadius + radius, minorRadius: radius);
+            return NewAsteroidField(
+                this,
+                star.Position,
+                null,
+                innerRadius + radius,
+                radius);
         }
 
         return null;
@@ -1156,7 +1230,12 @@ public class StarSystem : CosmicLocation
             if (planetarySystemInfo.Periapsis < planetarySystemInfo.MedianOrbit && Randomizer.Instance.NextDouble() <= 0.2)
             {
                 var separation = planetarySystemInfo.Periapsis!.Value - (planet.GetMutualHillSphereRadius(new HugeNumber(3, 25)) * Randomizer.Instance.NormalDistributionSample(21.7, 9.5));
-                var belt = new AsteroidField(this, star.Position, majorRadius: separation * HugeNumberConstants.Deci, minorRadius: separation * new HugeNumber(8, -1));
+                var belt = NewAsteroidField(
+                    this,
+                    star.Position,
+                    null,
+                    separation * HugeNumberConstants.Deci,
+                    separation * new HugeNumber(8, -1));
                 if (belt is not null)
                 {
                     addedChildren.Add(belt);
@@ -1207,7 +1286,9 @@ public class StarSystem : CosmicLocation
         // The maximum mass and density are used to calculate an outer Roche limit (may not be
         // the actual Roche limit for the body which gets generated).
         var minGiantPeriapsis = HugeNumber.Max(minPeriapsis ?? 0, star.GetRocheLimit(Planetoid.GiantMaxDensity));
-        var minTerrestialPeriapsis = HugeNumber.Max(minPeriapsis ?? 0, star.GetRocheLimit(Planetoid.DefaultTerrestrialMaxDensity));
+        var minTerrestrialPeriapsis = HugeNumber.Max(
+            minPeriapsis ?? 0,
+            star.GetRocheLimit(Planetoid.DefaultTerrestrialMaxDensity));
 
         // If the calculated minimum and maximum orbits indicates that no stable orbits are
         // possible, eliminate the indicated type of planet.
@@ -1216,7 +1297,7 @@ public class StarSystem : CosmicLocation
             numGiants = 0;
             numIceGiants = 0;
         }
-        if (maxApoapsis.HasValue && minTerrestialPeriapsis > maxApoapsis)
+        if (maxApoapsis.HasValue && minTerrestrialPeriapsis > maxApoapsis)
         {
             numTerrestrial = 0;
         }
@@ -1234,7 +1315,7 @@ public class StarSystem : CosmicLocation
             addedChildren.AddRange(GeneratePlanet(
                 star,
                 stars,
-                minTerrestialPeriapsis,
+                minTerrestrialPeriapsis,
                 minGiantPeriapsis,
                 maxApoapsis,
                 ref planetarySystemInfo,
@@ -1301,7 +1382,7 @@ public class StarSystem : CosmicLocation
         {
             trueAnomaly -= DoubleConstants.TwoPi;
         }
-        var field = new AsteroidField(
+        var field = NewAsteroidField(
             this,
             -Vector3<HugeNumber>.UnitZ * periapsis,
             new OrbitalParameters(
@@ -1313,7 +1394,7 @@ public class StarSystem : CosmicLocation
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi),
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi),
                 trueAnomaly),
-            majorRadius: doubleHillRadius);
+            doubleHillRadius);
         if (field is not null)
         {
             addedChildren.Add(field);
@@ -1324,7 +1405,7 @@ public class StarSystem : CosmicLocation
         {
             trueAnomaly += DoubleConstants.TwoPi;
         }
-        field = new AsteroidField(
+        field = NewAsteroidField(
             this,
             Vector3<HugeNumber>.UnitZ * periapsis,
             new OrbitalParameters(
@@ -1336,7 +1417,7 @@ public class StarSystem : CosmicLocation
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi),
                 Randomizer.Instance.NextDouble(DoubleConstants.TwoPi),
                 trueAnomaly),
-            majorRadius: doubleHillRadius);
+            doubleHillRadius);
         if (field is not null)
         {
             addedChildren.Add(field);
@@ -1435,14 +1516,6 @@ public class StarSystem : CosmicLocation
 
         return planet;
     }
-
-    private void Reconstitute(Vector3<HugeNumber> position, HugeNumber radius, HugeNumber mass, double? temperature)
-        => Material = new Material<HugeNumber>(
-            Substances.All.InterplanetaryMedium,
-            new Sphere<HugeNumber>(radius, position),
-            mass,
-            null,
-            temperature);
 
     private struct PlanetarySystemInfo
     {

@@ -1,13 +1,13 @@
-﻿using Tavenem.DataStorage;
+﻿using System.Text.Json.Serialization;
+using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Time;
 
 namespace Tavenem.Universe.Space;
-
 /// <summary>
 /// Defines an orbit by the Kepler elements.
 /// </summary>
-public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
+public readonly struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
 {
     private const double Tolerance = 1.0e-8;
 
@@ -20,6 +20,7 @@ public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
     /// The apoapsis of this orbit, in meters. For orbits with <see cref="Eccentricity"/> >= 1,
     /// gives <see cref="double.PositiveInfinity"/>.
     /// </summary>
+    [JsonIgnore]
     public HugeNumber Apoapsis { get; }
 
     /// <summary>
@@ -112,38 +113,12 @@ public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
     public Vector3<HugeNumber> V0 { get; }
 
     /// <summary>
-    /// Initializes a new instance of <see cref="Orbit"/>.
+    /// Constructs a new instance of <see cref="Orbit"/>
     /// </summary>
-    /// <param name="orbitedMass">
-    /// The mass of the object or system being orbited, in kg.
-    /// </param>
-    /// <param name="orbitedPosition">
-    /// The position of the object or system being orbited at the epoch, as a vector in the same
-    /// reference frame as <paramref name="r0"/>.
-    /// </param>
-    /// <param name="eccentricity">The eccentricity of this orbit.</param>
-    /// <param name="inclination">The angle between the X-Z plane through the center of the
-    /// object orbited, and the plane of the orbit, in radians.</param>
-    /// <param name="longitudeOfPeriapsis">
-    /// The longitude at which periapsis would occur if <see cref="Inclination"/> were zero.
-    /// </param>
-    /// <param name="meanLongitude">The mean longitude of this orbit at epoch.</param>
-    /// <param name="meanMotion">The mean motion of this orbit, in radians per second.</param>
-    /// <param name="periapsis">The periapsis of this orbit.</param>
-    /// <param name="r0">The initial position of the orbiting object relative to the orbited
-    /// one.</param>
-    /// <param name="radius">The radius of the orbit at the current position.</param>
-    /// <param name="semiMajorAxis">The semi-major axis of the orbit.</param>
-    /// <param name="standardGravitationalParameter">A derived value, equal to G * the sum of
-    /// masses of the orbiting objects.</param>
-    /// <param name="trueAnomaly">The current true anomaly of this orbit.</param>
-    /// <param name="v0">The initial velocity of the orbiting object relative to the orbited
-    /// one.</param>
-    /// <param name="period">The period of this orbit.</param>
-    /// <param name="epoch">The time at which the state of this orbit is defined, which
-    /// coincides with a time of pericenter passage.</param>
-    [System.Text.Json.Serialization.JsonConstructor]
+    [JsonConstructor]
+#pragma warning disable IDE0290 // Use primary constructor; Required for JsonConstructor
     public Orbit(
+#pragma warning restore IDE0290 // Use primary constructor
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition,
         double eccentricity,
@@ -163,21 +138,22 @@ public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
     {
         OrbitedMass = orbitedMass;
         OrbitedPosition = orbitedPosition;
-        _alpha = standardGravitationalParameter / semiMajorAxis;
-        Eccentricity = eccentricity;
-        Inclination = inclination;
-        LongitudeOfPeriapsis = longitudeOfPeriapsis;
-        MeanLongitude = meanLongitude;
+        Eccentricity = GetSafeValue(eccentricity);
+        Inclination = GetSafeValue(inclination);
+        LongitudeOfPeriapsis = GetSafeValue(longitudeOfPeriapsis);
+        MeanLongitude = GetSafeValue(meanLongitude);
         MeanMotion = meanMotion;
         Periapsis = periapsis;
         R0 = r0;
         Radius = radius;
         SemiMajorAxis = semiMajorAxis;
         StandardGravitationalParameter = standardGravitationalParameter;
-        TrueAnomaly = trueAnomaly;
+        TrueAnomaly = GetSafeValue(trueAnomaly);
         V0 = v0;
         Period = period;
         Epoch = epoch;
+
+        _alpha = standardGravitationalParameter / semiMajorAxis;
 
         Apoapsis = eccentricity >= 1
             ? HugeNumber.PositiveInfinity
@@ -638,21 +614,21 @@ public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
 
         var x2 = x * x;
         var x3 = x2 * x;
-        var ax2 = _alpha * x2;
-        var ssax2 = StumpffS(ax2);
-        var scax2 = StumpffC(ax2);
-        var ssax2x3 = ssax2 * x3;
+        var alphaX2 = _alpha * x2;
+        var stumpffSAlphaX2 = StumpffS(alphaX2);
+        var stumpffCAlphaX2 = StumpffC(alphaX2);
+        var stumpffSAlphaX2X3 = stumpffSAlphaX2 * x3;
 
-        var uvf = 1 - (x2 / Radius * scax2);
-        var uvg = t - (1 / sqrtSGP * ssax2x3);
+        var uvf = 1 - (x2 / Radius * stumpffCAlphaX2);
+        var uvg = t - (1 / sqrtSGP * stumpffSAlphaX2X3);
 
         var r = (R0 * uvf) + (V0 * uvg);
         var rLength = r.Length();
 
-        var uvfp = sqrtSGP / (rLength * Radius) * ((_alpha * ssax2x3) - x);
-        var uvfgp = 1 - (x2 / rLength * scax2);
+        var uvfP = sqrtSGP / (rLength * Radius) * ((_alpha * stumpffSAlphaX2X3) - x);
+        var uvfGP = 1 - (x2 / rLength * stumpffCAlphaX2);
 
-        var v = (R0 * uvfp) + (V0 * uvfgp);
+        var v = (R0 * uvfP) + (V0 * uvfGP);
 
         return (r, v);
     }
@@ -705,6 +681,8 @@ public struct Orbit : IEqualityOperators<Orbit, Orbit, bool>
         }
         return GetTrueAnomalyAtTime(t);
     }
+
+    private static double GetSafeValue(double value) => double.IsFinite(value) ? value : 0;
 
     /// <summary>
     /// Sets the orbit of the given <see cref="CosmicLocation"/> according to the given

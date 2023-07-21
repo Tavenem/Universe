@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
+using Tavenem.Universe.Space;
 
 namespace Tavenem.Universe.Place;
 
@@ -13,6 +14,14 @@ namespace Tavenem.Universe.Place;
 /// contained by a location in turn. The relative positions of locations within the same
 /// hierarchy can be analyzed using the methods available on this class.
 /// </remarks>
+[JsonPolymorphic(UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
+[JsonDerivedType(typeof(Location), LocationIdItemTypeName)]
+[JsonDerivedType(typeof(CosmicLocation), CosmicLocation.CosmicLocationIdItemTypeName)]
+[JsonDerivedType(typeof(Planetoid), Planetoid.PlanetoidIdItemTypeName)]
+[JsonDerivedType(typeof(Star), Star.StarIdItemTypeName)]
+[JsonDerivedType(typeof(StarSystem), StarSystem.StarSystemIdItemTypeName)]
+[JsonDerivedType(typeof(SurfaceRegion), SurfaceRegion.SurfaceRegionIdItemTypeName)]
+[JsonDerivedType(typeof(Territory), Territory.TerritoryIdItemTypeName)]
 public class Location : IdItem
 {
     private Location? _parent;
@@ -35,14 +44,33 @@ public class Location : IdItem
     public Vector3<HugeNumber>[]? AbsolutePosition { get; private set; }
 
     /// <summary>
+    /// A string that uniquely identifies this <see cref="Location"/> for display purposes. Includes
+    /// a description of its type, and its <see cref="IIdItem.Id"/>.
+    /// </summary>
+    public string Designation => $"{TypeName} {Id}";
+
+    /// <summary>
     /// The type discriminator for this type.
     /// </summary>
     public const string LocationIdItemTypeName = ":Location:";
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => LocationIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => LocationIdItemTypeName;
+        set { }
+    }
+
+    /// <summary>
+    /// An optional name for this <see cref="Location"/>.
+    /// </summary>
+    /// <remarks>
+    /// Not every <see cref="Location"/> must have a name. They may be uniquely identified by their
+    /// <see cref="IIdItem.Id"/>, instead.
+    /// </remarks>
+    public string? Name { get; set; }
 
     /// <summary>
     /// The id of the parent location which contains this instance, if any.
@@ -59,10 +87,33 @@ public class Location : IdItem
         internal set => Shape = Shape.GetCloneAtPosition(value);
     }
 
+    private protected HugeNumber? _radiusSquared;
+    /// <summary>
+    /// The containing radius of the location, squared.
+    /// </summary>
+    /// <remarks>
+    /// The value is calculated on first request and cached, but not persisted.
+    /// </remarks>
+    [JsonIgnore]
+    public HugeNumber RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
+
     /// <summary>
     /// The shape of this location.
     /// </summary>
     public virtual IShape<HugeNumber> Shape { get; private protected set; } = SinglePoint<HugeNumber>.Origin;
+
+    /// <summary>
+    /// The <see cref="Location"/>'s <see cref="Name"/>, if it has one; otherwise its <see
+    /// cref="Designation"/>.
+    /// </summary>
+    [JsonIgnore]
+    public string Title => Name ?? Designation;
+
+    /// <summary>
+    /// The name for this type of location.
+    /// </summary>
+    [JsonIgnore]
+    public virtual string TypeName => "Location";
 
     /// <summary>
     /// Initializes a new instance of <see cref="Location"/>.
@@ -142,12 +193,6 @@ public class Location : IdItem
     public Location(Location parent, Vector3<HugeNumber> position)
         : this(parent, new SinglePoint<HugeNumber>(position)) { }
 
-    private protected Location(string id, string? parentId, Vector3<HugeNumber>[]? absolutePosition) : base(id)
-    {
-        ParentId = parentId;
-        AbsolutePosition = absolutePosition;
-    }
-
     /// <summary>
     /// Initializes a new instance of <see cref="Location"/>.
     /// </summary>
@@ -168,8 +213,11 @@ public class Location : IdItem
     /// is the universe itself (i.e. there is no intermediate container).
     /// </para>
     /// </param>
+    /// <param name="name">
+    /// An optional name for this location.
+    /// </param>
     /// <remarks>
-    /// Note: this constructor is most useful for deserializers. The other constructors are more
+    /// Note: this constructor is most useful for deserialization. The other constructors are more
     /// suited to creating a new instance, as they will automatically generate an appropriate ID.
     /// </remarks>
     [JsonConstructor]
@@ -177,11 +225,24 @@ public class Location : IdItem
         string id,
         IShape<HugeNumber> shape,
         string? parentId,
-        Vector3<HugeNumber>[]? absolutePosition) : base(id)
+        Vector3<HugeNumber>[]? absolutePosition,
+        string? name) : base(id)
     {
         Shape = shape;
         ParentId = parentId;
         AbsolutePosition = absolutePosition;
+        Name = name;
+    }
+
+    private protected Location(
+        string id,
+        string? parentId,
+        Vector3<HugeNumber>[]? absolutePosition,
+        string? name) : base(id)
+    {
+        ParentId = parentId;
+        AbsolutePosition = absolutePosition;
+        Name = name;
     }
 
     /// <summary>
@@ -273,13 +334,6 @@ public class Location : IdItem
     /// </returns>
     internal static Vector3<HugeNumber> LocalizePosition(Location location, Vector3<HugeNumber>[]? absolutePosition)
         => LocalizePosition(location.AbsolutePosition, location.Position, absolutePosition);
-
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-    private protected static async IAsyncEnumerable<T> EmptyAsyncEnumerable<T>()
-    {
-        yield break;
-    }
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
 
     private static Vector3<HugeNumber>[]? GetCommonAbsolutePosition(Vector3<HugeNumber>[]? firstAbsolutePosition, Vector3<HugeNumber>[]? secondAbsolutePosition)
     {
@@ -591,12 +645,6 @@ public class Location : IdItem
     public HugeNumber GetDistanceTo(Location other) => LocalizePosition(other).Distance(Position);
 
     /// <summary>
-    /// Returns the hash code for this instance.
-    /// </summary>
-    /// <returns>The hash code for this instance.</returns>
-    public override int GetHashCode() => Id.GetHashCode();
-
-    /// <summary>
     /// Attempts to find a randomly positioned open space within this location with the given
     /// radius.
     /// </summary>
@@ -686,8 +734,17 @@ public class Location : IdItem
     public virtual Task SetShapeAsync(IDataStore dataStore, IShape<HugeNumber> shape)
     {
         Shape = shape;
+        _radiusSquared = null;
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Returns a string that represents the object.
+    /// </summary>
+    /// <returns>A string that represents the object.</returns>
+    public override string ToString() => string.IsNullOrEmpty(Name)
+        ? Designation
+        : $"{TypeName} {Name}";
 
     internal void AssignParent(Location? parent)
     {

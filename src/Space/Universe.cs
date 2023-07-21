@@ -4,7 +4,15 @@ namespace Tavenem.Universe.Space;
 
 public partial class CosmicLocation
 {
-    private protected const double UniverseAmbientTemperature = 2.73;
+    /// <summary>
+    /// The ambient temperature of the universe, in K.
+    /// </summary>
+    public const double UniverseAmbientTemperature = 2.73;
+
+    /// <summary>
+    /// The average density of the universe, in kg/m³.
+    /// </summary>
+    public const double UniverseDensity = 5e-27;
 
     private static readonly List<ChildDefinition> _UniverseChildDefinitions = new()
     {
@@ -12,12 +20,10 @@ public partial class CosmicLocation
     };
     private static readonly Sphere<HugeNumber> _UniverseShape = new(new HugeNumber(1.89214, 33));
 
-    private void ConfigureUniverseInstance() => ReconstituteUniverseInstance();
-
-    private void ReconstituteUniverseInstance() => Material = new Material<HugeNumber>(
+    private void ConfigureUniverseInstance() => Material = new Material<HugeNumber>(
         Substances.All.WarmHotIntergalacticMedium,
         _UniverseShape,
         HugeNumber.PositiveInfinity,
-        null,
+        UniverseDensity,
         UniverseAmbientTemperature);
 }

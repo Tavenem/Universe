@@ -34,7 +34,7 @@ public enum CosmicStructureType
     GalaxyGroup = 1 << 3,
 
     /// /// <summary>
-    /// Not a technical astrnonomical term, a galaxy "sub-group" is used by this library to
+    /// Not a technical astronomical term, a galaxy "sub-group" is used by this library to
     /// indicate the collection of gravitationally-bound objects (mostly dwarf galaxies and
     /// globular clusters) orbiting a large galaxy. Each galaxy group tends to have a handful of
     /// such collections.

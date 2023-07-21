@@ -11,12 +11,17 @@ public class PlanetChildDefinition : ChildDefinition
     /// <summary>
     /// The type of the <see cref="Planetoid"/>.
     /// </summary>
-    public PlanetType PlanetType { get; }
+    public PlanetType PlanetType { get; init; }
 
     /// <summary>
     /// The type of this child.
     /// </summary>
     public override CosmicStructureType StructureType => CosmicStructureType.Planetoid;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="PlanetChildDefinition"/>.
+    /// </summary>
+    public PlanetChildDefinition() { }
 
     /// <summary>
     /// Initializes a new instance of <see cref="PlanetChildDefinition"/>.

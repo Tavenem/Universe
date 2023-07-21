@@ -17,17 +17,17 @@ public class ChildDefinition
     /// child type found in the region.
     /// </para>
     /// </summary>
-    public HugeNumber Density { get; }
+    public HugeNumber Density { get; init; }
 
     /// <summary>
     /// The radius of the open space required for this child type.
     /// </summary>
-    public HugeNumber Space { get; }
+    public HugeNumber Space { get; init; }
 
     /// <summary>
     /// The type of this child.
     /// </summary>
-    public virtual CosmicStructureType StructureType { get; }
+    public virtual CosmicStructureType StructureType { get; init; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ChildDefinition"/>.
@@ -41,21 +41,8 @@ public class ChildDefinition
     /// <param name="density">
     /// The density of this type of child within the containing parent region.
     /// </param>
-    public ChildDefinition(HugeNumber space, HugeNumber density)
-    {
-        Density = density;
-        Space = space;
-    }
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="ChildDefinition"/>.
-    /// </summary>
-    /// <param name="space">The radius of the open space required for this child type.</param>
-    /// <param name="density">
-    /// The density of this type of child within the containing parent region.
-    /// </param>
     /// <param name="structureType">The type of this child.</param>
-    public ChildDefinition(HugeNumber space, HugeNumber density, CosmicStructureType structureType)
+    public ChildDefinition(HugeNumber space, HugeNumber density, CosmicStructureType structureType = CosmicStructureType.None)
     {
         Density = density;
         Space = space;

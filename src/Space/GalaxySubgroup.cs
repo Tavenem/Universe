@@ -19,33 +19,33 @@ public partial class CosmicLocation
         Vector3<HugeNumber>.Zero,
         Randomizer.Instance.NextDouble(0.1));
 
-    private CosmicLocation? ConfigureGalaxySubgroupInstance(Vector3<HugeNumber> position, out List<CosmicLocation> children, double? ambientTemperature = null, CosmicLocation? child = null)
+    private CosmicLocation? ConfigureGalaxySubgroupInstance(
+        Vector3<HugeNumber> position,
+        out List<CosmicLocation> children,
+        double? ambientTemperature = null,
+        CosmicLocation? child = null)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
-        ReconstituteGalaxySubgroupInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
+        Material = new Material<HugeNumber>(
+            Substances.All.IntraclusterMedium,
+            new Sphere<HugeNumber>(
+                Randomizer.Instance.Next(
+                    new HugeNumber(6.25, 22),
+                    new HugeNumber(1.25, 23)), // ~6 in a ~500–1000 kpc group
+                position),
+            _GalaxySubgroupMass,
+            null,
+            ambientTemperature ?? UniverseAmbientTemperature);
 
-        if (child is null || !(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(child.StructureType))
+        if (child is null
+            || !(CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy)
+                .HasFlag(child.StructureType))
         {
             return Randomizer.Instance.NextDouble() <= 0.7
                 ? New(CosmicStructureType.SpiralGalaxy, this, Vector3<HugeNumber>.Zero, out children)
                 : New(CosmicStructureType.EllipticalGalaxy, this, Vector3<HugeNumber>.Zero, out children);
         }
 
-        children = new List<CosmicLocation>();
+        children = new();
         return null;
-    }
-
-    private void ReconstituteGalaxySubgroupInstance(Vector3<HugeNumber> position, double? temperature)
-    {
-        var randomizer = new Randomizer(Seed);
-
-        var radius = randomizer.Next(new HugeNumber(6.25, 22), new HugeNumber(1.25, 23)); // ~6 in a ~500–1000 kpc group
-
-        Material = new Material<HugeNumber>(
-            Substances.All.IntraclusterMedium,
-            new Sphere<HugeNumber>(radius, position),
-            _GalaxySubgroupMass,
-            null,
-            temperature);
     }
 }

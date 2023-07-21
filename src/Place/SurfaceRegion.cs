@@ -7,7 +7,6 @@ namespace Tavenem.Universe.Place;
 /// A <see cref="Location"/> on the surface of a <see cref="Planetoid"/>, which can override
 /// local conditions with manually-specified maps.
 /// </summary>
-[JsonConverter(typeof(SurfaceRegionConverter))]
 public class SurfaceRegion : Location
 {
     /// <summary>
@@ -17,8 +16,12 @@ public class SurfaceRegion : Location
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => SurfaceRegionIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => SurfaceRegionIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// The normalized position of this region on the surface of the planet.
@@ -27,6 +30,7 @@ public class SurfaceRegion : Location
     /// The <see cref="Location.Position"/> of a region is always the 0,0,0 vector, as they are
     /// represented as a frustum emanating from the center of the planet.
     /// </remarks>
+    [JsonIgnore]
     public Vector3<HugeNumber> PlanetaryPosition => ((Frustum<HugeNumber>)Shape).Axis.Normalize();
 
     /// <summary>
@@ -83,16 +87,21 @@ public class SurfaceRegion : Location
     /// is the universe itself (i.e. there is no intermediate container).
     /// </para>
     /// </param>
+    /// <param name="name">
+    /// An optional name for this location.
+    /// </param>
     /// <remarks>
-    /// Note: this constructor is most useful for deserializers. The other constructors are more
+    /// Note: this constructor is most useful for deserialization. The other constructors are more
     /// suited to creating a new instance, as they will automatically generate an appropriate
     /// ID.
     /// </remarks>
+    [JsonConstructor]
     public SurfaceRegion(
         string id,
         IShape<HugeNumber> shape,
         string? parentId,
-        Vector3<HugeNumber>[]? absolutePosition = null) : base(id, shape, parentId, absolutePosition)
+        Vector3<HugeNumber>[]? absolutePosition = null,
+        string? name = null) : base(id, shape, parentId, absolutePosition, name)
     { }
 
     /// <summary>
@@ -109,7 +118,12 @@ public class SurfaceRegion : Location
     /// the region, which might result in a larger distance in one dimension than indicated by
     /// the given dimensions.
     /// </remarks>
-    public static SurfaceRegion FromBounds(Planetoid planet, double northLatitude, double westLongitude, double southLatitude, double eastLongitude)
+    public static SurfaceRegion FromBounds(
+        Planetoid planet,
+        double northLatitude,
+        double westLongitude,
+        double southLatitude,
+        double eastLongitude)
     {
         var latitudeRange = Math.Abs(southLatitude - northLatitude);
         var centerLat = northLatitude + (latitudeRange / 2);

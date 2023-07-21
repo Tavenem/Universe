@@ -16,25 +16,13 @@ public partial class CosmicLocation
 
     private void ConfigureNebulaInstance(Vector3<HugeNumber> position, double? ambientTemperature = null)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
-        ReconstituteNebulaInstance(
-            position,
-            StructureType == CosmicStructureType.HIIRegion
-                ? 10000
-                : ambientTemperature ?? UniverseAmbientTemperature);
-    }
-
-    private void ReconstituteNebulaInstance(Vector3<HugeNumber> position, double? temperature)
-    {
-        var randomizer = new Randomizer(Seed);
-
         // Actual nebulae are irregularly shaped; this is presumed to be a containing shape within
         // which the dust clouds and filaments roughly fit.
 
         HugeNumber factor;
         if (StructureType == CosmicStructureType.HIIRegion)
         {
-            // The radius of an HII region follows a log-normal distribution, with  ~20 ly as the
+            // The radius of an HII region follows a log-normal distribution, with ~20 ly as the
             // mode, starting at ~10 ly, and cutting off around ~600 ly.
             factor = new HugeNumber(1, 17);
         }
@@ -48,23 +36,24 @@ public partial class CosmicLocation
         HugeNumber axis;
         do
         {
-            axis = factor + (randomizer.LogNormalDistributionSample(0, 1) * factor);
+            axis = factor + (Randomizer.Instance.LogNormalDistributionSample(0, 1) * factor);
         } while (axis > _NebulaSpace);
-        var shape = new Ellipsoid<HugeNumber>(
-            axis,
-            axis * randomizer.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)),
-            axis * randomizer.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)),
-            position);
-
-        var mass = randomizer.Next(new HugeNumber(1.99, 33), new HugeNumber(1.99, 37));
 
         Material = new Material<HugeNumber>(
             StructureType == CosmicStructureType.HIIRegion
                 ? Substances.All.IonizedCloud
                 : Substances.All.MolecularCloud,
-            shape,
-            mass,
+            new Ellipsoid<HugeNumber>(
+                axis,
+                axis * Randomizer.Instance.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)),
+                axis * Randomizer.Instance.Next(HugeNumberConstants.Half, new HugeNumber(15, -1)),
+                position),
+            Randomizer.Instance.Next(
+                new HugeNumber(1.99, 33),
+                new HugeNumber(1.99, 37)),
             null,
-            temperature);
+            StructureType == CosmicStructureType.HIIRegion
+                ? 10000
+                : ambientTemperature ?? UniverseAmbientTemperature);
     }
 }

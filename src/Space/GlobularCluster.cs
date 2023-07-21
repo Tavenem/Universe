@@ -42,7 +42,7 @@ public partial class CosmicLocation
 
         new StarSystemChildDefinition(_GlobularClusterSystemDensity * new HugeNumber(4, -4), StarType.Neutron),
 
-        new ChildDefinition(BlackHole._BlackHoleSpace, _GlobularClusterSystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
+        new ChildDefinition(_BlackHoleSpace, _GlobularClusterSystemDensity * new HugeNumber(4, -4), CosmicStructureType.BlackHole),
 
         new StarSystemChildDefinition(_GlobularClusterMainSequenceDensity * new HugeNumber(6, -3), SpectralClass.A, LuminosityClass.V, populationII: true),
 
@@ -68,49 +68,46 @@ public partial class CosmicLocation
         new StarSystemChildDefinition(_GlobularClusterMainSequenceDensity * new HugeNumber(3, -7), SpectralClass.O, LuminosityClass.V, populationII: true),
     };
 
-    internal OrbitalParameters GetGlobularClusterChildOrbit()
-        => OrbitalParameters.GetFromEccentricity(Mass, Vector3<HugeNumber>.Zero, Randomizer.Instance.NextDouble(0.1));
+    internal OrbitalParameters GetGlobularClusterChildOrbit() => OrbitalParameters.GetFromEccentricity(
+        Mass,
+        Vector3<HugeNumber>.Zero,
+        Randomizer.Instance.NextDouble(0.1));
 
-    private CosmicLocation? ConfigureGlobularClusterInstance(Vector3<HugeNumber> position, double? ambientTemperature = null, CosmicLocation? child = null)
+    private CosmicLocation? ConfigureGlobularClusterInstance(
+        Vector3<HugeNumber> position,
+        double? ambientTemperature = null,
+        CosmicLocation? child = null)
     {
         CosmicLocation? newCore = null;
-        if (child?.StructureType == CosmicStructureType.BlackHole)
+        if (child?.StructureType != CosmicStructureType.BlackHole)
         {
-            Seed = child.Seed;
-        }
-        else
-        {
-            var core = new BlackHole(this, Vector3<HugeNumber>.Zero);
-            Seed = core?.Seed ?? Randomizer.Instance.NextUIntInclusive();
-            newCore = core;
+            newCore = new CosmicLocation(Id, CosmicStructureType.BlackHole);
+            newCore.ConfigureBlackHoleInstance(Vector3<HugeNumber>.Zero);
         }
 
-        ReconstituteGlobularClusterInstance(position, ambientTemperature ?? UniverseAmbientTemperature);
-
-        return newCore;
-    }
-
-    private void ReconstituteGlobularClusterInstance(Vector3<HugeNumber> position, double? temperature)
-    {
-        var randomizer = new Randomizer(Seed);
-
-        var radius = Randomizer.Instance.Next<HugeNumber>(new HugeNumber(8, 6), new HugeNumber(2.1, 7));
-        var axis = radius * Randomizer.Instance.NormalDistributionSample(0.02, 1);
-        var shape = new Ellipsoid<HugeNumber>(radius, axis, position);
+        var radius = Randomizer.Instance.Next(
+            new HugeNumber(8, 6),
+            new HugeNumber(2.1, 7));
+        var shape = new Ellipsoid<HugeNumber>(
+            radius,
+            radius * Randomizer.Instance.NormalDistributionSample(0.02, 1),
+            position);
 
         // Randomly determines a factor by which the mass of this globular cluster will be
         // multiplied due to the abundance of dark matter.
-        var darkMatterMultiplier = randomizer.Next(5, 15);
+        var darkMatterMultiplier = Randomizer.Instance.Next(5, 15);
 
-        var coreMass = BlackHole.GetBlackHoleMassForSeed(Seed, supermassive: false);
-
-        var mass = ((shape.Volume * _GlobularClusterChildDensity * new HugeNumber(1, 30)) + coreMass) * darkMatterMultiplier;
+        var coreMass = newCore is null
+            ? child!.Mass
+            : newCore.Mass;
 
         Material = new Material<HugeNumber>(
             Substances.All.InterstellarMedium,
             shape,
-            mass,
+            ((shape.Volume * _GlobularClusterChildDensity * new HugeNumber(1, 30)) + coreMass) * darkMatterMultiplier,
             null,
-            temperature);
+            ambientTemperature ?? UniverseAmbientTemperature);
+
+        return newCore;
     }
 }

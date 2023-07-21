@@ -12,7 +12,7 @@ public enum PlanetType
     None = 0,
 
     /// <summary>
-    /// A primarily rocky planet, large in comparison to drawf planets but small in comparison
+    /// A primarily rocky planet, large in comparison to dwarf planets but small in comparison
     /// to gas and ice giants.
     /// </summary>
     Terrestrial = 1,

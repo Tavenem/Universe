@@ -22,8 +22,12 @@ public class Territory : Location
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => TerritoryIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => TerritoryIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// Initializes a new instance of <see cref="Territory"/>.
@@ -67,8 +71,11 @@ public class Territory : Location
     /// is the universe itself (i.e. there is no intermediate container).
     /// </para>
     /// </param>
+    /// <param name="name">
+    /// An optional name for this location.
+    /// </param>
     /// <remarks>
-    /// Note: this constructor is most useful for deserializers. The other constructors are more
+    /// Note: this constructor is most useful for deserialization. The other constructors are more
     /// suited to creating a new instance, as they will automatically generate an appropriate ID.
     /// </remarks>
     [JsonConstructor]
@@ -77,7 +84,8 @@ public class Territory : Location
         IShape<HugeNumber> shape,
         IReadOnlyList<string> childIds,
         string? parentId = null,
-        Vector3<HugeNumber>[]? absolutePosition = null) : base(id, shape, parentId, absolutePosition)
+        Vector3<HugeNumber>[]? absolutePosition = null,
+        string? name = null) : base(id, shape, parentId, absolutePosition, name)
         => ChildIds = childIds;
 
     /// <summary>

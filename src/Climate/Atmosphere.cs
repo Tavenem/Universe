@@ -1,4 +1,5 @@
-﻿using Tavenem.Chemistry;
+﻿using System.Collections.ObjectModel;
+using Tavenem.Chemistry;
 using Tavenem.Universe.Chemistry;
 using Tavenem.Universe.Space;
 
@@ -27,22 +28,22 @@ public class Atmosphere
     public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } = new SubstanceRequirement[]
     {
         new SubstanceRequirement(Substances.All.Oxygen.GetHomogeneousReference(), 0.07m, 0.53m, PhaseType.Gas),
-        new SubstanceRequirement(Substances.All.Ammonia.GetHomogeneousReference(), maximumProportion: 5e-5m),
-        new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetHomogeneousReference(), maximumProportion: 1e-6m),
-        new SubstanceRequirement(Substances.All.CarbonMonoxide.GetHomogeneousReference(), maximumProportion: 5e-5m),
-        new SubstanceRequirement(Substances.All.CarbonDioxide.GetHomogeneousReference(), maximumProportion: 0.005m),
-        new SubstanceRequirement(Substances.All.HydrogenSulfide.GetHomogeneousReference(), maximumProportion: 0),
-        new SubstanceRequirement(Substances.All.Methane.GetHomogeneousReference(), maximumProportion: 0.001m),
-        new SubstanceRequirement(Substances.All.Ozone.GetHomogeneousReference(), maximumProportion: 1e-7m),
-        new SubstanceRequirement(Substances.All.Phosphine.GetHomogeneousReference(), maximumProportion: 3e-7m),
-        new SubstanceRequirement(Substances.All.SulphurDioxide.GetHomogeneousReference(), maximumProportion: 2e-6m),
+        new SubstanceRequirement(Substances.All.Ammonia.GetHomogeneousReference(), MaximumProportion: 5e-5m),
+        new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetHomogeneousReference(), MaximumProportion: 1e-6m),
+        new SubstanceRequirement(Substances.All.CarbonMonoxide.GetHomogeneousReference(), MaximumProportion: 5e-5m),
+        new SubstanceRequirement(Substances.All.CarbonDioxide.GetHomogeneousReference(), MaximumProportion: 0.005m),
+        new SubstanceRequirement(Substances.All.HydrogenSulfide.GetHomogeneousReference(), MaximumProportion: 0),
+        new SubstanceRequirement(Substances.All.Methane.GetHomogeneousReference(), MaximumProportion: 0.001m),
+        new SubstanceRequirement(Substances.All.Ozone.GetHomogeneousReference(), MaximumProportion: 1e-7m),
+        new SubstanceRequirement(Substances.All.Phosphine.GetHomogeneousReference(), MaximumProportion: 3e-7m),
+        new SubstanceRequirement(Substances.All.SulphurDioxide.GetHomogeneousReference(), MaximumProportion: 2e-6m),
     };
 
     /// <summary>
     /// Specifies the average height of this <see cref="Atmosphere"/>, in meters. Read-only;
     /// derived from the properties of the planet and atmosphere.
     /// </summary>
-    public double AtmosphericHeight { get; set; }
+    public double AtmosphericHeight { get; private set; }
 
     /// <summary>
     /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
@@ -61,9 +62,19 @@ public class Atmosphere
     public double AveragePrecipitation { get; private set; }
 
     /// <summary>
+    /// Whether this atmosphere is an empty instance.
+    /// </summary>
+    public bool IsEmpty => AtmosphericPressure == 0 || _material?.IsEmpty != false;
+
+    private IMaterial<HugeNumber>? _material;
+    /// <summary>
     /// The physical makeup of this atmosphere.
     /// </summary>
-    public IMaterial<HugeNumber> Material { get; private set; }
+    public IMaterial<HugeNumber> Material
+    {
+        get => _material ??= new Material<HugeNumber>();
+        private set => _material = value.IsEmpty ? null : value;
+    }
 
     private double? _maxPrecipitation;
     /// <summary>
@@ -118,25 +129,20 @@ public class Atmosphere
     /// </summary>
     internal double Wetness => _wetness ??= (double)((HugeNumber)WaterRatio * (Material.Mass / new HugeNumber(1.287, 16)));
 
-    /// <summary>
-    /// Initializes a new instance of <see cref="Atmosphere"/>.
-    /// </summary>
-    /// <param name="pressure">The atmospheric pressure at the surface of the planetary body, in kPa.</param>
-    internal Atmosphere(double pressure)
-    {
-        AtmosphericPressure = pressure;
-        Material = new Material<HugeNumber>(); // unused; set correctly during initialization
-    }
+    internal Atmosphere() { }
 
     internal Atmosphere(
         Planetoid planet,
         double pressure,
-        params (ISubstanceReference substance, decimal proportion)[] constituents) : this(pressure)
+        IReadOnlyDictionary<ISubstanceReference, decimal>? constituents)
     {
-        if ((constituents?.Length ?? 0) == 0)
+        if ((constituents?.Count ?? 0) == 0
+            || pressure <= 0)
         {
-            AtmosphericPressure = 0;
+            return;
         }
+
+        AtmosphericPressure = pressure;
 
         SetAtmosphericScaleHeight(planet);
 
@@ -144,7 +150,9 @@ public class Atmosphere
 
         planet.InsolationFactor_Equatorial = planet.GetInsolationFactor(mass, AtmosphericScaleHeight);
         var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
-        SetGreenhouseFactor(constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
+        SetGreenhouseFactor(
+            constituents?.Select(x => (x.Key, x.Value))
+            ?? Enumerable.Empty<(ISubstanceReference, decimal)>());
         planet.GreenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
         var greenhouseEffect = planet.GetGreenhouseEffect();
         var temperature = tIF + greenhouseEffect;
@@ -156,14 +164,25 @@ public class Atmosphere
         var shape = GetShape(planet);
 
         Material = new Material<HugeNumber>(
-            shape,
-            mass,
+            constituents ?? ReadOnlyDictionary<ISubstanceReference, decimal>.Empty,
             density,
-            temperature,
-            constituents ?? Array.Empty<(ISubstanceReference substance, decimal proportion)>());
+            mass,
+            shape,
+            temperature);
 
         SetPrecipitation();
     }
+
+    internal Atmosphere(
+        Planetoid planet,
+        double pressure,
+        params (ISubstanceReference substance, decimal proportion)[] constituents) : this(
+            planet,
+            pressure,
+            constituents.ToDictionary(
+                x => x.substance,
+                x => x.proportion))
+    { }
 
     /// <summary>
     /// Calculates the atmospheric density for the given conditions, in kg/m³.
@@ -212,8 +231,12 @@ public class Atmosphere
     /// is accepted since the level of detailed information needed to calculate this value
     /// accurately is not desired in this library.
     /// </remarks>
-    public double GetAtmosphericDrag(Planetoid planet, double temperature, double altitude, double speed) =>
-        0.235 * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude)) * speed * speed * (double)planet.Shape.ContainingRadius;
+    public double GetAtmosphericDrag(Planetoid planet, double temperature, double altitude, double speed)
+        => 0.235
+        * GetAtmosphericDensity(temperature, GetAtmosphericPressure(planet, temperature, altitude))
+        * speed
+        * speed
+        * (double)planet.Shape.ContainingRadius;
 
     /// <summary>
     /// Calculates the atmospheric pressure at a given elevation, in kPa.
@@ -437,7 +460,8 @@ public class Atmosphere
     /// </summary>
     /// <param name="planet">The <see cref="Planetoid"/> on which the calculation is being
     /// made.</param>
-    private IShape<HugeNumber> GetShape(Planetoid planet) => new HollowSphere<HugeNumber>(planet.Shape.ContainingRadius, AtmosphericHeight);
+    private IShape<HugeNumber> GetShape(Planetoid planet)
+        => new HollowSphere<HugeNumber>(planet.Shape.ContainingRadius, AtmosphericHeight);
 
     private void SetPrecipitation()
     {

@@ -6,7 +6,51 @@ namespace Tavenem.Universe.Space.Planetoids;
 /// <summary>
 /// A set of parameters which constrains the random generation of a <see cref="Planetoid"/>.
 /// </summary>
-public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetParams, bool>
+/// <param name="Albedo">The target albedo.</param>
+/// <param name="AtmosphericPressure">The target atmospheric pressure, in kPa.</param>
+/// <param name="AtmosphericRequirements">All atmospheric requirements.</param>
+/// <param name="AxialTilt">The target axial tilt, in radians.</param>
+/// <param name="EarthlikeAtmosphere">
+/// Whether the planet is to have an earthlike atmosphere.
+/// </param>
+/// <param name="Eccentricity">The target orbital eccentricity.</param>
+/// <param name="HasMagnetosphere">
+/// Indicates whether a strong magnetosphere is required.
+/// </param>
+/// <param name="HasRings">
+/// Indicates whether a ring system is present.
+/// </param>
+/// <param name="MaxMass">An optional maximum mass for the planet, in kg.</param>
+/// <param name="NumSatellites">
+/// The number of satellites to place in orbit around the planet.
+/// </param>
+/// <param name="Radius">The target radius, in meters.</param>
+/// <param name="RevolutionPeriod">The target revolution period, in seconds.</param>
+/// <param name="RotationalPeriod">The target rotational period, in seconds.</param>
+/// <param name="SurfaceGravity">The target surface gravity, in m/s².</param>
+/// <param name="SurfaceTemperature">The target surface temperature, in K.</param>
+/// <param name="WaterRatio">The target ratio of water to land on the surface.</param>
+/// <param name="WaterVaporRatio">
+/// The target mass fraction of water in the atmosphere.
+/// </param>
+public readonly record struct PlanetParams(
+    double? Albedo = null,
+    double? AtmosphericPressure = null,
+    IReadOnlyList<SubstanceRequirement>? AtmosphericRequirements = null,
+    double? AxialTilt = null,
+    bool EarthlikeAtmosphere = false,
+    double? Eccentricity = null,
+    bool? HasMagnetosphere = null,
+    bool? HasRings = null,
+    HugeNumber? MaxMass = null,
+    byte? NumSatellites = null,
+    HugeNumber? Radius = null,
+    HugeNumber? RevolutionPeriod = null,
+    HugeNumber? RotationalPeriod = null,
+    double? SurfaceGravity = null,
+    double? SurfaceTemperature = null,
+    decimal? WaterRatio = null,
+    decimal? WaterVaporRatio = null)
 {
     /// <summary>
     /// The approximate albedo of Earth.
@@ -74,162 +118,6 @@ public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetPar
     /// </para>
     /// </summary>
     public static readonly PlanetParams Earthlike = NewEarthlike();
-
-    /// <summary>
-    /// The target albedo.
-    /// </summary>
-    public double? Albedo { get; }
-
-    /// <summary>
-    /// The target atmospheric pressure, in kPa.
-    /// </summary>
-    public double? AtmosphericPressure { get; }
-
-    /// <summary>
-    /// Any atmospheric requirements.
-    /// </summary>
-    public IReadOnlyList<SubstanceRequirement> AtmosphericRequirements { get; }
-
-    /// <summary>
-    /// The target axial tilt, in radians.
-    /// </summary>
-    public double? AxialTilt { get; }
-
-    /// <summary>
-    /// Whether the planet is to have an earthlike atmosphere.
-    /// </summary>
-    public bool EarthlikeAtmosphere { get; }
-
-    /// <summary>
-    /// The target orbital eccentricity.
-    /// </summary>
-    public double? Eccentricity { get; }
-
-    /// <summary>
-    /// Indicates whether a strong magnetosphere is required.
-    /// </summary>
-    public bool? HasMagnetosphere { get; }
-
-    /// <summary>
-    /// Indicates whether a ring system is present.
-    /// </summary>
-    public bool? HasRings { get; }
-
-    /// <summary>
-    /// An optional maximum mass for the planet, in kg.
-    /// </summary>
-    public HugeNumber? MaxMass { get; }
-
-    /// <summary>
-    /// The number of satellites to place in orbit around the planet.
-    /// </summary>
-    public byte? NumSatellites { get; }
-
-    /// <summary>
-    /// The target radius, in meters.
-    /// </summary>
-    public HugeNumber? Radius { get; }
-
-    /// <summary>
-    /// The target revolution period, in seconds.
-    /// </summary>
-    public HugeNumber? RevolutionPeriod { get; }
-
-    /// <summary>
-    /// The target rotational period, in seconds.
-    /// </summary>
-    public HugeNumber? RotationalPeriod { get; }
-
-    /// <summary>
-    /// The target surface gravity, in m/s².
-    /// </summary>
-    public double? SurfaceGravity { get; }
-
-    /// <summary>
-    /// The target surface temperature, in K.
-    /// </summary>
-    public double? SurfaceTemperature { get; }
-
-    /// <summary>
-    /// The target ratio of water to land on the surface.
-    /// </summary>
-    public decimal? WaterRatio { get; }
-
-    /// <summary>
-    /// The target mass fraction of water in the atmosphere.
-    /// </summary>
-    public decimal? WaterVaporRatio { get; }
-
-    /// <summary>
-    /// Initializes a new instance of <see cref="PlanetParams"/> with the given values.
-    /// </summary>
-    /// <param name="albedo">The target albedo.</param>
-    /// <param name="atmosphericPressure">The target atmospheric pressure, in kPa.</param>
-    /// <param name="atmosphericRequirements">All atmospheric requirements.</param>
-    /// <param name="axialTilt">The target axial tilt, in radians.</param>
-    /// <param name="earthlikeAtmosphere">
-    /// Whether the planet is to have an earthlike atmosphere.
-    /// </param>
-    /// <param name="eccentricity">The target orbital eccentricity.</param>
-    /// <param name="hasMagnetosphere">
-    /// Indicates whether a strong magnetosphere is required.
-    /// </param>
-    /// <param name="hasRings">
-    /// Indicates whether a ring system is present.
-    /// </param>
-    /// <param name="maxMass">An optional maximum mass for the planet, in kg.</param>
-    /// <param name="numSatellites">
-    /// The number of satellites to place in orbit around the planet.
-    /// </param>
-    /// <param name="radius">The target radius, in meters.</param>
-    /// <param name="revolutionPeriod">The target revolution period, in seconds.</param>
-    /// <param name="rotationalPeriod">The target rotational period, in seconds.</param>
-    /// <param name="surfaceGravity">The target surface gravity, in m/s².</param>
-    /// <param name="surfaceTemperature">The target surface temperature, in K.</param>
-    /// <param name="waterRatio">The target ratio of water to land on the surface.</param>
-    /// <param name="waterVaporRatio">
-    /// The target mass fraction of water in the atmosphere.
-    /// </param>
-    [System.Text.Json.Serialization.JsonConstructor]
-    public PlanetParams(
-        double? albedo = null,
-        double? atmosphericPressure = null,
-        IReadOnlyList<SubstanceRequirement>? atmosphericRequirements = null,
-        double? axialTilt = null,
-        bool earthlikeAtmosphere = false,
-        double? eccentricity = null,
-        bool? hasMagnetosphere = null,
-        bool? hasRings = null,
-        HugeNumber? maxMass = null,
-        byte? numSatellites = null,
-        HugeNumber? radius = null,
-        HugeNumber? revolutionPeriod = null,
-        HugeNumber? rotationalPeriod = null,
-        double? surfaceGravity = null,
-        double? surfaceTemperature = null,
-        decimal? waterRatio = null,
-        decimal? waterVaporRatio = null)
-    {
-        Albedo = albedo.HasValue
-            ? albedo.Value.Clamp(0, 1)
-            : (double?)null;
-        AtmosphericPressure = atmosphericPressure;
-        AtmosphericRequirements = atmosphericRequirements?.ToArray() ?? Array.Empty<SubstanceRequirement>();
-        AxialTilt = axialTilt;
-        EarthlikeAtmosphere = earthlikeAtmosphere;
-        Eccentricity = eccentricity;
-        HasMagnetosphere = hasMagnetosphere;
-        HasRings = hasRings;
-        NumSatellites = numSatellites;
-        Radius = radius;
-        RevolutionPeriod = revolutionPeriod;
-        RotationalPeriod = rotationalPeriod;
-        SurfaceGravity = surfaceGravity;
-        SurfaceTemperature = surfaceTemperature;
-        WaterRatio = waterRatio;
-        WaterVaporRatio = waterVaporRatio;
-        MaxMass = maxMass;
-    }
 
     /// <summary>
     /// Generates a new instance of <see cref="PlanetParams"/> with either the given values, or
@@ -304,13 +192,16 @@ public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetPar
             waterRatio ?? EarthWaterRatio,
             waterVaporRatio ?? EarthWaterVaporRatio);
 
-    /// <summary>Indicates whether the current object is equal to another object of the same type.</summary>
+    /// <summary>
+    /// Indicates whether the current object is equal to another object of the same type.
+    /// </summary>
     /// <param name="other">An object to compare with this object.</param>
     /// <returns>
-    /// <see langword="true" /> if the current object is equal to the <paramref name="other" />
-    /// parameter; otherwise, <see langword="false" />.
+    /// <see langword="true"/> if the current object is equal to the other parameter; otherwise,
+    /// <see langword="false"/>.
     /// </returns>
-    public bool Equals(PlanetParams other) => Albedo == other.Albedo
+    public bool Equals(PlanetParams other)
+        => Albedo == other.Albedo
         && AtmosphericPressure == other.AtmosphericPressure
         && AxialTilt == other.AxialTilt
         && EarthlikeAtmosphere == other.EarthlikeAtmosphere
@@ -326,56 +217,62 @@ public readonly struct PlanetParams : IEqualityOperators<PlanetParams, PlanetPar
         && SurfaceTemperature == other.SurfaceTemperature
         && WaterRatio == other.WaterRatio
         && WaterVaporRatio == other.WaterVaporRatio
-        && AtmosphericRequirements.OrderBy(x => x.GetHashCode()).SequenceEqual(other.AtmosphericRequirements.OrderBy(x => x.GetHashCode()));
+        && (AtmosphericRequirements is null
+            ? other.AtmosphericRequirements is null
+            : (other.AtmosphericRequirements is not null
+                && AtmosphericRequirements
+                    .OrderBy(x => x.Substance.Id)
+                    .SequenceEqual(other
+                        .AtmosphericRequirements
+                        .OrderBy(x => x.Substance.Id))));
 
-    /// <summary>Indicates whether this instance and a specified object are equal.</summary>
-    /// <param name="obj">The object to compare with the current instance.</param>
+    /// <summary>
+    /// Indicates whether the current object is equal to another object of the same type.
+    /// </summary>
+    /// <param name="other">An object to compare with this object.</param>
     /// <returns>
-    /// <see langword="true" /> if <paramref name="obj" /> and this instance are the same type
-    /// and represent the same value; otherwise, <see langword="false" />.
+    /// <see langword="true"/> if the current object is equal to the other parameter; otherwise,
+    /// <see langword="false"/>.
     /// </returns>
-    public override bool Equals(object? obj) => obj is PlanetParams planetParams && Equals(planetParams);
+    public bool Equals(PlanetParams? other)
+        => other is not null
+        && Equals(other.Value);
 
-    /// <summary>Returns the hash code for this instance.</summary>
-    /// <returns>A 32-bit signed integer that is the hash code for this instance.</returns>
+    /// <inheritdoc/>
     public override int GetHashCode()
     {
-        var hash = new HashCode();
-        hash.Add(Albedo);
-        hash.Add(AtmosphericPressure);
-        hash.Add(AtmosphericRequirements);
-        hash.Add(AxialTilt);
-        hash.Add(EarthlikeAtmosphere);
-        hash.Add(Eccentricity);
-        hash.Add(HasMagnetosphere);
-        hash.Add(HasRings);
-        hash.Add(MaxMass);
-        hash.Add(NumSatellites);
-        hash.Add(Radius);
-        hash.Add(RevolutionPeriod);
-        hash.Add(RotationalPeriod);
-        hash.Add(SurfaceGravity);
-        hash.Add(SurfaceTemperature);
-        hash.Add(WaterRatio);
-        hash.Add(WaterVaporRatio);
-        return hash.ToHashCode();
+        var hashCode = new HashCode();
+        hashCode.Add(Albedo.GetHashCode());
+        hashCode.Add(AtmosphericPressure.GetHashCode());
+        hashCode.Add(AxialTilt.GetHashCode());
+        hashCode.Add(EarthlikeAtmosphere.GetHashCode());
+        hashCode.Add(Eccentricity.GetHashCode());
+        hashCode.Add(HasMagnetosphere.GetHashCode());
+        hashCode.Add(HasRings.GetHashCode());
+        hashCode.Add(MaxMass.GetHashCode());
+        hashCode.Add(NumSatellites.GetHashCode());
+        hashCode.Add(Radius.GetHashCode());
+        hashCode.Add(RevolutionPeriod.GetHashCode());
+        hashCode.Add(RotationalPeriod.GetHashCode());
+        hashCode.Add(SurfaceGravity.GetHashCode());
+        hashCode.Add(SurfaceTemperature.GetHashCode());
+        hashCode.Add(WaterRatio.GetHashCode());
+        hashCode.Add(WaterVaporRatio.GetHashCode());
+        hashCode.Add(GetAtmosphericRequirementsHashCode());
+        return hashCode.ToHashCode();
     }
 
-    /// <summary>Indicates whether two objects are equal.</summary>
-    /// <param name="left">The first object to compare.</param>
-    /// <param name="right">The second object to compare.</param>
-    /// <returns>
-    /// <see langword="true" /> if <paramref name="left"/> is equal to <paramref
-    /// name="right"/>; otherwise, <see langword="false" />.
-    /// </returns>
-    public static bool operator ==(PlanetParams left, PlanetParams right) => left.Equals(right);
-
-    /// <summary>Indicates whether two objects are unequal.</summary>
-    /// <param name="left">The first object to compare.</param>
-    /// <param name="right">The second object to compare.</param>
-    /// <returns>
-    /// <see langword="true" /> if <paramref name="left"/> is not equal to <paramref
-    /// name="right"/>; otherwise, <see langword="false" />.
-    /// </returns>
-    public static bool operator !=(PlanetParams left, PlanetParams right) => !(left == right);
+    private int GetAtmosphericRequirementsHashCode()
+    {
+        if (AtmosphericRequirements is null)
+        {
+            return 0;
+        }
+        unchecked
+        {
+            return 367 * AtmosphericRequirements
+                .OrderBy(x => x.Substance.Id)
+                .Aggregate(0, (a, c) => (a * 397) ^ c.GetHashCode());
+        }
+    }
 }

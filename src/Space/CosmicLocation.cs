@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Text;
 using System.Text.Json.Serialization;
 using Tavenem.Chemistry;
 using Tavenem.DataStorage;
@@ -21,15 +20,13 @@ namespace Tavenem.Universe.Space;
 /// contained by a location in turn. The relative positions of locations within the same
 /// hierarchy can be analyzed using the methods available on this class.
 /// </remarks>
-[JsonConverter(typeof(CosmicLocationConverter))]
+[JsonPolymorphic(UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
+[JsonDerivedType(typeof(CosmicLocation), CosmicLocation.CosmicLocationIdItemTypeName)]
+[JsonDerivedType(typeof(Planetoid), Planetoid.PlanetoidIdItemTypeName)]
+[JsonDerivedType(typeof(Star), Star.StarIdItemTypeName)]
+[JsonDerivedType(typeof(StarSystem), StarSystem.StarSystemIdItemTypeName)]
 public partial class CosmicLocation : Location
 {
-    /// <summary>
-    /// A string that uniquely identifies this <see cref="CosmicLocation"/> for display
-    /// purposes. Includes a description of its type, and its <see cref="IIdItem.Id"/>.
-    /// </summary>
-    public string Designation => $"{TypeName} {Id}";
-
     /// <summary>
     /// The type discriminator for this type.
     /// </summary>
@@ -37,51 +34,44 @@ public partial class CosmicLocation : Location
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => CosmicLocationIdItemTypeName;
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
+    {
+        get => CosmicLocationIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// The mass of this location's material, in kg.
     /// </summary>
+    [JsonIgnore]
     public HugeNumber Mass => Material.Mass;
 
+    private IMaterial<HugeNumber>? _material;
     /// <summary>
     /// The physical material which comprises this location.
     /// </summary>
-    public IMaterial<HugeNumber> Material { get; private protected set; } = Material<HugeNumber>.Empty;
-
-    /// <summary>
-    /// An optional name for this <see cref="CosmicLocation"/>.
-    /// </summary>
     /// <remarks>
-    /// Not every <see cref="CosmicLocation"/> must have a name. They may be uniquely identified
-    /// by their <see cref="IIdItem.Id"/>, instead.
+    /// The properties of this instance should not be directly modified. Doing so would not produce
+    /// the implied effects upon other properties of this or related entities. For instance,
+    /// altering the <see cref="IMaterial{TScalar}.Mass"/> directly would not produce any adjustment
+    /// to the <see cref="Orbit"/> of this or any gravitationally bound entities.
     /// </remarks>
-    public string? Name { get; set; }
+    public IMaterial<HugeNumber> Material
+    {
+        get => _material ??= new Material<HugeNumber>();
+        private protected set => _material = value.IsEmpty ? null : value;
+    }
 
     /// <summary>
     /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
     /// </summary>
     public Orbit? Orbit { get; internal set; }
 
-    private HugeNumber? _radiusSquared;
-    /// <summary>
-    /// The containing radius of the location, squared.
-    /// </summary>
-    /// <remarks>
-    /// The value is calculated on first request and cached.
-    /// </remarks>
-    public HugeNumber RadiusSquared => _radiusSquared ??= Shape.ContainingRadius.Square();
-
-    /// <summary>
-    /// A value which deterministically allows this <see cref="CosmicLocation"/> to be
-    /// regenerated, given identical values for its other properties.
-    /// </summary>
-    public uint Seed { get; private protected set; }
-
     /// <summary>
     /// The shape of this location.
     /// </summary>
+    [JsonIgnore]
     public override IShape<HugeNumber> Shape
     {
         get => Material.Shape;
@@ -97,6 +87,7 @@ public partial class CosmicLocation : Location
     /// <summary>
     /// The average force of gravity at the surface of this object, in N.
     /// </summary>
+    [JsonIgnore]
     public HugeNumber SurfaceGravity => _surfaceGravity ??= Material.GetSurfaceGravity();
 
     /// <summary>
@@ -108,49 +99,13 @@ public partial class CosmicLocation : Location
     /// <remarks>
     /// No less than the ambient temperature of its parent, if any.
     /// </remarks>
+    [JsonIgnore]
     public double Temperature => Material.Temperature ?? 0;
 
-    /// <summary>
-    /// The <see cref="CosmicLocation"/>'s <see cref="Name"/>, if it has one; otherwise its
-    /// <see cref="Designation"/>.
-    /// </summary>
-    public string Title => Name ?? Designation;
-
-    private string? _typeName;
-    /// <summary>
-    /// The name for this type of <see cref="CosmicLocation"/>.
-    /// </summary>
-    public string TypeName
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string TypeName => StructureType switch
     {
-        get
-        {
-            if (string.IsNullOrEmpty(_typeName))
-            {
-                var sb = new StringBuilder();
-                if (!string.IsNullOrEmpty(TypeNamePrefix))
-                {
-                    sb.Append(TypeNamePrefix).Append(' ');
-                }
-                sb.Append(BaseTypeName);
-                if (!string.IsNullOrEmpty(TypeNameSuffix))
-                {
-                    sb.Append(' ').Append(TypeNameSuffix);
-                }
-                _typeName = sb.ToString();
-            }
-            return _typeName;
-        }
-    }
-
-    /// <summary>
-    /// The velocity of the <see cref="CosmicLocation"/> in m/s.
-    /// </summary>
-    public Vector3<HugeNumber> Velocity { get; internal set; }
-
-    private protected virtual string BaseTypeName => StructureType switch
-    {
-        CosmicStructureType.Universe => "Universe",
-        CosmicStructureType.Supercluster => "Supercluster",
         CosmicStructureType.GalaxyCluster => "Galaxy Cluster",
         CosmicStructureType.GalaxyGroup => "Galaxy Group",
         CosmicStructureType.GalaxySubgroup => "Galaxy Subgroup",
@@ -158,15 +113,23 @@ public partial class CosmicLocation : Location
         CosmicStructureType.EllipticalGalaxy => "Elliptical Galaxy",
         CosmicStructureType.DwarfGalaxy => "Dwarf Galaxy",
         CosmicStructureType.GlobularCluster => "Globular Cluster",
-        CosmicStructureType.Nebula => "Nebula",
         CosmicStructureType.HIIRegion => "HII Region",
         CosmicStructureType.PlanetaryNebula => "Planetary Nebula",
         CosmicStructureType.StarSystem => "Star System",
-        CosmicStructureType.AsteroidField => Orbit.HasValue ? "Asteroid Belt" : "Asteroid Field",
+        CosmicStructureType.AsteroidField => Orbit.HasValue
+            ? "Asteroid Belt"
+            : "Asteroid Field",
         CosmicStructureType.OortCloud => "Oort Cloud",
-        CosmicStructureType.Star => "Star",
-        _ => "Location",
+        CosmicStructureType.BlackHole => Mass >= _SupermassiveBlackHoleThreshold
+            ? "Supermassive Black Hole"
+            : "Black Hole",
+        _ => StructureType.ToString(),
     };
+
+    /// <summary>
+    /// The velocity of the <see cref="CosmicLocation"/> in m/s.
+    /// </summary>
+    public Vector3<HugeNumber> Velocity { get; internal set; }
 
     private protected virtual IEnumerable<ChildDefinition> ChildDefinitions => StructureType switch
     {
@@ -179,42 +142,16 @@ public partial class CosmicLocation : Location
         CosmicStructureType.DwarfGalaxy => _GalaxyChildDefinitions,
         CosmicStructureType.GlobularCluster => _GlobularClusterChildDefinitions,
         CosmicStructureType.HIIRegion => _HIIRegionChildDefinitions,
+        CosmicStructureType.AsteroidField => _AsteroidFieldChildDefinitions,
+        CosmicStructureType.OortCloud => _OortCloudChildDefinitions,
         _ => Enumerable.Empty<ChildDefinition>(),
     };
-
-    private protected virtual string DesignatorPrefix => string.Empty;
-
-    private protected virtual string? TypeNamePrefix => null;
-
-    private protected virtual string? TypeNameSuffix => null;
-
-    private protected CosmicLocation(string? parentId, CosmicStructureType structureType) : base(parentId) => StructureType = structureType;
-
-    private protected CosmicLocation(
-        string id,
-        uint seed,
-        CosmicStructureType structureType,
-        string? parentId,
-        Vector3<HugeNumber>[]? absolutePosition,
-        string? name,
-        Vector3<HugeNumber> velocity,
-        Orbit? orbit) : base(id, parentId, absolutePosition)
-    {
-        Seed = seed;
-        StructureType = structureType;
-        Name = name;
-        Orbit = orbit;
-        Velocity = velocity;
-    }
 
     /// <summary>
     /// Initialize a new instance of <see cref="CosmicLocation"/>.
     /// </summary>
     /// <param name="id">
     /// The unique ID of this item.
-    /// </param>
-    /// <param name="seed">
-    /// A unique seed which can be used to deterministically recreate this instance.
     /// </param>
     /// <param name="structureType">
     /// The <see cref="CosmicStructureType"/> of this location.
@@ -224,17 +161,16 @@ public partial class CosmicLocation : Location
     /// </param>
     /// <param name="absolutePosition">
     /// <para>
-    /// The position of this location, as a set of relative positions starting with the position
-    /// of its outermost containing parent within the universe, down to the relative position of
-    /// its most immediate parent.
+    /// The position of this location, as a set of relative positions starting with the position of
+    /// its outermost containing parent within the universe, down to the relative position of its
+    /// most immediate parent.
     /// </para>
     /// <para>
-    /// The location's own relative <see cref="Location.Position"/> is not expected to be
-    /// included.
+    /// The location's own relative <see cref="Location.Position"/> is not expected to be included.
     /// </para>
     /// <para>
-    /// May be <see langword="null"/> for a location with no containing parent, or whose parent
-    /// is the universe itself (i.e. there is no intermediate container).
+    /// May be <see langword="null"/> for a location with no containing parent, or whose parent is
+    /// the universe itself (i.e. there is no intermediate container).
     /// </para>
     /// </param>
     /// <param name="name">
@@ -246,65 +182,32 @@ public partial class CosmicLocation : Location
     /// <param name="orbit">
     /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
     /// </param>
-    /// <param name="position">
-    /// The position of this <see cref="CosmicLocation"/>.
-    /// </param>
-    /// <param name="temperature">
-    /// The temperature of this <see cref="CosmicLocation"/>, in K. May be <see
-    /// langword="null"/>, which indicates that it shares the ambient temperature of its
-    /// containing location (if any).
-    /// </param>
+    /// <param name="material">The physical material which comprises this location.</param>
     /// <remarks>
-    /// Note: this constructor is most useful for deserializers. Consider using <see
-    /// cref="New(CosmicStructureType, CosmicLocation?, Vector3{HugeNumber}, out List{CosmicLocation},
-    /// OrbitalParameters?)"/> to generate a new instance instead.
+    /// Note: this constructor is most useful for deserialization. Consider using <see
+    /// cref="New(CosmicStructureType, CosmicLocation?, Vector3{HugeNumber}, out
+    /// List{CosmicLocation}, OrbitalParameters?)"/> to generate a new instance instead.
     /// </remarks>
-    internal CosmicLocation(
+    [JsonConstructor]
+    public CosmicLocation(
         string id,
-        uint seed,
         CosmicStructureType structureType,
         string? parentId,
         Vector3<HugeNumber>[]? absolutePosition,
         string? name,
         Vector3<HugeNumber> velocity,
         Orbit? orbit,
-        Vector3<HugeNumber> position,
-        double? temperature) : this(id, seed, structureType, parentId, absolutePosition, name, velocity, orbit)
+        IMaterial<HugeNumber> material) : base(id, parentId, absolutePosition, name)
     {
-        switch (structureType)
-        {
-            case CosmicStructureType.Universe:
-                ReconstituteUniverseInstance();
-                break;
-            case CosmicStructureType.Supercluster:
-                ReconstituteSuperclusterInstance(position, temperature);
-                break;
-            case CosmicStructureType.GalaxyCluster:
-                ReconstituteGalaxyClusterInstance(position, temperature);
-                break;
-            case CosmicStructureType.GalaxyGroup:
-                ReconstituteGalaxyGroupInstance(position, temperature);
-                break;
-            case CosmicStructureType.GalaxySubgroup:
-                ReconstituteGalaxySubgroupInstance(position, temperature);
-                break;
-            case CosmicStructureType.SpiralGalaxy:
-            case CosmicStructureType.EllipticalGalaxy:
-            case CosmicStructureType.DwarfGalaxy:
-                ReconstituteGalaxyInstance(position, temperature);
-                break;
-            case CosmicStructureType.GlobularCluster:
-                ReconstituteGlobularClusterInstance(position, temperature);
-                break;
-            case CosmicStructureType.Nebula:
-            case CosmicStructureType.HIIRegion:
-                ReconstituteNebulaInstance(position, temperature);
-                break;
-            case CosmicStructureType.PlanetaryNebula:
-                ReconstitutePlanetaryNebulaInstance(position, temperature);
-                break;
-        }
+        StructureType = structureType;
+        Name = name;
+        Velocity = velocity;
+        Orbit = orbit;
+        Material = material;
     }
+
+    private protected CosmicLocation(string? parentId, CosmicStructureType structureType)
+        : base(parentId) => StructureType = structureType;
 
     /// <summary>
     /// Generates a new <see cref="CosmicLocation"/> instance as a child of the given containing
@@ -355,29 +258,14 @@ public partial class CosmicLocation : Location
 
         var instance = structureType switch
         {
-            CosmicStructureType.Universe => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.Supercluster => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.GalaxyCluster => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.GalaxyGroup => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.GalaxySubgroup => new CosmicLocation(parent?.Id, structureType),
             CosmicStructureType.Galaxy => Randomizer.Instance.NextDouble() <= 0.7
                 ? new CosmicLocation(parent?.Id, CosmicStructureType.SpiralGalaxy)
                 : new CosmicLocation(parent?.Id, CosmicStructureType.EllipticalGalaxy),
-            CosmicStructureType.SpiralGalaxy => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.EllipticalGalaxy => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.DwarfGalaxy => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.GlobularCluster => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.Nebula => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.HIIRegion => new CosmicLocation(parent?.Id, structureType),
-            CosmicStructureType.PlanetaryNebula => new CosmicLocation(parent?.Id, structureType),
             CosmicStructureType.AnyNebula => new CosmicLocation(parent?.Id, CosmicStructureType.Nebula),
-            CosmicStructureType.AsteroidField => new AsteroidField(parent, position, orbit),
-            CosmicStructureType.OortCloud => new AsteroidField(parent, position, orbit, oort: true),
-            CosmicStructureType.BlackHole => new BlackHole(parent, position, orbit),
             CosmicStructureType.StarSystem => new StarSystem(parent, position, out starSystemChildren, orbit),
             CosmicStructureType.Star => new Star(StarType.MainSequence, parent, position, orbit),
             CosmicStructureType.Planetoid => new Planetoid(PlanetType.Terrestrial, parent, null, new List<Star>(), position, out satellites, orbit),
-            _ => null,
+            _ => new CosmicLocation(parent?.Id, structureType),
         };
         if (structureType == CosmicStructureType.StarSystem)
         {
@@ -392,10 +280,7 @@ public partial class CosmicLocation : Location
         {
             return null;
         }
-        if (structureType is CosmicStructureType.AsteroidField
-            or CosmicStructureType.OortCloud
-            or CosmicStructureType.BlackHole
-            or CosmicStructureType.StarSystem
+        if (structureType is CosmicStructureType.StarSystem
             or CosmicStructureType.Planetoid)
         {
             return instance;
@@ -450,13 +335,23 @@ public partial class CosmicLocation : Location
                     children.Add(nebulaStar);
                 }
                 break;
+            case CosmicStructureType.AsteroidField:
+                instance.ConfigureAsteroidFieldInstance(position, parent);
+                break;
+            case CosmicStructureType.OortCloud:
+                instance.ConfigureOortCloudInstance(position, parent);
+                break;
+            case CosmicStructureType.BlackHole:
+                instance.ConfigureBlackHoleInstance(position);
+                break;
         }
 
         if (parent is not null && !orbit.HasValue)
         {
-            if (parent is AsteroidField asteroidField)
+            if (parent.StructureType is CosmicStructureType.AsteroidField
+                or CosmicStructureType.OortCloud)
             {
-                orbit = asteroidField.GetChildOrbit();
+                orbit = parent.GetAsteroidChildOrbit();
             }
             else
             {
@@ -539,26 +434,12 @@ public partial class CosmicLocation : Location
 
         var instance = structureType switch
         {
-            CosmicStructureType.Universe => new CosmicLocation(null, structureType),
-            CosmicStructureType.Supercluster => new CosmicLocation(null, structureType),
-            CosmicStructureType.GalaxyCluster => new CosmicLocation(null, structureType),
-            CosmicStructureType.GalaxyGroup => new CosmicLocation(null, structureType),
-            CosmicStructureType.GalaxySubgroup => new CosmicLocation(null, structureType),
             CosmicStructureType.Galaxy => Randomizer.Instance.NextDouble() <= 0.7
                 ? new CosmicLocation(null, CosmicStructureType.SpiralGalaxy)
                 : new CosmicLocation(null, CosmicStructureType.EllipticalGalaxy),
-            CosmicStructureType.SpiralGalaxy => new CosmicLocation(null, structureType),
-            CosmicStructureType.EllipticalGalaxy => new CosmicLocation(null, structureType),
-            CosmicStructureType.DwarfGalaxy => new CosmicLocation(null, structureType),
-            CosmicStructureType.GlobularCluster => new CosmicLocation(null, structureType),
-            CosmicStructureType.Nebula => new CosmicLocation(null, structureType),
-            CosmicStructureType.HIIRegion => new CosmicLocation(null, structureType),
-            CosmicStructureType.PlanetaryNebula => new CosmicLocation(null, structureType),
             CosmicStructureType.AnyNebula => new CosmicLocation(null, CosmicStructureType.Nebula),
-            CosmicStructureType.AsteroidField => AsteroidField.GetParentForChild(child, position, orbit),
-            CosmicStructureType.OortCloud => AsteroidField.GetParentForChild(child, position, orbit, oort: true),
             CosmicStructureType.StarSystem => StarSystem.GetParentForChild(child, out starSystemChildren, position),
-            _ => null,
+            _ => new CosmicLocation(null, structureType),
         };
         if (structureType == CosmicStructureType.StarSystem)
         {
@@ -569,9 +450,7 @@ public partial class CosmicLocation : Location
         {
             return null;
         }
-        if (structureType is CosmicStructureType.AsteroidField
-            or CosmicStructureType.OortCloud
-            or CosmicStructureType.StarSystem)
+        if (structureType == CosmicStructureType.StarSystem)
         {
             return instance;
         }
@@ -627,6 +506,15 @@ public partial class CosmicLocation : Location
                     children.Add(star);
                 }
                 break;
+            case CosmicStructureType.AsteroidField:
+                instance.ConfigureAsteroidFieldInstance(Vector3<HugeNumber>.Zero, null);
+                break;
+            case CosmicStructureType.OortCloud:
+                instance.ConfigureOortCloudInstance(Vector3<HugeNumber>.Zero, null);
+                break;
+            case CosmicStructureType.BlackHole:
+                instance.ConfigureBlackHoleInstance(Vector3<HugeNumber>.Zero);
+                break;
         }
 
         if (!position.HasValue)
@@ -642,7 +530,7 @@ public partial class CosmicLocation : Location
             }
             else if ((CosmicStructureType.SpiralGalaxy | CosmicStructureType.EllipticalGalaxy).HasFlag(instance.StructureType)
                 && child.StructureType == CosmicStructureType.BlackHole
-                && child.Mass > BlackHole._SupermassiveBlackHoleThreshold)
+                && child.Mass > _SupermassiveBlackHoleThreshold)
             {
                 position = Vector3<HugeNumber>.Zero;
             }
@@ -673,14 +561,14 @@ public partial class CosmicLocation : Location
                     CosmicStructureType.HIIRegion => _NebulaSpace,
                     CosmicStructureType.PlanetaryNebula => _PlanetaryNebulaSpace,
                     CosmicStructureType.StarSystem => StarSystem._StarSystemSpace,
-                    CosmicStructureType.AsteroidField => AsteroidField._AsteroidFieldSpace,
-                    CosmicStructureType.OortCloud => AsteroidField._OortCloudSpace,
-                    CosmicStructureType.BlackHole => BlackHole._BlackHoleSpace,
+                    CosmicStructureType.AsteroidField => _AsteroidFieldSpace,
+                    CosmicStructureType.OortCloud => _OortCloudSpace,
+                    CosmicStructureType.BlackHole => _BlackHoleSpace,
                     CosmicStructureType.Star => StarSystem._StarSystemSpace,
                     CosmicStructureType.Planetoid => Planetoid._GiantSpace,
                     _ => HugeNumber.Zero,
                 };
-                position = instance.GetOpenSpace(space, children.Select(x => x as Location).ToList());
+                position = instance.GetOpenSpace(space, children.ConvertAll(x => x as Location));
             }
         }
         if (position.HasValue)
@@ -708,6 +596,8 @@ public partial class CosmicLocation : Location
                     CosmicStructureType.StarSystem => instance is StarSystem && instance.Position != Vector3<HugeNumber>.Zero
                         ? OrbitalParameters.GetFromEccentricity(instance.Mass, instance.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
                         : (OrbitalParameters?)null,
+                    CosmicStructureType.AsteroidField
+                        or CosmicStructureType.OortCloud => instance.GetAsteroidChildOrbit(),
                     _ => null,
                 };
             }
@@ -782,9 +672,9 @@ public partial class CosmicLocation : Location
             CosmicStructureType.PlanetaryNebula => _PlanetaryNebulaSpace,
             CosmicStructureType.AnyNebula => _NebulaSpace,
             CosmicStructureType.StarSystem => StarSystem._StarSystemSpace,
-            CosmicStructureType.AsteroidField => AsteroidField._AsteroidFieldSpace,
-            CosmicStructureType.OortCloud => AsteroidField._OortCloudSpace,
-            CosmicStructureType.BlackHole => BlackHole._BlackHoleSpace,
+            CosmicStructureType.AsteroidField => _AsteroidFieldSpace,
+            CosmicStructureType.OortCloud => _OortCloudSpace,
+            CosmicStructureType.BlackHole => _BlackHoleSpace,
             CosmicStructureType.Star => StarSystem._StarSystemSpace,
             CosmicStructureType.Planetoid => Planetoid._GiantSpace,
             _ => HugeNumber.Zero,
@@ -858,15 +748,14 @@ public partial class CosmicLocation : Location
             children.Add(child);
         }
 
-        var defs = childAmounts
-            .Select(x => (x.def, weight: (double)(HugeNumber.One / x.def.Density), x.rem))
-            .ToList();
-        while (defs.Count > 0
-            && defs.Sum(x => x.rem).IsPositive())
+        var definitions = childAmounts
+            .ConvertAll(x => (x.def, weight: (double)(HugeNumber.One / x.def.Density), x.rem));
+        while (definitions.Count > 0
+            && definitions.Sum(x => x.rem).IsPositive())
         {
-            var index = Randomizer.Instance.NextIndex(defs, x => x.weight);
-            var def = defs[index];
-            defs.RemoveAt(index);
+            var index = Randomizer.Instance.NextIndex(definitions, x => x.weight);
+            var def = definitions[index];
+            definitions.RemoveAt(index);
 
             var idealDistance = (double)(2 * (def.def.Density * HugeNumberConstants.ThreeQuartersPi).Cbrt());
             var distance = Randomizer.Instance.NormalDistributionSample(idealDistance, idealDistance / 6);
@@ -1047,7 +936,7 @@ public partial class CosmicLocation : Location
             return condition is null
                 ? ChildDefinitions.Select(x => (x, Shape.Volume * x.Density))
                 : ChildDefinitions
-                    .Where(x => condition.IsSatisfiedBy(x))
+                    .Where(condition.IsSatisfiedBy)
                     .Select(x => (x, Shape.Volume * x.Density));
         }
 
@@ -1063,7 +952,7 @@ public partial class CosmicLocation : Location
             ? ChildDefinitions
                 .Select(x => (x, location.Shape.Volume * x.Density))
             : ChildDefinitions
-                .Where(x => condition.IsSatisfiedBy(x))
+                .Where(condition.IsSatisfiedBy)
                 .Select(x => (x, location.Shape.Volume * x.Density));
     }
 
@@ -1198,7 +1087,7 @@ public partial class CosmicLocation : Location
         var numInM3 = condition is null
             ? ChildDefinitions.Sum(x => x.Density)
             : ChildDefinitions
-                .Where(x => condition.IsSatisfiedBy(x))
+                .Where(condition.IsSatisfiedBy)
                 .Sum(x => x.Density);
         var v = maxAmount / numInM3;
         // The number in a single m³ may be so small that this goes to infinity; if so, perform
@@ -1307,14 +1196,6 @@ public partial class CosmicLocation : Location
         Velocity = velocity;
     }
 
-    /// <summary>
-    /// Returns a string that represents the celestial object.
-    /// </summary>
-    /// <returns>A string that represents the celestial object.</returns>
-    public override string ToString() => string.IsNullOrEmpty(Name)
-        ? Designation
-        : $"{TypeName} {Name}";
-
     internal HugeNumber GetHillSphereRadius() => Orbit?.GetHillSphereRadius(Mass) ?? HugeNumber.Zero;
 
     internal HugeNumber GetRocheLimit(HugeNumber orbitingDensity)
@@ -1368,16 +1249,15 @@ public partial class CosmicLocation : Location
         }
         childAmounts.AddRange(childTotals.Where(x => !childAmounts.Any(y => x.totalType.IsSatisfiedBy(y.def))));
 
-        var defs = childAmounts
-            .Select(x => (x.def, weight: (double)(HugeNumber.One / x.def.Density), x.rem))
-            .ToList();
+        var definitions = childAmounts
+            .ConvertAll(x => (x.def, weight: (double)(HugeNumber.One / x.def.Density), x.rem));
         while (total > 0
-            && defs.Count > 0
-            && defs.Sum(x => x.rem).IsPositive())
+            && definitions.Count > 0
+            && definitions.Sum(x => x.rem).IsPositive())
         {
-            var index = Randomizer.Instance.NextIndex(defs, x => x.weight);
-            var def = defs[index];
-            defs.RemoveAt(index);
+            var index = Randomizer.Instance.NextIndex(definitions, x => x.weight);
+            var def = definitions[index];
+            definitions.RemoveAt(index);
 
             var child = GenerateChild(def.def, children, out var subChildren);
             if (child is not null)
@@ -1385,7 +1265,7 @@ public partial class CosmicLocation : Location
                 var rem = def.rem - HugeNumber.One;
                 if (rem.IsPositive())
                 {
-                    defs.Insert(index, (def.def, def.weight, rem));
+                    definitions.Insert(index, (def.def, def.weight, rem));
                 }
                 total--;
                 yield return (child, subChildren);

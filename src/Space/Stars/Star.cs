@@ -4,6 +4,7 @@ using Tavenem.Chemistry;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Universe.Chemistry;
+using Tavenem.Universe.Place;
 using Tavenem.Universe.Space.Stars;
 
 namespace Tavenem.Universe.Space;
@@ -11,7 +12,6 @@ namespace Tavenem.Universe.Space;
 /// <summary>
 /// A stellar body.
 /// </summary>
-[JsonConverter(typeof(StarConverter))]
 public class Star : CosmicLocation
 {
     private static readonly HugeNumber _MinBlueHypergiantMass = new(7.96, 31);
@@ -24,40 +24,17 @@ public class Star : CosmicLocation
     /// <summary>
     /// A built-in, read-only type discriminator.
     /// </summary>
-    [JsonPropertyName("$type"), JsonInclude, JsonPropertyOrder(-2)]
-    public override string IdItemTypeName => StarIdItemTypeName;
-
-    internal virtual bool IsHospitable => StarType switch
+    [JsonInclude, JsonPropertyOrder(-1)]
+    public override string IdItemTypeName
     {
-        // False for brown dwarfs; their habitable zones, if any, are moving targets due to rapid
-        // cooling, and intersect soon with severe tidal forces, making it unlikely that life could
-        // develop before a planet becomes uninhabitable.
-        StarType.BrownDwarf => false,
-
-        // False for white dwarfs; their habitable zones, if any, are moving targets due to rapid
-        // cooling, and intersect soon with severe tidal forces, and additionally severe UV
-        // radiation is expected in early stages at the close distances where a habitable zone could
-        // be expected, making it unlikely that life could develop before a planet becomes
-        // uninhabitable.
-        StarType.WhiteDwarf => false,
-
-        // False for neutron stars, due to their excessive ionizing radiation, which makes the
-        // development of life nearby highly unlikely.
-        StarType.Neutron => false,
-
-        // False for yellow and blue giants; although they may have a habitable zone, it is not
-        // likely to exist in the same place long enough for life to develop before the star
-        // evolves into another type, or dies.
-        StarType.YellowGiant => false,
-        StarType.BlueGiant => false,
-
-        // True for most stars.
-        _ => true,
-    };
+        get => StarIdItemTypeName;
+        set { }
+    }
 
     /// <summary>
     /// Whether this is a giant star.
     /// </summary>
+    [JsonIgnore]
     public bool IsGiant => StarType.Giant.HasFlag(StarType);
 
     /// <summary>
@@ -85,7 +62,30 @@ public class Star : CosmicLocation
     /// </summary>
     public StarType StarType { get; }
 
-    private protected override string BaseTypeName => StarType switch
+    private string? _typeName;
+    /// <inheritdoc />
+    [JsonIgnore]
+    public override string TypeName
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(_typeName))
+            {
+                var sb = new StringBuilder(BaseTypeName);
+                if (!string.IsNullOrEmpty(TypeNameSuffix))
+                {
+                    sb.Append(' ').Append(TypeNameSuffix);
+                }
+                _typeName = sb.ToString();
+            }
+            return _typeName;
+        }
+    }
+
+    /// <summary>
+    /// A name for this main type of this star.
+    /// </summary>
+    protected string BaseTypeName => StarType switch
     {
         StarType.BrownDwarf => "Brown Dwarf",
         StarType.WhiteDwarf => "White Dwarf",
@@ -97,7 +97,10 @@ public class Star : CosmicLocation
     };
 
     private string? _typeNameSuffix;
-    private protected override string? TypeNameSuffix
+    /// <summary>
+    /// A suffix to the <see cref="BaseTypeName"/> for this star.
+    /// </summary>
+    protected string? TypeNameSuffix
     {
         get
         {
@@ -141,6 +144,34 @@ public class Star : CosmicLocation
         }
     }
 
+    internal virtual bool IsHospitable => StarType switch
+    {
+        // False for brown dwarfs; their habitable zones, if any, are moving targets due to rapid
+        // cooling, and intersect soon with severe tidal forces, making it unlikely that life could
+        // develop before a planet becomes uninhabitable.
+        StarType.BrownDwarf => false,
+
+        // False for white dwarfs; their habitable zones, if any, are moving targets due to rapid
+        // cooling, and intersect soon with severe tidal forces, and additionally severe UV
+        // radiation is expected in early stages at the close distances where a habitable zone could
+        // be expected, making it unlikely that life could develop before a planet becomes
+        // uninhabitable.
+        StarType.WhiteDwarf => false,
+
+        // False for neutron stars, due to their excessive ionizing radiation, which makes the
+        // development of life nearby highly unlikely.
+        StarType.Neutron => false,
+
+        // False for yellow and blue giants; although they may have a habitable zone, it is not
+        // likely to exist in the same place long enough for life to develop before the star
+        // evolves into another type, or dies.
+        StarType.YellowGiant => false,
+        StarType.BlueGiant => false,
+
+        // True for most stars.
+        _ => true,
+    };
+
     /// <summary>
     /// Initializes a new instance of <see cref="Star"/> with the given parameters.
     /// </summary>
@@ -181,9 +212,10 @@ public class Star : CosmicLocation
 
         if (parent is not null && !orbit.HasValue)
         {
-            if (parent is AsteroidField asteroidField)
+            if (parent.StructureType is CosmicStructureType.AsteroidField
+                or CosmicStructureType.OortCloud)
             {
-                orbit = asteroidField.GetChildOrbit();
+                orbit = parent.GetAsteroidChildOrbit();
             }
             else
             {
@@ -253,38 +285,90 @@ public class Star : CosmicLocation
             populationII)
     { }
 
-    private Star(string? parentId, StarType starType) : base(parentId, CosmicStructureType.Star) => StarType = starType;
-
-    internal Star(
+    /// <summary>
+    /// Initialize a new instance of <see cref="Star"/>.
+    /// </summary>
+    /// <param name="id">
+    /// The unique ID of this item.
+    /// </param>
+    /// <param name="starType">
+    /// The <see cref="StarType"/> of this star.
+    /// </param>
+    /// <param name="parentId">
+    /// The ID of the location which contains this one.
+    /// </param>
+    /// <param name="absolutePosition">
+    /// <para>
+    /// The position of this location, as a set of relative positions starting with the position of
+    /// its outermost containing parent within the universe, down to the relative position of its
+    /// most immediate parent.
+    /// </para>
+    /// <para>
+    /// The location's own relative <see cref="Location.Position"/> is not expected to be included.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> for a location with no containing parent, or whose parent is
+    /// the universe itself (i.e. there is no intermediate container).
+    /// </para>
+    /// </param>
+    /// <param name="name">
+    /// An optional name for this <see cref="CosmicLocation"/>.
+    /// </param>
+    /// <param name="velocity">
+    /// The velocity of the <see cref="CosmicLocation"/> in m/s.
+    /// </param>
+    /// <param name="orbit">
+    /// The orbit occupied by this <see cref="CosmicLocation"/> (may be <see langword="null"/>).
+    /// </param>
+    /// <param name="material">The physical material which comprises this location.</param>
+    /// <param name="isPopulationII">
+    /// Whether this is to be a Population II <see cref="Star"/>.
+    /// </param>
+    /// <param name="luminosity">
+    /// The luminosity of this <see cref="Star"/>, in Watts.
+    /// </param>
+    /// <param name="luminosityClass">
+    /// The <see cref="Stars.LuminosityClass"/> of the <see cref="Star"/>.
+    /// </param>
+    /// <param name="spectralClass">
+    /// The <see cref="Stars.SpectralClass"/> of the <see cref="Star"/>.
+    /// </param>
+    /// <remarks>
+    /// Note: this constructor is most useful for deserialization. Consider using another
+    /// constructor to generate a new instance instead.
+    /// </remarks>
+    [JsonConstructor]
+    public Star(
         string id,
-        uint seed,
         StarType starType,
         string? parentId,
         Vector3<HugeNumber>[]? absolutePosition,
         string? name,
         Vector3<HugeNumber> velocity,
         Orbit? orbit,
-        Vector3<HugeNumber> position,
-        double temperature,
+        IMaterial<HugeNumber> material,
         bool isPopulationII,
+        double luminosity,
         LuminosityClass luminosityClass,
         SpectralClass spectralClass)
         : base(
             id,
-            seed,
             CosmicStructureType.Star,
             parentId,
             absolutePosition,
             name,
             velocity,
-            orbit)
+            orbit,
+            material)
     {
         StarType = starType;
-        LuminosityClass = luminosityClass;
         IsPopulationII = isPopulationII;
+        Luminosity = luminosity;
+        LuminosityClass = luminosityClass;
         SpectralClass = spectralClass;
-        Reconstitute(position, temperature);
     }
+
+    private Star(string? parentId, StarType starType) : base(parentId, CosmicStructureType.Star) => StarType = starType;
 
     /// <summary>
     /// Generates a new <see cref="Star"/> instance as a child of the given containing
@@ -321,9 +405,10 @@ public class Star : CosmicLocation
 
         if (parent is not null && !orbit.HasValue)
         {
-            if (parent is AsteroidField asteroidField)
+            if (parent.StructureType is CosmicStructureType.AsteroidField
+                or CosmicStructureType.OortCloud)
             {
-                orbit = asteroidField.GetChildOrbit();
+                orbit = parent.GetAsteroidChildOrbit();
             }
             else
             {
@@ -440,6 +525,45 @@ public class Star : CosmicLocation
         return (numGiants, numIceGiants, numTerrestrial);
     }
 
+    private static double GenerateTemperature(StarType starType, SpectralClass spectralClass)
+    {
+        if (starType == StarType.WhiteDwarf)
+        {
+            return Randomizer.Instance.NormalDistributionSample(16850, 600);
+        }
+        if (starType == StarType.Neutron)
+        {
+            return Randomizer.Instance.NormalDistributionSample(600000, 133333);
+        }
+        if (starType == StarType.RedGiant)
+        {
+            return Randomizer.Instance.NormalDistributionSample(3800, 466);
+        }
+        if (starType == StarType.YellowGiant)
+        {
+            return Randomizer.Instance.NormalDistributionSample(7600, 800);
+        }
+        if (starType == StarType.BlueGiant)
+        {
+            return Randomizer.Instance.PositiveNormalDistributionSample(10000, 13333);
+        }
+        return spectralClass switch
+        {
+            SpectralClass.O => Randomizer.Instance.PositiveNormalDistributionSample(30000, 6666),
+            SpectralClass.B => Randomizer.Instance.NextDouble(10000, 30000),
+            SpectralClass.A => Randomizer.Instance.NextDouble(7500, 10000),
+            SpectralClass.F => Randomizer.Instance.NextDouble(6000, 7500),
+            SpectralClass.G => Randomizer.Instance.NextDouble(5200, 6000),
+            SpectralClass.K => Randomizer.Instance.NextDouble(3700, 5200),
+            SpectralClass.M => Randomizer.Instance.NextDouble(2400, 3700),
+            SpectralClass.L => Randomizer.Instance.NextDouble(1300, 2400),
+            SpectralClass.T => Randomizer.Instance.NextDouble(500, 1300),
+            SpectralClass.Y => Randomizer.Instance.NextDouble(250, 500),
+            SpectralClass.W => Randomizer.Instance.PositiveNormalDistributionSample(30000, 56666),
+            _ => 0,
+        };
+    }
+
     private static SpectralClass GetSpectralClassFromTemperature(HugeNumber temperature)
     {
         // Only applies to the standard classes (excludes W).
@@ -491,8 +615,6 @@ public class Star : CosmicLocation
         LuminosityClass? luminosityClass = null,
         bool populationII = false)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
-
         if (spectralClass.HasValue)
         {
             SpectralClass = spectralClass.Value;
@@ -573,63 +695,173 @@ public class Star : CosmicLocation
             }
         }
 
-        var temperature = GenerateTemperature();
+        var temperature = GenerateTemperature(StarType, SpectralClass);
 
-        Reconstitute(position, temperature);
+        Configure(position, temperature);
 
-        if (SpectralClass == SpectralClass.None && (StarType == StarType.WhiteDwarf || IsGiant))
+        if (SpectralClass == SpectralClass.None
+            && (StarType == StarType.WhiteDwarf
+                || IsGiant))
         {
             SpectralClass = GetSpectralClassFromTemperature(Material.Temperature ?? UniverseAmbientTemperature);
         }
     }
 
+    private void Configure(Vector3<HugeNumber> position, double temperature)
+    {
+        var substance = GetSubstance();
+
+        HugeNumber mass;
+        IShape<HugeNumber> shape;
+        if (StarType == StarType.BrownDwarf)
+        {
+            mass = GetMass(Randomizer.Instance);
+
+            var radius = (HugeNumber)Randomizer.Instance.NormalDistributionSample(69911000, 3495550);
+            var flattening = Randomizer.Instance.Next(HugeNumberConstants.Deci);
+            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
+
+            if (SpectralClass == SpectralClass.None)
+            {
+                var chance = Randomizer.Instance.NextDouble();
+                if (chance <= 0.29)
+                {
+                    SpectralClass = SpectralClass.M; // 29%
+                }
+                else if (chance <= 0.79)
+                {
+                    SpectralClass = SpectralClass.L; // 50%
+                }
+                else if (chance <= 0.99)
+                {
+                    SpectralClass = SpectralClass.T; // 20%
+                }
+                else
+                {
+                    SpectralClass = SpectralClass.Y; // 1%
+                }
+            }
+
+            Luminosity = GetLuminosityFromRadius();
+        }
+        else if (StarType == StarType.WhiteDwarf)
+        {
+            mass = GetMass(Randomizer.Instance);
+
+            var radius = (new HugeNumber(1.8986, 27) / mass).Cbrt() * 69911000;
+            var flattening = (HugeNumber)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
+            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
+
+            if (SpectralClass == SpectralClass.None)
+            {
+                SpectralClass = GetSpectralClassFromTemperature(temperature);
+            }
+
+            Luminosity = GetLuminosityFromRadius();
+        }
+        else if (StarType == StarType.Neutron)
+        {
+            mass = GetMass(Randomizer.Instance);
+
+            var radius = Randomizer.Instance.Next(1000, 2000);
+            var flattening = (HugeNumber)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
+            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
+
+            SpectralClass = SpectralClass.Other;
+
+            Luminosity = GetLuminosityFromRadius();
+        }
+        else if (IsGiant)
+        {
+            mass = GetMass(Randomizer.Instance);
+
+            Luminosity = LuminosityClass switch
+            {
+                LuminosityClass.Zero => 3.846e31 + Randomizer.Instance.PositiveNormalDistributionSample(0, 3.0768e32),
+                LuminosityClass.Ia => Randomizer.Instance.NormalDistributionSample(1.923e31, 3.846e29),
+                LuminosityClass.Ib => Randomizer.Instance.NormalDistributionSample(3.846e30, 3.846e29),
+                LuminosityClass.II => Randomizer.Instance.NormalDistributionSample(3.846e29, 2.3076e29),
+                LuminosityClass.III => Randomizer.Instance.NormalDistributionSample(1.5384e29, 4.9998e28),
+                _ => 0,
+            };
+
+            shape = GetMainSequenceShape(Randomizer.Instance, temperature, position);
+
+            if (SpectralClass == SpectralClass.None)
+            {
+                SpectralClass = GetSpectralClassFromTemperature(temperature);
+            }
+        }
+        else
+        {
+            // Luminosity scales with temperature for main-sequence stars.
+            var luminosity = Math.Pow(temperature / 5778, 5.6) * 3.846e26;
+
+            // If a special luminosity class had been assigned, take it into account.
+            if (LuminosityClass == LuminosityClass.sd)
+            {
+                // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
+                Luminosity = luminosity / Randomizer.Instance.NextDouble(55, 100);
+            }
+            else if (LuminosityClass == LuminosityClass.IV)
+            {
+                // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
+                Luminosity = luminosity * Randomizer.Instance.NextDouble(55, 100);
+            }
+            else
+            {
+                Luminosity = luminosity;
+            }
+
+            shape = GetMainSequenceShape(Randomizer.Instance, temperature, position);
+
+            // Mass scales with radius for main-sequence stars, with the scale changing at around 1
+            // solar mass/radius.
+            mass = HugeNumber.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new HugeNumber(125, -2) : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
+
+            if (SpectralClass == SpectralClass.None)
+            {
+                var chance = Randomizer.Instance.NextDouble();
+                if (chance <= 0.0000003)
+                {
+                    SpectralClass = SpectralClass.O; // 0.00003%
+                }
+                else if (chance <= 0.0013)
+                {
+                    SpectralClass = SpectralClass.B; // ~0.13%
+                }
+                else if (chance <= 0.0073)
+                {
+                    SpectralClass = SpectralClass.A; // ~0.6%
+                }
+                else if (chance <= 0.0373)
+                {
+                    SpectralClass = SpectralClass.F; // ~3%
+                }
+                else if (chance <= 0.1133)
+                {
+                    SpectralClass = SpectralClass.G; // ~7.6%
+                }
+                else if (chance <= 0.2343)
+                {
+                    SpectralClass = SpectralClass.K; // ~12.1%
+                }
+                else
+                {
+                    SpectralClass = SpectralClass.M; // ~76.45%
+                }
+            }
+        }
+
+        Material = new Material<HugeNumber>(substance, shape, mass, null, temperature);
+    }
+
     private void ConfigureSunlike(Vector3<HugeNumber> position)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
-
         SpectralClass = SpectralClass.G;
         LuminosityClass = LuminosityClass.V;
 
-        Reconstitute(position, 5778);
-    }
-
-    private double GenerateTemperature()
-    {
-        if (StarType == StarType.WhiteDwarf)
-        {
-            return Randomizer.Instance.NormalDistributionSample(16850, 600);
-        }
-        if (StarType == StarType.Neutron)
-        {
-            return Randomizer.Instance.NormalDistributionSample(600000, 133333);
-        }
-        if (StarType == StarType.RedGiant)
-        {
-            return Randomizer.Instance.NormalDistributionSample(3800, 466);
-        }
-        if (StarType == StarType.YellowGiant)
-        {
-            return Randomizer.Instance.NormalDistributionSample(7600, 800);
-        }
-        if (StarType == StarType.BlueGiant)
-        {
-            return Randomizer.Instance.PositiveNormalDistributionSample(10000, 13333);
-        }
-        return SpectralClass switch
-        {
-            SpectralClass.O => Randomizer.Instance.PositiveNormalDistributionSample(30000, 6666),
-            SpectralClass.B => Randomizer.Instance.NextDouble(10000, 30000),
-            SpectralClass.A => Randomizer.Instance.NextDouble(7500, 10000),
-            SpectralClass.F => Randomizer.Instance.NextDouble(6000, 7500),
-            SpectralClass.G => Randomizer.Instance.NextDouble(5200, 6000),
-            SpectralClass.K => Randomizer.Instance.NextDouble(3700, 5200),
-            SpectralClass.M => Randomizer.Instance.NextDouble(2400, 3700),
-            SpectralClass.L => Randomizer.Instance.NextDouble(1300, 2400),
-            SpectralClass.T => Randomizer.Instance.NextDouble(500, 1300),
-            SpectralClass.Y => Randomizer.Instance.NextDouble(250, 500),
-            SpectralClass.W => Randomizer.Instance.PositiveNormalDistributionSample(30000, 56666),
-            _ => 0,
-        };
+        Configure(position, 5778);
     }
 
     private void GenerateLuminosityClass()
@@ -725,7 +957,7 @@ public class Star : CosmicLocation
         {
             if (LuminosityClass == LuminosityClass.Zero) // Hypergiants
             {
-                // Maxmium possible mass at the current luminosity.
+                // Maximum possible mass at the current luminosity.
                 var eddingtonLimit = (HugeNumber)(Luminosity / 1.23072e31 * 1.99e30);
                 if (eddingtonLimit <= _MinBlueHypergiantMass)
                 {
@@ -941,156 +1173,5 @@ public class Star : CosmicLocation
         }
 
         return true;
-    }
-
-    private void Reconstitute(Vector3<HugeNumber> position, double temperature)
-    {
-        var randomizer = new Randomizer(Seed);
-
-        var substance = GetSubstance();
-
-        HugeNumber mass;
-        IShape<HugeNumber> shape;
-        if (StarType == StarType.BrownDwarf)
-        {
-            mass = GetMass(randomizer);
-
-            var radius = (HugeNumber)randomizer.NormalDistributionSample(69911000, 3495550);
-            var flattening = randomizer.Next(HugeNumberConstants.Deci);
-            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            if (SpectralClass == SpectralClass.None)
-            {
-                var chance = randomizer.NextDouble();
-                if (chance <= 0.29)
-                {
-                    SpectralClass = SpectralClass.M; // 29%
-                }
-                else if (chance <= 0.79)
-                {
-                    SpectralClass = SpectralClass.L; // 50%
-                }
-                else if (chance <= 0.99)
-                {
-                    SpectralClass = SpectralClass.T; // 20%
-                }
-                else
-                {
-                    SpectralClass = SpectralClass.Y; // 1%
-                }
-            }
-
-            Luminosity = GetLuminosityFromRadius();
-        }
-        else if (StarType == StarType.WhiteDwarf)
-        {
-            mass = GetMass(randomizer);
-
-            var radius = (new HugeNumber(1.8986, 27) / mass).Cbrt() * 69911000;
-            var flattening = (HugeNumber)randomizer.NormalDistributionSample(0.15, 0.05, minimum: 0);
-            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            if (SpectralClass == SpectralClass.None)
-            {
-                SpectralClass = GetSpectralClassFromTemperature(temperature);
-            }
-
-            Luminosity = GetLuminosityFromRadius();
-        }
-        else if (StarType == StarType.Neutron)
-        {
-            mass = GetMass(randomizer);
-
-            var radius = randomizer.Next(1000, 2000);
-            var flattening = (HugeNumber)randomizer.NormalDistributionSample(0.15, 0.05, minimum: 0);
-            shape = new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
-
-            SpectralClass = SpectralClass.Other;
-
-            Luminosity = GetLuminosityFromRadius();
-        }
-        else if (IsGiant)
-        {
-            mass = GetMass(randomizer);
-
-            Luminosity = LuminosityClass switch
-            {
-                LuminosityClass.Zero => 3.846e31 + randomizer.PositiveNormalDistributionSample(0, 3.0768e32),
-                LuminosityClass.Ia => randomizer.NormalDistributionSample(1.923e31, 3.846e29),
-                LuminosityClass.Ib => randomizer.NormalDistributionSample(3.846e30, 3.846e29),
-                LuminosityClass.II => randomizer.NormalDistributionSample(3.846e29, 2.3076e29),
-                LuminosityClass.III => randomizer.NormalDistributionSample(1.5384e29, 4.9998e28),
-                _ => 0,
-            };
-
-            shape = GetMainSequenceShape(randomizer, temperature, position);
-
-            if (SpectralClass == SpectralClass.None)
-            {
-                SpectralClass = GetSpectralClassFromTemperature(temperature);
-            }
-        }
-        else
-        {
-            // Luminosity scales with temperature for main-sequence stars.
-            var luminosity = Math.Pow(temperature / 5778, 5.6) * 3.846e26;
-
-            // If a special luminosity class had been assigned, take it into account.
-            if (LuminosityClass == LuminosityClass.sd)
-            {
-                // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
-                Luminosity = luminosity / randomizer.NextDouble(55, 100);
-            }
-            else if (LuminosityClass == LuminosityClass.IV)
-            {
-                // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
-                Luminosity = luminosity * randomizer.NextDouble(55, 100);
-            }
-            else
-            {
-                Luminosity = luminosity;
-            }
-
-            shape = GetMainSequenceShape(randomizer, temperature, position);
-
-            // Mass scales with radius for main-sequence stars, with the scale changing at around 1
-            // solar mass/radius.
-            mass = HugeNumber.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new HugeNumber(125, -2) : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
-
-            if (SpectralClass == SpectralClass.None)
-            {
-                var chance = randomizer.NextDouble();
-                if (chance <= 0.0000003)
-                {
-                    SpectralClass = SpectralClass.O; // 0.00003%
-                }
-                else if (chance <= 0.0013)
-                {
-                    SpectralClass = SpectralClass.B; // ~0.13%
-                }
-                else if (chance <= 0.0073)
-                {
-                    SpectralClass = SpectralClass.A; // ~0.6%
-                }
-                else if (chance <= 0.0373)
-                {
-                    SpectralClass = SpectralClass.F; // ~3%
-                }
-                else if (chance <= 0.1133)
-                {
-                    SpectralClass = SpectralClass.G; // ~7.6%
-                }
-                else if (chance <= 0.2343)
-                {
-                    SpectralClass = SpectralClass.K; // ~12.1%
-                }
-                else
-                {
-                    SpectralClass = SpectralClass.M; // ~76.45%
-                }
-            }
-        }
-
-        Material = new Material<HugeNumber>(substance, shape, mass, null, temperature);
     }
 }
