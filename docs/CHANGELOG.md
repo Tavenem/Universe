@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.3-preview
+### Changed
+- `FastNoise` changes
+
 ## 0.5.2-preview
 ### Changed
 - Improve seed generation algorithm
