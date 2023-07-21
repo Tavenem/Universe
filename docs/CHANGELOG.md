@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.1-preview
+### Changed
+- Made `Orbit` a record
+
 ## 0.5.0-preview
 ### Added
 - Source generated (de)serialization support
