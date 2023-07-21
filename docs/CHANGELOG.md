@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.2-preview
+### Changed
+- Improve seed generation algorithm
+
 ## 0.5.1-preview
 ### Changed
 - Made `Orbit` a record

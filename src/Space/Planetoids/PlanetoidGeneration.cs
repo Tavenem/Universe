@@ -717,7 +717,7 @@ public partial class Planetoid
     {
         var resource = new Resource(
             substance,
-            seed ?? Randomizer.Instance.NextInclusive(),
+            seed ?? unchecked((int)SeedGenerator.GetNewSeed()),
             proportion,
             isVein,
             isPerturbation);
@@ -994,7 +994,7 @@ public partial class Planetoid
         bool satellite,
         OrbitalParameters? orbit)
     {
-        Seed = Randomizer.Instance.NextUIntInclusive();
+        Seed = SeedGenerator.GetNewSeed();
         var randomizer = new Randomizer(Seed);
         var seedArray = new SeedArray();
         for (var i = 0; i < 5; i++)
