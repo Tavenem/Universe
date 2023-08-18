@@ -1323,6 +1323,210 @@ public partial class Planetoid : CosmicLocation
     }
 
     /// <summary>
+    /// Generates a single satellite for this planetoid.
+    /// </summary>
+    /// <param name="parent">
+    /// The parent location for this one.
+    /// </param>
+    /// <param name="stars">
+    /// The set of stars in this planetoid's star system.
+    /// </param>
+    /// <returns>
+    /// The satellite which was generated; or <see langword="null"/> if no satellite could be
+    /// generated.
+    /// </returns>
+    public Planetoid? GenerateSatellite(
+        CosmicLocation? parent,
+        List<Star> stars) => GenerateSatellites(parent, stars, 1, 1)
+        .FirstOrDefault();
+
+    /// <summary>
+    /// Generates a single satellite for this planetoid.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <returns>
+    /// The satellite which was generated; or <see langword="null"/> if no satellite could be
+    /// generated.
+    /// </returns>
+    public async Task<Planetoid?> GenerateSatelliteAsync(IDataStore dataStore)
+    {
+        var satellites = await GenerateSatellitesAsync(dataStore, 1, 1);
+        return satellites.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Generates a set of satellites for this planetoid.
+    /// </summary>
+    /// <param name="parent">
+    /// The parent location for this one.
+    /// </param>
+    /// <param name="stars">
+    /// The set of stars in this planetoid's star system.
+    /// </param>
+    /// <param name="min">
+    /// <para>
+    /// An optional minimum number of satellites to generate.
+    /// </para>
+    /// <para>
+    /// It is not guaranteed that this number is generated, if conditions preclude generation of the
+    /// specified number. This value merely overrides the usual maximum for the total number of
+    /// satellites which would normally be generated for a planetoid.
+    /// </para>
+    /// </param>
+    /// <param name="max">
+    /// An optional maximum number of satellites to generate.
+    /// </param>
+    /// <returns>
+    /// A list of the satellites which were generated.
+    /// </returns>
+    public List<Planetoid> GenerateSatellites(
+        CosmicLocation? parent,
+        List<Star> stars,
+        byte? min = null,
+        byte? max = null)
+    {
+        var addedSatellites = new List<Planetoid>();
+        if (max == 0)
+        {
+            return addedSatellites;
+        }
+
+        int maxSatellites;
+        if (_planetParams?.NumSatellites.HasValue == true)
+        {
+            maxSatellites = _planetParams!.Value.NumSatellites!.Value;
+        }
+        else
+        {
+            maxSatellites = PlanetType switch
+            {
+                // 5 for most Planemos. For reference, Pluto has 5 moons, the most of any planemo in the
+                // Solar System apart from the giants. No others are known to have more than 2.
+                PlanetType.Terrestrial => 5,
+                PlanetType.Carbon => 5,
+                PlanetType.Iron => 5,
+                PlanetType.Ocean => 5,
+                PlanetType.Dwarf => 5,
+                PlanetType.RockyDwarf => 5,
+
+                // Lava planets are too unstable for satellites.
+                PlanetType.Lava => 0,
+                PlanetType.LavaDwarf => 0,
+
+                // Set to 75 for Giant. For reference, Jupiter has 67 moons, and Saturn has 62
+                // (non-ring) moons.
+                PlanetType.GasGiant => 75,
+
+                // Set to 40 for IceGiant. For reference, Uranus has 27 moons, and Neptune has 14 moons.
+                PlanetType.IceGiant => 40,
+
+                _ => 1,
+            };
+        }
+
+        if (min.HasValue)
+        {
+            maxSatellites = Math.Max(
+                maxSatellites,
+                (_satelliteIds?.Count ?? 0) + min.Value);
+        }
+
+        if (maxSatellites <= 0)
+        {
+            return addedSatellites;
+        }
+
+        var minPeriapsis = Shape.ContainingRadius + 20;
+        var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3 : Shape.ContainingRadius * 100;
+
+        var satelliteIds = _satelliteIds?.ToList() ?? new();
+        while (minPeriapsis <= maxApoapsis && satelliteIds.Count < maxSatellites)
+        {
+            var periapsis = Randomizer.Instance.Next(minPeriapsis, maxApoapsis);
+
+            var maxEccentricity = (double)((maxApoapsis - periapsis) / (maxApoapsis + periapsis));
+            var eccentricity = maxEccentricity < 0.01
+                ? Randomizer.Instance.NextDouble(0, maxEccentricity)
+                : Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05, maximum: maxEccentricity);
+
+            var semiLatusRectum = periapsis * (1 + eccentricity);
+            var semiMajorAxis = semiLatusRectum / (1 - (eccentricity * eccentricity));
+
+            // Keep mass under the limit where the orbital barycenter would be pulled outside the boundaries of this body.
+            var maxMass = HugeNumber.Max(0, Mass / ((semiMajorAxis / Shape.ContainingRadius) - 1));
+
+            var satellite = GenerateSatellite(parent, stars, periapsis, eccentricity, maxMass);
+            if (satellite is null)
+            {
+                break;
+            }
+            addedSatellites.Add(satellite);
+
+            satelliteIds.Add(satellite.Id);
+
+            if (max.HasValue
+                && addedSatellites.Count >= max)
+            {
+                break;
+            }
+
+            minPeriapsis = (satellite.Orbit?.Apoapsis ?? 0) + satellite.GetSphereOfInfluenceRadius();
+        }
+        _satelliteIds = satelliteIds.Count == 0
+            ? null
+            : satelliteIds.AsReadOnly();
+
+        return addedSatellites;
+    }
+
+    /// <summary>
+    /// Generates a set of satellites for this planetoid.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="min">
+    /// <para>
+    /// An optional minimum number of satellites to generate.
+    /// </para>
+    /// <para>
+    /// It is not guaranteed that this number is generated, if conditions preclude generation of the
+    /// specified number. This value merely overrides the usual maximum for the total number of
+    /// satellites which would normally be generated for a planetoid.
+    /// </para>
+    /// </param>
+    /// <param name="max">
+    /// An optional maximum number of satellites to generate.
+    /// </param>
+    /// <returns>
+    /// A list of the satellites which were generated.
+    /// </returns>
+    public async Task<List<Planetoid>> GenerateSatellitesAsync(
+        IDataStore dataStore,
+        byte? min = null,
+        byte? max = null)
+    {
+        var parent = await GetParentAsync(dataStore) as CosmicLocation;
+        var starSystem = parent is StarSystem parentStarSystem
+            ? parentStarSystem
+            : await GetStarSystemAsync(dataStore);
+        if (starSystem is null)
+        {
+            return new List<Planetoid>();
+        }
+
+        var stars = new List<Star>();
+        await foreach (var star in starSystem.GetStarsAsync(dataStore))
+        {
+            stars.Add(star);
+        }
+
+        return GenerateSatellites(parent, stars, min, max);
+    }
+
+    /// <summary>
     /// <para>
     /// The average surface temperature of the <see cref="Planetoid"/> near its equator
     /// throughout its orbit (or at its current position, if it is not in orbit), in K.

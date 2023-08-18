@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4-preview
+### Added
+- Public `GenerateSatellite` methods for `Planetoid`
+
 ## 0.5.3-preview
 ### Changed
 - `FastNoise` changes

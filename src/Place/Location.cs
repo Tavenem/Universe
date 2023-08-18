@@ -521,7 +521,8 @@ public class Location : IdItem
     /// <returns>
     /// An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of this one.
     /// </returns>
-    public virtual IAsyncEnumerable<Location> GetChildrenAsync(IDataStore dataStore) => dataStore.Query<Location>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
+    public virtual IAsyncEnumerable<Location> GetChildrenAsync(IDataStore dataStore)
+        => dataStore.Query<Location>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
 
     /// <summary>
     /// Enumerates the children of this instance of the given type.
