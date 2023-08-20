@@ -2661,6 +2661,23 @@ public partial class Planetoid : CosmicLocation
     }
 
     /// <summary>
+    /// Removes a satellite from this planet's collection.
+    /// </summary>
+    /// <param name="id">The <see cref="IIdItem.Id"/> of the satellite to remove.</param>
+    public void RemoveSatellite(string id)
+    {
+        if (_satelliteIds is null)
+        {
+            return;
+        }
+        var ids = _satelliteIds.ToList();
+        if (ids.Remove(id))
+        {
+            _satelliteIds = ids.AsReadOnly();
+        }
+    }
+
+    /// <summary>
     /// Sets the atmospheric pressure of this <see cref="Planetoid"/>, in kPa.
     /// </summary>
     /// <param name="value">An atmospheric pressure in kPa.</param>
