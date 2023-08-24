@@ -4,9 +4,6 @@ using Tavenem.Universe.Space.Planetoids;
 
 namespace Tavenem.Universe.Space;
 
-/// <summary>
-/// A region of space with a high concentration of asteroids.
-/// </summary>
 public partial class CosmicLocation
 {
     internal static readonly HugeNumber _AsteroidFieldSpace = new(3.15, 12);
@@ -41,6 +38,10 @@ public partial class CosmicLocation
     /// <param name="parent">
     /// The containing parent location for which to generate a child.
     /// </param>
+    /// <param name="orbited">
+    /// The object to be orbited, if the field is to be in orbit, and if it is to orbit an object
+    /// rather than a system.
+    /// </param>
     /// <param name="position">The position for the child.</param>
     /// <param name="orbit">
     /// <para>
@@ -58,6 +59,7 @@ public partial class CosmicLocation
     /// </param>
     public static CosmicLocation NewAsteroidField(
         CosmicLocation? parent,
+        CosmicLocation? orbited,
         Vector3<HugeNumber> position,
         OrbitalParameters? orbit = null,
         HugeNumber? majorRadius = null,
@@ -97,7 +99,7 @@ public partial class CosmicLocation
         }
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(instance, orbit.Value);
+            Space.Orbit.AssignOrbit(instance, orbited?.Id, orbit.Value);
         }
 
         return instance;
@@ -109,61 +111,15 @@ public partial class CosmicLocation
     /// <param name="parent">
     /// The containing parent location for which to generate a child.
     /// </param>
-    /// <param name="position">The position for the child.</param>
-    /// <param name="orbit">
-    /// <para>
-    /// An optional orbit to assign to the child.
-    /// </para>
-    /// <para>
-    /// Depending on the parameters, may override <paramref name="position"/>.
-    /// </para>
-    /// </param>
     /// <param name="radius">
     /// The radius of the star system.
     /// </param>
     public static CosmicLocation NewOortCloud(
         CosmicLocation? parent,
-        Vector3<HugeNumber> position,
-        OrbitalParameters? orbit = null,
         HugeNumber? radius = null)
     {
         var instance = new CosmicLocation(parent?.Id, CosmicStructureType.AsteroidField);
-        instance.ConfigureOortCloudInstance(position, parent, radius);
-
-        if (parent is not null && !orbit.HasValue)
-        {
-            if (parent.StructureType is CosmicStructureType.AsteroidField
-                or CosmicStructureType.OortCloud)
-            {
-                orbit = parent.GetAsteroidChildOrbit();
-            }
-            else
-            {
-                orbit = parent.StructureType switch
-                {
-                    CosmicStructureType.GalaxySubgroup => instance.Position == Vector3<HugeNumber>.Zero
-                        ? null
-                        : parent.GetGalaxySubgroupChildOrbit(),
-                    CosmicStructureType.SpiralGalaxy
-                        or CosmicStructureType.EllipticalGalaxy
-                        or CosmicStructureType.DwarfGalaxy => instance.Position == Vector3<HugeNumber>.Zero
-                        ? null
-                        : parent.GetGalaxyChildOrbit(),
-                    CosmicStructureType.GlobularCluster => instance.Position == Vector3<HugeNumber>.Zero
-                        ? null
-                        : parent.GetGlobularClusterChildOrbit(),
-                    CosmicStructureType.StarSystem => parent is StarSystem && instance.Position != Vector3<HugeNumber>.Zero
-                        ? OrbitalParameters.GetFromEccentricity(parent.Mass, parent.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
-                        : null,
-                    _ => null,
-                };
-            }
-        }
-        if (orbit.HasValue)
-        {
-            Space.Orbit.AssignOrbit(instance, orbit.Value);
-        }
-
+        instance.ConfigureOortCloudInstance(Vector3<HugeNumber>.Zero, parent, radius);
         return instance;
     }
 

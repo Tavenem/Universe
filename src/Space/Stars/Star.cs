@@ -60,7 +60,7 @@ public class Star : CosmicLocation
     /// <summary>
     /// The type of this star.
     /// </summary>
-    public StarType StarType { get; }
+    public StarType StarType { get; private set; }
 
     private string? _typeName;
     /// <inheritdoc />
@@ -144,7 +144,7 @@ public class Star : CosmicLocation
         }
     }
 
-    internal virtual bool IsHospitable => StarType switch
+    internal bool IsHospitable => StarType switch
     {
         // False for brown dwarfs; their habitable zones, if any, are moving targets due to rapid
         // cooling, and intersect soon with severe tidal forces, making it unlikely that life could
@@ -241,7 +241,7 @@ public class Star : CosmicLocation
         }
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(this, orbit.Value);
+            Space.Orbit.AssignOrbit(this, null, orbit.Value);
         }
     }
 
@@ -434,7 +434,7 @@ public class Star : CosmicLocation
         }
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(instance, orbit.Value);
+            Space.Orbit.AssignOrbit(instance, null, orbit.Value);
         }
 
         return instance;
@@ -454,7 +454,7 @@ public class Star : CosmicLocation
         var parent = await GetParentAsync(dataStore).ConfigureAwait(false);
         if (parent is StarSystem system)
         {
-            system.RemoveStar(Id);
+            await system.RemoveStarAsync(dataStore, Id);
             var success = await dataStore.StoreItemAsync(system).ConfigureAwait(false);
             if (!success)
             {
@@ -462,6 +462,421 @@ public class Star : CosmicLocation
             }
         }
         return await base.DeleteAsync(dataStore).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Changes the luminosity of this star. Also updates all related properties to conform with the
+    /// new value. This may drastically alter the size and temperature of the star.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="value">The luminosity to set, in Watts.</param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Note that side effects of the changes to the star which would result from this alteration
+    /// are applied to planets in the system. For example, the temperature, atmosphere, and
+    /// habitability of planets in orbit are reassessed based on the star's new state.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> SetLuminosityAsync(IDataStore dataStore, double value)
+    {
+        if (Luminosity == value)
+        {
+            return new();
+        }
+
+        Luminosity = value;
+
+        if (StarType is StarType.BrownDwarf
+            or StarType.WhiteDwarf
+            or StarType.Neutron)
+        {
+            var radius = GetRadiusFromLuminosity();
+            var ratio = radius / Shape.ContainingRadius;
+            Material = new Material<HugeNumber>(
+                Material.Constituents,
+                Shape.GetScaledByDimension(ratio),
+                Material.Density,
+                Temperature);
+        }
+        else if (IsGiant)
+        {
+            LuminosityClass = Luminosity switch
+            {
+                > 3e31 => LuminosityClass.Zero,
+                > 1e31 => LuminosityClass.Ia,
+                > 2e30 => LuminosityClass.Ib,
+                > 3.5e29 => LuminosityClass.II,
+                _ => LuminosityClass.III,
+            };
+            Material = new Material<HugeNumber>(
+                Material.Constituents,
+                GetMainSequenceShape(Temperature, Position),
+                Material.Density,
+                Temperature);
+        }
+        else
+        {
+            var shape = GetMainSequenceShape(Temperature, Position);
+            var mass = HugeNumber.Pow(
+                shape.ContainingRadius / _SolarMass,
+                shape.ContainingRadius < _SolarMass
+                    ? new HugeNumber(125, -2)
+                    : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
+            Material = new Material<HugeNumber>(
+                Material.Constituents,
+                shape,
+                mass,
+                null,
+                Temperature);
+        }
+
+        return await GetAffectedLocationsAsync(dataStore);
+    }
+
+    /// <summary>
+    /// Changes the luminosity class of this star. Also updates all related properties to conform
+    /// with the new class. This may drastically alter the size and temperature of the star.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="value">The luminosity class to set.</param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Note that the <see cref="StarType"/> will also change if the selected class does not
+    /// correspond to the current type. In ambiguous cases (e.g. <see cref="LuminosityClass.III"/>,
+    /// which might be any color of giant) the type is selected at random.
+    /// </para>
+    /// <para>
+    /// Note that side effects of the changes to the star which would result from this alteration
+    /// are applied to planets in the system. For example, the temperature, atmosphere, and
+    /// habitability of planets in orbit are reassessed based on the star's new state.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> SetLuminosityClassAsync(IDataStore dataStore, LuminosityClass value)
+    {
+        if (LuminosityClass == value)
+        {
+            return new();
+        }
+
+        LuminosityClass = value;
+
+        if (LuminosityClass == LuminosityClass.D)
+        {
+            if (StarType is not StarType.WhiteDwarf
+                and not StarType.Neutron)
+            {
+                StarType = Randomizer.Instance.Next(2) switch
+                {
+                    0 => StarType.WhiteDwarf,
+                    _ => StarType.Neutron,
+                };
+            }
+        }
+        else if (LuminosityClass is LuminosityClass.V
+            or LuminosityClass.IV
+            or LuminosityClass.sd)
+        {
+            if (StarType is not StarType.MainSequence
+                and not StarType.BrownDwarf)
+            {
+                StarType = StarType.MainSequence;
+            }
+        }
+        else if (LuminosityClass is LuminosityClass.Zero
+            or LuminosityClass.Ia
+            or LuminosityClass.Ib
+            or LuminosityClass.II
+            or LuminosityClass.III)
+        {
+            if (!IsGiant)
+            {
+                StarType = Randomizer.Instance.Next(3) switch
+                {
+                    0 => StarType.RedGiant,
+                    1 => StarType.YellowGiant,
+                    _ => StarType.BlueGiant,
+                };
+            }
+        }
+
+        if (IsGiant)
+        {
+            Luminosity = LuminosityClass switch
+            {
+                LuminosityClass.Zero => 3.846e31 + Randomizer.Instance.PositiveNormalDistributionSample(0, 3.0768e32),
+                LuminosityClass.Ia => Randomizer.Instance.NormalDistributionSample(1.923e31, 3.846e29),
+                LuminosityClass.Ib => Randomizer.Instance.NormalDistributionSample(3.846e30, 3.846e29),
+                LuminosityClass.II => Randomizer.Instance.PositiveNormalDistributionSample(3.846e29, 2.3076e29),
+                LuminosityClass.III => Randomizer.Instance.NormalDistributionSample(1.5384e29, 4.9998e28),
+                _ => 0,
+            };
+            Material = new Material<HugeNumber>(
+                Material.Constituents,
+                GetMainSequenceShape(Temperature, Position),
+                Material.Density,
+                Temperature);
+        }
+        else if (StarType is not StarType.BrownDwarf
+            and not StarType.WhiteDwarf
+            and not StarType.Neutron)
+        {
+            // Luminosity scales with temperature for main-sequence stars.
+            var luminosity = Math.Pow(Temperature / 5778, 5.6) * 3.846e26;
+
+            // If a special luminosity class had been assigned, take it into account.
+            if (LuminosityClass == LuminosityClass.sd)
+            {
+                // Subdwarfs are 1.5 to 2 magnitudes less luminous than expected.
+                Luminosity = luminosity / Randomizer.Instance.NextDouble(55, 100);
+            }
+            else if (LuminosityClass == LuminosityClass.IV)
+            {
+                // Subgiants are 1.5 to 2 magnitudes more luminous than expected.
+                Luminosity = luminosity * Randomizer.Instance.NextDouble(55, 100);
+            }
+            else
+            {
+                Luminosity = luminosity;
+            }
+
+            var shape = GetMainSequenceShape(Temperature, Position);
+            var mass = HugeNumber.Pow(
+                shape.ContainingRadius / _SolarMass,
+                shape.ContainingRadius < _SolarMass
+                    ? new HugeNumber(125, -2)
+                    : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
+            Material = new Material<HugeNumber>(
+                Material.Constituents,
+                shape,
+                mass,
+                null,
+                Temperature);
+        }
+
+        return await GetAffectedLocationsAsync(dataStore);
+    }
+
+    /// <summary>
+    /// Changes the population type of this star. Also updates all related properties to conform
+    /// with the new type.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="isPopulationII">
+    /// Whether this is to be a Population II <see cref="Star"/>.
+    /// </param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Note that existing planets in the system are not removed, even if <paramref
+    /// name="isPopulationII"/> is <see langword="true"/> and any of the planets are not normally
+    /// indicated for a population II star.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> SetPopulationII(IDataStore dataStore, bool isPopulationII)
+    {
+        if (IsPopulationII == isPopulationII)
+        {
+            return new();
+        }
+
+        IsPopulationII = isPopulationII;
+        if (StarType is not StarType.WhiteDwarf
+            and not StarType.Neutron)
+        {
+            var substance = GetSubstance();
+            Material = new Material<HugeNumber>(
+                substance,
+                Shape,
+                Mass,
+                null,
+                Temperature);
+        }
+
+        var affectedLocations = new List<CosmicLocation> { this };
+        if (Orbit.HasValue
+            && await GetParentAsync(dataStore) is StarSystem system)
+        {
+            system.SetPropertiesForPrimary(this);
+            affectedLocations.Add(system);
+        }
+
+        return affectedLocations;
+    }
+
+    /// <summary>
+    /// Changes the spectral class of this star. Also updates all related properties to conform
+    /// with the new class. This may drastically alter the size and temperature of the star.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="value">The spectral class to set.</param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Note that side effects of the changes to the star which would result from this alteration
+    /// are applied to planets in the system. For example, the temperature, atmosphere, and
+    /// habitability of planets in orbit are reassessed based on the star's new state.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> SetSpectralClassAsync(IDataStore dataStore, SpectralClass value)
+    {
+        if (SpectralClass == value)
+        {
+            return new();
+        }
+
+        SpectralClass = value;
+
+        if (SpectralClass == SpectralClass.Other)
+        {
+            StarType = StarType.Neutron;
+            Configure(
+                Position,
+                GenerateTemperature(StarType, SpectralClass));
+        }
+        else if (StarType == StarType.BrownDwarf)
+        {
+            if (SpectralClass is not SpectralClass.M
+                and not SpectralClass.L
+                and not SpectralClass.T
+                and not SpectralClass.Y)
+            {
+                StarType = StarType.MainSequence;
+                Configure(
+                    Position,
+                    GenerateTemperature(StarType, SpectralClass));
+            }
+        }
+        else if (StarType == StarType.WhiteDwarf
+            || IsGiant)
+        {
+            var temperature = value switch
+            {
+                SpectralClass.Y => Temperature >= 500
+                    ? 499
+                    : Temperature,
+                SpectralClass.T => Temperature >= 1300
+                    ? 1299
+                    : Temperature,
+                SpectralClass.L => Temperature >= 2400
+                    ? 2399
+                    : Temperature,
+                SpectralClass.M => Temperature >= 3700
+                    ? 3699
+                    : Temperature,
+                SpectralClass.K => Temperature >= 5200
+                    ? 5199
+                    : Temperature,
+                SpectralClass.G => Temperature >= 6000
+                    ? 5999
+                    : Temperature,
+                SpectralClass.F => Temperature >= 7500
+                    ? 7499
+                    : Temperature,
+                SpectralClass.A => Temperature >= 10000
+                    ? 9999
+                    : Temperature,
+                SpectralClass.B => Temperature >= 30000
+                    ? 29999
+                    : Temperature,
+                _ => Temperature
+            };
+            if (IsGiant)
+            {
+                Material = new Material<HugeNumber>(
+                    Material.Constituents,
+                    GetMainSequenceShape(temperature, Position),
+                    Material.Density,
+                    temperature);
+            }
+            else
+            {
+                Material = new Material<HugeNumber>(
+                    Material.Constituents,
+                    Shape,
+                    Mass,
+                    Material.Density,
+                    temperature);
+            }
+        }
+
+        return await GetAffectedLocationsAsync(dataStore);
+    }
+
+    /// <summary>
+    /// Changes the type of this star. Also updates all related properties to conform with the new
+    /// type. This may drastically alter the size, composition, temperature, and luminosity of the
+    /// star.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="type">The type to set.</param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// Note that side effects of the changes to the star which would result from this alteration
+    /// are applied to planets in the system. For example, the temperature, atmosphere, and
+    /// habitability of planets in orbit are reassessed based on the star's new state.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> SetStarTypeAsync(IDataStore dataStore, StarType type)
+    {
+        if (StarType == type)
+        {
+            return new();
+        }
+
+        StarType = type;
+        Configure(
+            Position,
+            GenerateTemperature(StarType, SpectralClass));
+
+        return await GetAffectedLocationsAsync(dataStore);
     }
 
     /// <summary>
@@ -562,6 +977,87 @@ public class Star : CosmicLocation
             SpectralClass.W => Randomizer.Instance.PositiveNormalDistributionSample(30000, 56666),
             _ => 0,
         };
+    }
+
+    private async Task<List<CosmicLocation>> GetAffectedLocationsAsync(IDataStore dataStore)
+    {
+        var affectedLocations = new List<CosmicLocation> { this };
+        if (await GetParentAsync(dataStore) is not StarSystem system)
+        {
+            return affectedLocations;
+        }
+
+        if (!Orbit.HasValue)
+        {
+            system.SetPropertiesForPrimary(this);
+            affectedLocations.Add(system);
+        }
+
+        var stars = new List<Star>();
+        await foreach (var star in system.GetStarsAsync(dataStore))
+        {
+            stars.Add(star);
+        }
+
+        var updated = false;
+        do
+        {
+            updated = false;
+            foreach (var star in stars)
+            {
+                if (!star.Orbit.HasValue
+                    || affectedLocations.Contains(star))
+                {
+                    continue;
+                }
+                var orbited = string.IsNullOrEmpty(star.Orbit.Value.OrbitedId)
+                    ? null
+                    : stars.Find(x => x.Id.Equals(star.Orbit.Value.OrbitedId));
+                if (orbited is null)
+                {
+                    continue;
+                }
+                Space.Orbit.AssignOrbit(
+                    star,
+                    star.Orbit.Value.OrbitedId,
+                    star.Orbit.Value.GetOrbitalParameters() with
+                    {
+                        OrbitedMass = Mass,
+                    });
+                affectedLocations.Add(star);
+                updated = true;
+            }
+        } while (updated);
+
+        var planetoids = new List<Planetoid>();
+        await foreach (var child in system.GetChildrenAsync(dataStore, CosmicStructureType.Planetoid))
+        {
+            if (child is Planetoid planetoid)
+            {
+                planetoids.Add(planetoid);
+            }
+        }
+
+        foreach (var planetoid in planetoids)
+        {
+            Star? star = null;
+            CosmicLocation? orbited = null;
+            if (!string.IsNullOrEmpty(planetoid.Orbit?.OrbitedId))
+            {
+                star = stars.Find(x => x.Id.Equals(planetoid.Orbit.Value.OrbitedId));
+                orbited = (CosmicLocation?)star
+                    ?? planetoids.Find(x => x.Id.Equals(planetoid.Orbit.Value.OrbitedId));
+            }
+            affectedLocations.Add(planetoid);
+            affectedLocations.AddRange(planetoid.ConfigureStellarProperties(
+                system,
+                stars,
+                star,
+                orbited is not Star,
+                temperatureCorrection: false));
+        }
+
+        return affectedLocations;
     }
 
     private static SpectralClass GetSpectralClassFromTemperature(HugeNumber temperature)
@@ -715,7 +1211,7 @@ public class Star : CosmicLocation
         IShape<HugeNumber> shape;
         if (StarType == StarType.BrownDwarf)
         {
-            mass = GetMass(Randomizer.Instance);
+            mass = GetMass();
 
             var radius = (HugeNumber)Randomizer.Instance.NormalDistributionSample(69911000, 3495550);
             var flattening = Randomizer.Instance.Next(HugeNumberConstants.Deci);
@@ -746,7 +1242,7 @@ public class Star : CosmicLocation
         }
         else if (StarType == StarType.WhiteDwarf)
         {
-            mass = GetMass(Randomizer.Instance);
+            mass = GetMass();
 
             var radius = (new HugeNumber(1.8986, 27) / mass).Cbrt() * 69911000;
             var flattening = (HugeNumber)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
@@ -761,7 +1257,7 @@ public class Star : CosmicLocation
         }
         else if (StarType == StarType.Neutron)
         {
-            mass = GetMass(Randomizer.Instance);
+            mass = GetMass();
 
             var radius = Randomizer.Instance.Next(1000, 2000);
             var flattening = (HugeNumber)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
@@ -773,19 +1269,19 @@ public class Star : CosmicLocation
         }
         else if (IsGiant)
         {
-            mass = GetMass(Randomizer.Instance);
+            mass = GetMass();
 
             Luminosity = LuminosityClass switch
             {
                 LuminosityClass.Zero => 3.846e31 + Randomizer.Instance.PositiveNormalDistributionSample(0, 3.0768e32),
                 LuminosityClass.Ia => Randomizer.Instance.NormalDistributionSample(1.923e31, 3.846e29),
                 LuminosityClass.Ib => Randomizer.Instance.NormalDistributionSample(3.846e30, 3.846e29),
-                LuminosityClass.II => Randomizer.Instance.NormalDistributionSample(3.846e29, 2.3076e29),
+                LuminosityClass.II => Randomizer.Instance.PositiveNormalDistributionSample(3.846e29, 2.3076e29),
                 LuminosityClass.III => Randomizer.Instance.NormalDistributionSample(1.5384e29, 4.9998e28),
                 _ => 0,
             };
 
-            shape = GetMainSequenceShape(Randomizer.Instance, temperature, position);
+            shape = GetMainSequenceShape(temperature, position);
 
             if (SpectralClass == SpectralClass.None)
             {
@@ -813,11 +1309,15 @@ public class Star : CosmicLocation
                 Luminosity = luminosity;
             }
 
-            shape = GetMainSequenceShape(Randomizer.Instance, temperature, position);
+            shape = GetMainSequenceShape(temperature, position);
 
             // Mass scales with radius for main-sequence stars, with the scale changing at around 1
             // solar mass/radius.
-            mass = HugeNumber.Pow(shape.ContainingRadius / _SolarMass, shape.ContainingRadius < _SolarMass ? new HugeNumber(125, -2) : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
+            mass = HugeNumber.Pow(
+                shape.ContainingRadius / _SolarMass,
+                shape.ContainingRadius < _SolarMass
+                    ? new HugeNumber(125, -2)
+                    : new HugeNumber(175, -2)) * new HugeNumber(1.99, 30);
 
             if (SpectralClass == SpectralClass.None)
             {
@@ -910,19 +1410,19 @@ public class Star : CosmicLocation
     private double GetLuminosityFromRadius()
         => DoubleConstants.FourPi * (double)RadiusSquared * DoubleConstants.sigma * Math.Pow(Temperature, 4);
 
-    private HugeNumber GetMass(Randomizer randomizer)
+    private HugeNumber GetMass()
     {
         if (StarType == StarType.BrownDwarf)
         {
-            return randomizer.Next(new HugeNumber(2.468, 28), new HugeNumber(1.7088, 29));
+            return Randomizer.Instance.Next(new HugeNumber(2.468, 28), new HugeNumber(1.7088, 29));
         }
         if (StarType == StarType.WhiteDwarf)
         {
-            return randomizer.NormalDistributionSample(1.194e30, 9.95e28);
+            return Randomizer.Instance.NormalDistributionSample(1.194e30, 9.95e28);
         }
         if (StarType == StarType.Neutron)
         {
-            return randomizer.NormalDistributionSample(4.4178e30, 5.174e29); // between 1.44 and 3 times solar mass
+            return Randomizer.Instance.NormalDistributionSample(4.4178e30, 5.174e29); // between 1.44 and 3 times solar mass
         }
         if (StarType == StarType.RedGiant)
         {
@@ -930,27 +1430,27 @@ public class Star : CosmicLocation
                 or LuminosityClass.Ia
                 or LuminosityClass.Ib)
             {
-                return randomizer.Next(new HugeNumber(1.592, 31), new HugeNumber(4.975, 31)); // Super/hypergiants
+                return Randomizer.Instance.Next(new HugeNumber(1.592, 31), new HugeNumber(4.975, 31)); // Super/hypergiants
             }
             else
             {
-                return randomizer.Next(new HugeNumber(5.97, 29), new HugeNumber(1.592, 31)); // (Bright)giants
+                return Randomizer.Instance.Next(new HugeNumber(5.97, 29), new HugeNumber(1.592, 31)); // (Bright)giants
             }
         }
         if (StarType == StarType.YellowGiant)
         {
             if (LuminosityClass == LuminosityClass.Zero)
             {
-                return randomizer.Next(new HugeNumber(1, 31), new HugeNumber(8.96, 31)); // Hypergiants
+                return Randomizer.Instance.Next(new HugeNumber(1, 31), new HugeNumber(8.96, 31)); // Hypergiants
             }
             else if (LuminosityClass is LuminosityClass.Ia
                 or LuminosityClass.Ib)
             {
-                return randomizer.Next(new HugeNumber(5.97, 31), new HugeNumber(6.97, 31)); // Supergiants
+                return Randomizer.Instance.Next(new HugeNumber(5.97, 31), new HugeNumber(6.97, 31)); // Supergiants
             }
             else
             {
-                return randomizer.Next(new HugeNumber(5.97, 29), new HugeNumber(1.592, 31)); // (Bright)giants
+                return Randomizer.Instance.Next(new HugeNumber(5.97, 29), new HugeNumber(1.592, 31)); // (Bright)giants
             }
         }
         if (StarType == StarType.BlueGiant)
@@ -965,17 +1465,17 @@ public class Star : CosmicLocation
                 }
                 else
                 {
-                    return randomizer.Next(_MinBlueHypergiantMass, eddingtonLimit);
+                    return Randomizer.Instance.Next(_MinBlueHypergiantMass, eddingtonLimit);
                 }
             }
             else if (LuminosityClass is LuminosityClass.Ia
                 or LuminosityClass.Ib)
             {
-                return randomizer.Next(new HugeNumber(9.95, 30), new HugeNumber(2.0895, 32)); // Supergiants
+                return Randomizer.Instance.Next(new HugeNumber(9.95, 30), new HugeNumber(2.0895, 32)); // Supergiants
             }
             else
             {
-                return randomizer.Next(new HugeNumber(3.98, 30), new HugeNumber(1.99, 31)); // (Bright)giants
+                return Randomizer.Instance.Next(new HugeNumber(3.98, 30), new HugeNumber(1.99, 31)); // (Bright)giants
             }
         }
 
@@ -986,13 +1486,16 @@ public class Star : CosmicLocation
     /// <summary>
     /// A main sequence star's radius has a direct relationship to <see cref="Luminosity"/>.
     /// </summary>
-    private IShape<HugeNumber> GetMainSequenceShape(Randomizer randomizer, double temperature, Vector3<HugeNumber> position)
+    private IShape<HugeNumber> GetMainSequenceShape(double temperature, Vector3<HugeNumber> position)
     {
         var d = DoubleConstants.FourPi * 5.67e-8 * Math.Pow(temperature, 4);
         var radius = d.IsNearlyZero() ? HugeNumber.Zero : Math.Sqrt(Luminosity / d);
-        var flattening = (HugeNumber)randomizer.NormalDistributionSample(0.15, 0.05, minimum: 0);
+        var flattening = (HugeNumber)Randomizer.Instance.NormalDistributionSample(0.15, 0.05, minimum: 0);
         return new Ellipsoid<HugeNumber>(radius, radius * (1 - flattening), position);
     }
+
+    private double GetRadiusFromLuminosity()
+        => Math.Sqrt(Luminosity / DoubleConstants.FourPi * DoubleConstants.sigma * Math.Pow(Temperature, 4));
 
     private ISubstanceReference GetSubstance()
     {

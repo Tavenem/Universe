@@ -1,4 +1,5 @@
-﻿using Tavenem.Chemistry;
+﻿using System.Collections.Immutable;
+using Tavenem.Chemistry;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Universe.Chemistry;
@@ -9,6 +10,18 @@ namespace Tavenem.Universe.Space;
 
 public partial class Planetoid
 {
+    /// <summary>
+    /// Adds a resource to this planet's <see cref="Resources"/> collection.
+    /// </summary>
+    /// <param name="substance">The substance found in the resource.</param>
+    /// <param name="proportion">
+    /// The proportion of the resource over the <see cref="Planetoid"/>'s surface, as a value
+    /// between 0 and 1.
+    /// </param>
+    /// <param name="isVein">Whether the resource occurs in veins.</param>
+    public void AddResource(ISubstanceReference substance, decimal proportion, bool isVein)
+        => AddResource(substance, proportion, isVein, false, null);
+
     /// <summary>
     /// Generates a set of rings for this planetoid.
     /// </summary>
@@ -25,7 +38,7 @@ public partial class Planetoid
     /// <param name="max">
     /// An optional maximum number of rings to generate.
     /// </param>
-    private void GenerateRings(
+    public void GenerateRings(
         byte? min = null,
         byte? max = null)
     {
@@ -113,7 +126,7 @@ public partial class Planetoid
         }
         _rings = rings.Count == 0
             ? null
-            : rings.AsReadOnly();
+            : rings.ToImmutableList();
     }
 
     /// <summary>
@@ -270,7 +283,7 @@ public partial class Planetoid
         }
         _satelliteIds = satelliteIds.Count == 0
             ? null
-            : satelliteIds.AsReadOnly();
+            : satelliteIds.ToImmutableList();
 
         return addedSatellites;
     }
@@ -318,6 +331,111 @@ public partial class Planetoid
         }
 
         return GenerateSatellites(parent, stars, min, max);
+    }
+
+    internal List<Planetoid> ConfigureStellarProperties(
+        CosmicLocation? parent,
+        List<Star> stars,
+        Star? star = null,
+        bool satellite = false,
+        OrbitalParameters? orbit = null,
+        double? eccentricity = null,
+        HugeNumber? semiMajorAxis = null,
+        bool temperatureCorrection = true)
+    {
+        IsInhospitable = stars.Any(x => !x.IsHospitable);
+
+        eccentricity ??= orbit?.Eccentricity ?? Orbit?.Eccentricity;
+        semiMajorAxis ??= Orbit?.SemiMajorAxis;
+
+        if (eccentricity.HasValue
+            && semiMajorAxis.HasValue)
+        {
+            GenerateOrbit(
+                orbit,
+                star,
+                eccentricity.Value,
+                semiMajorAxis.Value);
+        }
+
+        if (_planetParams?.AxialTilt.HasValue == true)
+        {
+            var axialTilt = _planetParams!.Value.AxialTilt!.Value;
+            if (Orbit.HasValue)
+            {
+                axialTilt += Orbit.Value.Inclination;
+            }
+            while (axialTilt > Math.PI)
+            {
+                axialTilt -= Math.PI;
+            }
+            while (axialTilt < 0)
+            {
+                axialTilt += Math.PI;
+            }
+            AngleOfRotation = axialTilt;
+        }
+        else if (Randomizer.Instance.NextDouble() <= 0.2) // low chance of an extreme tilt
+        {
+            AngleOfRotation = Randomizer.Instance.NextDouble(DoubleConstants.QuarterPi, Math.PI);
+        }
+        else
+        {
+            AngleOfRotation = Randomizer.Instance.NextDouble(DoubleConstants.QuarterPi);
+        }
+        SetAxis();
+
+        SetTemperatures(stars);
+
+        double surfaceTemp;
+        if (_planetParams?.SurfaceTemperature.HasValue == true)
+        {
+            surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
+        }
+        else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
+        {
+            surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
+                    + _habitabilityRequirements!.Value.MaximumTemperature.Value)
+                    / 2
+                : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
+        }
+        else
+        {
+            surfaceTemp = BlackbodyTemperature;
+        }
+
+        GenerateHydrosphere(surfaceTemp);
+
+        HasMagnetosphere = _planetParams?.HasMagnetosphere.HasValue == true
+            ? _planetParams!.Value.HasMagnetosphere!.Value
+            : Randomizer.Instance.Next() <= Mass * new HugeNumber(2.88, -19) / RotationalPeriod * (PlanetType switch
+            {
+                PlanetType.Iron => new HugeNumber(5),
+                PlanetType.Ocean => HugeNumberConstants.Half,
+                _ => HugeNumber.One,
+            });
+
+        if (temperatureCorrection
+            && star is not null
+            && (_planetParams?.SurfaceTemperature.HasValue == true
+            || _habitabilityRequirements?.MinimumTemperature.HasValue == true
+            || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
+        {
+            CorrectSurfaceTemperature(stars, star, surfaceTemp);
+        }
+        else
+        {
+            GenerateAtmosphere();
+        }
+
+        GenerateResources();
+
+        GenerateRings();
+
+        return satellite
+            ? new List<Planetoid>()
+            : GenerateSatellites(parent, stars);
     }
 
     private static IEnumerable<IMaterial<HugeNumber>> GetCore_Giant(
@@ -1025,7 +1143,7 @@ public partial class Planetoid
     private static HugeNumber GetRadiusForMass(HugeNumber density, HugeNumber mass)
         => (mass / density / HugeNumberConstants.FourThirdsPi).Cbrt();
 
-    private int AddResource(ISubstanceReference substance, decimal proportion, bool isVein, bool isPerturbation = false, int? seed = null)
+    private int AddResource(ISubstanceReference substance, decimal proportion, bool isVein, bool isPerturbation, int? seed = null)
     {
         var resource = new Resource(
             substance,
@@ -1315,8 +1433,6 @@ public partial class Planetoid
         }
         SeedArray = seedArray;
 
-        IsInhospitable = stars.Any(x => !x.IsHospitable);
-
         double eccentricity;
         if (_planetParams?.Eccentricity.HasValue == true)
         {
@@ -1448,89 +1564,14 @@ public partial class Planetoid
             }
         }
 
-        GenerateOrbit(
-            orbit,
+        return ConfigureStellarProperties(
+            parent,
+            stars,
             star,
+            satellite,
+            orbit,
             eccentricity,
             semiMajorAxis);
-
-        if (_planetParams?.AxialTilt.HasValue == true)
-        {
-            var axialTilt = _planetParams!.Value.AxialTilt!.Value;
-            if (Orbit.HasValue)
-            {
-                axialTilt += Orbit.Value.Inclination;
-            }
-            while (axialTilt > Math.PI)
-            {
-                axialTilt -= Math.PI;
-            }
-            while (axialTilt < 0)
-            {
-                axialTilt += Math.PI;
-            }
-            AngleOfRotation = axialTilt;
-        }
-        else if (Randomizer.Instance.NextDouble() <= 0.2) // low chance of an extreme tilt
-        {
-            AngleOfRotation = Randomizer.Instance.NextDouble(DoubleConstants.QuarterPi, Math.PI);
-        }
-        else
-        {
-            AngleOfRotation = Randomizer.Instance.NextDouble(DoubleConstants.QuarterPi);
-        }
-        SetAxis();
-
-        SetTemperatures(stars);
-
-        double surfaceTemp;
-        if (_planetParams?.SurfaceTemperature.HasValue == true)
-        {
-            surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
-        }
-        else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
-        {
-            surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
-                ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
-                    + _habitabilityRequirements!.Value.MaximumTemperature.Value)
-                    / 2
-                : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
-        }
-        else
-        {
-            surfaceTemp = BlackbodyTemperature;
-        }
-
-        GenerateHydrosphere(surfaceTemp);
-
-        HasMagnetosphere = _planetParams?.HasMagnetosphere.HasValue == true
-            ? _planetParams!.Value.HasMagnetosphere!.Value
-            : Randomizer.Instance.Next() <= Mass * new HugeNumber(2.88, -19) / RotationalPeriod * (PlanetType switch
-            {
-                PlanetType.Iron => new HugeNumber(5),
-                PlanetType.Ocean => HugeNumberConstants.Half,
-                _ => HugeNumber.One,
-            });
-
-        if (star is not null
-            && (_planetParams?.SurfaceTemperature.HasValue == true
-            || _habitabilityRequirements?.MinimumTemperature.HasValue == true
-            || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
-        {
-            CorrectSurfaceTemperature(stars, star, surfaceTemp);
-        }
-        else
-        {
-            GenerateAtmosphere();
-        }
-
-        GenerateResources();
-
-        GenerateRings();
-
-        return satellite
-            ? new List<Planetoid>()
-            : GenerateSatellites(parent, stars);
     }
 
     private void CorrectSurfaceTemperature(
@@ -2492,7 +2533,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.65) // Most will be standard terrestrial.
             {
@@ -2506,7 +2547,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.75)
             {
@@ -2520,7 +2561,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -2534,7 +2575,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 
@@ -2555,7 +2596,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.75) // Most will be standard.
             {
@@ -2569,7 +2610,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -2583,7 +2624,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 
@@ -2603,7 +2644,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.9)
             {
@@ -2617,7 +2658,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -2631,7 +2672,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 
@@ -2648,7 +2689,7 @@ public partial class Planetoid
         AddResource(Substances.All.BituminousCoal.GetReference(), coal, false);
 
         var petroleum = (decimal)Randomizer.Instance.NormalDistributionSample(1e-8, 1.6e-9);
-        var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false);
+        var petroleumSeed = AddResource(Substances.All.Petroleum.GetReference(), petroleum, false, false);
 
         // Natural gas is predominantly, though not exclusively, found with petroleum deposits.
         AddResource(Substances.All.NaturalGas.GetReference(), petroleum, false, true, petroleumSeed);
@@ -2788,7 +2829,11 @@ public partial class Planetoid
         }
 
         HasBiosphere = true;
+        return GenerateLifeEffects();
+    }
 
+    private bool GenerateLifeEffects()
+    {
         GenerateHydrocarbons();
 
         // If the habitable zone is a subsurface ocean, no further adjustments occur.
@@ -3031,7 +3076,7 @@ public partial class Planetoid
     {
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(this, orbit.Value);
+            Space.Orbit.AssignOrbit(this, orbitedObject?.Id, orbit.Value);
             return;
         }
 
@@ -3122,6 +3167,8 @@ public partial class Planetoid
 
     private void GenerateResources()
     {
+        _resources?.Clear();
+
         AddResources(Material.GetSurface()
                 .Constituents.Where(x => x.Key.Substance.Categories?.Contains(Substances.Category_Gem) == true
                     || x.Key.Substance.IsMetalOre())
@@ -3212,7 +3259,7 @@ public partial class Planetoid
                 GetAsteroidSatelliteOrbit(periapsis, eccentricity),
                 new PlanetParams(MaxMass: maxMass),
                 null,
-                true);
+                this);
         }
         if (PlanetType == PlanetType.AsteroidM)
         {
@@ -3226,7 +3273,7 @@ public partial class Planetoid
                 GetAsteroidSatelliteOrbit(periapsis, eccentricity),
                 new PlanetParams(MaxMass: maxMass),
                 null,
-                true);
+                this);
         }
         if (PlanetType == PlanetType.AsteroidS)
         {
@@ -3240,7 +3287,7 @@ public partial class Planetoid
                 GetAsteroidSatelliteOrbit(periapsis, eccentricity),
                 new PlanetParams(MaxMass: maxMass),
                 null,
-                true);
+                this);
         }
         if (PlanetType == PlanetType.Comet)
         {
@@ -3296,7 +3343,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= terrestrialChance)
             {
@@ -3310,7 +3357,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (PlanetType == PlanetType.Carbon && chance <= 0.77) // Carbon planets alone have a chance for carbon satellites.
             {
@@ -3324,7 +3371,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (IsGiant && chance <= 0.75)
             {
@@ -3338,7 +3385,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -3352,7 +3399,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 
@@ -3373,7 +3420,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.75) // Most will be standard.
             {
@@ -3387,7 +3434,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -3401,7 +3448,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 
@@ -3421,7 +3468,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else if (chance <= 0.9)
             {
@@ -3435,7 +3482,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
             else
             {
@@ -3449,7 +3496,7 @@ public partial class Planetoid
                     orbit,
                     new PlanetParams(MaxMass: maxMass),
                     null,
-                    true);
+                    this);
             }
         }
 

@@ -14,6 +14,8 @@ namespace Tavenem.Universe.Space;
 /// </summary>
 public class StarSystem : CosmicLocation
 {
+    private static readonly HugeNumber _MaxClosePeriod = new HugeNumber(36000) + (3 * 1.732e7);
+
     internal static readonly HugeNumber _StarSystemSpace = new(3.5, 16);
 
     /// <summary>
@@ -34,7 +36,7 @@ public class StarSystem : CosmicLocation
     /// True if the primary <see cref="Star"/> in this system is a Population II <see
     /// cref="Star"/>; false if it is a Population I <see cref="Star"/>.
     /// </summary>
-    public bool IsPopulationII { get; internal set; }
+    public bool IsPopulationII { get; private set; }
 
     /// <summary>
     /// The <see cref="Stars.LuminosityClass"/> of the primary <see cref="Star"/> in this
@@ -56,7 +58,7 @@ public class StarSystem : CosmicLocation
     /// <summary>
     /// The type of the primary <see cref="Star"/> in this system.
     /// </summary>
-    public StarType StarType { get; }
+    public StarType StarType { get; private set; }
 
     /// <inheritdoc />
     [JsonIgnore]
@@ -157,7 +159,7 @@ public class StarSystem : CosmicLocation
         }
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(this, orbit.Value);
+            Space.Orbit.AssignOrbit(this, null, orbit.Value);
         }
     }
 
@@ -357,7 +359,7 @@ public class StarSystem : CosmicLocation
             }
             if (orbit.HasValue)
             {
-                Space.Orbit.AssignOrbit(child, orbit.Value);
+                Space.Orbit.AssignOrbit(child, null, orbit.Value);
             }
         }
 
@@ -395,8 +397,138 @@ public class StarSystem : CosmicLocation
     /// <summary>
     /// Removes a star from this system.
     /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
     /// <param name="id">The ID of the star to remove.</param>
-    public void RemoveStar(string id) => StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Remove(id);
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="CosmicLocation"/> instances affected by the
+    /// change.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// All objects in the system which previously orbited the removed star will have their orbit
+    /// set to <see langword="null"/>.
+    /// </para>
+    /// <para>
+    /// Removing the primary star will cause the convenience properties of this system (e.g. <see
+    /// cref="LuminosityClass"/>) to update to those of the remaining star which previously orbited
+    /// the primary with the shortest period, which will become the new primary. The new primary
+    /// will be moved to the center of the system, and all orbits which previously referred to the
+    /// old primary will be recalculated for the new. If there are no remaining stars after removing
+    /// the old primary, the properties of this system will be set to the defaults (e.g. <see
+    /// cref="LuminosityClass.None"/>).
+    /// </para>
+    /// <para>
+    /// Removing a star other than the primary which has anything in orbit around it will cause
+    /// those objects to instead assume the orbit of the deleted star, if they are stars, or to have
+    /// no orbit, if not.
+    /// </para>
+    /// <para>
+    /// This does not persist any changes to the given <paramref name="dataStore"/>. It is used
+    /// merely to retrieve and update location instances affected by the change.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> RemoveStarAsync(IDataStore dataStore, string id)
+    {
+        StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Remove(id);
+        var removed = await dataStore.GetItemAsync<Star>(id);
+        if (removed is null)
+        {
+            return new();
+        }
+
+        var affected = new List<CosmicLocation>();
+
+        Star? newPrimary = null;
+        var stars = new List<Star>();
+        var deorbited = new List<Star>();
+        await foreach (var star in GetStarsAsync(dataStore))
+        {
+            stars.Add(star);
+            if (star.Orbit?.OrbitedId?.Equals(id) == true)
+            {
+                deorbited.Add(star);
+            }
+        }
+        if (deorbited.Count > 0)
+        {
+            deorbited.Sort((x, y) => (x.Orbit?.Apoapsis ?? HugeNumber.Zero).CompareTo(y.Orbit?.Apoapsis ?? HugeNumber.Zero));
+            newPrimary = deorbited.FirstOrDefault();
+        }
+
+        if (newPrimary is null)
+        {
+            IsPopulationII = false;
+            LuminosityClass = LuminosityClass.None;
+            SpectralClass = SpectralClass.None;
+            StarType = StarType.None;
+        }
+        else
+        {
+            SetPropertiesForPrimary(newPrimary);
+            await newPrimary.SetPositionAsync(dataStore, Vector3<HugeNumber>.Zero);
+        }
+
+        await foreach (var child in GetChildrenAsync<CosmicLocation>(dataStore))
+        {
+            if (!child.Orbit.HasValue
+                || string.IsNullOrEmpty(child.Orbit.Value.OrbitedId))
+            {
+                continue;
+            }
+            if (child.Orbit.Value.OrbitedId.Equals(id))
+            {
+                if (newPrimary is null)
+                {
+                    await child.SetOrbitAsync(dataStore, null);
+                }
+                else
+                {
+                    Space.Orbit.AssignOrbit(
+                        child,
+                        newPrimary.Id,
+                        child.Orbit.Value.GetOrbitalParameters() with
+                        {
+                            OrbitedMass = newPrimary.Mass,
+                            OrbitedPosition = newPrimary.Position,
+                        });
+                    await child.ResetOrbitAsync(dataStore);
+                }
+                affected.Add(child);
+                if (child is Planetoid planetoid)
+                {
+                    affected.AddRange(planetoid.ConfigureStellarProperties(
+                        this,
+                        stars,
+                        temperatureCorrection: false));
+                }
+            }
+            else if (newPrimary is not null
+                && child.Orbit.Value.OrbitedId.Equals(newPrimary.Id))
+            {
+                Space.Orbit.AssignOrbit(
+                    child,
+                    newPrimary.Id,
+                    child.Orbit.Value.GetOrbitalParameters() with
+                    {
+                        OrbitedPosition = newPrimary.Position,
+                    });
+                await child.ResetOrbitAsync(dataStore);
+                affected.Add(child);
+            }
+        }
+
+        return affected;
+    }
+
+    internal void SetPropertiesForPrimary(Star primary)
+    {
+        IsPopulationII = primary.IsPopulationII;
+        LuminosityClass = primary.LuminosityClass;
+        SpectralClass = primary.SpectralClass;
+        StarType = primary.StarType;
+    }
 
     /// <summary>
     /// Single-planet orbital distance may follow a log-normal distribution, with the peak at 0.3
@@ -913,113 +1045,227 @@ public class StarSystem : CosmicLocation
         return null;
     }
 
+    /// <summary>
+    /// Adds new stars to this system.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="min">
+    /// <para>
+    /// An optional minimum number of stars to generate.
+    /// </para>
+    /// <para>
+    /// It is not guaranteed that this number is generated, if conditions preclude generation of the
+    /// specified number. This value merely overrides the usual maximum for the total number of
+    /// stars which would normally be generated for a system.
+    /// </para>
+    /// </param>
+    /// <param name="max">
+    /// An optional maximum number of stars to generate.
+    /// </param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="Star"/>s which were generated. These stars will
+    /// not be automatically persisted to the <paramref name="dataStore"/>, but they will be added
+    /// to the system's <see cref="StarIDs"/> collection.
+    /// </returns>
+    public async Task<List<Star>> AddStarsAsync(
+        IDataStore dataStore,
+        byte? min = null,
+        byte? max = null)
+    {
+        Star? primary = null;
+        var currentStars = new List<Star>();
+        var newStars = new List<Star>();
+        var companions = new List<(Star star, HugeNumber totalApoapsis)>();
+        await foreach (var star in GetStarsAsync(dataStore))
+        {
+            if (!star.Orbit.HasValue)
+            {
+                primary = star;
+            }
+            currentStars.Add(star);
+        }
+
+        primary ??= currentStars.FirstOrDefault();
+        if (primary is null)
+        {
+            primary = new Star(StarType.MainSequence, this, Vector3<HugeNumber>.Zero);
+            if (primary is not null)
+            {
+                newStars.Add(primary);
+            }
+        }
+
+        if (primary is null)
+        {
+            return newStars;
+        }
+
+        var amount = GenerateNumCompanions(primary);
+        amount -= currentStars.Count;
+        if (min.HasValue)
+        {
+            amount = Math.Max(amount, min.Value);
+        }
+        if (max.HasValue)
+        {
+            amount = Math.Min(amount, max.Value);
+        }
+        amount -= newStars.Count;
+        if (amount <= 0)
+        {
+            return newStars;
+        }
+
+        newStars.AddRange(AddCompanionStars(primary, currentStars, amount)
+            .Select(x => x.star));
+        StarIDs = ImmutableList<string>
+            .Empty
+            .AddRange(StarIDs)
+            .AddRange(newStars.Select(x => x.Id));
+        return newStars;
+    }
+
     private List<(Star star, HugeNumber totalApoapsis)> AddCompanionStars(
         Star primary,
+        List<Star> currentStars,
         int amount,
         CosmicLocation? child = null)
     {
-        var companions = new List<(Star star, HugeNumber totalApoapsis)>();
+        var newCompanions = new List<(Star star, HugeNumber totalApoapsis)>();
         if (amount <= 0)
         {
-            return companions;
-        }
-        var orbited = primary;
-
-        // Most periods are about 50 years, in a log normal distribution. There is a chance of a
-        // close binary, however.
-        var close = false;
-        HugeNumber companionPeriod;
-        if (Randomizer.Instance.NextDouble() <= 0.2)
-        {
-            close = true;
-            companionPeriod = GetClosePeriod();
-        }
-        else
-        {
-            companionPeriod = Randomizer.Instance.LogNormalDistributionSample(0, 1) * new HugeNumber(1.5768, 9);
-        }
-        var companion = AddCompanionStar(companions, orbited, null, companionPeriod, child);
-        if (!companion.HasValue)
-        {
-            return companions;
-        }
-        if (companion.Value.star == child)
-        {
-            child = null;
+            return newCompanions;
         }
 
-        if (amount <= 1)
+        HugeNumber GetTotalApoapsis(Star star)
         {
-            return companions;
+            var total = HugeNumber.Zero;
+            if (!star.Orbit.HasValue)
+            {
+                return total;
+            }
+            total += star.Orbit.Value.Apoapsis;
+            if (string.IsNullOrEmpty(star.Orbit.Value.OrbitedId))
+            {
+                return total;
+            }
+            var orbitedStar = currentStars?.Find(x => x.Id.Equals(star.Orbit.Value.OrbitedId));
+            if (orbitedStar is null)
+            {
+                return total;
+            }
+            return total + GetTotalApoapsis(orbitedStar);
         }
-        // A third star will orbit either the initial star, or will orbit the second in a close
-        // orbit, establishing a hierarchical system.
 
-        // If the second star was given a close orbit, the third will automatically orbit the
-        // original star with a long period.
-        HugeNumber? orbitedTotalApoapsis;
-        if (close || !companion.HasValue || Randomizer.Instance.NextBool())
+        var allStars = new List<(Star star, HugeNumber totalApoapsis)>();
+        foreach (var currentStar in currentStars)
         {
-            orbited = primary;
-            orbitedTotalApoapsis = primary.Orbit?.Apoapsis;
+            allStars.Add((currentStar, GetTotalApoapsis(currentStar)));
         }
-        else
-        {
-            orbited = companion!.Value.star;
-            orbitedTotalApoapsis = companion.Value.totalApoapsis;
-        }
+        allStars.Sort((x, y) => x.totalApoapsis.CompareTo(y.totalApoapsis));
 
-        // Long periods are about 50 years, in a log normal distribution, shifted out to avoid
-        // being too close to the 2nd star's close orbit.
-        if (close)
+        (Star star, HugeNumber totalApoapsis)? companion = null;
+
+        while (true)
         {
-            var c = AddCompanionStar(
-                companions,
-                orbited,
-                orbitedTotalApoapsis,
-                (Randomizer.Instance.LogNormalDistributionSample(0, 1) * new HugeNumber(1.5768, 9))
-                + (Space.Orbit.GetHillSphereRadius(
-                    companion!.Value.star.Mass,
-                    companion!.Value.star.Orbit!.Value.OrbitedMass,
-                    companion!.Value.star.Orbit!.Value.SemiMajorAxis,
-                    companion!.Value.star.Orbit!.Value.Eccentricity) * 20),
+            // Each new companion star will either orbit the primary, or form a close binary pair
+            // with a star that does orbit the primary. Once the primary has at least two companion
+            // stars in orbit (a close binary companion and a star with a longer period), stars
+            // which orbit the primary will receive a close binary companion before adding any new
+            // stars with longer orbits around the primary.
+
+            (Star star, HugeNumber totalApoapsis)? orbited = null;
+            List<(Star star, HugeNumber totalApoapsis)>? orbiters = null;
+            foreach (var (star, totalApoapsis) in allStars)
+            {
+                orbiters = allStars
+                    .Where(y
+                        => y.star.Orbit.HasValue
+                        && !string.IsNullOrEmpty(y.star.Orbit.Value.OrbitedId)
+                        && y.star.Orbit.Value.OrbitedId.Equals(star.Id))
+                    .ToList();
+                if (orbiters.Count < 2)
+                {
+                    orbited = (star, totalApoapsis);
+                    break;
+                }
+                orbiters = null;
+            }
+            if (!orbited.HasValue)
+            {
+                orbited = (primary, HugeNumber.Zero);
+            }
+
+            // Most periods are about 50 years, in a log normal distribution. There is a chance of a
+            // close binary, however.
+            bool close;
+            if (orbited.Value.totalApoapsis.IsZero())
+            {
+                if (orbiters is null)
+                {
+                    close = Randomizer.Instance.NextDouble() <= 0.2;
+                }
+                else if (orbiters.Count >= 2)
+                {
+                    close = false;
+                }
+                else
+                {
+                    close = orbiters[0].totalApoapsis > _MaxClosePeriod;
+                }
+            }
+            else if (orbiters is null)
+            {
+                close = Randomizer.Instance.NextBool();
+            }
+            else
+            {
+                close = orbiters[0].totalApoapsis > _MaxClosePeriod;
+            }
+
+            var companionPeriod = close
+                ? GetClosePeriod()
+                : Randomizer.Instance.LogNormalDistributionSample(0, 1) * new HugeNumber(1.5768, 9);
+            if (!close
+                && orbited.Value.totalApoapsis.IsPositive()
+                && orbiters?.Count > 0)
+            {
+                // Long periods after the first are shifted out to avoid being too close to the
+                // next-closest star's orbit. This is not necessarily true of all systems in
+                // reality, but the orbital mechanics of such systems are chaotic. To simplify orbit
+                // models, in this library only systems which could be imagined to be stable over
+                // short timescales are produced.
+                companionPeriod += Space.Orbit.GetHillSphereRadius(
+                    orbiters[^1].star.Mass,
+                    orbiters[^1].star.Orbit!.Value.OrbitedMass,
+                    orbiters[^1].star.Orbit!.Value.SemiMajorAxis,
+                    orbiters[^1].star.Orbit!.Value.Eccentricity) * 20;
+            }
+
+            companion = AddCompanionStar(
+                newCompanions,
+                orbited.Value.star,
+                null,
+                companionPeriod,
                 child);
-            if (c.HasValue && c.Value.star == child)
+            if (!companion.HasValue)
+            {
+                return newCompanions;
+            }
+            allStars.Add(companion.Value);
+            if (companion.Value.star == child)
             {
                 child = null;
             }
-        }
-        else
-        {
-            var c = AddCompanionStar(companions, orbited, orbitedTotalApoapsis, GetClosePeriod(), child);
-            if (c.HasValue && c.Value.star == child)
+
+            amount--;
+            if (amount <= 0)
             {
-                child = null;
+                return newCompanions;
             }
         }
-
-        if (amount <= 2)
-        {
-            return companions;
-        }
-        // A fourth star will orbit whichever star of the original two does not already have a
-        // close companion, in a close orbit of its own.
-        if (orbited == primary && companion.HasValue)
-        {
-            orbited = companion.Value.star;
-            orbitedTotalApoapsis = companion.Value.totalApoapsis;
-        }
-        else
-        {
-            orbited = primary;
-            orbitedTotalApoapsis = primary.Orbit?.Apoapsis;
-        }
-        if (orbited is not null)
-        {
-            AddCompanionStar(companions, orbited, orbitedTotalApoapsis, GetClosePeriod(), child);
-        }
-
-        return companions;
     }
 
     private List<CosmicLocation> Configure(
@@ -1071,12 +1317,14 @@ public class StarSystem : CosmicLocation
             return addedChildren;
         }
 
-        IsPopulationII = primary.IsPopulationII;
-        LuminosityClass = primary.LuminosityClass;
-        SpectralClass = primary.SpectralClass;
+        SetPropertiesForPrimary(primary);
 
         var numCompanions = !allowBinary || sunlike ? 0 : GenerateNumCompanions(primary);
-        var companions = AddCompanionStars(primary, numCompanions, childIsPrimary ? null : child);
+        var companions = AddCompanionStars(
+            primary,
+            stars,
+            numCompanions,
+            childIsPrimary ? null : child);
         if (companions.Any(x => x.star == child))
         {
             child = null;
@@ -1128,11 +1376,7 @@ public class StarSystem : CosmicLocation
             }
             else
             {
-                var cloud = NewOortCloud(
-                    this,
-                    Vector3<HugeNumber>.Zero,
-                    null,
-                    Shape.ContainingRadius);
+                var cloud = NewOortCloud(this, Shape.ContainingRadius);
                 if (cloud is not null)
                 {
                     addedChildren.Add(cloud);
@@ -1166,6 +1410,7 @@ public class StarSystem : CosmicLocation
             var radius = width / 2;
             return NewAsteroidField(
                 this,
+                star,
                 star.Position,
                 null,
                 innerRadius + radius,
@@ -1232,6 +1477,7 @@ public class StarSystem : CosmicLocation
                 var separation = planetarySystemInfo.Periapsis!.Value - (planet.GetMutualHillSphereRadius(new HugeNumber(3, 25)) * Randomizer.Instance.NormalDistributionSample(21.7, 9.5));
                 var belt = NewAsteroidField(
                     this,
+                    star,
                     star.Position,
                     null,
                     separation * HugeNumberConstants.Deci,
@@ -1384,6 +1630,7 @@ public class StarSystem : CosmicLocation
         }
         var field = NewAsteroidField(
             this,
+            planet,
             -Vector3<HugeNumber>.UnitZ * periapsis,
             new OrbitalParameters(
                 star.Mass,
@@ -1407,6 +1654,7 @@ public class StarSystem : CosmicLocation
         }
         field = NewAsteroidField(
             this,
+            planet,
             Vector3<HugeNumber>.UnitZ * periapsis,
             new OrbitalParameters(
                 star.Mass,

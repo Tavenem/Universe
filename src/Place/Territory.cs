@@ -200,6 +200,48 @@ public class Territory : Location
         return false;
     }
 
+    /// <summary>
+    /// Removes the given location from this instance.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="ids">The <see cref="IIdItem.Id"/>s of child locations to remove.</param>
+    /// <returns>This instance.</returns>
+    public async ValueTask<Territory> RemoveLocationsAsync(IDataStore dataStore, IEnumerable<string> ids)
+    {
+        var list = (ChildIds as ImmutableList<string>)
+            ?? ImmutableList<string>.Empty.AddRange(ChildIds);
+        var count = list.Count;
+        ChildIds = list.RemoveRange(ids);
+        if (count > ChildIds.Count)
+        {
+            await CalculateShapeAsync(dataStore).ConfigureAwait(false);
+        }
+        return this;
+    }
+
+    /// <summary>
+    /// Removes the given location from this instance.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="ids">The <see cref="IIdItem.Id"/>s of child locations to remove.</param>
+    /// <returns>This instance.</returns>
+    public async ValueTask<Territory> RemoveLocationsAsync(IDataStore dataStore, params string[] ids)
+    {
+        var list = (ChildIds as ImmutableList<string>)
+            ?? ImmutableList<string>.Empty.AddRange(ChildIds);
+        var count = list.Count;
+        ChildIds = list.RemoveRange(ids);
+        if (count > ChildIds.Count)
+        {
+            await CalculateShapeAsync(dataStore).ConfigureAwait(false);
+        }
+        return this;
+    }
+
     private async Task CalculateShapeAsync(IDataStore dataStore)
     {
         if (ChildIds.Count == 0)

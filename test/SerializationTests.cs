@@ -377,7 +377,9 @@ public class SerializationTests
     public void OrbitTest()
     {
         var value = new Orbit(
+            null,
             new HugeNumber(1, 100),
+            Vector3<HugeNumber>.Zero,
             Vector3<HugeNumber>.Zero,
             0.1,
             0.01,

@@ -377,7 +377,7 @@ public partial class CosmicLocation : Location
         }
         if (orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(instance, orbit.Value);
+            Space.Orbit.AssignOrbit(instance, null, orbit.Value);
         }
 
         return instance;
@@ -603,7 +603,7 @@ public partial class CosmicLocation : Location
             }
             if (orbit.HasValue)
             {
-                Space.Orbit.AssignOrbit(child, orbit.Value);
+                Space.Orbit.AssignOrbit(child, null, orbit.Value);
             }
         }
 
@@ -624,7 +624,9 @@ public partial class CosmicLocation : Location
     /// This might occur if no children occur in this location, or if insufficient free space
     /// remains.
     /// </returns>
-    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildAsync(IDataStore dataStore, ChildDefinition? condition = null)
+    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildAsync(
+        IDataStore dataStore,
+        ChildDefinition? condition = null)
     {
         await foreach (var item in GenerateChildrenAsync(dataStore, 1, condition))
         {
@@ -654,7 +656,9 @@ public partial class CosmicLocation : Location
     /// ensure that all such sub-entities are also persisted to data storage.
     /// </para>
     /// </returns>
-    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildAsync(IDataStore dataStore, CosmicStructureType type)
+    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildAsync(
+        IDataStore dataStore,
+        CosmicStructureType type)
     {
         var space = type switch
         {
@@ -680,7 +684,10 @@ public partial class CosmicLocation : Location
             _ => HugeNumber.Zero,
         };
 
-        await foreach (var item in GenerateChildrenAsync(dataStore, 1, new ChildDefinition(space, HugeNumber.Zero, type)))
+        await foreach (var item in GenerateChildrenAsync(
+            dataStore,
+            1,
+            new ChildDefinition(space, HugeNumber.Zero, type)))
         {
             return item;
         }
@@ -719,7 +726,10 @@ public partial class CosmicLocation : Location
     /// exact distance is adjusted according to a normal distribution, with the sigma set as one
     /// sixth of the ideal distance.
     /// </remarks>
-    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildNearAsync(IDataStore dataStore, ChildDefinition condition, Vector3<HugeNumber> position)
+    public async Task<(CosmicLocation? child, List<CosmicLocation> subChildren)> GenerateChildNearAsync(
+        IDataStore dataStore,
+        ChildDefinition condition,
+        Vector3<HugeNumber> position)
     {
         var childTotals = GetChildTotals(condition: condition).ToList();
         var childAmounts = new List<(ChildDefinition def, HugeNumber rem)>();
@@ -747,6 +757,7 @@ public partial class CosmicLocation : Location
             }
             children.Add(child);
         }
+        childAmounts.AddRange(childTotals.Where(x => !childAmounts.Any(y => x.type.IsSatisfiedBy(y.def))));
 
         var definitions = childAmounts
             .ConvertAll(x => (x.def, weight: (double)(HugeNumber.One / x.def.Density), x.rem));
@@ -837,7 +848,10 @@ public partial class CosmicLocation : Location
     /// location's space.
     /// </para>
     /// </remarks>
-    public IAsyncEnumerable<(CosmicLocation child, List<CosmicLocation> subChildren)> GenerateChildrenAsync(IDataStore dataStore, int total = 10, ChildDefinition? condition = null)
+    public IAsyncEnumerable<(CosmicLocation child, List<CosmicLocation> subChildren)> GenerateChildrenAsync(
+        IDataStore dataStore,
+        int total = 10,
+        ChildDefinition? condition = null)
         => GenerateChildrenAsync(dataStore, GetChildTotals(condition: condition).ToList(), total);
 
     /// <summary>
@@ -1004,30 +1018,44 @@ public partial class CosmicLocation : Location
 
     /// <summary>
     /// <para>
-    /// Calculates the position of this <see cref="CosmicLocation"/> after the given amount of
-    /// time has passed since the theoretical moment at which its current position was defined,
-    /// taking its orbit or velocity into account.
+    /// Calculates the position of this <see cref="CosmicLocation"/> after the given amount of time
+    /// has passed since the theoretical moment at which its current position was defined, taking
+    /// its orbit or velocity into account.
     /// </para>
     /// <para>
     /// The location's position is not actually changed by this calculation.
     /// </para>
     /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
     /// <param name="time">The amount of time after which to get a position.</param>
     /// <returns>
     /// A <see cref="Vector3{TScalar}"/> representing position relative to the center of the parent.
     /// </returns>
     /// <remarks>
-    /// Note: this does not take the motion of the orbited object into account, or any other
-    /// motions of an orbital hierarchy which might exist, nor does it perform integration over
-    /// time of gravitational influences other than those reflected by the <see cref="Orbit"/>.
+    /// Note: this only takes the motion of the orbited barycenter into account if the orbit
+    /// references an <see cref="Orbit.OrbitedId"/>, and that object is also in orbit or has a
+    /// non-zero <see cref="Velocity"/>. Any other motions of any bodies in the frame of reference
+    /// are disregarded. No integration over time of gravitational influences other than those
+    /// reflected by the <see cref="Orbit"/> are performed.
     /// </remarks>
-    public Vector3<HugeNumber> GetPositionAfterDuration(Duration time)
+    public async ValueTask<Vector3<HugeNumber>> GetPositionAfterDurationAsync(IDataStore dataStore, Duration time)
     {
         if (Orbit.HasValue)
         {
-            var (position, _) = Orbit.Value.GetStateVectorsAtTime(new Instant(Orbit.Value.Epoch + time));
+            var (position, _) = Orbit.Value.GetStateVectorsAfterDuration(time);
 
-            return Orbit.Value.OrbitedPosition + position;
+            var barycenter = Orbit.Value.Barycenter;
+            if (!string.IsNullOrEmpty(Orbit.Value.OrbitedId)
+                && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is CosmicLocation orbited)
+            {
+                barycenter = Orbit.Value.Barycenter
+                    + (await orbited.GetPositionAfterDurationAsync(dataStore, time)
+                    - orbited.Position);
+            }
+
+            return barycenter + position;
         }
 
         return Position + (Velocity * time.ToSeconds());
@@ -1035,24 +1063,34 @@ public partial class CosmicLocation : Location
 
     /// <summary>
     /// <para>
-    /// Calculates the position of this <see cref="CosmicLocation"/> at the given time, taking
-    /// its orbit into account, without actually updating its current position.
+    /// Calculates the position of this <see cref="CosmicLocation"/> at the given time, taking its
+    /// orbit into account, without actually updating its current position.
     /// </para>
     /// <para>
-    /// Does not take <see cref="Velocity"/> into account, as the difference between the
-    /// theoretical moment at which its position was defined and the given <paramref
-    /// name="moment"/> cannot be known.
+    /// Does not take <see cref="Velocity"/> into account if the object is not in orbit, as the
+    /// difference between the theoretical moment at which its position was defined and the given
+    /// <paramref name="moment"/> cannot be known.
     /// </para>
     /// <para>
     /// Also does not perform integration over time of gravitational influences other than those
     /// reflected by the <see cref="Orbit"/>.
     /// </para>
     /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
     /// <param name="moment">The time at which to get a position.</param>
     /// <returns>
     /// A <see cref="Vector3{TScalar}"/> representing position relative to the center of the parent.
     /// </returns>
-    public Vector3<HugeNumber> GetPositionAtTime(Instant moment)
+    /// <remarks>
+    /// Note: this only takes the motion of the orbited barycenter into account if the orbit
+    /// references an <see cref="Orbit.OrbitedId"/>, and that object is also in orbit. Any other
+    /// motions of any bodies in the frame of reference are disregarded. No integration over time of
+    /// gravitational influences other than those reflected by the <see cref="Orbit"/> are
+    /// performed.
+    /// </remarks>
+    public async ValueTask<Vector3<HugeNumber>> GetPositionAtTimeAsync(IDataStore dataStore, Instant moment)
     {
         if (!Orbit.HasValue)
         {
@@ -1061,7 +1099,17 @@ public partial class CosmicLocation : Location
 
         var (position, _) = Orbit.Value.GetStateVectorsAtTime(moment);
 
-        return Orbit.Value.OrbitedPosition + position;
+        var barycenter = Orbit.Value.Barycenter;
+        if (!string.IsNullOrEmpty(Orbit.Value.OrbitedId)
+            && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is CosmicLocation orbited
+            && orbited.Orbit.HasValue)
+        {
+            barycenter = Orbit.Value.Barycenter
+                + (await orbited.GetPositionAtTimeAsync(dataStore, moment)
+                - orbited.Position);
+        }
+
+        return barycenter + position;
     }
 
     /// <summary>
@@ -1201,7 +1249,7 @@ public partial class CosmicLocation : Location
     internal HugeNumber GetRocheLimit(HugeNumber orbitingDensity)
         => new HugeNumber(8947, -4) * (Mass / orbitingDensity).Cbrt();
 
-    internal virtual ValueTask ResetOrbitAsync(IDataStore dataStore) => new();
+    internal virtual ValueTask ResetOrbitAsync(IDataStore dataStore) => ValueTask.CompletedTask;
 
     private protected override void AssignPosition(Vector3<HugeNumber> position)
         => Position = position;

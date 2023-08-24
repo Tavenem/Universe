@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Text;
 using System.Text.Json.Serialization;
@@ -6,6 +7,7 @@ using Tavenem.Chemistry;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Time;
+using Tavenem.Universe.Chemistry;
 using Tavenem.Universe.Climate;
 using Tavenem.Universe.Place;
 using Tavenem.Universe.Space.Planetoids;
@@ -116,28 +118,39 @@ public partial class Planetoid : CosmicLocation
     /// The average albedo of this <see cref="Planetoid"/> (a value between 0 and 1).
     /// </summary>
     /// <remarks>
-    /// This refers to the total albedo of the body, including any atmosphere, not just the
-    /// surface albedo of the main body.
+    /// <para>
+    /// Read-only; set with <see cref="SetAlbedo(double)"/>.
+    /// </para>
+    /// <para>
+    /// This refers to the total albedo of the body, including any atmosphere, not just the surface
+    /// albedo of the main body.
+    /// </para>
     /// </remarks>
     public double Albedo { get; private set; }
 
     /// <summary>
     /// The angle between the Y-axis and the axis of rotation of this <see cref="Planetoid"/>.
-    /// Values greater than π/2 indicate clockwise rotation. Read-only; set with <see
-    /// cref="SetAngleOfRotation(double)"/>.
+    /// Values greater than π/2 indicate clockwise rotation.
     /// </summary>
     /// <remarks>
-    /// Note that this is not the same as axial tilt if the <see cref="Planetoid"/>
-    /// is in orbit; in that case axial tilt is relative to the normal of the orbital plane of
-    /// the <see cref="Planetoid"/>, not the Y-axis.
+    /// <para>
+    /// Read-only; set with <see cref="SetAngleOfRotation(double)"/>.
+    /// </para>
+    /// <para>
+    /// Note that this is not the same as axial tilt if the <see cref="Planetoid"/> is in orbit; in
+    /// that case axial tilt is relative to the normal of the orbital plane of the <see
+    /// cref="Planetoid"/>, not the Y-axis.
+    /// </para>
     /// </remarks>
     public double AngleOfRotation { get; private set; }
 
     private HugeNumber? _angularVelocity;
     /// <summary>
-    /// The angular velocity of this <see cref="Planetoid"/>, in radians per second. Read-only;
-    /// set via <see cref="RotationalPeriod"/>.
+    /// The angular velocity of this <see cref="Planetoid"/>, in radians per second.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Adjust via <see cref="SetRotationalPeriod(HugeNumber)"/>.
+    /// </remarks>
     [JsonIgnore]
     public HugeNumber AngularVelocity
         => _angularVelocity ??= RotationalPeriod == HugeNumber.Zero
@@ -169,19 +182,26 @@ public partial class Planetoid : CosmicLocation
 
     /// <summary>
     /// The angle between the X-axis and the orbital vector at which the vernal equinox of the
-    /// northern hemisphere occurs. Read-only.
+    /// northern hemisphere occurs.
     /// </summary>
+    /// <remarks>
+    /// Read-only; set with <see cref="SetAxialPrecession(double)"/>.
+    /// </remarks>
     public double AxialPrecession { get; private set; }
 
     private double? _axialTilt;
     /// <summary>
     /// The axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in radians.
-    /// Values greater than π/2 indicate clockwise rotation. Read-only; set with <see
-    /// cref="SetAxialTilt(double)"/>
+    /// Values greater than π/2 indicate clockwise rotation.
     /// </summary>
     /// <remarks>
+    /// <para>
+    /// Read-only; set with <see cref="SetAxialTilt(double)"/>.
+    /// </para>
+    /// <para>
     /// If the <see cref="Planetoid"/> isn't orbiting anything, this is the same as the angle of
     /// rotation.
+    /// </para>
     /// </remarks>
     [JsonIgnore]
     public double AxialTilt => _axialTilt ??= Orbit.HasValue ? AngleOfRotation - Orbit.Value.Inclination : AngleOfRotation;
@@ -208,8 +228,11 @@ public partial class Planetoid : CosmicLocation
     public Quaternion AxisRotation { get; private set; } = Quaternion.Identity;
 
     /// <summary>
-    /// The blackbody temperature of this planetoid.
+    /// The blackbody temperature of this planetoid. Read-only.
     /// </summary>
+    /// <remarks>
+    /// Determined by proximity to nearby stars, and those stars' properties.
+    /// </remarks>
     public double BlackbodyTemperature { get; private set; }
 
     /// <summary>
@@ -220,10 +243,10 @@ public partial class Planetoid : CosmicLocation
     /// surface water), life in at least a single-celled form may be indicated, and may affect
     /// the atmospheric composition.
     /// </remarks>
-    public bool HasBiosphere { get; set; }
+    public bool HasBiosphere { get; private set; }
 
     /// <summary>
-    /// Whether this <see cref="Planetoid"/> has a strong magnetosphere.
+    /// Whether this planet has a strong magnetosphere.
     /// </summary>
     public bool HasMagnetosphere { get; private set; }
 
@@ -275,11 +298,12 @@ public partial class Planetoid : CosmicLocation
     public bool IsGiant => PlanetType.Giant.HasFlag(PlanetType);
 
     /// <summary>
-    /// Whether this planet is inhospitable to life.
+    /// Whether this planet is inhospitable to life. Read-only.
     /// </summary>
     /// <remarks>
-    /// Typically due to a highly energetic or volatile star, which either produces a great deal
-    /// of ionizing radiation, or has a rapidly shifting habitable zone, or both.
+    /// Determined by stellar environment. Typically due to a highly energetic or volatile star,
+    /// which either produces a great deal of ionizing radiation, or has a rapidly shifting
+    /// habitable zone, or both.
     /// </remarks>
     public bool IsInhospitable { get; private set; }
 
@@ -317,9 +341,10 @@ public partial class Planetoid : CosmicLocation
     public double NormalizedSeaLevel { get; private set; }
 
     /// <summary>
-    /// The type of <see cref="Planetoid"/>.
+    /// The type of <see cref="Planetoid"/>. Read-only. Set with <see
+    /// cref="SetPlanetTypeAsync(IDataStore, PlanetType)"/>.
     /// </summary>
-    public PlanetType PlanetType { get; }
+    public PlanetType PlanetType { get; private set; }
 
     private IReadOnlyList<PlanetaryRing>? _rings;
     /// <summary>
@@ -329,8 +354,12 @@ public partial class Planetoid : CosmicLocation
         ?? ReadOnlyCollection<PlanetaryRing>.Empty;
 
     /// <summary>
-    /// The length of time it takes for this <see cref="Planetoid"/> to rotate once about its axis,
-    /// in seconds.
+    /// <para>
+    /// The length of time it takes for this planet to rotate once about its axis, in seconds.
+    /// </para>
+    /// <para>
+    /// Read-only. Set with <see cref="SetRotationalPeriod(HugeNumber)"/>.
+    /// </para>
     /// </summary>
     public HugeNumber RotationalPeriod { get; private set; }
 
@@ -522,9 +551,8 @@ public partial class Planetoid : CosmicLocation
     /// <param name="position">The position for the child.</param>
     /// <param name="satellites">
     /// <para>
-    /// When this method returns, will be set to a <see cref="List{T}"/> of <see
-    /// cref="Planetoid"/>s containing any satellites generated for the planet during the
-    /// creation process.
+    /// When this method returns, will be set to a <see cref="List{T}"/> of <see cref="Planetoid"/>s
+    /// containing any satellites generated for the planet during the creation process.
     /// </para>
     /// <para>
     /// This list may be useful, for instance, to ensure that these additional objects are also
@@ -543,9 +571,9 @@ public partial class Planetoid : CosmicLocation
     /// <param name="habitabilityRequirements">
     /// An optional set of <see cref="HabitabilityRequirements"/>.
     /// </param>
-    /// <param name="satellite">
-    /// If <see langword="true"/>, indicates that this <see cref="Planetoid"/> is being
-    /// generated as a satellite of another.
+    /// <param name="satelliteOf">
+    /// If not <see langword="null"/>, the <see cref="Planetoid"/> which this one is to orbit as a
+    /// satellite.
     /// </param>
     public Planetoid(
         PlanetType planetType,
@@ -557,7 +585,7 @@ public partial class Planetoid : CosmicLocation
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
         HabitabilityRequirements? habitabilityRequirements = null,
-        bool satellite = false) : base(parent?.Id, CosmicStructureType.Planetoid)
+        Planetoid? satelliteOf = null) : base(parent?.Id, CosmicStructureType.Planetoid)
     {
         PlanetType = planetType;
         _planetParams = planetParams;
@@ -568,7 +596,7 @@ public partial class Planetoid : CosmicLocation
             star = Randomizer.Instance.Next(stars);
         }
 
-        satellites = Configure(parent, stars, star, position, satellite, orbit);
+        satellites = Configure(parent, stars, star, position, satelliteOf is not null, orbit);
 
         if (parent is not null && !orbit.HasValue && !Orbit.HasValue)
         {
@@ -593,7 +621,7 @@ public partial class Planetoid : CosmicLocation
                         ? null
                         : parent.GetGlobularClusterChildOrbit(),
                     CosmicStructureType.StarSystem => parent is StarSystem && Position != Vector3<HugeNumber>.Zero
-                        ? OrbitalParameters.GetFromEccentricity(parent.Mass, parent.Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
+                        ? OrbitalParameters.GetFromEccentricity((star ?? parent).Mass, (star ?? parent).Position, Randomizer.Instance.PositiveNormalDistributionSample(0, 0.05))
                         : null,
                     _ => null,
                 };
@@ -601,7 +629,14 @@ public partial class Planetoid : CosmicLocation
         }
         if (orbit.HasValue && !Orbit.HasValue)
         {
-            Space.Orbit.AssignOrbit(this, orbit.Value);
+            Space.Orbit.AssignOrbit(
+                this,
+                satelliteOf?.Id
+                    ?? star?.Id
+                    ?? (parent?.Orbit.HasValue == true
+                        ? parent?.Id
+                        : null),
+                orbit.Value);
         }
     }
 
@@ -974,7 +1009,7 @@ public partial class Planetoid : CosmicLocation
                 orbit,
                 pParams,
                 requirements,
-                false);
+                null);
             sanityCheck++;
             if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
             {
@@ -1016,6 +1051,7 @@ public partial class Planetoid : CosmicLocation
     /// initial, target planet.
     /// </para>
     /// </param>
+    /// <param name="planetType">The type of planet to generate.</param>
     /// <param name="planetParams">
     /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
     /// </param>
@@ -1036,6 +1072,7 @@ public partial class Planetoid : CosmicLocation
     public static async Task<(Planetoid? planet, List<Planetoid> children)> GetPlanetForStar(
         IDataStore dataStore,
         Star star,
+        PlanetType planetType = PlanetType.Terrestrial,
         PlanetParams? planetParams = null,
         HabitabilityRequirements? habitabilityRequirements = null)
     {
@@ -1061,7 +1098,7 @@ public partial class Planetoid : CosmicLocation
         do
         {
             planet = new Planetoid(
-                PlanetType.Terrestrial,
+                planetType,
                 parent as CosmicLocation,
                 star,
                 stars,
@@ -1314,12 +1351,18 @@ public partial class Planetoid : CosmicLocation
     /// </summary>
     public override async Task<bool> DeleteAsync(IDataStore dataStore)
     {
-        var childrenSuccess = true;
+        var success = true;
         await foreach (var child in GetSatellitesAsync(dataStore))
         {
-            childrenSuccess &= await child.DeleteAsync(dataStore).ConfigureAwait(false);
+            success &= await child.DeleteAsync(dataStore);
         }
-        return childrenSuccess && await base.DeleteAsync(dataStore).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(Orbit?.OrbitedId)
+            && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is Planetoid planet)
+        {
+            planet.RemoveSatellite(Id);
+            success &= await dataStore.StoreItemAsync(planet);
+        }
+        return await base.DeleteAsync(dataStore) && success;
     }
 
     /// <summary>
@@ -1425,6 +1468,9 @@ public partial class Planetoid : CosmicLocation
     /// time, in lux (lumens per m²), assuming a single sun-like star at <see
     /// cref="Vector3{TScalar}.Zero"/>.
     /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
     /// <param name="moment">The time at which to make the calculation.</param>
     /// <param name="latitude">The latitude at which to make the calculation.</param>
     /// <param name="longitude">The longitude at which to make the calculation.</param>
@@ -1442,9 +1488,14 @@ public partial class Planetoid : CosmicLocation
     /// cref="GetIlluminationAsync(IDataStore, Instant, double, double)"/>.
     /// </para>
     /// </remarks>
-    public double GetIllumination(Instant moment, double latitude, double longitude, IEnumerable<Planetoid>? satellites = null)
+    public async ValueTask<double> GetIlluminationAsync(
+        IDataStore dataStore,
+        Instant moment,
+        double latitude,
+        double longitude,
+        IEnumerable<Planetoid>? satellites = null)
     {
-        var position = GetPositionAtTime(moment);
+        var position = await GetPositionAtTimeAsync(dataStore, moment);
 
         var distance = position.Length();
         var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3<HugeNumber>.Zero);
@@ -1467,7 +1518,7 @@ public partial class Planetoid : CosmicLocation
         {
             foreach (var satellite in satellites)
             {
-                var satellitePosition = satellite.GetPositionAtTime(moment);
+                var satellitePosition = await satellite.GetPositionAtTimeAsync(dataStore, moment);
                 var satelliteDistance2 = Vector3<HugeNumber>.DistanceSquared(position, satellitePosition);
                 var satelliteDistance = satelliteDistance2.Sqrt();
 
@@ -1537,12 +1588,12 @@ public partial class Planetoid : CosmicLocation
             return 0;
         }
 
-        var position = GetPositionAtTime(moment);
+        var position = await GetPositionAtTimeAsync(dataStore, moment);
 
         var stars = new List<(Star star, Vector3<HugeNumber> position, HugeNumber distance, double eclipticLongitude)>();
         await foreach (var star in system.GetStarsAsync(dataStore))
         {
-            var starPosition = star.GetPositionAtTime(moment);
+            var starPosition = await star.GetPositionAtTimeAsync(dataStore, moment);
             var (_, eclipticLongitude) = GetEclipticLatLon(position, starPosition);
             stars.Add((
                 star,
@@ -1573,7 +1624,7 @@ public partial class Planetoid : CosmicLocation
 
         await foreach (var satellite in GetSatellitesAsync(dataStore))
         {
-            var satellitePosition = satellite.GetPositionAtTime(moment);
+            var satellitePosition = await satellite.GetPositionAtTimeAsync(dataStore, moment);
             var satelliteDistance2 = Vector3<HugeNumber>.DistanceSquared(position, satellitePosition);
             var satelliteDistance = satelliteDistance2.Sqrt();
 
@@ -1687,47 +1738,6 @@ public partial class Planetoid : CosmicLocation
 
     /// <summary>
     /// Calculate the time of local sunrise and sunset on the current day, based on the planet's
-    /// rotation, as a proportion of a day since midnight, assuming a star at <see
-    /// cref="Vector3{TScalar}.Zero"/>.
-    /// </summary>
-    /// <param name="moment">The time at which to make the calculation.</param>
-    /// <param name="latitude">The latitude at which to make the calculation.</param>
-    /// <returns>
-    /// A pair of <see cref="RelativeDuration"/> instances set to a proportion of a local day
-    /// since midnight. If the sun does not rise and set on the given day (e.g. near the poles),
-    /// then <see langword="null"/> will be returned for sunrise in the case of a polar night,
-    /// and <see langword="null"/> for sunset in the case of a midnight sun.
-    /// </returns>
-    /// <remarks>
-    /// To get the time of local sunrise and sunset taking into account the actual star(s) in
-    /// the local system, <see cref="GetLocalTimeOfDayAsync(IDataStore, Instant, double)"/>
-    /// should be used. This method can be used for a planet which is not part of a complete
-    /// system model, or in cases where the system is known to have only one star at <see
-    /// cref="Vector3{TScalar}.Zero"/>.
-    /// </remarks>
-    public (RelativeDuration? sunrise, RelativeDuration? sunset) GetLocalSunriseAndSunset(Instant moment, double latitude)
-    {
-        var position = GetPositionAtTime(moment);
-
-        var (_, solarDeclination) = GetRightAscensionAndDeclination(position, Vector3<HugeNumber>.Zero);
-
-        var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
-        if (d.IsNearlyZero())
-        {
-            return (solarDeclination < 0) == latitude.IsNearlyZero()
-                ? ((RelativeDuration?)RelativeDuration.FromProportionOfDay(0.0), (RelativeDuration?)null)
-                : ((RelativeDuration?)null, RelativeDuration.FromProportionOfDay(0.0));
-        }
-
-        var localSecondsFromSolarNoonAtSunriseAndSet = Math.Acos(-Math.Sin(solarDeclination) * Math.Sin(latitude) / d) / AngularVelocity;
-        var localSecondsSinceMidnightAtSunrise = ((RotationalPeriod / 2) - localSecondsFromSolarNoonAtSunriseAndSet) % RotationalPeriod;
-        var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (RotationalPeriod / 2)) % RotationalPeriod;
-        return (RelativeDuration.FromProportionOfDay((double)(localSecondsSinceMidnightAtSunrise / RotationalPeriod)),
-            RelativeDuration.FromProportionOfDay((double)(localSecondsSinceMidnightAtSunset / RotationalPeriod)));
-    }
-
-    /// <summary>
-    /// Calculate the time of local sunrise and sunset on the current day, based on the planet's
     /// rotation, as a proportion of a day since midnight.
     /// </summary>
     /// <param name="dataStore">
@@ -1753,25 +1763,24 @@ public partial class Planetoid : CosmicLocation
     /// planet which is not part of a complete system model.
     /// </para>
     /// </remarks>
-    public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(IDataStore dataStore, Instant moment, double latitude)
+    public async Task<(RelativeDuration? sunrise, RelativeDuration? sunset)> GetLocalSunriseAndSunsetAsync(
+        IDataStore dataStore,
+        Instant moment,
+        double latitude)
     {
-        var primaryStar = await GetPrimaryStarAsync(dataStore).ConfigureAwait(false);
-        if (primaryStar is null)
-        {
-            return GetLocalSunriseAndSunset(moment, latitude);
-        }
+        var position = await GetPositionAtTimeAsync(dataStore, moment);
+        var starPosition = await GetPrimaryStarAsync(dataStore) is Star primaryStar
+            ? await primaryStar.GetPositionAtTimeAsync(dataStore, moment)
+            : (Vector3<HugeNumber>?)null;
 
-        var position = GetPositionAtTime(moment);
-        var starPosition = primaryStar.GetPositionAtTime(moment);
-
-        var (_, solarDeclination) = GetRightAscensionAndDeclination(position, starPosition);
+        var (_, solarDeclination) = GetRightAscensionAndDeclination(position, starPosition ?? Vector3<HugeNumber>.Zero);
 
         var d = Math.Cos(solarDeclination) * Math.Cos(latitude);
         if (d.IsNearlyZero())
         {
             return (solarDeclination < 0) == latitude.IsNearlyZero()
-                ? ((RelativeDuration?)RelativeDuration.FromProportionOfDay(0.0), (RelativeDuration?)null)
-                : ((RelativeDuration?)null, RelativeDuration.FromProportionOfDay(0.0));
+                ? ((RelativeDuration?)RelativeDuration.FromProportionOfDay(0.0), null)
+                : (null, RelativeDuration.FromProportionOfDay(0.0));
         }
 
         var localSecondsFromSolarNoonAtSunriseAndSet = Math.Acos(-Math.Sin(solarDeclination) * Math.Sin(latitude) / d) / AngularVelocity;
@@ -1779,40 +1788,6 @@ public partial class Planetoid : CosmicLocation
         var localSecondsSinceMidnightAtSunset = (localSecondsFromSolarNoonAtSunriseAndSet + (RotationalPeriod / 2)) % RotationalPeriod;
         return (RelativeDuration.FromProportionOfDay((double)(localSecondsSinceMidnightAtSunrise / RotationalPeriod)),
             RelativeDuration.FromProportionOfDay((double)(localSecondsSinceMidnightAtSunset / RotationalPeriod)));
-    }
-
-    /// <summary>
-    /// Gets the time of day at the given <paramref name="moment"/> and <paramref
-    /// name="longitude"/>, based on the planet's rotation, as a proportion of a day since
-    /// midnight, assuming a star at <see cref="Vector3{TScalar}.Zero"/>.
-    /// </summary>
-    /// <param name="moment">The time at which to make the calculation.</param>
-    /// <param name="longitude">The longitude at which to make the calculation.</param>
-    /// <returns>
-    /// A <see cref="RelativeDuration"/> set to a proportion of a local day since midnight.
-    /// </returns>
-    /// <remarks>
-    /// To get the local time of day taking into account the actual star(s) in the local system,
-    /// <see cref="GetLocalTimeOfDayAsync(IDataStore, Instant, double)"/> should be used. This
-    /// method can be used for a planet which is not part of a complete system model, or to
-    /// stand for the local conventional time for a rogue planet which truly has no local star,
-    /// or in cases where the system is known to have only one star at <see
-    /// cref="Vector3{TScalar}.Zero"/>.
-    /// </remarks>
-    public RelativeDuration GetLocalTimeOfDay(Instant moment, double longitude)
-    {
-        var position = GetPositionAtTime(moment);
-
-        var (solarRightAscension, _) = GetRightAscensionAndDeclination(position, Vector3<HugeNumber>.Zero);
-        var longitudeOffset = longitude - solarRightAscension;
-        if (longitudeOffset > Math.PI)
-        {
-            longitudeOffset -= DoubleConstants.TwoPi;
-        }
-        var localSecondsSinceSolarNoon = longitudeOffset / AngularVelocity;
-
-        var localSecondsSinceMidnight = (localSecondsSinceSolarNoon + (RotationalPeriod / 2)) % RotationalPeriod;
-        return RelativeDuration.FromProportionOfDay((double)(localSecondsSinceMidnight / RotationalPeriod));
     }
 
     /// <summary>
@@ -1843,14 +1818,10 @@ public partial class Planetoid : CosmicLocation
     /// </remarks>
     public async Task<RelativeDuration> GetLocalTimeOfDayAsync(IDataStore dataStore, Instant moment, double longitude)
     {
-        var primaryStar = await GetPrimaryStarAsync(dataStore).ConfigureAwait(false);
-        if (primaryStar is null)
-        {
-            return GetLocalTimeOfDay(moment, longitude);
-        }
-
-        var position = GetPositionAtTime(moment);
-        var starPosition = primaryStar.GetPositionAtTime(moment);
+        var position = await GetPositionAtTimeAsync(dataStore, moment);
+        var starPosition = await GetPrimaryStarAsync(dataStore) is Star primaryStar
+            ? await primaryStar.GetPositionAtTimeAsync(dataStore, moment)
+            : Vector3<HugeNumber>.Zero;
 
         var (solarRightAscension, _) = GetRightAscensionAndDeclination(position, starPosition);
         var longitudeOffset = longitude - solarRightAscension;
@@ -2033,47 +2004,6 @@ public partial class Planetoid : CosmicLocation
     }
 
     /// <summary>
-    /// Gets phase information for the given <paramref name="satellite"/>, assuming a star at
-    /// <see cref="Vector3{TScalar}.Zero"/>.
-    /// </summary>
-    /// <param name="moment">The time at which to make the calculation.</param>
-    /// <param name="satellite">A natural satellite of this body.</param>
-    /// <returns>
-    /// The proportion of the satellite which is currently illuminated, and a boolean value
-    /// indicating whether the body is in the waxing half of its cycle (vs. the waning half).
-    /// </returns>
-    /// <remarks>
-    /// To get a value which accounts for the actual stars in the local system, use <see
-    /// cref="GetSatellitePhaseAsync(IDataStore, Instant, Planetoid)"/>.
-    /// </remarks>
-    public (double phase, bool waxing) GetSatellitePhase(Instant moment, Planetoid satellite)
-    {
-        var position = GetPositionAtTime(moment);
-
-        var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3<HugeNumber>.Zero);
-        var starDistance = position.Length();
-
-        var satellitePosition = satellite.GetPositionAtTime(moment);
-        var phase = 0.0;
-
-        var satelliteDistance = Vector3<HugeNumber>.Distance(position, satellitePosition);
-        var (satelliteLatitude, satelliteLongitude) = GetEclipticLatLon(position, satellitePosition);
-
-        // satellite-centered elongation of the planet from the star (ratio of illuminated
-        // surface area to total surface area)
-        var le = Math.Acos(Math.Cos(satelliteLatitude) * Math.Cos(eclipticLongitude - satelliteLongitude));
-        var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
-
-        // fraction of illuminated surface area
-        phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
-        var (planetRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, position);
-        var (starRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, Vector3<HugeNumber>.Zero);
-        var waxing = (starRightAscension - planetRightAscension + DoubleConstants.TwoPi) % DoubleConstants.TwoPi <= Math.PI;
-
-        return (phase, waxing);
-    }
-
-    /// <summary>
     /// Gets phase information for the given <paramref name="satellite"/>.
     /// </summary>
     /// <param name="dataStore">
@@ -2097,32 +2027,43 @@ public partial class Planetoid : CosmicLocation
     /// </returns>
     public async Task<(double phase, bool waxing)> GetSatellitePhaseAsync(IDataStore dataStore, Instant moment, Planetoid satellite)
     {
-        var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
-        if (system is null)
-        {
-            return GetSatellitePhase(moment, this);
-        }
-
-        var position = GetPositionAtTime(moment);
+        var position = await GetPositionAtTimeAsync(dataStore, moment);
 
         var stars = new List<(Star star, Vector3<HugeNumber> position, HugeNumber distance, double eclipticLongitude)>();
-        await foreach (var star in system.GetStarsAsync(dataStore))
+        if (await GetStarSystemAsync(dataStore) is StarSystem system)
         {
-            var starPosition = star.GetPositionAtTime(moment);
-            var (_, eclipticLongitude) = GetEclipticLatLon(position, starPosition);
-            stars.Add((
-                star,
-                starPosition,
-                Vector3<HugeNumber>.Distance(position, starPosition),
-                eclipticLongitude));
-        }
-        if (stars.Count == 0)
-        {
-            return (0, false);
+            await foreach (var star in system.GetStarsAsync(dataStore))
+            {
+                var starPosition = await star.GetPositionAtTimeAsync(dataStore, moment);
+                var (_, eclipticLongitude) = GetEclipticLatLon(position, starPosition);
+                stars.Add((
+                    star,
+                    starPosition,
+                    Vector3<HugeNumber>.Distance(position, starPosition),
+                    eclipticLongitude));
+            }
         }
 
-        var satellitePosition = satellite.GetPositionAtTime(moment);
+        var satellitePosition = await satellite.GetPositionAtTimeAsync(dataStore, moment);
         var phase = 0.0;
+
+        if (stars.Count == 0)
+        {
+            var (_, eclipticLongitude) = GetEclipticLatLon(position, Vector3<HugeNumber>.Zero);
+            var starDistance = position.Length();
+
+            var satelliteDistance = Vector3<HugeNumber>.Distance(position, satellitePosition);
+            var (satelliteLatitude, satelliteLongitude) = GetEclipticLatLon(position, satellitePosition);
+
+            // satellite-centered elongation of the planet from the star (ratio of illuminated
+            // surface area to total surface area)
+            var le = Math.Acos(Math.Cos(satelliteLatitude) * Math.Cos(eclipticLongitude - satelliteLongitude));
+            var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
+
+            // fraction of illuminated surface area
+            phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
+        }
+
         foreach (var (star, starPosition, starDistance, eclipticLongitude) in stars)
         {
             var satelliteDistance = Vector3<HugeNumber>.Distance(position, satellitePosition);
@@ -2132,14 +2073,17 @@ public partial class Planetoid : CosmicLocation
             // surface area to total surface area)
             var le = Math.Acos(Math.Cos(satelliteLatitude) * Math.Cos(eclipticLongitude - satelliteLongitude));
             var e = Math.Atan2((double)(satelliteDistance - (starDistance * Math.Cos(le))), (double)(starDistance * Math.Sin(le)));
+
             // fraction of illuminated surface area
             phase = Math.Max(phase, (1 + Math.Cos(e)) / 2);
         }
 
         var waxing = false;
-        if (stars.Count == 1)
+        if (stars.Count <= 1)
         {
-            var starPosition = stars[0].position;
+            var starPosition = stars.Count == 0
+                ? Vector3<HugeNumber>.Zero
+                : stars[0].position;
             var (planetRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, position);
             var (starRightAscension, _) = satellite.GetRightAscensionAndDeclination(satellitePosition, starPosition);
             waxing = (starRightAscension - planetRightAscension + DoubleConstants.TwoPi) % DoubleConstants.TwoPi <= Math.PI;
@@ -2457,6 +2401,20 @@ public partial class Planetoid : CosmicLocation
     }
 
     /// <summary>
+    /// Removes a resource from this planet's collection.
+    /// </summary>
+    /// <param name="index">The index of the resource to remove.</param>
+    public void RemoveResource(int index)
+    {
+        if (_resources is null
+            || _resources.Count <= index)
+        {
+            return;
+        }
+        _resources.RemoveAt(index);
+    }
+
+    /// <summary>
     /// Removes a ring from this planet's collection.
     /// </summary>
     /// <param name="index">The index of the ring to remove.</param>
@@ -2467,11 +2425,12 @@ public partial class Planetoid : CosmicLocation
         {
             return;
         }
-        var rings = _rings.ToList();
-        rings.RemoveAt(index);
+        var rings = ((_rings as ImmutableList<PlanetaryRing>)
+            ?? ImmutableList<PlanetaryRing>.Empty.AddRange(_rings))
+            .RemoveAt(index);
         _rings = rings.Count == 0
             ? null
-            : rings.AsReadOnly();
+            : rings;
     }
 
     /// <summary>
@@ -2484,11 +2443,71 @@ public partial class Planetoid : CosmicLocation
         {
             return;
         }
-        var ids = _satelliteIds.ToList();
-        if (ids.Remove(id))
+        var ids = ((_satelliteIds as ImmutableList<string>)
+            ?? ImmutableList<string>.Empty.AddRange(_satelliteIds))
+            .Remove(id);
+        _satelliteIds = ids.Count == 0
+            ? null
+            : ids;
+    }
+
+    /// <summary>
+    /// Sets this planet's albedo.
+    /// </summary>
+    /// <param name="value"></param>
+    /// <remarks>
+    /// Note that even small changes can drastically change the hydrosphere and atmosphere of a
+    /// planet due to the change in effective surface temperature.
+    /// </remarks>
+    public void SetAlbedo(double value)
+    {
+        if (PlanetType == PlanetType.Comet
+            || IsAsteroid
+            || IsGiant
+            || !IsTerrestrial
+            || Albedo.IsNearlyEqualTo(value))
         {
-            _satelliteIds = ids.AsReadOnly();
+            Albedo = value;
+            return;
         }
+
+        var surfaceTemp = GetAverageSurfaceTemperature();
+        Albedo = value;
+
+        // An albedo change might significantly alter surface temperature. 5K is used as the
+        // threshold for re-calculation, which may lead to some inaccuracies, but should avoid
+        // over-calculation for small changes.
+        Atmosphere.ResetTemperatureDependentProperties(this);
+        if (Math.Abs(surfaceTemp - GetAverageSurfaceTemperature()) > 5)
+        {
+            var adjustedAtmosphericPressure = CalculatePhases(1, Atmosphere.AtmosphericPressure);
+            FractionHydrosphere(GetAverageSurfaceTemperature());
+
+            if (_planetParams?.AtmosphericPressure.HasValue != true && _habitabilityRequirements is null)
+            {
+                SetAtmosphericPressure(Math.Max(0, adjustedAtmosphericPressure));
+                Atmosphere.ResetPressureDependentProperties(this);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the angle between the Y-axis and the axis of rotation of this planet. Values greater
+    /// than π/2 indicate clockwise rotation.
+    /// </summary>
+    /// <param name="angle">The angle to assign, in radians.</param>
+    public void SetAngleOfRotation(double angle)
+    {
+        while (angle > Math.PI)
+        {
+            angle -= Math.PI;
+        }
+        while (angle < 0)
+        {
+            angle += Math.PI;
+        }
+        AngleOfRotation = angle;
+        SetAxis();
     }
 
     /// <summary>
@@ -2505,6 +2524,24 @@ public partial class Planetoid : CosmicLocation
     }
 
     /// <summary>
+    /// Sets the angle between the X-axis and the orbital vector at which the vernal equinox of the
+    /// northern hemisphere occurs on this planet.
+    /// </summary>
+    /// <param name="value">The angle to assign, in radians.</param>
+    public void SetAxialPrecession(double value)
+    {
+        AxialPrecession = value;
+        SetAxis();
+        if (Orbit.HasValue)
+        {
+            Space.Orbit.AssignOrbit(
+                this,
+                Orbit.Value.OrbitedId,
+                Orbit.Value.GetOrbitalParameters());
+        }
+    }
+
+    /// <summary>
     /// Sets the axial tilt of the <see cref="Planetoid"/> relative to its orbital plane, in
     /// radians. Values greater than half Pi indicate clockwise rotation.
     /// </summary>
@@ -2514,6 +2551,258 @@ public partial class Planetoid : CosmicLocation
     /// rotation.
     /// </remarks>
     public void SetAxialTilt(double value) => SetAngleOfRotation(Orbit.HasValue ? value + Orbit.Value.Inclination : value);
+
+    /// <summary>
+    /// Sets whether this planet has a native population of living organisms.
+    /// </summary>
+    /// <param name="value">
+    /// <para>
+    /// Whether this planet has a native population of living organisms.
+    /// </para>
+    /// <para>
+    /// The complexity of life is not presumed. If a planet is basically habitable (liquid
+    /// surface water), life in at least a single-celled form may be indicated, and may affect
+    /// the atmospheric composition.
+    /// </para>
+    /// </param>
+    /// <remarks>
+    /// Note that changing this value can drastically change the atmosphere of a terrestrial planet.
+    /// </remarks>
+    public void SetHasBiosphere(bool value)
+    {
+        if (HasBiosphere == value)
+        {
+            return;
+        }
+        HasBiosphere = value;
+        if (value
+            && IsTerrestrial
+            && PlanetType != PlanetType.Comet
+            && !IsAsteroid
+            && !IsGiant)
+        {
+            GenerateLifeEffects();
+        }
+    }
+
+    /// <summary>
+    /// Sets whether this planet has a strong magnetosphere.
+    /// </summary>
+    /// <param name="value">Whether this planet has a strong magnetosphere.</param>
+    /// <remarks>
+    /// Note that changing this value can drastically change the atmosphere of a terrestrial planet.
+    /// </remarks>
+    public void SetHasMagnetosphere(bool value)
+    {
+        if (HasMagnetosphere == value)
+        {
+            return;
+        }
+        HasMagnetosphere = value;
+        if (IsTerrestrial
+            && PlanetType != PlanetType.Comet
+            && !IsAsteroid
+            && !IsGiant
+            && AverageBlackbodyTemperature < GetTempForThinAtmosphere())
+        {
+            GenerateAtmosphere();
+        }
+    }
+
+    /// <summary>
+    /// Sets the elevation of sea level relative to the mean surface elevation of this planet, as a
+    /// fraction of <see cref="MaxElevation"/>.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="value">
+    /// The elevation of sea level relative to the mean surface elevation of this planet, as a
+    /// fraction of <see cref="MaxElevation"/>.
+    /// </param>
+    /// <remarks>
+    /// Note that changing this value can drastically change the planet's atmosphere, temperature,
+    /// and other properties.
+    /// </remarks>
+    public async Task SetNormalizedSeaLevelAsync(
+        IDataStore dataStore,
+        double value)
+    {
+        if (NormalizedSeaLevel.IsNearlyEqualTo(value))
+        {
+            NormalizedSeaLevel = value;
+            return;
+        }
+
+        NormalizedSeaLevel = value;
+        const double HalfVolume = 85183747862278.266; // empirical sum of random map pixel columns with 0 sea level if (ratio >= 1)
+        var seawater = Substances.All.Seawater.GetHomogeneousReference();
+        HugeNumber mass;
+        if (value <= 0)
+        {
+            mass = HugeNumber.Zero;
+        }
+        else if (value >= 1)
+        {
+            mass = new HollowSphere<HugeNumber>(
+                Shape.ContainingRadius,
+                Shape.ContainingRadius + SeaLevel).Volume * (seawater.Homogeneous.DensityLiquid ?? 0);
+        }
+        else
+        {
+            var volume = value > 0
+                ? HalfVolume + (HalfVolume * value)
+                : HalfVolume - (HalfVolume * -value);
+            mass = volume
+                * MaxElevation
+                * (seawater.Homogeneous.DensityLiquid ?? 0);
+        }
+        if (!mass.IsPositive())
+        {
+            Hydrosphere = new Material<HugeNumber>();
+            return;
+        }
+
+        double surfaceTemp;
+        if (_planetParams?.SurfaceTemperature.HasValue == true)
+        {
+            surfaceTemp = _planetParams!.Value.SurfaceTemperature!.Value;
+        }
+        else if (_habitabilityRequirements?.MinimumTemperature.HasValue == true)
+        {
+            surfaceTemp = _habitabilityRequirements!.Value.MaximumTemperature.HasValue
+                ? (_habitabilityRequirements!.Value.MinimumTemperature!.Value
+                    + _habitabilityRequirements!.Value.MaximumTemperature.Value)
+                    / 2
+                : _habitabilityRequirements!.Value.MinimumTemperature!.Value;
+        }
+        else
+        {
+            surfaceTemp = BlackbodyTemperature;
+        }
+
+        // Surface water is mostly salt water.
+        var seawaterProportion = (decimal)Randomizer.Instance.NormalDistributionSample(0.945, 0.015);
+        var waterProportion = 1 - seawaterProportion;
+        var water = Substances.All.Water.GetHomogeneousReference();
+        var density = ((seawater.Homogeneous.DensityLiquid ?? 0) * (double)seawaterProportion) + ((water.Homogeneous.DensityLiquid ?? 0) * (double)waterProportion);
+
+        var outerRadius = (3 * ((mass / density) + new Sphere<HugeNumber>(Material.Shape.ContainingRadius).Volume) / HugeNumberConstants.FourPi).Cbrt();
+        var shape = new HollowSphere<HugeNumber>(
+            Material.Shape.ContainingRadius,
+            outerRadius,
+            Material.Shape.Position);
+        var avgDepth = (double)(outerRadius - Material.Shape.ContainingRadius) / 2;
+        double avgTemp;
+        if (avgDepth > 1000)
+        {
+            avgTemp = 277;
+        }
+        else if (avgDepth < 200)
+        {
+            avgTemp = surfaceTemp;
+        }
+        else
+        {
+            avgTemp = surfaceTemp.Lerp(277, (avgDepth - 200) / 800);
+        }
+
+        Hydrosphere = new Material<HugeNumber>(
+            shape,
+            mass,
+            density,
+            avgTemp,
+            (seawater, seawaterProportion),
+            (water, waterProportion));
+
+        FractionHydrosphere(surfaceTemp);
+
+        if (Material.GetSurface() is Material<HugeNumber> material)
+        {
+            material.AddConstituents(CosmicSubstances.WetPlanetaryCrustConstituents);
+        }
+
+        var stars = new List<Star>();
+        Star? star = null;
+        if (!string.IsNullOrEmpty(Orbit?.OrbitedId)
+            && await GetParentAsync(dataStore) is StarSystem system)
+        {
+            await foreach (var item in system.GetStarsAsync(dataStore))
+            {
+                if (Orbit.Value.OrbitedId.Equals(item.Id))
+                {
+                    star = item;
+                }
+                stars.Add(item);
+            }
+        }
+
+        if (star is not null
+            && (_planetParams?.SurfaceTemperature.HasValue == true
+            || _habitabilityRequirements?.MinimumTemperature.HasValue == true
+            || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
+        {
+            CorrectSurfaceTemperature(stars, star, surfaceTemp);
+        }
+        else
+        {
+            GenerateAtmosphere();
+        }
+
+        GenerateResources();
+    }
+
+    /// <summary>
+    /// Sets this planet's type.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="type">The type to set.</param>
+    /// <remarks>
+    /// Note that changing this value will drastically change every aspect of the planet.
+    /// </remarks>
+    public async Task SetPlanetTypeAsync(IDataStore dataStore, PlanetType type)
+    {
+        if (PlanetType == type)
+        {
+            return;
+        }
+
+        PlanetType = type;
+        var stars = new List<Star>();
+        Star? star = null;
+        var parent = await GetParentAsync(dataStore);
+        if (parent is StarSystem system)
+        {
+            await foreach (var item in system.GetStarsAsync(dataStore))
+            {
+                if (!string.IsNullOrEmpty(Orbit?.OrbitedId)
+                    && Orbit.Value.OrbitedId.Equals(item.Id))
+                {
+                    star = item;
+                }
+                stars.Add(item);
+            }
+        }
+        var sanityCheck = 0;
+        do
+        {
+            Configure(
+                parent as CosmicLocation,
+                stars,
+                star,
+                Position,
+                true,
+                Orbit?.GetOrbitalParameters());
+            sanityCheck++;
+            if (!_habitabilityRequirements.HasValue
+                || IsHabitable(_habitabilityRequirements.Value) == UninhabitabilityReason.None)
+            {
+                break;
+            }
+        } while (sanityCheck <= 100);
+    }
 
     /// <summary>
     /// Sets the length of time it takes for this <see cref="Planetoid"/> to rotate once about
@@ -2526,6 +2815,24 @@ public partial class Planetoid : CosmicLocation
         _angularVelocity = null;
         ResetCachedTemperatures();
     }
+
+    /// <summary>
+    /// Sets the elevation of sea level relative to the mean surface elevation of this planet, in
+    /// meters.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="value">
+    /// The elevation of sea level relative to the mean surface elevation of this planet, in meters.
+    /// </param>
+    /// <remarks>
+    /// Note that changing this value can drastically change the planet's atmosphere, temperature,
+    /// and other properties.
+    /// </remarks>
+    public Task SetSeaLevelAsync(
+        IDataStore dataStore,
+        double value) => SetNormalizedSeaLevelAsync(dataStore, value / MaxElevation);
 
     /// <summary>
     /// Converts a <see cref="Vector3{TScalar}"/> to a latitude, in radians.
@@ -2720,6 +3027,13 @@ public partial class Planetoid : CosmicLocation
 
     private async ValueTask<Star?> GetPrimaryStarAsync(IDataStore dataStore)
     {
+        if (Orbit.HasValue
+            && !string.IsNullOrEmpty(Orbit.Value.OrbitedId)
+            && await dataStore.GetItemAsync<Star>(Orbit.Value.OrbitedId) is Star orbitedStar)
+        {
+            return orbitedStar;
+        }
+
         var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
         if (system is null)
         {
@@ -2956,20 +3270,6 @@ public partial class Planetoid : CosmicLocation
         _insolationFactor_Equatorial = null;
         _insolationFactor_Polar = null;
         Atmosphere.ResetPressureDependentProperties(this);
-    }
-
-    private void SetAngleOfRotation(double angle)
-    {
-        while (angle > Math.PI)
-        {
-            angle -= Math.PI;
-        }
-        while (angle < 0)
-        {
-            angle += Math.PI;
-        }
-        AngleOfRotation = angle;
-        SetAxis();
     }
 
     private void SetAxis()

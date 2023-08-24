@@ -8,17 +8,34 @@ namespace Tavenem.Universe.Space;
 /// <summary>
 /// Defines an orbit by the Kepler elements.
 /// </summary>
+/// <param name="OrbitedId">
+/// <para>
+/// The <see cref="IIdItem.Id"/> of the primary in the two-body system of the orbit.
+/// </para>
+/// <para>
+/// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+/// (e.g. the center of mass of a galaxy).
+/// </para>
+/// </param>
 /// <param name="OrbitedMass">
 /// The mass of the object or system being orbited.
 /// </param>
 /// <param name="OrbitedPosition">
+/// <para>
 /// The position of the object or system being orbited at the epoch, as a vector in the same
 /// reference frame as <see cref="R0"/>.
+/// </para>
+/// <para>
+/// Note that this does not necessarily refer to the barycenter of the system, but to the position
+/// of the primary in the orbit's two-body system.
+/// </para>
+/// </param>
+/// <param name="Barycenter">
+/// The barycenter of the orbit, in the same frame of reference as <see cref="OrbitedPosition"/>.
 /// </param>
 /// <param name="Eccentricity">The eccentricity of this orbit.</param>
 /// <param name="Inclination">
-/// The angle between the X-Z plane through the center of the object orbited, and the plane of the
-/// orbit, in radians.
+/// The angle between the X-Z plane through the barycenter, and the plane of the orbit, in radians.
 /// </param>
 /// <param name="LongitudeOfPeriapsis">
 /// The longitude at which periapsis would occur if <see cref="Inclination"/> were zero, in radians.
@@ -27,7 +44,7 @@ namespace Tavenem.Universe.Space;
 /// <param name="MeanMotion">The mean motion of this orbit, in radians per second.</param>
 /// <param name="Periapsis">The periapsis of this orbit, in meters.</param>
 /// <param name="R0">
-/// The initial position of the orbiting object relative to the orbited one.
+/// The initial position of the orbiting object relative to the barycenter.
 /// </param>
 /// <param name="Radius">The radius of the orbit at the current position, in meters.</param>
 /// <param name="SemiMajorAxis">The semi-major axis of this orbit, in meters.</param>
@@ -53,8 +70,10 @@ namespace Tavenem.Universe.Space;
 /// </param>
 [method: JsonConstructor]
 public readonly record struct Orbit(
+    string? OrbitedId,
     HugeNumber OrbitedMass,
     Vector3<HugeNumber> OrbitedPosition,
+    Vector3<HugeNumber> Barycenter,
     double Eccentricity,
     double Inclination,
     double LongitudeOfPeriapsis,
@@ -176,6 +195,15 @@ public readonly record struct Orbit(
     /// <param name="dataStore">
     /// The <see cref="IDataStore"/> from which to retrieve instances.
     /// </param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary in the two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
     /// <param name="orbitedObject">The celestial entity to be orbited.</param>
     /// <remarks>
@@ -183,10 +211,15 @@ public readonly record struct Orbit(
     /// inclination will be calculated from the current position, and presumed to be the maximum
     /// inclination.
     /// </remarks>
-    public static Task SetCircularOrbitAsync(IDataStore dataStore, CosmicLocation orbitingObject, CosmicLocation orbitedObject)
+    public static Task SetCircularOrbitAsync(
+        IDataStore dataStore,
+        string? orbitedId,
+        CosmicLocation orbitingObject,
+        CosmicLocation orbitedObject)
         => SetCircularOrbitAsync(
             dataStore,
             orbitingObject,
+            orbitedId,
             orbitedObject.Mass,
             orbitedObject.ParentId != orbitingObject.ParentId
                 ? orbitingObject.LocalizePosition(orbitedObject)
@@ -200,6 +233,15 @@ public readonly record struct Orbit(
     /// The <see cref="IDataStore"/> from which to retrieve instances.
     /// </param>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary in the two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -215,10 +257,11 @@ public readonly record struct Orbit(
     public static async Task SetCircularOrbitAsync(
         IDataStore dataStore,
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition)
     {
-        AssignCircularOrbit(orbitingObject, orbitedMass, orbitedPosition);
+        AssignCircularOrbit(orbitingObject, orbitedId, orbitedMass, orbitedPosition);
         await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
     }
 
@@ -245,6 +288,7 @@ public readonly record struct Orbit(
         double eccentricity) => SetOrbitAsync(
             dataStore,
             orbitingObject,
+            orbitedObject.Id,
             orbitedObject.Mass,
             orbitedObject.ParentId != orbitingObject.ParentId
                 ? orbitingObject.LocalizePosition(orbitedObject)
@@ -259,6 +303,15 @@ public readonly record struct Orbit(
     /// The <see cref="IDataStore"/> from which to retrieve instances.
     /// </param>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary in the two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -276,11 +329,12 @@ public readonly record struct Orbit(
     public static async Task SetOrbitAsync(
         IDataStore dataStore,
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition,
         double eccentricity)
     {
-        AssignOrbit(orbitingObject, orbitedMass, orbitedPosition, eccentricity);
+        AssignOrbit(orbitingObject, orbitedId, orbitedMass, orbitedPosition, eccentricity);
         await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
     }
 
@@ -327,6 +381,7 @@ public readonly record struct Orbit(
         double trueAnomaly) => SetOrbitAsync(
             dataStore,
             orbitingObject,
+            orbitedObject.Id,
             orbitedObject.Mass,
             orbitedObject.ParentId != orbitingObject.ParentId
                 ? orbitingObject.LocalizePosition(orbitedObject)
@@ -346,6 +401,15 @@ public readonly record struct Orbit(
     /// The <see cref="IDataStore"/> from which to retrieve instances.
     /// </param>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary int he two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -378,6 +442,7 @@ public readonly record struct Orbit(
     public static async Task SetOrbitAsync(
         IDataStore dataStore,
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition,
         HugeNumber periapsis,
@@ -389,6 +454,7 @@ public readonly record struct Orbit(
     {
         AssignOrbit(
             orbitingObject,
+            orbitedId,
             orbitedMass,
             orbitedPosition,
             periapsis,
@@ -488,12 +554,25 @@ public readonly record struct Orbit(
     }
 
     /// <summary>
+    /// Gets orbital state vectors after the given amount of time has passed since the <see
+    /// cref="Epoch"/>.
+    /// </summary>
+    /// <param name="time">The amount of time after which to determine orbital state
+    /// vectors.</param>
+    /// <returns>
+    /// The position vector (relative to the barycenter), and the velocity vector.
+    /// </returns>
+    public (Vector3<HugeNumber> position, Vector3<HugeNumber> velocity) GetStateVectorsAfterDuration(Duration time)
+        => GetStateVectorsAtTime(time.ToSeconds() % Period);
+
+    /// <summary>
     /// Gets orbital state vectors at a given time.
     /// </summary>
-    /// <param name="t">The number of seconds which have elapsed since the orbit's defining
-    /// epoch (time of pericenter).</param>
-    /// <returns>The position vector (relative to the orbited object), and the velocity
-    /// vector.</returns>
+    /// <param name="t">The number of seconds which have elapsed since the orbit's defining epoch
+    /// (time of pericenter).</param>
+    /// <returns>
+    /// The position vector (relative to the barycenter), and the velocity vector.
+    /// </returns>
     public (Vector3<HugeNumber> position, Vector3<HugeNumber> velocity) GetStateVectorsAtTime(HugeNumber t)
     {
         // Universal variable formulas; Newton's method
@@ -538,8 +617,9 @@ public readonly record struct Orbit(
     /// Gets orbital state vectors at a given time.
     /// </summary>
     /// <param name="moment">The time at which to determine orbital state vectors.</param>
-    /// <returns>The position vector (relative to the orbited object), and the velocity
-    /// vector.</returns>
+    /// <returns>
+    /// The position vector (relative to the barycenter), and the velocity vector.
+    /// </returns>
     public (Vector3<HugeNumber> position, Vector3<HugeNumber> velocity) GetStateVectorsAtTime(Instant moment)
     {
         var t = (moment.Offset >= Epoch
@@ -602,23 +682,43 @@ public readonly record struct Orbit(
     /// orbital parameters, and adjusts its position and velocity as necessary.
     /// </summary>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary in the two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitalParameters">The parameters which describe the orbit.</param>
     internal static void AssignOrbit(
         CosmicLocation orbitingObject,
+        string? orbitedId,
         OrbitalParameters orbitalParameters)
     {
         if (orbitalParameters.Circular)
         {
-            AssignCircularOrbit(orbitingObject, orbitalParameters.OrbitedMass, orbitalParameters.OrbitedPosition);
+            AssignCircularOrbit(
+                orbitingObject,
+                orbitedId,
+                orbitalParameters.OrbitedMass,
+                orbitalParameters.OrbitedPosition);
         }
         else if (orbitalParameters.FromEccentricity)
         {
-            AssignOrbit(orbitingObject, orbitalParameters.OrbitedMass, orbitalParameters.OrbitedPosition, orbitalParameters.Eccentricity);
+            AssignOrbit(
+                orbitingObject,
+                orbitedId,
+                orbitalParameters.OrbitedMass,
+                orbitalParameters.OrbitedPosition,
+                orbitalParameters.Eccentricity);
         }
         else
         {
             AssignOrbit(
                 orbitingObject,
+                orbitedId,
                 orbitalParameters.OrbitedMass,
                 orbitalParameters.OrbitedPosition,
                 orbitalParameters.Periapsis,
@@ -635,6 +735,15 @@ public readonly record struct Orbit(
     /// velocity as necessary to make the orbit circular (zero eccentricity).
     /// </summary>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary int he two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -649,12 +758,20 @@ public readonly record struct Orbit(
     /// </remarks>
     internal static void AssignCircularOrbit(
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition)
     {
-        var standardGravitationalParameter = HugeNumberConstants.G * (orbitedMass + orbitingObject.Mass);
+        var combinedMass = orbitedMass + orbitingObject.Mass;
+        var standardGravitationalParameter = HugeNumberConstants.G * combinedMass;
 
-        var r0 = orbitingObject.Position - orbitedPosition;
+        var relativePositionVector = orbitingObject.Position - orbitedPosition;
+        var distance = relativePositionVector.Length();
+        var barycenter = orbitedPosition
+            + (relativePositionVector.Normalize()
+            * (distance / (HugeNumber.One + combinedMass)));
+
+        var r0 = orbitingObject.Position - barycenter;
         var radius = r0.Length();
 
         // Calculate magnitudes manually to avoid low-precision
@@ -703,8 +820,10 @@ public readonly record struct Orbit(
         var period = HugeNumberConstants.TwoPi * HugeNumber.Sqrt(semiMajorAxis.Cube() / standardGravitationalParameter);
 
         orbitingObject.Orbit = new Orbit(
+            orbitedId,
             orbitedMass,
             orbitedPosition,
+            barycenter,
             0,
             (double)inclination,
             longitudeOfPeriapsis,
@@ -726,6 +845,15 @@ public readonly record struct Orbit(
     /// name="eccentricity"/>, and adjusts its velocity as necessary.
     /// </summary>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary int he two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -742,15 +870,23 @@ public readonly record struct Orbit(
     /// </remarks>
     internal static void AssignOrbit(
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition,
         double eccentricity)
     {
         eccentricity = Math.Abs(eccentricity);
 
-        var standardGravitationalParameter = HugeNumberConstants.G * (orbitedMass + orbitingObject.Mass);
+        var combinedMass = orbitedMass + orbitingObject.Mass;
+        var standardGravitationalParameter = HugeNumberConstants.G * combinedMass;
 
-        var r0 = orbitingObject.Position - orbitedPosition;
+        var relativePositionVector = orbitingObject.Position - orbitedPosition;
+        var distance = relativePositionVector.Length();
+        var barycenter = orbitedPosition
+            + (relativePositionVector.Normalize()
+            * (distance / (HugeNumber.One + combinedMass)));
+
+        var r0 = orbitingObject.Position - barycenter;
 
         var radius = r0.Length();
 
@@ -818,8 +954,10 @@ public readonly record struct Orbit(
             * ((-sineTrueAnomaly * perifocalP) + (eccentricity * perifocalQ) + (cosineTrueAnomaly * perifocalQ));
 
         orbitingObject.Orbit = new Orbit(
+            orbitedId,
             orbitedMass,
             orbitedPosition,
+            barycenter,
             eccentricity,
             (double)inclination,
             longitudeOfPeriapsis,
@@ -843,6 +981,15 @@ public readonly record struct Orbit(
     /// orbital parameters, and adjusts its position and velocity as necessary.
     /// </summary>
     /// <param name="orbitingObject">The celestial object which will be in orbit.</param>
+    /// <param name="orbitedId">
+    /// <para>
+    /// The <see cref="IIdItem.Id"/> of the primary int he two-body system of the orbit.
+    /// </para>
+    /// <para>
+    /// May be <see langword="null"/> if the primary of this orbit is a system rather than an object
+    /// (e.g. the center of mass of a galaxy).
+    /// </para>
+    /// </param>
     /// <param name="orbitedMass">
     /// The mass of the object or system being orbited, in kg.
     /// </param>
@@ -874,6 +1021,7 @@ public readonly record struct Orbit(
     /// </param>
     internal static void AssignOrbit(
         CosmicLocation orbitingObject,
+        string? orbitedId,
         HugeNumber orbitedMass,
         Vector3<HugeNumber> orbitedPosition,
         HugeNumber periapsis,
@@ -921,7 +1069,8 @@ public readonly record struct Orbit(
             trueAnomaly += DoubleConstants.TwoPi;
         }
 
-        var standardGravitationalParameter = HugeNumberConstants.G * (orbitedMass + orbitingObject.Mass);
+        var combinedMass = orbitedMass + orbitingObject.Mass;
+        var standardGravitationalParameter = HugeNumberConstants.G * combinedMass;
 
         var semiLatusRectum = periapsis * (1 + eccentricity);
 
@@ -966,7 +1115,14 @@ public readonly record struct Orbit(
         longitudeOfPeriapsis %= DoubleConstants.TwoPi;
 
         var r0 = (radius * cosineTrueAnomalyNumber * perifocalP) + (radius * sineTrueAnomalyNumber * perifocalQ);
-        orbitingObject.Position = orbitedPosition + r0;
+
+        var relativePositionVector = orbitingObject.Position - orbitedPosition;
+        var distance = relativePositionVector.Length();
+        var barycenter = orbitedPosition
+            + (relativePositionVector.Normalize()
+            * (distance / (HugeNumber.One + combinedMass)));
+
+        orbitingObject.Position = barycenter + r0;
 
         orbitingObject.Velocity = HugeNumber.Sqrt(standardGravitationalParameter / semiLatusRectum)
             * ((-sineTrueAnomalyNumber * perifocalP) + (eccentricityNumber * perifocalQ) + (cosineTrueAnomalyNumber * perifocalQ));
@@ -982,8 +1138,10 @@ public readonly record struct Orbit(
         var epoch = Duration.FromSecondsFloatingPoint(meanMotion == HugeNumber.Zero ? HugeNumber.Zero : meanAnomaly / meanMotion);
 
         orbitingObject.Orbit = new Orbit(
+            orbitedId,
             orbitedMass,
             orbitedPosition,
+            barycenter,
             eccentricity,
             inclination,
             longitudeOfPeriapsis,
@@ -1039,6 +1197,7 @@ public readonly record struct Orbit(
         double trueAnomaly)
         => AssignOrbit(
             orbitingObject,
+            orbitedObject.Id,
             orbitedObject.Mass,
             orbitedObject.Position,
             periapsis,

@@ -3,9 +3,6 @@ using Tavenem.Randomize;
 
 namespace Tavenem.Universe.Space;
 
-/// <summary>
-/// A gravitational singularity.
-/// </summary>
 public partial class CosmicLocation
 {
     internal static readonly HugeNumber _BlackHoleSpace = new(60000);

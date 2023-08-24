@@ -16,10 +16,14 @@ public class Atmosphere
     /// </summary>
     public const int SnowToRainRatio = 13;
 
+    private const double AveragePrecipitationDivisor = 0.11293634496919917864476386036961;
+
     // The approximate value of 2 * (0.05 + e^1.25). Used to calculate MaxPrecipitation.
     private const double MaxPrecipitationFactor = 7.0806859149236827522610920593445;
 
     private const double StandardHeightDensity = 124191.6;
+
+    private static readonly HugeNumber _WetnessMassDivisor = new(1.287, 16);
 
     /// <summary>
     /// A range of acceptable amounts of O2, and list of maximum limits of common
@@ -40,25 +44,37 @@ public class Atmosphere
     };
 
     /// <summary>
-    /// Specifies the average height of this <see cref="Atmosphere"/>, in meters. Read-only;
-    /// derived from the properties of the planet and atmosphere.
+    /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Derived from the properties of the planet and atmosphere.
+    /// </remarks>
     public double AtmosphericHeight { get; private set; }
 
     /// <summary>
     /// Specifies the atmospheric pressure at the surface of the planetary body, in kPa.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Set with the <see cref="SetAtmosphericPressure(Planetoid, double)"/> method, or
+    /// the <see cref="Planetoid.SetAtmosphericPressure(double)"/> method on the <see
+    /// cref="Planetoid"/> this atmosphere surrounds.
+    /// </remarks>
     public double AtmosphericPressure { get; private set; }
 
     /// <summary>
     /// Specifies the average scale height of this <see cref="Atmosphere"/>, in meters.
-    /// Read-only; derived from the properties of the planet and atmosphere.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Derived from the properties of the planet and atmosphere.
+    /// </remarks>
     public double AtmosphericScaleHeight { get; private set; }
 
     /// <summary>
     /// The average precipitation expected to be produced by this atmosphere, in mm/hr.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Set with <see cref="SetAveragePrecipitation(double)"/>.
+    /// </remarks>
     public double AveragePrecipitation { get; private set; }
 
     /// <summary>
@@ -70,6 +86,12 @@ public class Atmosphere
     /// <summary>
     /// The physical makeup of this atmosphere.
     /// </summary>
+    /// <remarks>
+    /// The properties of this instance should not be directly modified. Doing so would not produce
+    /// the implied effects upon other properties of this or related entities. For instance,
+    /// altering the <see cref="IMaterial{TScalar}.Constituents"/> directly to add water would not
+    /// produce any adjustment to the <see cref="AveragePrecipitation"/>.
+    /// </remarks>
     public IMaterial<HugeNumber> Material
     {
         get => _material ??= new Material<HugeNumber>();
@@ -80,6 +102,9 @@ public class Atmosphere
     /// <summary>
     /// The maximum precipitation expected to be produced by this atmosphere, in mm/hr.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Derived from <see cref="AveragePrecipitation"/>.
+    /// </remarks>
     public double MaxPrecipitation
         => _maxPrecipitation ??= AveragePrecipitation * MaxPrecipitationFactor;
 
@@ -87,12 +112,19 @@ public class Atmosphere
     /// <summary>
     /// The maximum annual snowfall expected to be produced by this atmosphere, in mm.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Derived from <see cref="AveragePrecipitation"/>.
+    /// </remarks>
     public double MaxSnowfall => _maxSnowfall ??= MaxPrecipitation * SnowToRainRatio;
 
     private double? _greenhouseFactor;
     /// <summary>
     /// The total greenhouse factor for this <see cref="Atmosphere"/>.
     /// </summary>
+    /// <remarks>
+    /// Read-only. Derived from the constituents of the atmosphere and the <see
+    /// cref="AtmosphericPressure"/>.
+    /// </remarks>
     internal double GreenhouseFactor
     {
         get
@@ -127,7 +159,10 @@ public class Atmosphere
     /// <summary>
     /// The total mass of water in this atmosphere relative to that of Earth.
     /// </summary>
-    internal double Wetness => _wetness ??= (double)((HugeNumber)WaterRatio * (Material.Mass / new HugeNumber(1.287, 16)));
+    /// <remarks>
+    /// Read-only. Derived from the proportion of water in the atmosphere, and its mass.
+    /// </remarks>
+    internal double Wetness => _wetness ??= (double)((HugeNumber)WaterRatio * (Material.Mass / _WetnessMassDivisor));
 
     internal Atmosphere() { }
 
@@ -272,6 +307,24 @@ public class Atmosphere
     {
         AtmosphericPressure = value;
         ResetPressureDependentProperties(planet);
+    }
+
+    /// <summary>
+    /// Sets the average precipitation expected to be produced by this atmosphere, in mm/hr.
+    /// </summary>
+    /// <param name="value">
+    /// The average precipitation expected to be produced by this atmosphere, in mm/hr.
+    /// </param>
+    /// <remarks>
+    /// Note that changing this value changes the proportion of water in the atmosphere, from which
+    /// the value is ultimately derived.
+    /// </remarks>
+    public void SetAveragePrecipitation(double value)
+    {
+        var waterRatio = value * StandardHeightDensity * AveragePrecipitationDivisor
+            / Material.Density * AtmosphericHeight * (double)(Material.Mass / _WetnessMassDivisor);
+        Material.Add(Substances.All.Water, (decimal)waterRatio);
+        ResetWater();
     }
 
     /// <summary>
@@ -466,7 +519,7 @@ public class Atmosphere
     private void SetPrecipitation()
     {
         // 990 mm/yr
-        AveragePrecipitation = Wetness * Material.Density * AtmosphericHeight / StandardHeightDensity * 0.11293634496919917864476386036961;
+        AveragePrecipitation = Wetness * Material.Density * AtmosphericHeight / StandardHeightDensity * AveragePrecipitationDivisor;
         _maxPrecipitation = null;
         _maxSnowfall = null;
     }
