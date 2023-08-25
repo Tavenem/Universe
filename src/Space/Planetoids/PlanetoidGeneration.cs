@@ -4,12 +4,489 @@ using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Universe.Chemistry;
 using Tavenem.Universe.Climate;
+using Tavenem.Universe.Place;
 using Tavenem.Universe.Space.Planetoids;
 
 namespace Tavenem.Universe.Space;
 
 public partial class Planetoid
 {
+    /// <summary>
+    /// Generates a new <see cref="Planetoid"/> instance in a new <see cref="StarSystem"/>.
+    /// </summary>
+    /// <param name="children">
+    /// <para>
+    /// When this method returns, will be set to a <see cref="List{T}"/> of <see
+    /// cref="CosmicLocation"/>s containing any child objects generated for the location during the
+    /// creation process.
+    /// </para>
+    /// <para>
+    /// This list may be useful, for instance, to ensure that these additional objects are also
+    /// persisted to data storage.
+    /// </para>
+    /// </param>
+    /// <param name="planetType">The type of planet to generate.</param>
+    /// <param name="starSystemDefinition">
+    /// <para>
+    /// Any requirements the newly created <see cref="StarSystem"/> should meet.
+    /// </para>
+    /// <para>
+    /// If omitted, a system with a single star similar to Sol, Earth's sun, will be generated.
+    /// </para>
+    /// </param>
+    /// <param name="parent">
+    /// The containing parent location for the new system (if any).
+    /// </param>
+    /// <param name="position">
+    /// <para>
+    /// The position for new system.
+    /// </para>
+    /// <para>
+    /// If omitted, the system will be placed at <see cref="Vector3{TScalar}.Zero"/>.
+    /// </para>
+    /// </param>
+    /// <param name="orbit">
+    /// An optional orbit to assign to the child.
+    /// </param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
+    /// </param>
+    /// <returns>A planet with the given parameters.</returns>
+    public static Planetoid? GetPlanetForNewStar(
+        out List<CosmicLocation> children,
+        PlanetType planetType = PlanetType.Terrestrial,
+        StarSystemChildDefinition? starSystemDefinition = null,
+        CosmicLocation? parent = null,
+        Vector3<HugeNumber>? position = null,
+        OrbitalParameters? orbit = null,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var system = starSystemDefinition is null
+            ? new StarSystem(parent, position ?? Vector3<HugeNumber>.Zero, out children, sunlike: true)
+            : starSystemDefinition.GetStarSystem(parent, position ?? Vector3<HugeNumber>.Zero, out children);
+        if (system is null)
+        {
+            return null;
+        }
+
+        var pParams = planetParams ?? PlanetParams.Earthlike;
+        var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
+        var sanityCheck = 0;
+        Planetoid? planet;
+        List<Planetoid> childSatellites;
+        do
+        {
+            planet = new Planetoid(
+                planetType,
+                system,
+                null,
+                children.OfType<Star>().ToList(),
+                new Vector3<HugeNumber>(new HugeNumber(15209, 7), HugeNumber.Zero, HugeNumber.Zero),
+                out childSatellites,
+                orbit,
+                pParams,
+                requirements);
+            sanityCheck++;
+            if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
+            {
+                break;
+            }
+            else
+            {
+                planet = null;
+            }
+        } while (sanityCheck <= 100);
+        if (planet is not null)
+        {
+            // Clear pre-generated planets whose orbits are too close to this one.
+            if (planet.Orbit.HasValue)
+            {
+                var planetOrbitalPath = new Torus<HugeNumber>(
+                    (planet.Orbit.Value.Apoapsis + planet.Orbit.Value.Periapsis) / 2,
+                    HugeNumber.Min(
+                        (planet.Orbit.Value.Apoapsis + planet.Orbit.Value.Periapsis) / 2,
+                        (HugeNumber.Abs(planet.Orbit.Value.Apoapsis - planet.Orbit.Value.Periapsis) / 2) + planet.Orbit.Value.GetSphereOfInfluenceRadius(planet.Mass)));
+                children.RemoveAll(x => x is Planetoid p
+                    && p.Orbit.HasValue
+                    && planetOrbitalPath.Intersects(new Torus<HugeNumber>(
+                        (p.Orbit.Value.Apoapsis + p.Orbit.Value.Periapsis) / 2,
+                        HugeNumber.Min(
+                            (p.Orbit.Value.Apoapsis + p.Orbit.Value.Periapsis) / 2,
+                            (HugeNumber.Abs(p.Orbit.Value.Apoapsis - p.Orbit.Value.Periapsis) / 2) + p.Orbit.Value.GetSphereOfInfluenceRadius(p.Mass)))));
+            }
+            children.Add(system);
+            children.AddRange(childSatellites);
+        }
+        return planet;
+    }
+
+    /// <summary>
+    /// <para>
+    /// Generates a new <see cref="Planetoid"/> instance with no containing parent location, but
+    /// assuming a star with sunlike characteristics.
+    /// </para>
+    /// <para>
+    /// This method is intended to be useful when a complete hierarchy of cosmic entities is not
+    /// expected to be generated (i.e. a <see cref="StarSystem"/> with <see cref="Star"/>s).
+    /// Instead, the characteristics of the planet are determined with the assumption that a
+    /// host star system exists, without actually defining such an entity.
+    /// </para>
+    /// </summary>
+    /// <param name="children">
+    /// <para>
+    /// When this method returns, will be set to a <see cref="List{T}"/> of <see
+    /// cref="CosmicLocation"/>s containing any child objects generated for the location during
+    /// the creation process.
+    /// </para>
+    /// <para>
+    /// This list may be useful, for instance, to ensure that these additional objects are also
+    /// persisted to data storage.
+    /// </para>
+    /// </param>
+    /// <param name="planetType">The type of planet to generate.</param>
+    /// <param name="orbit">
+    /// An optional orbit to assign to the child.
+    /// </param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <returns>A planet with the given parameters.</returns>
+    public static Planetoid? GetPlanetForSunlikeStar(
+        out List<CosmicLocation> children,
+        PlanetType planetType = PlanetType.Terrestrial,
+        OrbitalParameters? orbit = null,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var pParams = planetParams ?? PlanetParams.Earthlike;
+        var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
+
+        children = new List<CosmicLocation>();
+
+        var fakeStar = Star.NewSunlike(null, Vector3<HugeNumber>.Zero);
+        if (fakeStar is null)
+        {
+            return null;
+        }
+
+        var sanityCheck = 0;
+        Planetoid? planet;
+        List<Planetoid> childSatellites;
+        do
+        {
+            planet = new Planetoid(
+                planetType,
+                null,
+                fakeStar,
+                new List<Star> { fakeStar },
+                new Vector3<HugeNumber>(new HugeNumber(15209, 7), HugeNumber.Zero, HugeNumber.Zero),
+                out childSatellites,
+                orbit,
+                pParams,
+                requirements,
+                null);
+            sanityCheck++;
+            if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
+            {
+                break;
+            }
+            else
+            {
+                planet = null;
+            }
+        } while (sanityCheck <= 100);
+        if (planet is not null)
+        {
+            children.AddRange(childSatellites);
+        }
+        return planet;
+    }
+
+    /// <summary>
+    /// Given a star, generates a terrestrial planet with the given parameters, and puts the
+    /// planet in orbit around the star.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="star">
+    /// <para>
+    /// A star which the new planet will orbit, at a distance suitable for habitability.
+    /// </para>
+    /// <para>
+    /// Note: if the star system already has planets in orbit around the given star, the newly
+    /// created planet may be placed into an unrealistically close orbit to another body,
+    /// especially if such an orbit is required in order to satisfy any temperature
+    /// requirements. For more realistic results, you may wish to generate your target planet
+    /// and system together with <see cref="GetPlanetForNewStar(out List{CosmicLocation},
+    /// PlanetType, StarSystemChildDefinition?, CosmicLocation?, Vector3{HugeNumber}?, OrbitalParameters?,
+    /// PlanetParams?, HabitabilityRequirements?)"/>. That method not only generates a planet
+    /// and star system according to provided specifications, but ensures that any additional
+    /// planets generated for the system take up orbits which are in accordance with the
+    /// initial, target planet.
+    /// </para>
+    /// </param>
+    /// <param name="planetType">The type of planet to generate.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="Planetoid"/>s containing any satellites
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<Planetoid> children)> GetPlanetForStar(
+        IDataStore dataStore,
+        Star star,
+        PlanetType planetType = PlanetType.Terrestrial,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var stars = new List<Star>();
+        var parent = await star.GetParentAsync(dataStore).ConfigureAwait(false);
+        if (parent is StarSystem system)
+        {
+            await foreach (var item in system.GetStarsAsync(dataStore))
+            {
+                stars.Add(item);
+            }
+        }
+        else
+        {
+            stars.Add(star);
+        }
+
+        var pParams = planetParams ?? PlanetParams.Earthlike;
+        var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
+        var sanityCheck = 0;
+        Planetoid? planet;
+        List<Planetoid> childSatellites;
+        do
+        {
+            planet = new Planetoid(
+                planetType,
+                parent as CosmicLocation,
+                star,
+                stars,
+                parent is StarSystem sys
+                    ? Vector3<HugeNumber>.UnitX * Randomizer.Instance.Next(sys.Shape.ContainingRadius)
+                    : Randomizer.Instance.NextVector3(HugeNumber.Zero, parent?.Shape.ContainingRadius ?? HugeNumber.MaxValue),
+                out childSatellites,
+                null,
+                pParams,
+                requirements);
+            sanityCheck++;
+            if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
+            {
+                break;
+            }
+            else
+            {
+                planet = null;
+            }
+        } while (sanityCheck <= 100);
+        var satellites = planet is null ? new List<Planetoid>() : childSatellites;
+        return (planet, satellites);
+    }
+
+    /// <summary>
+    /// Given a galaxy, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in a new system in the given galaxy.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="galaxy">A galaxy in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGalaxyAsync(
+        IDataStore dataStore,
+        CosmicLocation galaxy,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (!CosmicStructureType.Galaxy.HasFlag(galaxy.StructureType))
+        {
+            return (null, children);
+        }
+
+        var galaxyChildren = new List<Location>();
+        await foreach (var item in galaxy.GetChildrenAsync(dataStore))
+        {
+            galaxyChildren.Add(item);
+        }
+
+        var pos = galaxy.GetOpenSpace(StarSystem._StarSystemSpace, galaxyChildren);
+        if (!pos.HasValue)
+        {
+            return (null, children);
+        }
+
+        var planet = GetPlanetForNewStar(
+            out children,
+            parent: galaxy,
+            position: pos,
+            planetParams: planetParams,
+            habitabilityRequirements: habitabilityRequirements);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Given a universe, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in a new spiral galaxy in the given universe.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="universe">A universe in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForUniverseAsync(
+        IDataStore dataStore,
+        CosmicLocation universe,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (universe.StructureType != CosmicStructureType.Universe)
+        {
+            return (null, children);
+        }
+
+        var (gsc, gscSub) = await universe.GenerateChildAsync(dataStore, CosmicStructureType.Supercluster).ConfigureAwait(false);
+        if (gsc is null)
+        {
+            return (null, children);
+        }
+        children.Add(gsc);
+        children.AddRange(gscSub);
+
+        var (gc, gcSub) = await gsc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyCluster).ConfigureAwait(false);
+        if (gc is null)
+        {
+            return (null, children);
+        }
+        children.Add(gc);
+        children.AddRange(gcSub);
+
+        CosmicLocation? galaxy = null;
+        var sanityCheck = 0;
+        while (galaxy is null && sanityCheck < 100)
+        {
+            sanityCheck++;
+            var (gg, ggSub) = await gc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyGroup).ConfigureAwait(false);
+            if (gg is null || ggSub is null)
+            {
+                continue;
+            }
+            galaxy = ggSub.Find(x => x.StructureType == CosmicStructureType.SpiralGalaxy);
+            if (galaxy is not null)
+            {
+                children.Add(gg);
+                children.AddRange(ggSub);
+            }
+        }
+        if (galaxy is null)
+        {
+            return (null, children);
+        }
+
+        var (planet, satellites) = await GetPlanetForGalaxyAsync(dataStore, galaxy, planetParams, habitabilityRequirements).ConfigureAwait(false);
+        children.AddRange(satellites);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Generates a terrestrial planet with the given parameters, orbiting a Sol-like star in a
+    /// spiral galaxy in a new universe.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForNewUniverseAsync(
+        IDataStore dataStore,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null)
+    {
+        var universe = New(CosmicStructureType.Universe, null, Vector3<HugeNumber>.Zero, out var children);
+        if (universe is null)
+        {
+            return (null, new List<CosmicLocation>());
+        }
+        var (planet, subChildren) = await GetPlanetForUniverseAsync(dataStore, universe, planetParams, habitabilityRequirements).ConfigureAwait(false);
+        children.Add(universe);
+        children.AddRange(subChildren);
+        return (planet, children);
+    }
+
     /// <summary>
     /// Adds a resource to this planet's <see cref="Resources"/> collection.
     /// </summary>

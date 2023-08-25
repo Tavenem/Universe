@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.1-preview
+### Added
+- Allow setting orbit by eccentricity and period
+
 ## 0.6.0-preview
 ### Added
 - `SetAveragePrecipitation` method to `Atmopshere`
