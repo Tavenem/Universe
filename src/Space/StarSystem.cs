@@ -367,10 +367,237 @@ public class StarSystem : CosmicLocation
     }
 
     /// <summary>
+    /// Adds a planet to the given star in this system, if possible.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="star">The <see cref="Star"/> to which a planet should be added.</param>
+    /// <param name="planetType">
+    /// The type of planet to generate, or <see cref="PlanetType.None"/> to generate a type based on
+    /// the conditions of the system and the assigned orbit.
+    /// </param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of all <see cref="CosmicLocation"/>s which were generated. These
+    /// locations will not be automatically persisted to the <paramref name="dataStore"/>.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// The new planet will only be added with an orbit inside the current innermost planet's orbit,
+    /// or outside the current outermost planet's orbit. In other words, a new planet will not be
+    /// assigned an orbit between existing planets' orbits.
+    /// </para>
+    /// <para>
+    /// It is possible that no planet will be added, if no stable orbit can be found.
+    /// </para>
+    /// </remarks>
+    public async Task<List<CosmicLocation>> AddPlanetAsync(
+        IDataStore dataStore,
+        Star? star = null,
+        PlanetType planetType = PlanetType.None)
+    {
+        var stars = new List<Star>();
+        await foreach (var child in GetStarsAsync(dataStore))
+        {
+            stars.Add(child);
+        }
+        star ??= Randomizer.Instance.Next(stars);
+        if (star is null)
+        {
+            return new();
+        }
+
+        var (numGiants, numIceGiants, numTerrestrial) = star.GetNumPlanets();
+        var (minPeriapsis, maxApoapsis) = GetApsesLimits(stars, star);
+
+        // The maximum mass and density are used to calculate an outer Roche limit (may not be
+        // the actual Roche limit for the body which gets generated).
+        var minGiantPeriapsis = HugeNumber.Max(minPeriapsis ?? 0, star.GetRocheLimit(Planetoid.GiantMaxDensity));
+        var minTerrestrialPeriapsis = HugeNumber.Max(
+            minPeriapsis ?? 0,
+            star.GetRocheLimit(Planetoid.DefaultTerrestrialMaxDensity));
+
+        // If the calculated minimum and maximum orbits indicates that no stable orbits are
+        // possible, eliminate the indicated type of planet.
+        if (maxApoapsis.HasValue && minGiantPeriapsis > maxApoapsis)
+        {
+            numGiants = 0;
+            numIceGiants = 0;
+        }
+        if (maxApoapsis.HasValue && minTerrestrialPeriapsis > maxApoapsis)
+        {
+            numTerrestrial = 0;
+        }
+
+        var hadTerrestrial = false;
+        Planetoid? innerPlanet = null;
+        Planetoid? outerPlanet = null;
+        await foreach (var child in GetChildrenAsync<Planetoid>(dataStore))
+        {
+            if (!child.Orbit.HasValue
+                || child.Orbit.Value.OrbitedId != star.Id)
+            {
+                continue;
+            }
+
+            if (child.PlanetType == PlanetType.IceGiant)
+            {
+                numIceGiants--;
+            }
+            else if (child.PlanetType == PlanetType.GasGiant)
+            {
+                numGiants--;
+            }
+            else
+            {
+                hadTerrestrial = true;
+                numTerrestrial--;
+            }
+
+            if (innerPlanet is null
+                || outerPlanet is null)
+            {
+                innerPlanet = child;
+                outerPlanet = child;
+            }
+            else
+            {
+                if (child.Orbit.Value.Periapsis < innerPlanet.Orbit!.Value.Periapsis)
+                {
+                    innerPlanet = child;
+                }
+                if (child.Orbit.Value.Apoapsis > outerPlanet.Orbit!.Value.Apoapsis)
+                {
+                    outerPlanet = child;
+                }
+            }
+        }
+
+        // Generate planets one at a time until the specified number have been generated.
+        var planetarySystemInfo = new PlanetarySystemInfo
+        {
+            InnerPlanet = innerPlanet,
+            MedianOrbit = innerPlanet is null || outerPlanet is null
+                ? HugeNumber.Zero
+                : innerPlanet.Orbit!.Value.Periapsis
+                    + ((outerPlanet.Orbit!.Value.Apoapsis - innerPlanet.Orbit!.Value.Periapsis) / 2),
+            NumTerrestrials = numTerrestrial,
+            NumGiants = numGiants,
+            NumIceGiants = numIceGiants,
+            OuterPlanet = outerPlanet,
+            TotalGiants = numGiants + numIceGiants,
+        };
+
+        var addedChildren = GeneratePlanet(
+            star,
+            stars,
+            minTerrestrialPeriapsis,
+            minGiantPeriapsis,
+            maxApoapsis,
+            ref planetarySystemInfo,
+            planetType);
+
+        // Systems with terrestrial planets are also likely to have debris disks (Kuiper belts)
+        // outside the orbit of the most distant planet.
+        if (!hadTerrestrial && planetarySystemInfo.TotalTerrestrials > 0)
+        {
+            var belt = GenerateDebrisDisc(stars, star, planetarySystemInfo.OuterPlanet!, maxApoapsis);
+            if (belt is not null)
+            {
+                addedChildren.Add(belt);
+            }
+        }
+
+        return addedChildren;
+    }
+
+    /// <summary>
     /// Adds a <see cref="Star"/> to this system.
     /// </summary>
     /// <param name="star">The <see cref="Star"/> to add.</param>
     public void AddStar(Star star) => StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Add(star.Id);
+
+    /// <summary>
+    /// Adds new stars to this system.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="min">
+    /// <para>
+    /// An optional minimum number of stars to generate.
+    /// </para>
+    /// <para>
+    /// It is not guaranteed that this number is generated, if conditions preclude generation of the
+    /// specified number. This value merely overrides the usual maximum for the total number of
+    /// stars which would normally be generated for a system.
+    /// </para>
+    /// </param>
+    /// <param name="max">
+    /// An optional maximum number of stars to generate.
+    /// </param>
+    /// <returns>
+    /// A <see cref="List{T}"/> of the <see cref="Star"/>s which were generated. These stars will
+    /// not be automatically persisted to the <paramref name="dataStore"/>, but they will be added
+    /// to the system's <see cref="StarIDs"/> collection.
+    /// </returns>
+    public async Task<List<Star>> AddStarsAsync(
+        IDataStore dataStore,
+        byte? min = null,
+        byte? max = null)
+    {
+        Star? primary = null;
+        var currentStars = new List<Star>();
+        var newStars = new List<Star>();
+        var companions = new List<(Star star, HugeNumber totalApoapsis)>();
+        await foreach (var star in GetStarsAsync(dataStore))
+        {
+            if (!star.Orbit.HasValue)
+            {
+                primary = star;
+            }
+            currentStars.Add(star);
+        }
+
+        primary ??= currentStars.FirstOrDefault();
+        if (primary is null)
+        {
+            primary = new Star(StarType.MainSequence, this, Vector3<HugeNumber>.Zero);
+            if (primary is not null)
+            {
+                newStars.Add(primary);
+            }
+        }
+
+        if (primary is null)
+        {
+            return newStars;
+        }
+
+        var amount = GenerateNumCompanions(primary);
+        amount -= currentStars.Count;
+        if (min.HasValue)
+        {
+            amount = Math.Max(amount, min.Value);
+        }
+        if (max.HasValue)
+        {
+            amount = Math.Min(amount, max.Value);
+        }
+        amount -= newStars.Count;
+        if (amount <= 0)
+        {
+            return newStars;
+        }
+
+        newStars.AddRange(AddCompanionStars(primary, currentStars, amount)
+            .Select(x => x.star));
+        StarIDs = ImmutableList<string>
+            .Empty
+            .AddRange(StarIDs)
+            .AddRange(newStars.Select(x => x.Id));
+        return newStars;
+    }
 
     /// <summary>
     /// Enumerates the child stars of this instance.
@@ -1045,88 +1272,6 @@ public class StarSystem : CosmicLocation
         return null;
     }
 
-    /// <summary>
-    /// Adds new stars to this system.
-    /// </summary>
-    /// <param name="dataStore">
-    /// The <see cref="IDataStore"/> from which to retrieve instances.
-    /// </param>
-    /// <param name="min">
-    /// <para>
-    /// An optional minimum number of stars to generate.
-    /// </para>
-    /// <para>
-    /// It is not guaranteed that this number is generated, if conditions preclude generation of the
-    /// specified number. This value merely overrides the usual maximum for the total number of
-    /// stars which would normally be generated for a system.
-    /// </para>
-    /// </param>
-    /// <param name="max">
-    /// An optional maximum number of stars to generate.
-    /// </param>
-    /// <returns>
-    /// A <see cref="List{T}"/> of the <see cref="Star"/>s which were generated. These stars will
-    /// not be automatically persisted to the <paramref name="dataStore"/>, but they will be added
-    /// to the system's <see cref="StarIDs"/> collection.
-    /// </returns>
-    public async Task<List<Star>> AddStarsAsync(
-        IDataStore dataStore,
-        byte? min = null,
-        byte? max = null)
-    {
-        Star? primary = null;
-        var currentStars = new List<Star>();
-        var newStars = new List<Star>();
-        var companions = new List<(Star star, HugeNumber totalApoapsis)>();
-        await foreach (var star in GetStarsAsync(dataStore))
-        {
-            if (!star.Orbit.HasValue)
-            {
-                primary = star;
-            }
-            currentStars.Add(star);
-        }
-
-        primary ??= currentStars.FirstOrDefault();
-        if (primary is null)
-        {
-            primary = new Star(StarType.MainSequence, this, Vector3<HugeNumber>.Zero);
-            if (primary is not null)
-            {
-                newStars.Add(primary);
-            }
-        }
-
-        if (primary is null)
-        {
-            return newStars;
-        }
-
-        var amount = GenerateNumCompanions(primary);
-        amount -= currentStars.Count;
-        if (min.HasValue)
-        {
-            amount = Math.Max(amount, min.Value);
-        }
-        if (max.HasValue)
-        {
-            amount = Math.Min(amount, max.Value);
-        }
-        amount -= newStars.Count;
-        if (amount <= 0)
-        {
-            return newStars;
-        }
-
-        newStars.AddRange(AddCompanionStars(primary, currentStars, amount)
-            .Select(x => x.star));
-        StarIDs = ImmutableList<string>
-            .Empty
-            .AddRange(StarIDs)
-            .AddRange(newStars.Select(x => x.Id));
-        return newStars;
-    }
-
     private List<(Star star, HugeNumber totalApoapsis)> AddCompanionStars(
         Star primary,
         List<Star> currentStars,
@@ -1427,7 +1572,8 @@ public class StarSystem : CosmicLocation
         HugeNumber minGiantPeriapsis,
         HugeNumber? maxApoapsis,
         ref PlanetarySystemInfo planetarySystemInfo,
-        Planetoid? planet)
+        PlanetType planetType,
+        Planetoid? planet = null)
     {
         var addedChildren = new List<CosmicLocation>();
 
@@ -1451,7 +1597,15 @@ public class StarSystem : CosmicLocation
         }
         else
         {
-            planet = GetPlanet(star, stars, minTerrestrialPeriapsis, minGiantPeriapsis, maxApoapsis, ref planetarySystemInfo, out var satellites);
+            planet = GetPlanet(
+                star,
+                stars,
+                minTerrestrialPeriapsis,
+                minGiantPeriapsis,
+                maxApoapsis,
+                ref planetarySystemInfo,
+                out var satellites,
+                planetType);
             addedChildren.AddRange(satellites);
         }
 
@@ -1565,6 +1719,7 @@ public class StarSystem : CosmicLocation
                 minGiantPeriapsis,
                 maxApoapsis,
                 ref planetarySystemInfo,
+                PlanetType.None,
                 pregenPlanet));
             pregenPlanet = null;
         }
@@ -1583,8 +1738,15 @@ public class StarSystem : CosmicLocation
         return addedChildren;
     }
 
-    private Planetoid? GenerateTerrestrialPlanet(Star star, List<Star> stars, HugeNumber periapsis, out List<Planetoid> satellites)
+    private Planetoid? GenerateTerrestrialPlanet(
+        Star star,
+        List<Star> stars,
+        HugeNumber periapsis,
+        out List<Planetoid> satellites,
+        PlanetType planetType = PlanetType.None)
     {
+        planetType = PlanetType.AnyTerrestrial & planetType;
+
         // Planets with very low orbits are lava planets due to tidal stress (plus a small
         // percentage of others due to impact trauma).
 
@@ -1593,22 +1755,37 @@ public class StarSystem : CosmicLocation
         var chance = Randomizer.Instance.NextDouble();
         var position = star.Position + (Vector3<HugeNumber>.UnitX * periapsis);
         var rocheLimit = star.GetRocheLimit(Planetoid.DefaultTerrestrialMaxDensity);
-        if (periapsis < rocheLimit * new HugeNumber(105, -2) || chance <= 0.01)
+        if (periapsis < rocheLimit * new HugeNumber(105, -2)
+            || planetType == PlanetType.Lava
+            || ((planetType == PlanetType.None
+            || (PlanetType.Lava & planetType) == PlanetType.Lava)
+            && (chance <= 0.01)))
         {
             return new Planetoid(PlanetType.Lava, this, star, stars, position, out satellites);
         }
         // Planets with close orbits may be iron planets.
-        else if (periapsis < rocheLimit * 200 && chance <= 0.5)
+        else if (planetType == PlanetType.Iron
+            || ((planetType == PlanetType.None
+            || (PlanetType.Iron & planetType) == PlanetType.Iron)
+            && periapsis < rocheLimit * 200
+            && chance <= 0.5))
         {
             return new Planetoid(PlanetType.Iron, this, star, stars, position, out satellites);
         }
         // Late-stage stars and brown dwarfs may have carbon planets.
-        else if ((star.StarType == StarType.Neutron && chance <= 0.2) || (star.StarType == StarType.BrownDwarf && chance <= 0.75))
+        else if (planetType == PlanetType.Carbon
+            || ((planetType == PlanetType.None
+            || (PlanetType.Carbon & planetType) == PlanetType.Carbon)
+            && ((star.StarType == StarType.Neutron && chance <= 0.2)
+            || (star.StarType == StarType.BrownDwarf && chance <= 0.75))))
         {
             return new Planetoid(PlanetType.Carbon, this, star, stars, position, out satellites);
         }
         // Chance of an ocean planet.
-        else if (chance <= 0.25)
+        else if (planetType == PlanetType.Ocean
+            || ((planetType == PlanetType.None
+            || (PlanetType.Ocean & planetType) == PlanetType.Ocean)
+            && chance <= 0.25))
         {
             return new Planetoid(PlanetType.Ocean, this, star, stars, position, out satellites);
         }
@@ -1681,13 +1858,24 @@ public class StarSystem : CosmicLocation
         HugeNumber minGiantPeriapsis,
         HugeNumber? maxApoapsis,
         ref PlanetarySystemInfo planetarySystemInfo,
-        out List<Planetoid> satellites)
+        out List<Planetoid> satellites,
+        PlanetType planetType = PlanetType.None)
     {
-        var isGiant = false;
-        var isIceGiant = false;
+        var isGiant = (PlanetType.Giant & planetType) != PlanetType.None;
+        if (isGiant)
+        {
+            planetarySystemInfo.NumGiants--;
+        }
+        var isIceGiant = planetType == PlanetType.IceGiant;
+        if (isIceGiant)
+        {
+            planetarySystemInfo.NumIceGiants--;
+        }
         // If this is the first planet generated, and there are to be any
         // giants, generate a giant first.
-        if (planetarySystemInfo.InnerPlanet is null && planetarySystemInfo.TotalGiants > 0)
+        if (planetType == PlanetType.None
+            && planetarySystemInfo.InnerPlanet is null
+            && planetarySystemInfo.TotalGiants > 0)
         {
             if (planetarySystemInfo.NumGiants > 0)
             {
@@ -1702,7 +1890,7 @@ public class StarSystem : CosmicLocation
             }
         }
         // Otherwise, select the type to generate on this pass randomly.
-        else
+        else if (planetType == PlanetType.None)
         {
             var chance = Randomizer.Instance.NextDouble();
             if (planetarySystemInfo.NumGiants > 0 && (planetarySystemInfo.NumTerrestrials + planetarySystemInfo.NumIceGiants == 0 || chance <= 0.333333))
@@ -1721,6 +1909,10 @@ public class StarSystem : CosmicLocation
             {
                 planetarySystemInfo.NumTerrestrials--;
             }
+        }
+        else if (!isGiant)
+        {
+            planetarySystemInfo.NumTerrestrials--;
         }
 
         planetarySystemInfo.Periapsis = ChoosePlanetPeriapsis(
@@ -1758,7 +1950,12 @@ public class StarSystem : CosmicLocation
         }
         else
         {
-            planet = GenerateTerrestrialPlanet(star, stars, planetarySystemInfo.Periapsis.Value, out satellites);
+            planet = GenerateTerrestrialPlanet(
+                star,
+                stars,
+                planetarySystemInfo.Periapsis.Value,
+                out satellites,
+                planetType);
             planetarySystemInfo.TotalTerrestrials++;
         }
 

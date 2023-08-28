@@ -701,7 +701,7 @@ public class Star : CosmicLocation
     /// merely to retrieve and update location instances affected by the change.
     /// </para>
     /// </remarks>
-    public async Task<List<CosmicLocation>> SetPopulationII(IDataStore dataStore, bool isPopulationII)
+    public async Task<List<CosmicLocation>> SetPopulationIIAsync(IDataStore dataStore, bool isPopulationII)
     {
         if (IsPopulationII == isPopulationII)
         {

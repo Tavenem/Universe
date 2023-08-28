@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2-preview
+### Added
+- `AddPlanetAsync` to `StarSystem`
+### Changed
+- `SetPopulationII` to `SetPopulationIIAsync` on `Star`
+
 ## 0.6.1-preview
 ### Added
 - Allow setting orbit by eccentricity and period
