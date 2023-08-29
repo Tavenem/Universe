@@ -1160,14 +1160,12 @@ public readonly record struct Orbit(
         longitudeOfPeriapsis %= DoubleConstants.TwoPi;
 
         var r0 = (radius * cosineTrueAnomalyNumber * perifocalP) + (radius * sineTrueAnomalyNumber * perifocalQ);
+        orbitingObject.Position = orbitedPosition + ((orbitedPosition - r0).Normalize() * semiMajorAxis);
 
         var relativePositionVector = orbitingObject.Position - orbitedPosition;
-        var distance = relativePositionVector.Length();
         var barycenter = orbitedPosition
             + (relativePositionVector.Normalize()
-            * (distance / (HugeNumber.One + (orbitedMass / orbitingObject.Mass))));
-
-        orbitingObject.Position = barycenter + r0;
+            * (semiMajorAxis / (HugeNumber.One + (orbitedMass / orbitingObject.Mass))));
 
         orbitingObject.Velocity = HugeNumber.Sqrt(standardGravitationalParameter / semiLatusRectum)
             * ((-sineTrueAnomalyNumber * perifocalP) + (eccentricityNumber * perifocalQ) + (cosineTrueAnomalyNumber * perifocalQ));

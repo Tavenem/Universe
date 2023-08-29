@@ -1348,7 +1348,8 @@ public class StarSystem : CosmicLocation
             bool close;
             if (orbited.Value.totalApoapsis.IsZero())
             {
-                if (orbiters is null)
+                if (orbiters is null
+                    || orbiters.Count == 0)
                 {
                     close = Randomizer.Instance.NextDouble() <= 0.2;
                 }
@@ -1361,7 +1362,8 @@ public class StarSystem : CosmicLocation
                     close = orbiters[0].totalApoapsis > _MaxClosePeriod;
                 }
             }
-            else if (orbiters is null)
+            else if (orbiters is null
+                || orbiters.Count == 0)
             {
                 close = Randomizer.Instance.NextBool();
             }
