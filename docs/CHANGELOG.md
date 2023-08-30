@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.3-preview
+### Changed
+- Allow manually adding non-giant, non-terrestrial planets to star systems
+
 ## 0.6.2-preview
 ### Added
 - `AddPlanetAsync` to `StarSystem`

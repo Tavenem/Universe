@@ -1747,8 +1747,6 @@ public class StarSystem : CosmicLocation
         out List<Planetoid> satellites,
         PlanetType planetType = PlanetType.None)
     {
-        planetType = PlanetType.AnyTerrestrial & planetType;
-
         // Planets with very low orbits are lava planets due to tidal stress (plus a small
         // percentage of others due to impact trauma).
 
@@ -1790,6 +1788,11 @@ public class StarSystem : CosmicLocation
             && chance <= 0.25))
         {
             return new Planetoid(PlanetType.Ocean, this, star, stars, position, out satellites);
+        }
+        else if (planetType is not PlanetType.None
+            and not PlanetType.Terrestrial)
+        {
+            return new Planetoid(planetType, this, star, stars, position, out satellites);
         }
         else
         {
