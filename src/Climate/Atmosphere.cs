@@ -317,13 +317,15 @@ public class Atmosphere
     /// </param>
     /// <remarks>
     /// Note that changing this value changes the proportion of water in the atmosphere, from which
-    /// the value is ultimately derived.
+    /// the value is ultimately derived. A value which cannot be supported (because it would require
+    /// a proportion of water less than zero or greater than 1) results in the closest possible
+    /// value instead.
     /// </remarks>
     public void SetAveragePrecipitation(double value)
     {
-        var waterRatio = value * StandardHeightDensity * AveragePrecipitationDivisor
-            / Material.Density * AtmosphericHeight * (double)(Material.Mass / _WetnessMassDivisor);
-        Material.Add(Substances.All.Water, (decimal)waterRatio);
+        var waterRatio = Math.Clamp((decimal)(value * StandardHeightDensity * AveragePrecipitationDivisor
+            / Material.Density * AtmosphericHeight * (double)(Material.Mass / _WetnessMassDivisor)), 0, 1);
+        Material.Add(Substances.All.Water, waterRatio);
         ResetWater();
     }
 

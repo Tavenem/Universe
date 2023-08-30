@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.4-preview
+### Changed
+- Manually set average precipitation clamped to possible values
+
 ## 0.6.3-preview
 ### Changed
 - Allow manually adding non-giant, non-terrestrial planets to star systems
