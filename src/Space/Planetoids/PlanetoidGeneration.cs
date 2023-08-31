@@ -55,6 +55,7 @@ public partial class Planetoid
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
     /// requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>A planet with the given parameters.</returns>
     public static Planetoid? GetPlanetForNewStar(
         out List<CosmicLocation> children,
@@ -64,7 +65,8 @@ public partial class Planetoid
         Vector3<HugeNumber>? position = null,
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var system = starSystemDefinition is null
             ? new StarSystem(parent, position ?? Vector3<HugeNumber>.Zero, out children, sunlike: true)
@@ -90,7 +92,9 @@ public partial class Planetoid
                 out childSatellites,
                 orbit,
                 pParams,
-                requirements);
+                requirements,
+                null,
+                id);
             sanityCheck++;
             if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
             {
@@ -159,13 +163,15 @@ public partial class Planetoid
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
     /// habitability requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>A planet with the given parameters.</returns>
     public static Planetoid? GetPlanetForSunlikeStar(
         out List<CosmicLocation> children,
         PlanetType planetType = PlanetType.Terrestrial,
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var pParams = planetParams ?? PlanetParams.Earthlike;
         var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
@@ -193,7 +199,8 @@ public partial class Planetoid
                 orbit,
                 pParams,
                 requirements,
-                null);
+                null,
+                id);
             sanityCheck++;
             if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
             {
@@ -212,8 +219,8 @@ public partial class Planetoid
     }
 
     /// <summary>
-    /// Given a star, generates a terrestrial planet with the given parameters, and puts the
-    /// planet in orbit around the star.
+    /// Given a star, generates a terrestrial planet with the given parameters, and puts the planet
+    /// in orbit around the star.
     /// </summary>
     /// <param name="dataStore">
     /// The <see cref="IDataStore"/> from which to retrieve instances.
@@ -224,15 +231,15 @@ public partial class Planetoid
     /// </para>
     /// <para>
     /// Note: if the star system already has planets in orbit around the given star, the newly
-    /// created planet may be placed into an unrealistically close orbit to another body,
-    /// especially if such an orbit is required in order to satisfy any temperature
-    /// requirements. For more realistic results, you may wish to generate your target planet
-    /// and system together with <see cref="GetPlanetForNewStar(out List{CosmicLocation},
-    /// PlanetType, StarSystemChildDefinition?, CosmicLocation?, Vector3{HugeNumber}?, OrbitalParameters?,
-    /// PlanetParams?, HabitabilityRequirements?)"/>. That method not only generates a planet
-    /// and star system according to provided specifications, but ensures that any additional
-    /// planets generated for the system take up orbits which are in accordance with the
-    /// initial, target planet.
+    /// created planet may be placed into an unrealistically close orbit to another body, especially
+    /// if such an orbit is required in order to satisfy any temperature requirements. For more
+    /// realistic results, you may wish to generate your target planet and system together with <see
+    /// cref="GetPlanetForNewStar(out List{CosmicLocation}, PlanetType, StarSystemChildDefinition?,
+    /// CosmicLocation?, Vector3{HugeNumber}?, OrbitalParameters?, PlanetParams?,
+    /// HabitabilityRequirements?, string?)"/>. That method not only generates a planet and star
+    /// system according to provided specifications, but ensures that any additional planets
+    /// generated for the system take up orbits which are in accordance with the initial, target
+    /// planet.
     /// </para>
     /// </param>
     /// <param name="planetType">The type of planet to generate.</param>
@@ -240,9 +247,10 @@ public partial class Planetoid
     /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
     /// </param>
     /// <param name="habitabilityRequirements">
-    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
-    /// habitability requirements will be used.
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>
     /// <para>
     /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
@@ -258,7 +266,8 @@ public partial class Planetoid
         Star star,
         PlanetType planetType = PlanetType.Terrestrial,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var stars = new List<Star>();
         var parent = await star.GetParentAsync(dataStore).ConfigureAwait(false);
@@ -292,7 +301,9 @@ public partial class Planetoid
                 out childSatellites,
                 null,
                 pParams,
-                requirements);
+                requirements,
+                null,
+                id);
             sanityCheck++;
             if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
             {
@@ -322,6 +333,7 @@ public partial class Planetoid
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
     /// habitability requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>
     /// <para>
     /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
@@ -336,7 +348,8 @@ public partial class Planetoid
         IDataStore dataStore,
         CosmicLocation galaxy,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var children = new List<CosmicLocation>();
 
@@ -362,7 +375,8 @@ public partial class Planetoid
             parent: galaxy,
             position: pos,
             planetParams: planetParams,
-            habitabilityRequirements: habitabilityRequirements);
+            habitabilityRequirements: habitabilityRequirements,
+            id: id);
         return (planet, children);
     }
 
@@ -381,6 +395,7 @@ public partial class Planetoid
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
     /// habitability requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>
     /// <para>
     /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
@@ -395,7 +410,8 @@ public partial class Planetoid
         IDataStore dataStore,
         CosmicLocation universe,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var children = new List<CosmicLocation>();
 
@@ -442,7 +458,12 @@ public partial class Planetoid
             return (null, children);
         }
 
-        var (planet, satellites) = await GetPlanetForGalaxyAsync(dataStore, galaxy, planetParams, habitabilityRequirements).ConfigureAwait(false);
+        var (planet, satellites) = await GetPlanetForGalaxyAsync(
+            dataStore,
+            galaxy,
+            planetParams,
+            habitabilityRequirements,
+            id);
         children.AddRange(satellites);
         return (planet, children);
     }
@@ -461,6 +482,7 @@ public partial class Planetoid
     /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
     /// habitability requirements will be used.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     /// <returns>
     /// <para>
     /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
@@ -474,14 +496,20 @@ public partial class Planetoid
     public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForNewUniverseAsync(
         IDataStore dataStore,
         PlanetParams? planetParams = null,
-        HabitabilityRequirements? habitabilityRequirements = null)
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
     {
         var universe = New(CosmicStructureType.Universe, null, Vector3<HugeNumber>.Zero, out var children);
         if (universe is null)
         {
             return (null, new List<CosmicLocation>());
         }
-        var (planet, subChildren) = await GetPlanetForUniverseAsync(dataStore, universe, planetParams, habitabilityRequirements).ConfigureAwait(false);
+        var (planet, subChildren) = await GetPlanetForUniverseAsync(
+            dataStore,
+            universe,
+            planetParams,
+            habitabilityRequirements,
+            id);
         children.Add(universe);
         children.AddRange(subChildren);
         return (planet, children);

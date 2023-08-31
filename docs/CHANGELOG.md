@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.5-preview
+### Added
+- `id` parameter for planet generation methods which allow specifying the `IIDItem.Id` of the resulting planet
+
 ## 0.6.4-preview
 ### Changed
 - Manually set average precipitation clamped to possible values

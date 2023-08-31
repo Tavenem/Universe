@@ -575,6 +575,7 @@ public partial class Planetoid : CosmicLocation
     /// If not <see langword="null"/>, the <see cref="Planetoid"/> which this one is to orbit as a
     /// satellite.
     /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
     public Planetoid(
         PlanetType planetType,
         CosmicLocation? parent,
@@ -585,7 +586,8 @@ public partial class Planetoid : CosmicLocation
         OrbitalParameters? orbit = null,
         PlanetParams? planetParams = null,
         HabitabilityRequirements? habitabilityRequirements = null,
-        Planetoid? satelliteOf = null) : base(parent?.Id, CosmicStructureType.Planetoid)
+        Planetoid? satelliteOf = null,
+        string? id = null) : base(id, parent?.Id, CosmicStructureType.Planetoid)
     {
         PlanetType = planetType;
         _planetParams = planetParams;

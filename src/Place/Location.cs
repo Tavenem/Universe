@@ -137,6 +137,27 @@ public class Location : IdItem
     /// <summary>
     /// Initializes a new instance of <see cref="Location"/>.
     /// </summary>
+    /// <param name="id">
+    /// <para>
+    /// An optional <see cref="IIdItem.Id"/> to assign to this instance.
+    /// </para>
+    /// <para>
+    /// If <see langword="null"/> a random <see cref="IIdItem.Id"/> will be generated.
+    /// </para>
+    /// </param>
+    /// <param name="parentId">The id of the location which contains this one.</param>
+    public Location(string? id, string? parentId)
+    {
+        ParentId = parentId;
+        if (!string.IsNullOrEmpty(id))
+        {
+            Id = id;
+        }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="Location"/>.
+    /// </summary>
     /// <param name="parentId">The id of the location which contains this one.</param>
     public Location(string? parentId) => ParentId = parentId;
 

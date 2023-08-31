@@ -206,6 +206,9 @@ public partial class CosmicLocation : Location
         Material = material;
     }
 
+    private protected CosmicLocation(string? id, string? parentId, CosmicStructureType structureType)
+        : base(id, parentId) => StructureType = structureType;
+
     private protected CosmicLocation(string? parentId, CosmicStructureType structureType)
         : base(parentId) => StructureType = structureType;
 
