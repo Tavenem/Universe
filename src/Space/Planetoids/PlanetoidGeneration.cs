@@ -319,6 +319,137 @@ public partial class Planetoid
     }
 
     /// <summary>
+    /// Given a star system, generates a terrestrial planet with the given parameters, and puts the
+    /// planet in orbit around the first GV-type star detected, or the primary star if none are
+    /// GV-type.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="starSystem">
+    /// <para>
+    /// A star system in which the new planet will be placed in orbit around a star, at a distance
+    /// suitable for habitability.
+    /// </para>
+    /// <para>
+    /// Note: if the star system already has planets in orbit around the selected star, the newly
+    /// created planet may be placed into an unrealistically close orbit to another body, especially
+    /// if such an orbit is required in order to satisfy any temperature requirements. For more
+    /// realistic results, you may wish to generate your target planet and system together with <see
+    /// cref="GetPlanetForNewStar(out List{CosmicLocation}, PlanetType, StarSystemChildDefinition?,
+    /// CosmicLocation?, Vector3{HugeNumber}?, OrbitalParameters?, PlanetParams?,
+    /// HabitabilityRequirements?, string?)"/>. That method not only generates a planet and star
+    /// system according to provided specifications, but ensures that any additional planets
+    /// generated for the system take up orbits which are in accordance with the initial, target
+    /// planet.
+    /// </para>
+    /// <para>
+    /// If the given system has no stars at all (not a condition which would be generated naturally
+    /// by this library, although stars may be deleted from existing systems, resulting in such a
+    /// state), a new sun-like star will be created as set as the primary for the system.
+    /// </para>
+    /// </param>
+    /// <param name="planetType">The type of planet to generate.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="Location"/>s containing any satellites generated
+    /// during the creation process, as well as any <see cref="Star"/> created (if the given system
+    /// had none).
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForStarSystem(
+        IDataStore dataStore,
+        StarSystem starSystem,
+        PlanetType planetType = PlanetType.Terrestrial,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var stars = new List<Star>();
+        Star? star = null;
+        await foreach (var item in starSystem.GetStarsAsync(dataStore))
+        {
+            if (item.SpectralClass == Stars.SpectralClass.G
+                && item.LuminosityClass == Stars.LuminosityClass.V)
+            {
+                star = item;
+                break;
+            }
+            stars.Add(item);
+        }
+        if (star is null)
+        {
+            foreach (var candidate in stars)
+            {
+                if (!candidate.Orbit.HasValue)
+                {
+                    star = candidate;
+                    break;
+                }
+            }
+        }
+        star ??= stars.FirstOrDefault();
+
+        var children = new List<CosmicLocation>();
+        if (star is null)
+        {
+            star = Star.NewSunlike(starSystem, Vector3<HugeNumber>.Zero);
+            if (star is null)
+            {
+                return (null, new());
+            }
+            starSystem.AddStar(star);
+        }
+
+        var pParams = planetParams ?? PlanetParams.Earthlike;
+        var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
+        var sanityCheck = 0;
+        Planetoid? planet;
+        List<Planetoid> childSatellites;
+        do
+        {
+            planet = new Planetoid(
+                planetType,
+                starSystem,
+                star,
+                stars,
+                Vector3<HugeNumber>.UnitX * Randomizer.Instance.Next(starSystem.Shape.ContainingRadius),
+                out childSatellites,
+                null,
+                pParams,
+                requirements,
+                null,
+                id);
+            sanityCheck++;
+            if (planet.IsHabitable(requirements) == UninhabitabilityReason.None)
+            {
+                break;
+            }
+            else
+            {
+                planet = null;
+            }
+        } while (sanityCheck <= 100);
+        if (planet is not null)
+        {
+            children.AddRange(childSatellites);
+        }
+        return (planet, children);
+    }
+
+    /// <summary>
     /// Given a galaxy, generates a terrestrial planet with the given parameters, orbiting a
     /// Sol-like star in a new system in the given galaxy.
     /// </summary>
@@ -381,6 +512,356 @@ public partial class Planetoid
     }
 
     /// <summary>
+    /// Given a galaxy cluster, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in a new spiral galaxy in the given cluster.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="galaxyCluster">A galaxy cluster in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child
+    /// locations generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGalaxyClusterAsync(
+        IDataStore dataStore,
+        CosmicLocation galaxyCluster,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (galaxyCluster.StructureType != CosmicStructureType.GalaxyCluster)
+        {
+            return (null, children);
+        }
+
+        CosmicLocation? galaxy = null;
+        var sanityCheck = 0;
+        while (galaxy is null && sanityCheck < 100)
+        {
+            sanityCheck++;
+            var (gg, ggSub) = await galaxyCluster.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyGroup);
+            if (gg is null || ggSub is null)
+            {
+                continue;
+            }
+            galaxy = ggSub.Find(x => x.StructureType == CosmicStructureType.SpiralGalaxy);
+            if (galaxy is not null)
+            {
+                children.Add(gg);
+                children.AddRange(ggSub);
+            }
+        }
+        if (galaxy is null)
+        {
+            return (null, children);
+        }
+
+        var (planet, satellites) = await GetPlanetForGalaxyAsync(
+            dataStore,
+            galaxy,
+            planetParams,
+            habitabilityRequirements,
+            id);
+        children.AddRange(satellites);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Given a galaxy group, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in a randomly-selected galaxy in the given group (preferring spiral galaxies).
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="galaxyGroup">A galaxy group in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGalaxyGroupAsync(
+        IDataStore dataStore,
+        CosmicLocation galaxyGroup,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (galaxyGroup.StructureType != CosmicStructureType.GalaxyGroup)
+        {
+            return (null, children);
+        }
+
+        CosmicLocation? galaxy = null;
+        var allGalaxies = new List<CosmicLocation>();
+        await foreach (var candidate in galaxyGroup.GetChildrenAsync<CosmicLocation>(dataStore))
+        {
+            if (candidate.StructureType == CosmicStructureType.SpiralGalaxy)
+            {
+                galaxy = candidate;
+                break;
+            }
+            if (candidate.StructureType == CosmicStructureType.GalaxySubgroup)
+            {
+                await foreach (var childCandidate in candidate.GetChildrenAsync<CosmicLocation>(dataStore))
+                {
+                    if (candidate.StructureType == CosmicStructureType.SpiralGalaxy)
+                    {
+                        galaxy = candidate;
+                        break;
+                    }
+                    if ((CosmicStructureType.Galaxy & candidate.StructureType) != CosmicStructureType.None)
+                    {
+                        allGalaxies.Add(candidate);
+                    }
+                }
+                if (galaxy is not null)
+                {
+                    break;
+                }
+            }
+            if ((CosmicStructureType.Galaxy & candidate.StructureType) != CosmicStructureType.None)
+            {
+                allGalaxies.Add(candidate);
+            }
+        }
+        galaxy ??= allGalaxies.FirstOrDefault();
+        if (galaxy is null)
+        {
+            return (null, children);
+        }
+
+        var (planet, satellites) = await GetPlanetForGalaxyAsync(
+            dataStore,
+            galaxy,
+            planetParams,
+            habitabilityRequirements,
+            id);
+        children.AddRange(satellites);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Given a galaxy subgroup, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in the primary galaxy in the given group.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="galaxySubgroup">A galaxy subgroup in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human
+    /// habitability requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child locations
+    /// generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGalaxySubgroupAsync(
+        IDataStore dataStore,
+        CosmicLocation galaxySubgroup,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (galaxySubgroup.StructureType != CosmicStructureType.GalaxySubgroup)
+        {
+            return (null, children);
+        }
+
+        CosmicLocation? galaxy = null;
+        var allGalaxies = new List<CosmicLocation>();
+        await foreach (var candidate in galaxySubgroup.GetChildrenAsync<CosmicLocation>(dataStore))
+        {
+            if (candidate.StructureType
+                is CosmicStructureType.SpiralGalaxy
+                or CosmicStructureType.EllipticalGalaxy)
+            {
+                galaxy = candidate;
+                break;
+            }
+            allGalaxies.Add(candidate);
+        }
+        galaxy ??= allGalaxies.FirstOrDefault();
+        if (galaxy is null)
+        {
+            return (null, children);
+        }
+
+        var (planet, satellites) = await GetPlanetForGalaxyAsync(
+            dataStore,
+            galaxy,
+            planetParams,
+            habitabilityRequirements,
+            id);
+        children.AddRange(satellites);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Given a globular cluster, generates a terrestrial planet with the given parameters, orbiting
+    /// a Sol-like star in a new system in the given cluster.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="globularCluster">A globular cluster in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child
+    /// locations generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForGlobularClusterAsync(
+        IDataStore dataStore,
+        CosmicLocation globularCluster,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (globularCluster.StructureType != CosmicStructureType.GlobularCluster)
+        {
+            return (null, children);
+        }
+
+        var galaxyChildren = new List<Location>();
+        await foreach (var item in globularCluster.GetChildrenAsync(dataStore))
+        {
+            galaxyChildren.Add(item);
+        }
+
+        var pos = globularCluster.GetOpenSpace(StarSystem._StarSystemSpace, galaxyChildren);
+        if (!pos.HasValue)
+        {
+            return (null, children);
+        }
+
+        var planet = GetPlanetForNewStar(
+            out children,
+            parent: globularCluster,
+            position: pos,
+            planetParams: planetParams,
+            habitabilityRequirements: habitabilityRequirements,
+            id: id);
+        return (planet, children);
+    }
+
+    /// <summary>
+    /// Given a supercluster, generates a terrestrial planet with the given parameters, orbiting a
+    /// Sol-like star in a new spiral galaxy in the given supercluster.
+    /// </summary>
+    /// <param name="dataStore">
+    /// The <see cref="IDataStore"/> from which to retrieve instances.
+    /// </param>
+    /// <param name="supercluster">A supercluster in which to situate the new planet.</param>
+    /// <param name="planetParams">
+    /// A set of <see cref="PlanetParams"/>. If omitted, earthlike values will be used.
+    /// </param>
+    /// <param name="habitabilityRequirements">
+    /// An optional set of <see cref="HabitabilityRequirements"/>. If omitted, human habitability
+    /// requirements will be used.
+    /// </param>
+    /// <param name="id">An optional <see cref="IIdItem.Id"/> to assign to the new planet.</param>
+    /// <returns>
+    /// <para>
+    /// A planet with the given parameters. May be <see langword="null"/> if no planet could be
+    /// generated.
+    /// </para>
+    /// <para>
+    /// Also, a <see cref="List{T}"/> of <see cref="CosmicLocation"/>s containing any child
+    /// locations generated during the creation process.
+    /// </para>
+    /// </returns>
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForSuperclusterAsync(
+        IDataStore dataStore,
+        CosmicLocation supercluster,
+        PlanetParams? planetParams = null,
+        HabitabilityRequirements? habitabilityRequirements = null,
+        string? id = null)
+    {
+        var children = new List<CosmicLocation>();
+
+        if (supercluster.StructureType != CosmicStructureType.Supercluster)
+        {
+            return (null, children);
+        }
+
+        var (gc, gcSub) = await supercluster.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyCluster);
+        if (gc is null)
+        {
+            return (null, children);
+        }
+        children.Add(gc);
+        children.AddRange(gcSub);
+
+        var (planet, satellites) = await GetPlanetForGalaxyClusterAsync(
+            dataStore,
+            gc,
+            planetParams,
+            habitabilityRequirements,
+            id);
+        children.AddRange(satellites);
+        return (planet, children);
+    }
+
+    /// <summary>
     /// Given a universe, generates a terrestrial planet with the given parameters, orbiting a
     /// Sol-like star in a new spiral galaxy in the given universe.
     /// </summary>
@@ -428,39 +909,9 @@ public partial class Planetoid
         children.Add(gsc);
         children.AddRange(gscSub);
 
-        var (gc, gcSub) = await gsc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyCluster).ConfigureAwait(false);
-        if (gc is null)
-        {
-            return (null, children);
-        }
-        children.Add(gc);
-        children.AddRange(gcSub);
-
-        CosmicLocation? galaxy = null;
-        var sanityCheck = 0;
-        while (galaxy is null && sanityCheck < 100)
-        {
-            sanityCheck++;
-            var (gg, ggSub) = await gc.GenerateChildAsync(dataStore, CosmicStructureType.GalaxyGroup).ConfigureAwait(false);
-            if (gg is null || ggSub is null)
-            {
-                continue;
-            }
-            galaxy = ggSub.Find(x => x.StructureType == CosmicStructureType.SpiralGalaxy);
-            if (galaxy is not null)
-            {
-                children.Add(gg);
-                children.AddRange(ggSub);
-            }
-        }
-        if (galaxy is null)
-        {
-            return (null, children);
-        }
-
-        var (planet, satellites) = await GetPlanetForGalaxyAsync(
+        var (planet, satellites) = await GetPlanetForSuperclusterAsync(
             dataStore,
-            galaxy,
+            gsc,
             planetParams,
             habitabilityRequirements,
             id);
