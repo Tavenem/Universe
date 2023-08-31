@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.8-preview
+### Changed
+- `GetPlanetForStar` to `GetPlanetForStarAsync`
+- `GetPlanetForStarSystem` to `GetPlanetForStarSystemAsync`
+
 ## 0.6.7-preview
 ### Changed
 - Allow generating a planet without stars (rogue planet)

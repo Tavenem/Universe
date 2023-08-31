@@ -261,7 +261,7 @@ public partial class Planetoid
     /// generated during the creation process.
     /// </para>
     /// </returns>
-    public static async Task<(Planetoid? planet, List<Planetoid> children)> GetPlanetForStar(
+    public static async Task<(Planetoid? planet, List<Planetoid> children)> GetPlanetForStarAsync(
         IDataStore dataStore,
         Star star,
         PlanetType planetType = PlanetType.Terrestrial,
@@ -369,7 +369,7 @@ public partial class Planetoid
     /// had none).
     /// </para>
     /// </returns>
-    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForStarSystem(
+    public static async Task<(Planetoid? planet, List<CosmicLocation> children)> GetPlanetForStarSystemAsync(
         IDataStore dataStore,
         StarSystem starSystem,
         PlanetType planetType = PlanetType.Terrestrial,
