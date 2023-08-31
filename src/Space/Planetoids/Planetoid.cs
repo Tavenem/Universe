@@ -580,7 +580,7 @@ public partial class Planetoid : CosmicLocation
         PlanetType planetType,
         CosmicLocation? parent,
         Star? star,
-        List<Star> stars,
+        List<Star>? stars,
         Vector3<HugeNumber> position,
         out List<Planetoid> satellites,
         OrbitalParameters? orbit = null,
@@ -593,7 +593,9 @@ public partial class Planetoid : CosmicLocation
         _planetParams = planetParams;
         _habitabilityRequirements = habitabilityRequirements;
 
-        if (star is null && !orbit.HasValue)
+        if (star is null
+            && stars is not null
+            && !orbit.HasValue)
         {
             star = Randomizer.Instance.Next(stars);
         }
@@ -2686,11 +2688,11 @@ public partial class Planetoid : CosmicLocation
     /// <returns>
     /// The total average temperature of the location at the given position, in K.
     /// </returns>
-    private double GetTemperatureAtPosition(Vector3<HugeNumber> position, List<Star> stars)
+    private double GetTemperatureAtPosition(Vector3<HugeNumber> position, List<Star>? stars)
     {
         // Calculate the heat added to this location by insolation at the given position.
         var insolationHeat = 0.0;
-        if (Albedo < 1 && stars.Count > 0)
+        if (Albedo < 1 && stars?.Count > 0)
         {
             var sum = 0.0;
             foreach (var star in stars)
@@ -2809,7 +2811,7 @@ public partial class Planetoid : CosmicLocation
         ResetCachedTemperatures();
     }
 
-    private void SetTemperatures(List<Star> stars)
+    private void SetTemperatures(List<Star>? stars)
     {
         BlackbodyTemperature = GetTemperatureAtPosition(Position, stars);
 

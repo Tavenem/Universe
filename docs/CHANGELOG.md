@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.7-preview
+### Changed
+- Allow generating a planet without stars (rogue planet)
+
 ## 0.6.6-preview
 ### Added
 - More static planet generation methods

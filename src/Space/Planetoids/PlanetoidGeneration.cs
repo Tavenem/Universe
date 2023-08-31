@@ -1099,8 +1099,8 @@ public partial class Planetoid
     /// generated.
     /// </returns>
     public Planetoid? GenerateSatellite(
-        CosmicLocation? parent,
-        List<Star> stars) => GenerateSatellites(parent, stars, 1, 1)
+        CosmicLocation? parent = null,
+        List<Star>? stars = null) => GenerateSatellites(parent, stars, 1, 1)
         .FirstOrDefault();
 
     /// <summary>
@@ -1145,8 +1145,8 @@ public partial class Planetoid
     /// A list of the satellites which were generated.
     /// </returns>
     public List<Planetoid> GenerateSatellites(
-        CosmicLocation? parent,
-        List<Star> stars,
+        CosmicLocation? parent = null,
+        List<Star>? stars = null,
         byte? min = null,
         byte? max = null)
     {
@@ -1291,7 +1291,7 @@ public partial class Planetoid
 
     internal List<Planetoid> ConfigureStellarProperties(
         CosmicLocation? parent,
-        List<Star> stars,
+        List<Star>? stars = null,
         Star? star = null,
         bool satellite = false,
         OrbitalParameters? orbit = null,
@@ -1299,7 +1299,7 @@ public partial class Planetoid
         HugeNumber? semiMajorAxis = null,
         bool temperatureCorrection = true)
     {
-        IsInhospitable = stars.Any(x => !x.IsHospitable);
+        IsInhospitable = stars?.Any(x => !x.IsHospitable) != false;
 
         eccentricity ??= orbit?.Eccentricity ?? Orbit?.Eccentricity;
         semiMajorAxis ??= Orbit?.SemiMajorAxis;
@@ -1374,6 +1374,7 @@ public partial class Planetoid
 
         if (temperatureCorrection
             && star is not null
+            && stars is not null
             && (_planetParams?.SurfaceTemperature.HasValue == true
             || _habitabilityRequirements?.MinimumTemperature.HasValue == true
             || _habitabilityRequirements?.MaximumTemperature.HasValue == true))
@@ -2374,7 +2375,7 @@ public partial class Planetoid
 
     private List<Planetoid> Configure(
         CosmicLocation? parent,
-        List<Star> stars,
+        List<Star>? stars,
         Star? star,
         Vector3<HugeNumber> position,
         bool satellite,
@@ -3449,7 +3450,7 @@ public partial class Planetoid
 
     private Planetoid? GenerateGiantSatellite(
         CosmicLocation? parent,
-        List<Star> stars,
+        List<Star>? stars,
         HugeNumber periapsis,
         double eccentricity,
         HugeNumber maxMass)
@@ -4193,7 +4194,7 @@ public partial class Planetoid
 
     private Planetoid? GenerateSatellite(
         CosmicLocation? parent,
-        List<Star> stars,
+        List<Star>? stars,
         HugeNumber periapsis,
         double eccentricity,
         HugeNumber maxMass)
