@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0
+### Added
+- Initial production release
+
 ## 0.6.8-preview
 ### Changed
 - `GetPlanetForStar` to `GetPlanetForStarAsync`

@@ -34,16 +34,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Tavenem.Chemistry" Version="0.9.1-preview" />
-    <PackageReference Include="Tavenem.DataStore" Version="0.39.0-preview" />
-    <PackageReference Include="Tavenem.HugeNumber" Version="2.2.6" />
-    <PackageReference Include="Tavenem.Mathematics" Version="2.2.10-preview-0001" />
-    <PackageReference Include="Tavenem.Randomize" Version="2.2.8-preview-0002" />
-    <PackageReference Include="Tavenem.Time" Version="2.2.5-preview-0001" />
+    <PackageReference Include="Tavenem.DataStore" Version="1.0.2" />
+    <PackageReference Include="Tavenem.HugeNumber" Version="2.3.4" />
+    <PackageReference Include="Tavenem.Mathematics" Version="2.2.11" />
+    <PackageReference Include="Tavenem.Randomize" Version="2.2.9" />
+    <PackageReference Include="Tavenem.Time" Version="2.2.6" />
   </ItemGroup>
 
 </Project>
