@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1
+### Changed
+- Use `JsonTypeInfo` for improved (de)serialization
+
 ## 1.0
 ### Added
 - Initial production release

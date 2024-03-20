@@ -17,7 +17,7 @@ namespace Tavenem.Universe.Test;
 [TestClass]
 public class SerializationTests
 {
-    private static readonly string[] _TestChildIds = new string[] { "Test_Child_ID" };
+    private static readonly string[] _TestChildIds = ["Test_Child_ID"];
 
     [TestMethod]
     public void CosmicLocationTest()
@@ -210,14 +210,13 @@ public class SerializationTests
     public void HabitabilityRequirementsTest()
     {
         var value = new HabitabilityRequirements(
-            new SubstanceRequirement[]
-            {
+            [
                 new SubstanceRequirement(
                     Substances.All.Oxygen.GetHomogeneousReference(),
                     0.2m,
                     0.6m,
                     PhaseType.Gas),
-            },
+            ],
             25,
             null,
             400,
@@ -284,7 +283,7 @@ public class SerializationTests
             "Test_ID",
             new Sphere<HugeNumber>(new HugeNumber(10)),
             "Test_Parent_ID",
-            new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX },
+            [Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX],
             "Test Name");
         iIdItem = value;
 
@@ -1028,7 +1027,7 @@ public class SerializationTests
             "Test_ID",
             new Sphere<HugeNumber>(new HugeNumber(10)),
             "Test_Parent_ID",
-            new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX });
+            [Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX]);
         location = value;
         iIdItem = value;
 
@@ -1153,7 +1152,7 @@ public class SerializationTests
             new Sphere<HugeNumber>(new HugeNumber(10)),
             _TestChildIds,
             "Test_Parent_ID",
-            new Vector3<HugeNumber>[] { Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX });
+            [Vector3<HugeNumber>.Zero, Vector3<HugeNumber>.UnitX]);
         location = value;
         iIdItem = value;
 

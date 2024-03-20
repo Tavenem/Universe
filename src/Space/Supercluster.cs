@@ -6,11 +6,11 @@ namespace Tavenem.Universe.Space;
 public partial class CosmicLocation
 {
     // ~100000 galaxies total
-    private static readonly List<ChildDefinition> _SuperclusterChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _SuperclusterChildDefinitions =
+    [
         new ChildDefinition(_GalaxyClusterSpace, new HugeNumber(2.563, -77), CosmicStructureType.GalaxyCluster),
         new ChildDefinition(_GalaxyGroupSpace, new HugeNumber(5.126, -77), CosmicStructureType.GalaxyGroup),
-    };
+    ];
     private protected static readonly HugeNumber _SuperclusterSpace = new(9.4607, 25);
 
     private void ConfigureSuperclusterInstance(Vector3<HugeNumber> position, double? ambientTemperature = null)

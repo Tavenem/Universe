@@ -21,8 +21,8 @@ public partial class CosmicLocation
     private static readonly HugeNumber _GlobularClusterBlueGiantDensity = _GlobularClusterGiantDensity * new HugeNumber(35, -3);
     private static readonly HugeNumber _GlobularClusterYellowGiantDensity = _GlobularClusterGiantDensity * new HugeNumber(2, -2);
 
-    private static readonly List<ChildDefinition> _GlobularClusterChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _GlobularClusterChildDefinitions =
+    [
         new StarSystemChildDefinition(_GlobularClusterSystemDensity / 6, StarType.BrownDwarf, populationII: true),
 
         new StarSystemChildDefinition(_GlobularClusterRedDensity * new HugeNumber(998, -3), SpectralClass.M, LuminosityClass.V, populationII: true),
@@ -66,7 +66,7 @@ public partial class CosmicLocation
 
         new StarSystemChildDefinition(_GlobularClusterMainSequenceDensity * new HugeNumber(13, -4), SpectralClass.B, LuminosityClass.V, populationII: true),
         new StarSystemChildDefinition(_GlobularClusterMainSequenceDensity * new HugeNumber(3, -7), SpectralClass.O, LuminosityClass.V, populationII: true),
-    };
+    ];
 
     internal OrbitalParameters GetGlobularClusterChildOrbit() => OrbitalParameters.GetFromEccentricity(
         Mass,

@@ -29,8 +29,8 @@ public class Atmosphere
     /// A range of acceptable amounts of O2, and list of maximum limits of common
     /// atmospheric gases for acceptable human breathability.
     /// </summary>
-    public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } = new SubstanceRequirement[]
-    {
+    public static SubstanceRequirement[] HumanBreathabilityRequirements { get; } =
+    [
         new SubstanceRequirement(Substances.All.Oxygen.GetHomogeneousReference(), 0.07m, 0.53m, PhaseType.Gas),
         new SubstanceRequirement(Substances.All.Ammonia.GetHomogeneousReference(), MaximumProportion: 5e-5m),
         new SubstanceRequirement(Substances.All.AmmoniumHydrosulfide.GetHomogeneousReference(), MaximumProportion: 1e-6m),
@@ -41,7 +41,7 @@ public class Atmosphere
         new SubstanceRequirement(Substances.All.Ozone.GetHomogeneousReference(), MaximumProportion: 1e-7m),
         new SubstanceRequirement(Substances.All.Phosphine.GetHomogeneousReference(), MaximumProportion: 3e-7m),
         new SubstanceRequirement(Substances.All.SulphurDioxide.GetHomogeneousReference(), MaximumProportion: 2e-6m),
-    };
+    ];
 
     /// <summary>
     /// Specifies the average height of this <see cref="Atmosphere"/>, in meters.
@@ -187,7 +187,7 @@ public class Atmosphere
         var tIF = planet.AverageBlackbodyTemperature * planet.InsolationFactor_Equatorial;
         SetGreenhouseFactor(
             constituents?.Select(x => (x.Key, x.Value))
-            ?? Enumerable.Empty<(ISubstanceReference, decimal)>());
+            ?? []);
         planet.GreenhouseEffect = (tIF * GreenhouseFactor) - planet.AverageBlackbodyTemperature;
         var greenhouseEffect = planet.GetGreenhouseEffect();
         var temperature = tIF + greenhouseEffect;

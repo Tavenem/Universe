@@ -22,8 +22,8 @@ public partial class CosmicLocation
     private static readonly HugeNumber _GalaxyBlueGiantDensity = _GalaxyGiantDensity * new HugeNumber(35, -3);
     private static readonly HugeNumber _GalaxyYellowGiantDensity = _GalaxyGiantDensity * new HugeNumber(2, -2);
 
-    private static readonly List<ChildDefinition> _GalaxyChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _GalaxyChildDefinitions =
+    [
         new PlanetChildDefinition(_GalaxyRogueDensity * 5 / 12, PlanetType.GasGiant),
         new PlanetChildDefinition(_GalaxyRogueDensity * new HugeNumber(25, -2), PlanetType.IceGiant),
         new PlanetChildDefinition(_GalaxyRogueDensity / 6, PlanetType.Terrestrial),
@@ -80,10 +80,10 @@ public partial class CosmicLocation
         new ChildDefinition(_NebulaSpace, _GalaxySystemDensity * new HugeNumber(4, -10), CosmicStructureType.Nebula),
 
         new ChildDefinition(_NebulaSpace, _GalaxySystemDensity * new HugeNumber(4, -10), CosmicStructureType.HIIRegion),
-    };
+    ];
 
-    private static readonly List<ChildDefinition> _EllipticalGalaxyChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _EllipticalGalaxyChildDefinitions =
+    [
         new PlanetChildDefinition(_GalaxyRogueDensity * 5 / 12, PlanetType.GasGiant),
         new PlanetChildDefinition(_GalaxyRogueDensity * new HugeNumber(25, -2), PlanetType.IceGiant),
         new PlanetChildDefinition(_GalaxyRogueDensity / 6, PlanetType.Terrestrial),
@@ -116,7 +116,7 @@ public partial class CosmicLocation
         new StarSystemChildDefinition(_GalaxyGiantDensity * new HugeNumber(3, -4), StarType.RedGiant, null, LuminosityClass.II),
 
         new ChildDefinition(_PlanetaryNebulaSpace, _GalaxySystemDensity * new HugeNumber(1.5, -8), CosmicStructureType.PlanetaryNebula),
-    };
+    ];
 
     internal OrbitalParameters GetGalaxyChildOrbit()
         => OrbitalParameters.GetFromEccentricity(Mass, Vector3<HugeNumber>.Zero, Randomizer.Instance.NextDouble(0.1));

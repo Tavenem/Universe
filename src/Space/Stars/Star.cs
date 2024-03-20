@@ -451,17 +451,17 @@ public class Star : CosmicLocation
     /// </summary>
     public override async Task<bool> DeleteAsync(IDataStore dataStore)
     {
-        var parent = await GetParentAsync(dataStore).ConfigureAwait(false);
+        var parent = await GetParentAsync(dataStore);
         if (parent is StarSystem system)
         {
             await system.RemoveStarAsync(dataStore, Id);
-            var success = await dataStore.StoreItemAsync(system).ConfigureAwait(false);
+            var success = await dataStore.StoreItemAsync(system, UniverseSourceGenerationContext.Default.StarSystem);
             if (!success)
             {
                 return false;
             }
         }
-        return await base.DeleteAsync(dataStore).ConfigureAwait(false);
+        return await base.DeleteAsync(dataStore);
     }
 
     /// <summary>
@@ -491,7 +491,7 @@ public class Star : CosmicLocation
     {
         if (Luminosity == value)
         {
-            return new();
+            return [];
         }
 
         Luminosity = value;
@@ -575,7 +575,7 @@ public class Star : CosmicLocation
     {
         if (LuminosityClass == value)
         {
-            return new();
+            return [];
         }
 
         LuminosityClass = value;
@@ -705,7 +705,7 @@ public class Star : CosmicLocation
     {
         if (IsPopulationII == isPopulationII)
         {
-            return new();
+            return [];
         }
 
         IsPopulationII = isPopulationII;
@@ -759,7 +759,7 @@ public class Star : CosmicLocation
     {
         if (SpectralClass == value)
         {
-            return new();
+            return [];
         }
 
         SpectralClass = value;
@@ -868,7 +868,7 @@ public class Star : CosmicLocation
     {
         if (StarType == type)
         {
-            return new();
+            return [];
         }
 
         StarType = type;

@@ -176,7 +176,7 @@ public partial class Planetoid
         var pParams = planetParams ?? PlanetParams.Earthlike;
         var requirements = habitabilityRequirements ?? HabitabilityRequirements.HumanHabitabilityRequirements;
 
-        children = new List<CosmicLocation>();
+        children = [];
 
         var fakeStar = Star.NewSunlike(null, Vector3<HugeNumber>.Zero);
         if (fakeStar is null)
@@ -193,7 +193,7 @@ public partial class Planetoid
                 planetType,
                 null,
                 fakeStar,
-                new List<Star> { fakeStar },
+                [fakeStar],
                 new Vector3<HugeNumber>(new HugeNumber(15209, 7), HugeNumber.Zero, HugeNumber.Zero),
                 out childSatellites,
                 orbit,
@@ -270,7 +270,7 @@ public partial class Planetoid
         string? id = null)
     {
         var stars = new List<Star>();
-        var parent = await star.GetParentAsync(dataStore).ConfigureAwait(false);
+        var parent = await star.GetParentAsync(dataStore);
         if (parent is StarSystem system)
         {
             await foreach (var item in system.GetStarsAsync(dataStore))
@@ -314,7 +314,7 @@ public partial class Planetoid
                 planet = null;
             }
         } while (sanityCheck <= 100);
-        var satellites = planet is null ? new List<Planetoid>() : childSatellites;
+        var satellites = planet is null ? [] : childSatellites;
         return (planet, satellites);
     }
 
@@ -408,7 +408,7 @@ public partial class Planetoid
             star = Star.NewSunlike(starSystem, Vector3<HugeNumber>.Zero);
             if (star is null)
             {
-                return (null, new());
+                return (null, []);
             }
             starSystem.AddStar(star);
         }
@@ -901,7 +901,7 @@ public partial class Planetoid
             return (null, children);
         }
 
-        var (gsc, gscSub) = await universe.GenerateChildAsync(dataStore, CosmicStructureType.Supercluster).ConfigureAwait(false);
+        var (gsc, gscSub) = await universe.GenerateChildAsync(dataStore, CosmicStructureType.Supercluster);
         if (gsc is null)
         {
             return (null, children);
@@ -953,7 +953,7 @@ public partial class Planetoid
         var universe = New(CosmicStructureType.Universe, null, Vector3<HugeNumber>.Zero, out var children);
         if (universe is null)
         {
-            return (null, new List<CosmicLocation>());
+            return (null, []);
         }
         var (planet, subChildren) = await GetPlanetForUniverseAsync(
             dataStore,
@@ -1052,7 +1052,7 @@ public partial class Planetoid
         {
             return;
         }
-        var rings = _rings?.ToList() ?? new();
+        var rings = _rings?.ToList() ?? [];
         for (var i = 0; i < numRings && innerLimit <= outerLimit_Icy; i++)
         {
             if (innerLimit < outerLimit_Rocky && Randomizer.Instance.NextBool())
@@ -1204,7 +1204,7 @@ public partial class Planetoid
         var minPeriapsis = Shape.ContainingRadius + 20;
         var maxApoapsis = Orbit.HasValue ? GetHillSphereRadius() / 3 : Shape.ContainingRadius * 100;
 
-        var satelliteIds = _satelliteIds?.ToList() ?? new();
+        var satelliteIds = _satelliteIds?.ToList() ?? [];
         while (minPeriapsis <= maxApoapsis && satelliteIds.Count < maxSatellites)
         {
             var periapsis = Randomizer.Instance.Next(minPeriapsis, maxApoapsis);
@@ -1277,7 +1277,7 @@ public partial class Planetoid
             : await GetStarSystemAsync(dataStore);
         if (starSystem is null)
         {
-            return new List<Planetoid>();
+            return [];
         }
 
         var stars = new List<Star>();
@@ -1391,7 +1391,7 @@ public partial class Planetoid
         GenerateRings();
 
         return satellite
-            ? new List<Planetoid>()
+            ? []
             : GenerateSatellites(parent, stars);
     }
 
@@ -2108,7 +2108,7 @@ public partial class Planetoid
             proportion,
             isVein,
             isPerturbation);
-        (_resources ??= new()).Add(resource);
+        (_resources ??= []).Add(resource);
         return resource.Seed;
     }
 
@@ -2767,8 +2767,7 @@ public partial class Planetoid
                 var bottomProportion = 1 - topProportion;
                 var bottomOuterRadius = Hydrosphere.Shape.ContainingRadius * bottomProportion;
                 Hydrosphere = new Composite<HugeNumber>(
-                    new IMaterial<HugeNumber>[]
-                    {
+                    [
                         new Material<HugeNumber>(
                             new HollowSphere<HugeNumber>(
                                 Material.Shape.ContainingRadius,
@@ -2789,7 +2788,7 @@ public partial class Planetoid
                             (277 + temperature) / 2,
                             (seawater, seawaterProportion),
                             (water, waterProportion)),
-                    },
+                    ],
                     Hydrosphere.Shape,
                     Hydrosphere.Mass,
                     Hydrosphere.Density);
@@ -4130,17 +4129,17 @@ public partial class Planetoid
                 .Constituents.Where(x => x.Key.Substance.Categories?.Contains(Substances.Category_Gem) == true
                     || x.Key.Substance.IsMetalOre())
                 .Select(x => (x.Key, x.Value, true))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
+                ?? []);
         AddResources(Material.GetSurface()
                 .Constituents.Where(x => x.Key.Substance.IsHydrocarbon())
                 .Select(x => (x.Key, x.Value, false))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
+                ?? []);
 
         // Also add halite (rock salt) as a resource, despite not being an ore or gem.
         AddResources(Material.GetSurface()
                 .Constituents.Where(x => x.Key.Equals(Substances.All.SodiumChloride.GetHomogeneousReference()))
                 .Select(x => (x.Key, x.Value, false))
-                ?? Enumerable.Empty<(ISubstanceReference, decimal, bool)>());
+                ?? []);
 
         // A magnetosphere is presumed to indicate tectonic, and hence volcanic, activity.
         // This, in turn, indicates elemental sulfur at the surface.
@@ -4617,16 +4616,16 @@ public partial class Planetoid
         {
             // Iron/steel-nickel core (some steel forms naturally in the carbon-rich environment).
             var coreSteel = Randomizer.Instance.NextDecimal(0.945m);
-            coreConstituents = new (ISubstanceReference, decimal)[]
-            {
+            coreConstituents =
+            [
                 (Substances.All.Iron.GetHomogeneousReference(), 0.945m - coreSteel),
                 (Substances.All.CarbonSteel.GetHomogeneousReference(), coreSteel),
                 (Substances.All.Nickel.GetHomogeneousReference(), 0.055m),
-            };
+            ];
         }
         else
         {
-            coreConstituents = new (ISubstanceReference, decimal)[] { (Substances.All.IronNickelAlloy.GetHomogeneousReference(), 1) };
+            coreConstituents = [(Substances.All.IronNickelAlloy.GetHomogeneousReference(), 1)];
         }
 
         yield return new Material<HugeNumber>(

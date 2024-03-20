@@ -14,10 +14,10 @@ public partial class CosmicLocation
     /// </summary>
     public const double UniverseDensity = 5e-27;
 
-    private static readonly List<ChildDefinition> _UniverseChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _UniverseChildDefinitions =
+    [
         new ChildDefinition(_SuperclusterSpace, new HugeNumber(5.8, -26), CosmicStructureType.Supercluster),
-    };
+    ];
     private static readonly Sphere<HugeNumber> _UniverseShape = new(new HugeNumber(1.89214, 33));
 
     private void ConfigureUniverseInstance() => Material = new Material<HugeNumber>(

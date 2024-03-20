@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Tavenem.DataStorage;
 using Tavenem.Randomize;
 using Tavenem.Universe.Space;
@@ -461,9 +462,9 @@ public class Location : IdItem
         var childrenSuccess = true;
         await foreach (var child in GetChildrenAsync(dataStore))
         {
-            childrenSuccess &= await child.DeleteAsync(dataStore).ConfigureAwait(false);
+            childrenSuccess &= await child.DeleteAsync(dataStore);
         }
-        return childrenSuccess && await dataStore.RemoveItemAsync(this).ConfigureAwait(false);
+        return childrenSuccess && await dataStore.RemoveItemAsync(this);
     }
 
     /// <summary>
@@ -543,7 +544,10 @@ public class Location : IdItem
     /// An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of this one.
     /// </returns>
     public virtual IAsyncEnumerable<Location> GetChildrenAsync(IDataStore dataStore)
-        => dataStore.Query<Location>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
+        => dataStore
+        .Query(UniverseSourceGenerationContext.Default.Location)
+        .Where(x => x.ParentId == Id)
+        .AsAsyncEnumerable();
 
     /// <summary>
     /// Enumerates the children of this instance of the given type.
@@ -551,11 +555,17 @@ public class Location : IdItem
     /// <param name="dataStore">
     /// The <see cref="IDataStore"/> from which to retrieve instances.
     /// </param>
+    /// <param name="typeInfo">
+    /// <see cref="JsonTypeInfo{T}"/> for <typeparamref name="T"/>.
+    /// </param>
     /// <returns>
     /// An <see cref="IEnumerable{T}"/> of child <see cref="Location"/> instances of this one.
     /// </returns>
-    public virtual IAsyncEnumerable<T> GetChildrenAsync<T>(IDataStore dataStore) where T : Location
-        => dataStore.Query<T>().Where(x => x.ParentId == Id).AsAsyncEnumerable();
+    public virtual IAsyncEnumerable<T> GetChildrenAsync<T>(IDataStore dataStore, JsonTypeInfo<T>? typeInfo = null) where T : Location
+        => dataStore
+        .Query(typeInfo)
+        .Where(x => x.ParentId == Id)
+        .AsAsyncEnumerable();
 
     /// <summary>
     /// Determines the smallest child <see cref="Location"/> at any level of this instance's
@@ -711,7 +721,9 @@ public class Location : IdItem
     /// <returns>The parent location which contains this one, if any.</returns>
     public async ValueTask<Location?> GetParentAsync(IDataStore dataStore)
     {
-        _parent ??= await dataStore.GetItemAsync<Location>(ParentId).ConfigureAwait(false);
+        _parent ??= await dataStore.GetItemAsync(
+            ParentId,
+            UniverseSourceGenerationContext.Default.Location);
         return _parent;
     }
 
@@ -727,7 +739,7 @@ public class Location : IdItem
     public async Task SetParentAsync(IDataStore dataStore, Location? parent)
     {
         AssignParent(parent);
-        await ResetPosition(dataStore).ConfigureAwait(false);
+        await ResetPosition(dataStore);
     }
 
     /// <summary>
@@ -742,7 +754,7 @@ public class Location : IdItem
         if (Position != position)
         {
             AssignPosition(position);
-            await ResetPosition(dataStore).ConfigureAwait(false);
+            await ResetPosition(dataStore);
         }
     }
 
@@ -845,7 +857,7 @@ public class Location : IdItem
         if (AbsolutePosition is null
             || AbsolutePosition.Length == 0)
         {
-            AbsolutePosition = new Vector3<HugeNumber>[] { parentPosition };
+            AbsolutePosition = [parentPosition];
         }
         else
         {

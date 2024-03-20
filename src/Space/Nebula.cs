@@ -7,11 +7,11 @@ namespace Tavenem.Universe.Space;
 public partial class CosmicLocation
 {
     private static readonly HugeNumber _HIIRegionChildDensity = new(6, -50);
-    private static readonly List<ChildDefinition> _HIIRegionChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _HIIRegionChildDefinitions =
+    [
         new StarSystemChildDefinition(_HIIRegionChildDensity * new HugeNumber(9998, -4), SpectralClass.B, LuminosityClass.V),
         new StarSystemChildDefinition(_HIIRegionChildDensity * new HugeNumber(2, -4), SpectralClass.O, LuminosityClass.V),
-    };
+    ];
     private protected static readonly HugeNumber _NebulaSpace = new(5.5, 18);
 
     private void ConfigureNebulaInstance(Vector3<HugeNumber> position, double? ambientTemperature = null)

@@ -16,8 +16,8 @@ namespace Tavenem.Universe;
 /// </remarks>
 public class UniverseTypeResolver : DefaultJsonTypeInfoResolver
 {
-    private static readonly List<JsonDerivedType> _DerivedTypes = new()
-    {
+    private static readonly List<JsonDerivedType> _DerivedTypes =
+    [
         new(typeof(Location), Location.LocationIdItemTypeName),
         new(typeof(CosmicLocation), CosmicLocation.CosmicLocationIdItemTypeName),
         new(typeof(Planetoid), Planetoid.PlanetoidIdItemTypeName),
@@ -30,7 +30,7 @@ public class UniverseTypeResolver : DefaultJsonTypeInfoResolver
         new(typeof(HomogeneousSubstance), HomogeneousSubstance.HomogeneousSubstanceIdItemTypeName),
         new(typeof(Mixture), Mixture.MixtureIdItemTypeName),
         new(typeof(Solution), Solution.SolutionIdItemTypeName),
-    };
+    ];
 
     /// <inheritdoc />
     public override JsonTypeInfo GetTypeInfo(Type type, JsonSerializerOptions options)

@@ -255,7 +255,7 @@ public partial class CosmicLocation : Location
         out List<CosmicLocation> children,
         OrbitalParameters? orbit = null)
     {
-        children = new List<CosmicLocation>();
+        children = [];
         var starSystemChildren = new List<CosmicLocation>();
         var satellites = new List<Planetoid>();
 
@@ -267,7 +267,7 @@ public partial class CosmicLocation : Location
             CosmicStructureType.AnyNebula => new CosmicLocation(parent?.Id, CosmicStructureType.Nebula),
             CosmicStructureType.StarSystem => new StarSystem(parent, position, out starSystemChildren, orbit),
             CosmicStructureType.Star => new Star(StarType.MainSequence, parent, position, orbit),
-            CosmicStructureType.Planetoid => new Planetoid(PlanetType.Terrestrial, parent, null, new List<Star>(), position, out satellites, orbit),
+            CosmicStructureType.Planetoid => new Planetoid(PlanetType.Terrestrial, parent, null, [], position, out satellites, orbit),
             _ => new CosmicLocation(parent?.Id, structureType),
         };
         if (structureType == CosmicStructureType.StarSystem)
@@ -432,7 +432,7 @@ public partial class CosmicLocation : Location
         Vector3<HugeNumber>? position = null,
         OrbitalParameters? orbit = null)
     {
-        children = new List<CosmicLocation>();
+        children = [];
         var starSystemChildren = new List<CosmicLocation>();
 
         var instance = structureType switch
@@ -635,7 +635,7 @@ public partial class CosmicLocation : Location
         {
             return item;
         }
-        return (null, new List<CosmicLocation>());
+        return (null, []);
     }
 
     /// <summary>
@@ -694,7 +694,7 @@ public partial class CosmicLocation : Location
         {
             return item;
         }
-        return (null, new List<CosmicLocation>());
+        return (null, []);
     }
 
     /// <summary>
@@ -811,7 +811,7 @@ public partial class CosmicLocation : Location
                 }
             }
         }
-        return (null, new List<CosmicLocation>());
+        return (null, []);
     }
 
     /// <summary>
@@ -923,7 +923,10 @@ public partial class CosmicLocation : Location
     /// one.
     /// </returns>
     public IAsyncEnumerable<CosmicLocation> GetChildrenAsync(IDataStore dataStore, CosmicStructureType structureType)
-        => dataStore.Query<CosmicLocation>().Where(x => x.ParentId == Id && x.StructureType == structureType).AsAsyncEnumerable();
+        => dataStore
+        .Query(UniverseSourceGenerationContext.Default.CosmicLocation)
+        .Where(x => x.ParentId == Id && x.StructureType == structureType)
+        .AsAsyncEnumerable();
 
     /// <summary>
     /// Calculates the total number of children in this region. The totals are approximate,
@@ -962,7 +965,7 @@ public partial class CosmicLocation : Location
             || commonAbsolutePosition.Length == 0
             || commonAbsolutePosition[^1] != Position)
         {
-            return Enumerable.Empty<(ChildDefinition, HugeNumber)>();
+            return [];
         }
 
         return condition is null
@@ -1051,7 +1054,9 @@ public partial class CosmicLocation : Location
 
             var barycenter = Orbit.Value.Barycenter;
             if (!string.IsNullOrEmpty(Orbit.Value.OrbitedId)
-                && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is CosmicLocation orbited)
+                && await dataStore.GetItemAsync(
+                    Orbit.Value.OrbitedId,
+                    UniverseSourceGenerationContext.Default.CosmicLocation) is CosmicLocation orbited)
             {
                 barycenter = Orbit.Value.Barycenter
                     + (await orbited.GetPositionAfterDurationAsync(dataStore, time)
@@ -1104,7 +1109,9 @@ public partial class CosmicLocation : Location
 
         var barycenter = Orbit.Value.Barycenter;
         if (!string.IsNullOrEmpty(Orbit.Value.OrbitedId)
-            && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is CosmicLocation orbited
+            && await dataStore.GetItemAsync(
+                Orbit.Value.OrbitedId,
+                UniverseSourceGenerationContext.Default.CosmicLocation) is CosmicLocation orbited
             && orbited.Orbit.HasValue)
         {
             barycenter = Orbit.Value.Barycenter
@@ -1177,7 +1184,7 @@ public partial class CosmicLocation : Location
     {
         var totalGravity = Vector3<HugeNumber>.Zero;
 
-        var parent = await GetParentAsync(dataStore).ConfigureAwait(false);
+        var parent = await GetParentAsync(dataStore);
         // No gravity for a parent-less object
         if (parent is null)
         {
@@ -1220,7 +1227,7 @@ public partial class CosmicLocation : Location
     {
         if (shape.Position != Position)
         {
-            await SetOrbitAsync(dataStore, null).ConfigureAwait(false);
+            await SetOrbitAsync(dataStore, null);
         }
         Shape = shape;
         _radiusSquared = null;
@@ -1242,7 +1249,7 @@ public partial class CosmicLocation : Location
     {
         if (Velocity != velocity)
         {
-            await SetOrbitAsync(dataStore, null).ConfigureAwait(false);
+            await SetOrbitAsync(dataStore, null);
         }
         Velocity = velocity;
     }
@@ -1262,7 +1269,7 @@ public partial class CosmicLocation : Location
         var position = GetOpenSpace(definition.Space, children);
         if (!position.HasValue)
         {
-            newChildren = new List<CosmicLocation>();
+            newChildren = [];
             return null;
         }
         return definition.GetChild(this, position.Value, out newChildren);

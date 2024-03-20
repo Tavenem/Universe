@@ -124,7 +124,7 @@ public class StarSystem : CosmicLocation
         bool allowBinary = true,
         bool sunlike = false) : base(parent?.Id, CosmicStructureType.StarSystem)
     {
-        StarIDs = ImmutableList<string>.Empty;
+        StarIDs = [];
         children = Configure(parent, position, starType, spectralClass, luminosityClass, populationII, null, allowBinary, sunlike);
 
         if (parent is not null && !orbit.HasValue)
@@ -163,7 +163,7 @@ public class StarSystem : CosmicLocation
         }
     }
 
-    private StarSystem(string? parentId) : base(parentId, CosmicStructureType.StarSystem) => StarIDs = ImmutableList<string>.Empty;
+    private StarSystem(string? parentId) : base(parentId, CosmicStructureType.StarSystem) => StarIDs = [];
 
     /// <summary>
     /// Initialize a new instance of <see cref="StarSystem"/>.
@@ -311,9 +311,10 @@ public class StarSystem : CosmicLocation
         var instance = new StarSystem(null);
         child.AssignParent(instance);
 
-        children = new List<CosmicLocation>();
-
-        children.AddRange(instance.Configure(null, Vector3<HugeNumber>.Zero, starType, spectralClass, luminosityClass, populationII, child, allowBinary));
+        children =
+        [
+            .. instance.Configure(null, Vector3<HugeNumber>.Zero, starType, spectralClass, luminosityClass, populationII, child, allowBinary),
+        ];
 
         // Stars, planetoids, and oort clouds will have their place in the system assigned during configuration.
         if (!position.HasValue && child.StructureType != CosmicStructureType.Planetoid)
@@ -404,7 +405,7 @@ public class StarSystem : CosmicLocation
         star ??= Randomizer.Instance.Next(stars);
         if (star is null)
         {
-            return new();
+            return [];
         }
 
         var (numGiants, numIceGiants, numTerrestrial) = star.GetNumPlanets();
@@ -515,7 +516,7 @@ public class StarSystem : CosmicLocation
     /// Adds a <see cref="Star"/> to this system.
     /// </summary>
     /// <param name="star">The <see cref="Star"/> to add.</param>
-    public void AddStar(Star star) => StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Add(star.Id);
+    public void AddStar(Star star) => StarIDs = [.. StarIDs, star.Id];
 
     /// <summary>
     /// Adds new stars to this system.
@@ -592,10 +593,7 @@ public class StarSystem : CosmicLocation
 
         newStars.AddRange(AddCompanionStars(primary, currentStars, amount)
             .Select(x => x.star));
-        StarIDs = ImmutableList<string>
-            .Empty
-            .AddRange(StarIDs)
-            .AddRange(newStars.Select(x => x.Id));
+        StarIDs = [.. StarIDs, .. newStars.Select(x => x.Id)];
         return newStars;
     }
 
@@ -613,7 +611,7 @@ public class StarSystem : CosmicLocation
     {
         foreach (var id in StarIDs)
         {
-            var star = await dataStore.GetItemAsync<Star>(id).ConfigureAwait(false);
+            var star = await dataStore.GetItemAsync(id, UniverseSourceGenerationContext.Default.Star);
             if (star is not null)
             {
                 yield return star;
@@ -659,10 +657,10 @@ public class StarSystem : CosmicLocation
     public async Task<List<CosmicLocation>> RemoveStarAsync(IDataStore dataStore, string id)
     {
         StarIDs = ImmutableList<string>.Empty.AddRange(StarIDs).Remove(id);
-        var removed = await dataStore.GetItemAsync<Star>(id);
+        var removed = await dataStore.GetItemAsync(id, UniverseSourceGenerationContext.Default.Star);
         if (removed is null)
         {
-            return new();
+            return [];
         }
 
         var affected = new List<CosmicLocation>();
@@ -1507,9 +1505,7 @@ public class StarSystem : CosmicLocation
             null,
             parent?.Material.Temperature ?? UniverseAmbientTemperature);
 
-        StarIDs = ImmutableList<string>.Empty
-            .AddRange(StarIDs)
-            .AddRange(stars.Select(x => x.Id));
+        StarIDs = [.. StarIDs, .. stars.Select(x => x.Id)];
 
         // All single and close-binary systems are presumed to have Oort clouds. Systems with
         // higher multiplicity are presumed to disrupt any Oort clouds.
@@ -1931,7 +1927,7 @@ public class StarSystem : CosmicLocation
             planetarySystemInfo.MedianOrbit,
             planetarySystemInfo.TotalGiants);
 
-        satellites = new List<Planetoid>();
+        satellites = [];
         // If there is no room left for outer orbits, drop this planet and try again (until there
         // are none left to assign).
         if (!planetarySystemInfo.Periapsis.HasValue || planetarySystemInfo.Periapsis.Value.IsNaN())

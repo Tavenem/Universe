@@ -34,12 +34,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Tavenem.Chemistry" Version="0.9.1-preview" />
-    <PackageReference Include="Tavenem.DataStore" Version="1.0.2" />
-    <PackageReference Include="Tavenem.HugeNumber" Version="2.3.4" />
+    <PackageReference Include="Tavenem.Chemistry" Version="1.1.6" />
+    <PackageReference Include="Tavenem.DataStore" Version="2.0.4" />
+    <PackageReference Include="Tavenem.HugeNumber" Version="2.5.4" />
     <PackageReference Include="Tavenem.Mathematics" Version="2.2.11" />
     <PackageReference Include="Tavenem.Randomize" Version="2.2.9" />
-    <PackageReference Include="Tavenem.Time" Version="2.2.6" />
+    <PackageReference Include="Tavenem.Time" Version="2.3.3" />
   </ItemGroup>
 
 </Project>

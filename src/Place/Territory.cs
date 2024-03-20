@@ -32,13 +32,13 @@ public class Territory : Location
     /// <summary>
     /// Initializes a new instance of <see cref="Territory"/>.
     /// </summary>
-    public Territory() => ChildIds = ImmutableList<string>.Empty;
+    public Territory() => ChildIds = [];
 
     /// <summary>
     /// Initializes a new instance of <see cref="Territory"/>.
     /// </summary>
     /// <param name="shape">The shape of the location.</param>
-    public Territory(IShape<HugeNumber> shape) : base(shape) => ChildIds = ImmutableList<string>.Empty;
+    public Territory(IShape<HugeNumber> shape) : base(shape) => ChildIds = [];
 
     /// <summary>
     /// Initializes a new instance of <see cref="Territory"/>.
@@ -46,7 +46,7 @@ public class Territory : Location
     /// <param name="position">
     /// The position of the location relative to the center of its containing region.
     /// </param>
-    public Territory(Vector3<HugeNumber> position) : base(position) => ChildIds = ImmutableList<string>.Empty;
+    public Territory(Vector3<HugeNumber> position) : base(position) => ChildIds = [];
 
     /// <summary>
     /// Initializes a new instance of <see cref="Territory"/>.
@@ -106,7 +106,7 @@ public class Territory : Location
         if (list.Count > ChildIds.Count)
         {
             ChildIds = list;
-            await CalculateShapeAsync(dataStore).ConfigureAwait(false);
+            await CalculateShapeAsync(dataStore);
         }
         return this;
     }
@@ -135,7 +135,7 @@ public class Territory : Location
     {
         foreach (var id in ChildIds)
         {
-            var result = await dataStore.GetItemAsync<Location>(id).ConfigureAwait(false);
+            var result = await dataStore.GetItemAsync(id, UniverseSourceGenerationContext.Default.Location);
             if (result is not null)
             {
                 yield return result;
@@ -211,12 +211,12 @@ public class Territory : Location
     public async ValueTask<Territory> RemoveLocationsAsync(IDataStore dataStore, IEnumerable<string> ids)
     {
         var list = (ChildIds as ImmutableList<string>)
-            ?? ImmutableList<string>.Empty.AddRange(ChildIds);
+            ?? [.. ChildIds];
         var count = list.Count;
         ChildIds = list.RemoveRange(ids);
         if (count > ChildIds.Count)
         {
-            await CalculateShapeAsync(dataStore).ConfigureAwait(false);
+            await CalculateShapeAsync(dataStore);
         }
         return this;
     }
@@ -232,12 +232,12 @@ public class Territory : Location
     public async ValueTask<Territory> RemoveLocationsAsync(IDataStore dataStore, params string[] ids)
     {
         var list = (ChildIds as ImmutableList<string>)
-            ?? ImmutableList<string>.Empty.AddRange(ChildIds);
+            ?? [.. ChildIds];
         var count = list.Count;
         ChildIds = list.RemoveRange(ids);
         if (count > ChildIds.Count)
         {
-            await CalculateShapeAsync(dataStore).ConfigureAwait(false);
+            await CalculateShapeAsync(dataStore);
         }
         return this;
     }

@@ -10,25 +10,25 @@ public partial class CosmicLocation
     internal static readonly HugeNumber _OortCloudSpace = new(7.5, 15);
 
     private static readonly HugeNumber _AsteroidFieldChildDensity = new(13, -31);
-    private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _AsteroidFieldChildDefinitions =
+    [
         new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(74, -2), PlanetType.AsteroidC),
         new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(14, -2), PlanetType.AsteroidS),
         new PlanetChildDefinition(_AsteroidFieldChildDensity * HugeNumberConstants.Deci, PlanetType.AsteroidM),
         new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(2, -2), PlanetType.Comet),
         new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(3, -10), PlanetType.Dwarf),
         new PlanetChildDefinition(_AsteroidFieldChildDensity * new HugeNumber(1, -10), PlanetType.RockyDwarf),
-    };
+    ];
     private static readonly HugeNumber _AsteroidFieldDensity = new(7, -8);
 
     private static readonly HugeNumber _OortCloudChildDensity = new(8.31, -38);
-    private static readonly List<ChildDefinition> _OortCloudChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _OortCloudChildDefinitions =
+    [
         new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(85, -2), PlanetType.Comet),
         new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(11, -2), PlanetType.AsteroidC),
         new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(25, -3), PlanetType.AsteroidS),
         new PlanetChildDefinition(_OortCloudChildDensity * new HugeNumber(15, -3), PlanetType.AsteroidM),
-    };
+    ];
     private static readonly HugeNumber _OortCloudInnerRadius = new(3, 15);
     private static readonly HugeNumber _OortCloudMass = new(3, 25);
 

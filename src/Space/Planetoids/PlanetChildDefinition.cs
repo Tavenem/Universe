@@ -118,7 +118,7 @@ public class PlanetChildDefinition : ChildDefinition
     /// </returns>
     public override CosmicLocation? GetChild(CosmicLocation parent, Vector3<HugeNumber> position, out List<CosmicLocation> children)
     {
-        var instance = GetPlanet(parent, new List<Star>(), position, out var satellites);
+        var instance = GetPlanet(parent, [], position, out var satellites);
         children = new List<CosmicLocation>(satellites);
         return instance;
     }

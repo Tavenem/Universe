@@ -5,10 +5,10 @@ namespace Tavenem.Universe.Space;
 
 public partial class CosmicLocation
 {
-    private static readonly List<ChildDefinition> _GalaxyClusterChildDefinitions = new()
-    {
+    private static readonly List<ChildDefinition> _GalaxyClusterChildDefinitions =
+    [
         new ChildDefinition(_GalaxyGroupSpace, new HugeNumber(1.415, -72), CosmicStructureType.GalaxyGroup), // ~20 groups = ~1000 galaxies
-    };
+    ];
     private protected static readonly HugeNumber _GalaxyClusterSpace = new(1.5, 24);
 
     private void ConfigureGalaxyClusterInstance(Vector3<HugeNumber> position, double? ambientTemperature = null)

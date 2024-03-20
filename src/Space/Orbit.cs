@@ -262,7 +262,7 @@ public readonly record struct Orbit(
         Vector3<HugeNumber> orbitedPosition)
     {
         AssignCircularOrbit(orbitingObject, orbitedId, orbitedMass, orbitedPosition);
-        await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
+        await orbitingObject.ResetOrbitAsync(dataStore);
     }
 
     /// <summary>
@@ -335,7 +335,7 @@ public readonly record struct Orbit(
         double eccentricity)
     {
         AssignOrbit(orbitingObject, orbitedId, orbitedMass, orbitedPosition, eccentricity);
-        await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
+        await orbitingObject.ResetOrbitAsync(dataStore);
     }
 
     /// <summary>
@@ -383,7 +383,7 @@ public readonly record struct Orbit(
         HugeNumber period)
     {
         AssignOrbit(orbitingObject, orbitedId, orbitedMass, orbitedPosition, eccentricity, period);
-        await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
+        await orbitingObject.ResetOrbitAsync(dataStore);
     }
 
     /// <summary>
@@ -511,7 +511,7 @@ public readonly record struct Orbit(
             longitudeAscending,
             argPeriapsis,
             trueAnomaly);
-        await orbitingObject.ResetOrbitAsync(dataStore).ConfigureAwait(false);
+        await orbitingObject.ResetOrbitAsync(dataStore);
     }
 
     /// <summary>

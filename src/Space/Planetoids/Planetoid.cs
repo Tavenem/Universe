@@ -351,7 +351,7 @@ public partial class Planetoid : CosmicLocation
     /// The collection of rings around this <see cref="Planetoid"/>.
     /// </summary>
     public IReadOnlyList<PlanetaryRing> Rings => _rings
-        ?? ReadOnlyCollection<PlanetaryRing>.Empty;
+        ?? [];
 
     /// <summary>
     /// <para>
@@ -375,7 +375,7 @@ public partial class Planetoid : CosmicLocation
     /// The IDs of any natural satellites which orbit this <see cref="Planetoid"/>.
     /// </summary>
     public IReadOnlyList<string> SatelliteIds => _satelliteIds
-        ?? ReadOnlyCollection<string>.Empty;
+        ?? [];
 
     private double? _seaLevel;
     /// <summary>
@@ -802,7 +802,7 @@ public partial class Planetoid : CosmicLocation
         NormalizedSeaLevel = normalizedSeaLevel;
         _resources = resources.Count == 0
             ? null
-            : resources.ToList();
+            : [.. resources];
         _rings = rings.Count == 0
             ? null
             : rings;
@@ -885,7 +885,9 @@ public partial class Planetoid : CosmicLocation
             success &= await child.DeleteAsync(dataStore);
         }
         if (!string.IsNullOrEmpty(Orbit?.OrbitedId)
-            && await dataStore.GetItemAsync<CosmicLocation>(Orbit.Value.OrbitedId) is Planetoid planet)
+            && await dataStore.GetItemAsync(
+                Orbit.Value.OrbitedId,
+                UniverseSourceGenerationContext.Default.CosmicLocation) is Planetoid planet)
         {
             planet.RemoveSatellite(Id);
             success &= await dataStore.StoreItemAsync(planet);
@@ -1040,7 +1042,7 @@ public partial class Planetoid : CosmicLocation
             + (Math.Cos(solarDeclination) * Math.Cos(latitude) * Math.Cos(longitudeOffset));
         var solarElevation = Math.Asin(sinSolarElevation);
         var star = Star.NewSunlike(null, Vector3<HugeNumber>.Zero);
-        lux += solarElevation <= 0 || star is null ? 0 : GetLuminousFlux(new[] { star }) * sinSolarElevation;
+        lux += solarElevation <= 0 || star is null ? 0 : GetLuminousFlux([star]) * sinSolarElevation;
 
         if (satellites is not null)
         {
@@ -1065,7 +1067,7 @@ public partial class Planetoid : CosmicLocation
                 // albedo, then the distance the light must travel after being reflected.
                 lux += star is null
                     ? 0
-                    : satellite.GetLuminousFlux(new[] { star })
+                    : satellite.GetLuminousFlux([star])
                         * phase
                         * satellite.Albedo
                         / DoubleConstants.FourPi
@@ -1110,7 +1112,7 @@ public partial class Planetoid : CosmicLocation
     /// </remarks>
     public async Task<double> GetIlluminationAsync(IDataStore dataStore, Instant moment, double latitude, double longitude)
     {
-        var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
+        var system = await GetStarSystemAsync(dataStore);
         if (system is null)
         {
             return 0;
@@ -1393,7 +1395,7 @@ public partial class Planetoid : CosmicLocation
     public double GetLuminousFlux()
     {
         var star = Star.NewSunlike(null, Vector3<HugeNumber>.Zero);
-        return star is null ? 0 : GetLuminousFlux(new[] { star });
+        return star is null ? 0 : GetLuminousFlux([star]);
     }
 
     /// <summary>
@@ -1410,7 +1412,7 @@ public partial class Planetoid : CosmicLocation
     /// </remarks>
     public async Task<double> GetLuminousFluxAsync(IDataStore dataStore)
     {
-        var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
+        var system = await GetStarSystemAsync(dataStore);
         if (system is null)
         {
             return 0;
@@ -1638,7 +1640,7 @@ public partial class Planetoid : CosmicLocation
         }
         foreach (var id in _satelliteIds)
         {
-            var satellite = await dataStore.GetItemAsync<Planetoid>(id).ConfigureAwait(false);
+            var satellite = await dataStore.GetItemAsync(id, UniverseSourceGenerationContext.Default.Planetoid);
             if (satellite is not null)
             {
                 yield return satellite;
@@ -1954,7 +1956,7 @@ public partial class Planetoid : CosmicLocation
             return;
         }
         var rings = ((_rings as ImmutableList<PlanetaryRing>)
-            ?? ImmutableList<PlanetaryRing>.Empty.AddRange(_rings))
+            ?? [.. _rings])
             .RemoveAt(index);
         _rings = rings.Count == 0
             ? null
@@ -1972,7 +1974,7 @@ public partial class Planetoid : CosmicLocation
             return;
         }
         var ids = ((_satelliteIds as ImmutableList<string>)
-            ?? ImmutableList<string>.Empty.AddRange(_satelliteIds))
+            ?? [.. _satelliteIds])
             .Remove(id);
         _satelliteIds = ids.Count == 0
             ? null
@@ -2442,7 +2444,7 @@ public partial class Planetoid : CosmicLocation
         var stars = new List<Star>();
         if (Orbit.HasValue)
         {
-            var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
+            var system = await GetStarSystemAsync(dataStore);
             if (system is not null)
             {
                 await foreach (var star in system.GetStarsAsync(dataStore))
@@ -2557,12 +2559,14 @@ public partial class Planetoid : CosmicLocation
     {
         if (Orbit.HasValue
             && !string.IsNullOrEmpty(Orbit.Value.OrbitedId)
-            && await dataStore.GetItemAsync<Star>(Orbit.Value.OrbitedId) is Star orbitedStar)
+            && await dataStore.GetItemAsync(
+                Orbit.Value.OrbitedId,
+                UniverseSourceGenerationContext.Default.Star) is Star orbitedStar)
         {
             return orbitedStar;
         }
 
-        var system = await GetStarSystemAsync(dataStore).ConfigureAwait(false);
+        var system = await GetStarSystemAsync(dataStore);
         if (system is null)
         {
             return null;
@@ -2642,7 +2646,7 @@ public partial class Planetoid : CosmicLocation
 
     private async ValueTask<StarSystem?> GetStarSystemAsync(IDataStore dataStore)
     {
-        var parent = await GetParentAsync(dataStore).ConfigureAwait(false);
+        var parent = await GetParentAsync(dataStore);
         if (parent is StarSystem system)
         {
             return system;
@@ -2651,7 +2655,7 @@ public partial class Planetoid : CosmicLocation
         // containment scenarios with deeply nested entities are not considered.
         if (parent is not null)
         {
-            parent = await parent.GetParentAsync(dataStore).ConfigureAwait(false);
+            parent = await parent.GetParentAsync(dataStore);
             if (parent is StarSystem parentSystem)
             {
                 return parentSystem;
